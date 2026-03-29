@@ -164,6 +164,7 @@ namespace Kingdoms
     public static bool tabReleased = false;
     public static bool enterPressed = false;
     public static bool f11Pressed = false;
+    public static bool f12Pressed = false;
     public Point lastMouseMovePosition;
     public DateTime lastMouseMoveTime = DateTime.Now;
     private static string userPath = (string) null;
@@ -433,6 +434,8 @@ namespace Kingdoms
       InterfaceMgr.Instance.ignoreStopDraw = false;
       this.firstCall = false;
       this.lastFullTickRegisterTime = this.lastFullTickTime = DXTimer.GetCurrentMilliseconds();
+      Bot.BotEngine.Instance = new Bot.BotEngine();
+      Bot.BotEngine.Instance.Init();
       return true;
     }
 
@@ -677,6 +680,11 @@ namespace Kingdoms
               this.lastFullTickTime = currentMilliseconds;
               this.World.doFullTick(false, gameActivityMode);
             }
+            else
+            {
+              this.lastFullTickTime = currentMilliseconds;
+              this.lastFullTickRegisterTime = currentMilliseconds;
+            }
             special = true;
           }
           InterfaceMgr.Instance.worldTabUpdate(special);
@@ -828,6 +836,8 @@ namespace Kingdoms
           this.World.updateArmyRetrievalData();
           this.monitorDownTime();
           Sound.monitorMusic();
+          if (Bot.BotEngine.Instance != null)
+            Bot.BotEngine.Instance.Tick();
         }
         InterfaceMgr.Instance.mailUpdate();
         InterfaceMgr.Instance.chatUpdate();
@@ -1292,6 +1302,11 @@ namespace Kingdoms
       }
       if (!this.WindowActive)
         return;
+      if (GameEngine.f12Pressed)
+      {
+        GameEngine.f12Pressed = false;
+        Bot.UI.BotControlForm.ShowInstance();
+      }
       if (GameEngine.f11Pressed)
       {
         GameEngine.f11Pressed = false;
@@ -2261,11 +2276,6 @@ namespace Kingdoms
         this.worldsEndPopup.closing = true;
       if (this.noAutoVillagePopup != null)
         this.noAutoVillagePopup.closing = true;
-      this.closeNoVillagePopup(false);
-      this.noVillagePopup = (NewSelectVillageAreaWindow) null;
-      this.lostVillagePopup = (LostVillageWindow) null;
-      this.worldsEndPopup = (WorldsEndWindow) null;
-      this.noAutoVillagePopup = (NewAutoSelectVillageWindow) null;
     }
 
     public void setPendingSessionExpiredStat(int errorNo)
@@ -2996,6 +3006,9 @@ namespace Kingdoms
               break;
             case 122:
               GameEngine.f11Pressed = true;
+              break;
+            case 123:
+              GameEngine.f12Pressed = true;
               break;
             case 160:
             case 161:
