@@ -17,8 +17,10 @@ namespace Kingdoms.Bot.UI
 
         private CheckBox _check;
         private int _villageId;
+        private string _typeLabel;
 
         public int VillageId { get { return _villageId; } }
+        public string TypeLabel { get { return _typeLabel; } }
 
         public bool IsChecked
         {
@@ -29,6 +31,7 @@ namespace Kingdoms.Bot.UI
         public VillageRow(int villageId, string name, string typeLabel, bool enabled, bool alternate)
         {
             _villageId = villageId;
+            _typeLabel = typeLabel;
             this.Height = 26;
             this.BackColor = alternate ? BgOdd : BgEven;
 

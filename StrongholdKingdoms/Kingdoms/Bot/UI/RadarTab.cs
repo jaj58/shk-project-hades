@@ -11,6 +11,7 @@ namespace Kingdoms.Bot.UI
         private static readonly Color TextPrimary = Color.FromArgb(230, 230, 240);
 
         private string _actionKey;
+        private RadarActionSettings _boundSettings;
         private CheckBox _monitorCheck;
         private CheckBox _systemNotifyCheck;
         private CheckBox _discordNotifyCheck;
@@ -21,6 +22,7 @@ namespace Kingdoms.Bot.UI
         public ActionRow(string actionKey, string label, RadarActionSettings settings, bool alternate)
         {
             _actionKey = actionKey;
+            _boundSettings = settings;
             this.Height = 28;
             this.BackColor = alternate ? BgOdd : BgEven;
 
@@ -43,10 +45,25 @@ namespace Kingdoms.Bot.UI
 
             _autoInterdictCheck = MakeCheck(420, settings.AutoInterdict);
             this.Controls.Add(_autoInterdictCheck);
+
+            _monitorCheck.CheckedChanged += delegate { PushToSettings(); };
+            _systemNotifyCheck.CheckedChanged += delegate { PushToSettings(); };
+            _discordNotifyCheck.CheckedChanged += delegate { PushToSettings(); };
+            _autoInterdictCheck.CheckedChanged += delegate { PushToSettings(); };
+        }
+
+        private void PushToSettings()
+        {
+            if (_boundSettings == null) return;
+            _boundSettings.Monitor = _monitorCheck.Checked;
+            _boundSettings.SystemNotify = _systemNotifyCheck.Checked;
+            _boundSettings.DiscordNotify = _discordNotifyCheck.Checked;
+            _boundSettings.AutoInterdict = _autoInterdictCheck.Checked;
         }
 
         public void SetValues(RadarActionSettings settings)
         {
+            _boundSettings = settings;
             _monitorCheck.Checked = settings.Monitor;
             _systemNotifyCheck.Checked = settings.SystemNotify;
             _discordNotifyCheck.Checked = settings.DiscordNotify;

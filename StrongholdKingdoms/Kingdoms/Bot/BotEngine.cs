@@ -36,6 +36,7 @@ namespace Kingdoms.Bot
 
             RegisterModule(new Modules.VillageSyncModule());
             RegisterModule(new Modules.RadarModule());
+            RegisterModule(new Modules.RecruitingModule());
 
             foreach (IBotModule module in _modules)
             {
@@ -71,6 +72,8 @@ namespace Kingdoms.Bot
                     module.Enabled = _settings.VillageSync.Enabled;
                 else if (module is Modules.RadarModule)
                     module.Enabled = _settings.Radar.Enabled;
+                else if (module is Modules.RecruitingModule)
+                    module.Enabled = _settings.Recruiting.Enabled;
             }
         }
 
@@ -86,6 +89,8 @@ namespace Kingdoms.Bot
                     _settings.VillageSync.Enabled = module.Enabled;
                 else if (module is Modules.RadarModule)
                     _settings.Radar.Enabled = module.Enabled;
+                else if (module is Modules.RecruitingModule)
+                    _settings.Recruiting.Enabled = module.Enabled;
             }
 
             _settings.Save();

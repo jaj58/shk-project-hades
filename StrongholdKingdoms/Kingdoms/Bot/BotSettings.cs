@@ -8,9 +8,11 @@ namespace Kingdoms.Bot
     [Serializable]
     public class BotSettings
     {
+        [System.Xml.Serialization.XmlIgnore]
         public bool BotEnabled;
         public VillageSyncSettings VillageSync = new VillageSyncSettings();
         public RadarSettings Radar = new RadarSettings();
+        public RecruitingSettings Recruiting = new RecruitingSettings();
 
         private static string GetSettingsFilePath()
         {
@@ -111,5 +113,88 @@ namespace Kingdoms.Bot
         public bool SystemNotify = true;
         public bool DiscordNotify = false;
         public bool AutoInterdict = false;
+    }
+
+    [Serializable]
+    public class RecruitingSettings
+    {
+        public bool Enabled = true;
+        public int CycleIntervalSeconds = 60;
+        public int DelayBetweenVillagesMs = 3000;
+        public List<int> ExcludedVillageIds = new List<int>();
+        public List<VillageRecruitSettings> Villages = new List<VillageRecruitSettings>();
+
+        public bool IsVillageEnabled(int villageId)
+        {
+            return !ExcludedVillageIds.Contains(villageId);
+        }
+
+        public void SetVillageEnabled(int villageId, bool enabled)
+        {
+            if (enabled)
+                ExcludedVillageIds.Remove(villageId);
+            else if (!ExcludedVillageIds.Contains(villageId))
+                ExcludedVillageIds.Add(villageId);
+        }
+
+        public VillageRecruitSettings GetVillageSettings(int villageId)
+        {
+            foreach (VillageRecruitSettings v in Villages)
+            {
+                if (v.VillageId == villageId) return v;
+            }
+            VillageRecruitSettings newV = new VillageRecruitSettings();
+            newV.VillageId = villageId;
+            newV.InitDefaults();
+            Villages.Add(newV);
+            return newV;
+        }
+    }
+
+    [Serializable]
+    public class VillageRecruitSettings
+    {
+        public int VillageId;
+        public List<UnitRecruitEntry> Units = new List<UnitRecruitEntry>();
+
+        public void InitDefaults()
+        {
+            if (Units.Count > 0) return;
+            string[] keys = new string[]
+            {
+                "Peasants", "Archers", "Pikemen", "Swordsmen",
+                "Catapults", "Captains", "Scouts", "Monks", "Traders"
+            };
+            for (int i = 0; i < keys.Length; i++)
+            {
+                UnitRecruitEntry entry = new UnitRecruitEntry();
+                entry.UnitKey = keys[i];
+                entry.TargetCount = 0;
+                entry.Priority = i + 1;
+                Units.Add(entry);
+            }
+        }
+
+        public UnitRecruitEntry GetEntry(string unitKey)
+        {
+            foreach (UnitRecruitEntry e in Units)
+            {
+                if (e.UnitKey == unitKey) return e;
+            }
+            UnitRecruitEntry newE = new UnitRecruitEntry();
+            newE.UnitKey = unitKey;
+            newE.TargetCount = 0;
+            newE.Priority = Units.Count + 1;
+            Units.Add(newE);
+            return newE;
+        }
+    }
+
+    [Serializable]
+    public class UnitRecruitEntry
+    {
+        public string UnitKey = "";
+        public int TargetCount;
+        public int Priority = 1;
     }
 }

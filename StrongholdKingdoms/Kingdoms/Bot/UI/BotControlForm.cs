@@ -26,6 +26,11 @@ namespace Kingdoms.Bot.UI
         private Timer _rdRefreshTimer;
         private List<ActionRow> _rdActionRows = new List<ActionRow>();
 
+        // Recruiting runtime state
+        private Timer _rcRefreshTimer;
+        private List<RecruitVillagePanel> _rcVillagePanels = new List<RecruitVillagePanel>();
+        private List<RecruitVillagePanel> _rcCapitalPanels = new List<RecruitVillagePanel>();
+
         public static void ShowInstance()
         {
             if (_instance == null || _instance.IsDisposed)
@@ -56,6 +61,7 @@ namespace Kingdoms.Bot.UI
             {
                 WireUpVillageSyncTab();
                 WireUpRadarTab();
+                WireUpRecruitingTab();
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -63,6 +69,7 @@ namespace Kingdoms.Bot.UI
                 VsLoadFromSettings();
                 RdLoadFromSettings();
                 RdBuildActionRows();
+                RcLoadFromSettings();
             }
         }
 
@@ -75,11 +82,34 @@ namespace Kingdoms.Bot.UI
             _vsRefreshBtn.Click += delegate { VsPopulateVillageList(); };
             _vsSelectAllBtn.Click += delegate { VsSetAllChecked(true); };
             _vsDeselectAllBtn.Click += delegate { VsSetAllChecked(false); };
+            _vsSelectVillagesBtn.Click += delegate { VsToggleVillages(); };
+            _vsSelectCapitalsBtn.Click += delegate { VsToggleCapitals(); };
+
+            _vsEnabledCheck.CheckedChanged += delegate { VsPushToSettings(); };
+            _vsIntervalInput.ValueChanged += delegate { VsPushToSettings(); };
+            _vsDelayInput.ValueChanged += delegate { VsPushToSettings(); };
 
             _vsRefreshTimer = new Timer();
             _vsRefreshTimer.Interval = 2000;
             _vsRefreshTimer.Tick += delegate { VsUpdateStatusDisplay(); };
             _vsRefreshTimer.Start();
+        }
+
+        private void VsPushToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            VillageSyncSettings s = BotEngine.Instance.Settings.VillageSync;
+            s.Enabled = _vsEnabledCheck.Checked;
+            s.IntervalSeconds = (int)_vsIntervalInput.Value;
+            s.DelayBetweenVillagesMs = (int)_vsDelayInput.Value;
+
+            foreach (IBotModule module in BotEngine.Instance.Modules)
+            {
+                if (module is VillageSyncModule)
+                    module.Enabled = s.Enabled;
+            }
         }
 
         private void VsLoadFromSettings()
@@ -184,6 +214,54 @@ namespace Kingdoms.Bot.UI
                 row.IsChecked = isChecked;
         }
 
+        private void VsToggleVillages()
+        {
+            bool allChecked = true;
+            foreach (VillageRow row in _vsVillageRows)
+            {
+                if (row.TypeLabel == "Village" && !row.IsChecked)
+                {
+                    allChecked = false;
+                    break;
+                }
+            }
+
+            foreach (VillageRow row in _vsVillageRows)
+            {
+                if (row.TypeLabel == "Village")
+                    row.IsChecked = !allChecked;
+            }
+        }
+
+        private void VsToggleCapitals()
+        {
+            bool allChecked = true;
+            foreach (VillageRow row in _vsVillageRows)
+            {
+                bool isCapital = row.TypeLabel == "Parish"
+                    || row.TypeLabel == "County"
+                    || row.TypeLabel == "Province"
+                    || row.TypeLabel == "Country";
+
+                if (isCapital && !row.IsChecked)
+                {
+                    allChecked = false;
+                    break;
+                }
+            }
+
+            foreach (VillageRow row in _vsVillageRows)
+            {
+                bool isCapital = row.TypeLabel == "Parish"
+                    || row.TypeLabel == "County"
+                    || row.TypeLabel == "Province"
+                    || row.TypeLabel == "Country";
+
+                if (isCapital)
+                    row.IsChecked = !allChecked;
+            }
+        }
+
         private void VsUpdateStatusDisplay()
         {
             if (_vsEnabledCheck == null) return;
@@ -248,10 +326,33 @@ namespace Kingdoms.Bot.UI
                 BotLogger.Log("Radar", BotLogLevel.Info, "Test webhook sent.");
             };
 
+            _rdEnabledCheck.CheckedChanged += delegate { RdPushToSettings(); };
+            _rdScanIntervalInput.ValueChanged += delegate { RdPushToSettings(); };
+            _rdWebhookInput.TextChanged += delegate { RdPushToSettings(); };
+            _rdInterdictMonkCountInput.ValueChanged += delegate { RdPushToSettings(); };
+
             _rdRefreshTimer = new Timer();
             _rdRefreshTimer.Interval = 2000;
             _rdRefreshTimer.Tick += delegate { RdUpdateStatusDisplay(); };
             _rdRefreshTimer.Start();
+        }
+
+        private void RdPushToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            RadarSettings s = BotEngine.Instance.Settings.Radar;
+            s.Enabled = _rdEnabledCheck.Checked;
+            s.ScanIntervalSeconds = (int)_rdScanIntervalInput.Value;
+            s.DiscordWebhookUrl = _rdWebhookInput.Text.Trim();
+            s.AutoInterdictMonkCount = (int)_rdInterdictMonkCountInput.Value;
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                if (m is RadarModule)
+                    m.Enabled = s.Enabled;
+            }
         }
 
         private void RdLoadFromSettings()
@@ -337,6 +438,249 @@ namespace Kingdoms.Bot.UI
             bool enabled = _rdEnabledCheck.Checked;
             _rdStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
             _rdStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+        }
+
+        // =====================================================================
+        // Recruiting tab runtime
+        // =====================================================================
+
+        private void WireUpRecruitingTab()
+        {
+            _rcRefreshBtn.Click += delegate { RcBuildVillageList(); };
+
+            _rcDisbandCombo.Items.Clear();
+            foreach (string option in RecruitingModule.DisbandOptions)
+                _rcDisbandCombo.Items.Add("Disband All " + option);
+            if (_rcDisbandCombo.Items.Count > 0)
+                _rcDisbandCombo.SelectedIndex = 0;
+
+            _rcDisbandBtn.Click += delegate { RcDisbandClick(); };
+
+            _rcEnabledCheck.CheckedChanged += delegate { RcPushToSettings(); };
+            _rcIntervalInput.ValueChanged += delegate { RcPushToSettings(); };
+            _rcDelayInput.ValueChanged += delegate { RcPushToSettings(); };
+
+            RcBuildColumnHeaders(_rcColHeaderVillages);
+            RcBuildColumnHeaders(_rcColHeaderCapitals);
+
+            _rcRefreshTimer = new Timer();
+            _rcRefreshTimer.Interval = 2000;
+            _rcRefreshTimer.Tick += delegate { RcUpdateStatusDisplay(); };
+            _rcRefreshTimer.Start();
+        }
+
+        private void RcBuildColumnHeaders(Panel headerPanel)
+        {
+            Label villageHdr = new Label();
+            villageHdr.Text = "Village";
+            villageHdr.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            villageHdr.ForeColor = TextSec;
+            villageHdr.AutoSize = true;
+            villageHdr.Location = new Point(8, 5);
+            headerPanel.Controls.Add(villageHdr);
+
+            string[] unitKeys = RecruitingModule.AllUnitKeys;
+            for (int i = 0; i < unitKeys.Length; i++)
+            {
+                int x = RecruitVillagePanel.VillageNameWidth + (i * RecruitVillagePanel.UnitColWidth);
+
+                Label nameHdr = new Label();
+                nameHdr.Text = unitKeys[i];
+                nameHdr.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+                nameHdr.ForeColor = TextSec;
+                nameHdr.AutoSize = true;
+                nameHdr.Location = new Point(x, 5);
+                headerPanel.Controls.Add(nameHdr);
+
+                Label priHdr = new Label();
+                priHdr.Text = "Priority";
+                priHdr.Font = new Font("Segoe UI", 6.5f, FontStyle.Bold);
+                priHdr.ForeColor = Color.FromArgb(120, 125, 140);
+                priHdr.AutoSize = true;
+                priHdr.Location = new Point(x + 52, 5);
+                headerPanel.Controls.Add(priHdr);
+            }
+        }
+
+        private void RcPushToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            RecruitingSettings s = BotEngine.Instance.Settings.Recruiting;
+            s.Enabled = _rcEnabledCheck.Checked;
+            s.CycleIntervalSeconds = (int)_rcIntervalInput.Value;
+            s.DelayBetweenVillagesMs = (int)_rcDelayInput.Value;
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                if (m is RecruitingModule)
+                    m.Enabled = s.Enabled;
+            }
+        }
+
+        private void RcLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            RecruitingSettings s = BotEngine.Instance.Settings.Recruiting;
+            _rcEnabledCheck.Checked = s.Enabled;
+            _rcIntervalInput.Value = Math.Max(_rcIntervalInput.Minimum,
+                Math.Min(_rcIntervalInput.Maximum, s.CycleIntervalSeconds));
+            _rcDelayInput.Value = Math.Max(_rcDelayInput.Minimum,
+                Math.Min(_rcDelayInput.Maximum, s.DelayBetweenVillagesMs));
+
+            RcBuildVillageList();
+        }
+
+        private void RcWriteToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            RecruitingSettings s = BotEngine.Instance.Settings.Recruiting;
+            s.Enabled = _rcEnabledCheck.Checked;
+            s.CycleIntervalSeconds = (int)_rcIntervalInput.Value;
+            s.DelayBetweenVillagesMs = (int)_rcDelayInput.Value;
+
+            foreach (RecruitVillagePanel panel in _rcVillagePanels)
+                panel.WriteToSettings(s);
+            foreach (RecruitVillagePanel panel in _rcCapitalPanels)
+                panel.WriteToSettings(s);
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                if (m is RecruitingModule)
+                    m.Enabled = s.Enabled;
+            }
+        }
+
+        private void RcBuildVillageList()
+        {
+            _rcVillageListPanel.SuspendLayout();
+            _rcCapitalsListPanel.SuspendLayout();
+
+            foreach (RecruitVillagePanel panel in _rcVillagePanels)
+            {
+                _rcVillageListPanel.Controls.Remove(panel);
+                panel.Dispose();
+            }
+            _rcVillagePanels.Clear();
+
+            foreach (RecruitVillagePanel panel in _rcCapitalPanels)
+            {
+                _rcCapitalsListPanel.Controls.Remove(panel);
+                panel.Dispose();
+            }
+            _rcCapitalPanels.Clear();
+
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+            {
+                _rcVillageListPanel.ResumeLayout();
+                _rcCapitalsListPanel.ResumeLayout();
+                return;
+            }
+
+            List<WorldMap.UserVillageData> villages = GameEngine.Instance.World.getUserVillageList();
+            if (villages == null)
+            {
+                _rcVillageListPanel.ResumeLayout();
+                _rcCapitalsListPanel.ResumeLayout();
+                return;
+            }
+
+            RecruitingSettings settings = null;
+            if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+                settings = BotEngine.Instance.Settings.Recruiting;
+
+            bool altVillage = false;
+            bool altCapital = false;
+            for (int i = villages.Count - 1; i >= 0; i--)
+            {
+                int id = villages[i].villageID;
+                string name = RcGetVillageName(id);
+                string typeLabel = VillageSyncModule.GetVillageTypeLabel(id);
+                VillageRecruitSettings vs = settings != null
+                    ? settings.GetVillageSettings(id)
+                    : null;
+
+                bool isCapital = typeLabel == "Parish"
+                    || typeLabel == "County"
+                    || typeLabel == "Province"
+                    || typeLabel == "Country";
+
+                RecruitVillagePanel panel = new RecruitVillagePanel(id, name, vs, isCapital ? altCapital : altVillage);
+                panel.Dock = DockStyle.Top;
+
+                if (isCapital)
+                {
+                    _rcCapitalsListPanel.Controls.Add(panel);
+                    _rcCapitalPanels.Add(panel);
+                    altCapital = !altCapital;
+                }
+                else
+                {
+                    _rcVillageListPanel.Controls.Add(panel);
+                    _rcVillagePanels.Add(panel);
+                    altVillage = !altVillage;
+                }
+            }
+
+            _rcVillageListPanel.ResumeLayout();
+            _rcCapitalsListPanel.ResumeLayout();
+        }
+
+        private void RcDisbandClick()
+        {
+            if (_rcDisbandCombo.SelectedIndex < 0)
+                return;
+
+            if (_rcDisbandCombo.SelectedIndex >= RecruitingModule.DisbandOptions.Length)
+                return;
+
+            string unitKey = RecruitingModule.DisbandOptions[_rcDisbandCombo.SelectedIndex];
+
+            DialogResult result = MessageBox.Show(
+                "Are you sure you want to disband all " + unitKey + " in every village?",
+                "Confirm Disband",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (result != DialogResult.Yes)
+                return;
+
+            RecruitingModule module = null;
+            if (BotEngine.Instance != null)
+            {
+                foreach (IBotModule m in BotEngine.Instance.Modules)
+                {
+                    module = m as RecruitingModule;
+                    if (module != null) break;
+                }
+            }
+
+            if (module != null)
+            {
+                module.DisbandAll(unitKey);
+                BotLogger.Log("Recruiting", BotLogLevel.Info,
+                    "Disband all " + unitKey + " requested by user.");
+            }
+        }
+
+        private void RcUpdateStatusDisplay()
+        {
+            if (_rcEnabledCheck == null) return;
+            bool enabled = _rcEnabledCheck.Checked;
+            _rcStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
+            _rcStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+        }
+
+        private static string RcGetVillageName(int villageId)
+        {
+            if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                return GameEngine.Instance.World.getVillageName(villageId);
+            return "Village " + villageId;
         }
 
         // =====================================================================
@@ -434,11 +778,25 @@ namespace Kingdoms.Bot.UI
         {
             if (BotEngine.Instance == null) return;
 
-            VsWriteToSettings();
-            RdWriteToSettings();
+            string tabName = "";
+            if (_tabControl.SelectedTab == _villageSyncPage)
+            {
+                VsWriteToSettings();
+                tabName = "Village Sync";
+            }
+            else if (_tabControl.SelectedTab == _radarPage)
+            {
+                RdWriteToSettings();
+                tabName = "Radar";
+            }
+            else if (_tabControl.SelectedTab == _recruitingPage)
+            {
+                RcWriteToSettings();
+                tabName = "Recruiting";
+            }
 
             BotEngine.Instance.SaveSettings();
-            BotLogger.Log("UI", BotLogLevel.Info, "Settings saved.");
+            BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings saved.");
         }
 
         private void LoadBtn_Click(object sender, EventArgs e)
@@ -447,11 +805,25 @@ namespace Kingdoms.Bot.UI
 
             BotEngine.Instance.ReloadSettings();
 
-            VsLoadFromSettings();
-            RdLoadFromSettings();
+            string tabName = "";
+            if (_tabControl.SelectedTab == _villageSyncPage)
+            {
+                VsLoadFromSettings();
+                tabName = "Village Sync";
+            }
+            else if (_tabControl.SelectedTab == _radarPage)
+            {
+                RdLoadFromSettings();
+                tabName = "Radar";
+            }
+            else if (_tabControl.SelectedTab == _recruitingPage)
+            {
+                RcLoadFromSettings();
+                tabName = "Recruiting";
+            }
 
             RefreshStatus();
-            BotLogger.Log("UI", BotLogLevel.Info, "Settings reloaded from disk.");
+            BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings reloaded from disk.");
         }
 
         private void ClearLogBtn_Click(object sender, EventArgs e)

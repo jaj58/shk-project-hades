@@ -9,8 +9,9 @@ namespace Kingdoms.Bot.Modules
         private int _currentIndex;
         private List<int> _activeVillageIds = new List<int>();
         private DateTime _lastVillageSync = DateTime.MinValue;
-        private bool _waitingForCallback;
         private DateTime _lastVillageListRefresh = DateTime.MinValue;
+        private DateTime _lastCycleEnd = DateTime.MinValue;
+        private bool _cycleComplete = true;
 
         public override string ModuleName
         {
@@ -45,7 +46,7 @@ namespace Kingdoms.Bot.Modules
         protected override void OnInitialize()
         {
             _currentIndex = 0;
-            _waitingForCallback = false;
+            _cycleComplete = true;
         }
 
         public List<int> GetAllKnownVillageIds()
@@ -56,9 +57,12 @@ namespace Kingdoms.Bot.Modules
 
             try
             {
-                List<int> ids = GameEngine.Instance.World.getUserVillageIDList();
-                if (ids != null)
-                    result.AddRange(ids);
+                List<WorldMap.UserVillageData> villages = GameEngine.Instance.World.getUserVillageList();
+                if (villages != null)
+                {
+                    foreach (WorldMap.UserVillageData village in villages)
+                        result.Add(village.villageID);
+                }
             }
             catch
             {
@@ -91,25 +95,26 @@ namespace Kingdoms.Bot.Modules
             if (GameEngine.Instance == null || GameEngine.Instance.World == null)
                 return;
 
-            if (_waitingForCallback)
-                return;
-
             RefreshVillageListIfNeeded();
 
             if (_activeVillageIds.Count == 0)
-            {
-                LogDebug("No villages enabled for sync.");
                 return;
+
+            if (_cycleComplete)
+            {
+                if ((DateTime.Now - _lastCycleEnd).TotalSeconds < CycleIntervalSeconds)
+                    return;
+
+                _currentIndex = 0;
+                _cycleComplete = false;
+                LogInfo("Starting new sync cycle for " + _activeVillageIds.Count + " village(s).");
             }
 
             if (_currentIndex >= _activeVillageIds.Count)
             {
-                if ((DateTime.Now - _lastVillageListRefresh).TotalSeconds < CycleIntervalSeconds)
-                    return;
-
-                _currentIndex = 0;
-                _lastVillageListRefresh = DateTime.Now;
-                LogInfo("Starting new sync cycle for " + _activeVillageIds.Count + " village(s).");
+                _cycleComplete = true;
+                _lastCycleEnd = DateTime.Now;
+                return;
             }
 
             if ((DateTime.Now - _lastVillageSync).TotalMilliseconds < DelayBetweenVillagesMs)
@@ -124,48 +129,38 @@ namespace Kingdoms.Bot.Modules
 
             try
             {
-                _waitingForCallback = true;
                 _lastVillageSync = DateTime.Now;
 
-                RemoteServices.Instance.set_UpdateVillageResourcesInfo_UserCallBack(
-                    new RemoteServices.UpdateVillageResourcesInfo_UserCallBack(SyncCallback));
-                RemoteServices.Instance.UpdateVillageResourcesInfo(villageId);
-            }
-            catch (Exception ex)
-            {
-                _waitingForCallback = false;
-                LogError("Failed to request sync for village " + villageId + ": " + ex.Message);
-            }
-        }
-
-        private void SyncCallback(UpdateVillageResourcesInfo_ReturnType returnData)
-        {
-            _waitingForCallback = false;
-
-            if (returnData.Success)
-            {
-                int villageId = returnData.villageID;
-                string villageName = GameEngine.Instance.World.getVillageName(villageId);
-
                 VillageMap village = GameEngine.Instance.getVillage(villageId);
-                if (village != null)
+                if (village == null)
                 {
-                    village.importResourcesAndStats(returnData.villageResourcesAndStats, returnData.currentTime);
-                    LogInfo("Synced [" + villageId + "] " + villageName + " successfully.");
+                    ForceRefresh(villageId);
                 }
                 else
                 {
-                    LogDebug("[" + villageId + "] " + villageName +
-                             " data received but no local VillageMap exists.");
+                    BackGroundRefresh(village);
                 }
-
-                _currentIndex++;
             }
-            else
+            catch (Exception ex)
             {
-                LogWarning("Sync failed for village index " + _currentIndex + ", will retry next cycle.");
-                _currentIndex++;
+                LogError("Failed to request sync for village " + villageId + ": " + ex.Message);
             }
+
+            _currentIndex++;
+        }
+
+        private void BackGroundRefresh(VillageMap village)
+        {
+            LogInfo("Background refreshing village [" + village.VillageID + "] ");
+            RemoteServices.Instance.set_VillageBuildingChangeRates_UserCallBack(new RemoteServices.VillageBuildingChangeRates_UserCallBack(village.villageBuildingChangeRatesCallback));
+            RemoteServices.Instance.VillageBuildingChangeRates(village.VillageID, -1, -1, -1, -1);
+        }
+
+        private void ForceRefresh(int villageID)
+        {
+            LogInfo("Force refreshing village [" + villageID + "]");
+            InterfaceMgr.Instance.setVillageNameBar(villageID);
+            GameEngine.Instance.forceDownloadCurrentVillage();
         }
 
         private void RefreshVillageListIfNeeded()
@@ -173,6 +168,8 @@ namespace Kingdoms.Bot.Modules
             if (_activeVillageIds.Count > 0 &&
                 (DateTime.Now - _lastVillageListRefresh).TotalSeconds < CycleIntervalSeconds)
                 return;
+
+            _lastVillageListRefresh = DateTime.Now;
 
             try
             {
@@ -188,9 +185,6 @@ namespace Kingdoms.Bot.Modules
                         _activeVillageIds.Add(id);
                 }
 
-                if (_currentIndex >= _activeVillageIds.Count)
-                    _currentIndex = 0;
-
                 LogDebug("Village list refreshed: " + _activeVillageIds.Count +
                          " enabled out of " + allIds.Count + " total.");
             }
@@ -204,7 +198,7 @@ namespace Kingdoms.Bot.Modules
         {
             _activeVillageIds.Clear();
             _currentIndex = 0;
-            _waitingForCallback = false;
+            _cycleComplete = true;
         }
     }
 }
