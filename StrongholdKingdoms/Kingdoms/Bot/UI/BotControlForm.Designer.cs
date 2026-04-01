@@ -84,6 +84,7 @@ namespace Kingdoms.Bot.UI
             this._rdWebhookInput = new System.Windows.Forms.TextBox();
             this._rdInterdictLabel = new System.Windows.Forms.Label();
             this._rdInterdictMonkCountInput = new System.Windows.Forms.NumericUpDown();
+            this._rdAutoRecruitMonksCheck = new System.Windows.Forms.CheckBox();
             this._rdHintLabel = new System.Windows.Forms.Label();
             this._rdTestDiscordBtn = new System.Windows.Forms.Button();
             this._rdSeparator = new System.Windows.Forms.Panel();
@@ -682,6 +683,7 @@ namespace Kingdoms.Bot.UI
             // _rdSettingsPanel
             // 
             this._rdSettingsPanel.BackColor = System.Drawing.Color.FromArgb(40, 42, 54);
+            this._rdSettingsPanel.Controls.Add(this._rdAutoRecruitMonksCheck);
             this._rdSettingsPanel.Controls.Add(this._rdTestDiscordBtn);
             this._rdSettingsPanel.Controls.Add(this._rdHintLabel);
             this._rdSettingsPanel.Controls.Add(this._rdInterdictMonkCountInput);
@@ -792,7 +794,19 @@ namespace Kingdoms.Bot.UI
             this._rdInterdictMonkCountInput.Name = "_rdInterdictMonkCountInput";
             this._rdInterdictMonkCountInput.Size = new System.Drawing.Size(60, 22);
             this._rdInterdictMonkCountInput.TabIndex = 7;
-            this._rdInterdictMonkCountInput.Value = new decimal(5);
+            this._rdInterdictMonkCountInput.Value = new decimal(1);
+            // 
+            // _rdAutoRecruitMonksCheck
+            // 
+            this._rdAutoRecruitMonksCheck.AutoSize = true;
+            this._rdAutoRecruitMonksCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._rdAutoRecruitMonksCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._rdAutoRecruitMonksCheck.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
+            this._rdAutoRecruitMonksCheck.Location = new System.Drawing.Point(250, 72);
+            this._rdAutoRecruitMonksCheck.Name = "_rdAutoRecruitMonksCheck";
+            this._rdAutoRecruitMonksCheck.Size = new System.Drawing.Size(140, 19);
+            this._rdAutoRecruitMonksCheck.TabIndex = 8;
+            this._rdAutoRecruitMonksCheck.Text = "Auto-recruit monks";
             // 
             // _rdHintLabel
             // 
@@ -802,7 +816,7 @@ namespace Kingdoms.Bot.UI
             this._rdHintLabel.Location = new System.Drawing.Point(16, 100);
             this._rdHintLabel.Name = "_rdHintLabel";
             this._rdHintLabel.Size = new System.Drawing.Size(384, 12);
-            this._rdHintLabel.TabIndex = 8;
+            this._rdHintLabel.TabIndex = 9;
             this._rdHintLabel.Text = "Configure which actions to monitor below. Tick columns to enable per-action features.";
             // 
             // _rdTestDiscordBtn
@@ -816,7 +830,7 @@ namespace Kingdoms.Bot.UI
             this._rdTestDiscordBtn.Location = new System.Drawing.Point(540, 68);
             this._rdTestDiscordBtn.Name = "_rdTestDiscordBtn";
             this._rdTestDiscordBtn.Size = new System.Drawing.Size(110, 24);
-            this._rdTestDiscordBtn.TabIndex = 9;
+            this._rdTestDiscordBtn.TabIndex = 10;
             this._rdTestDiscordBtn.Text = "Test Webhook";
             this._rdTestDiscordBtn.UseVisualStyleBackColor = false;
             // 
@@ -932,9 +946,9 @@ namespace Kingdoms.Bot.UI
             this._rcEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
             this._rcEnabledCheck.Location = new System.Drawing.Point(16, 12);
             this._rcEnabledCheck.Name = "_rcEnabledCheck";
-            this._rcEnabledCheck.Size = new System.Drawing.Size(80, 23);
+            this._rcEnabledCheck.Size = new System.Drawing.Size(136, 23);
             this._rcEnabledCheck.TabIndex = 0;
-            this._rcEnabledCheck.Text = "Enable";
+            this._rcEnabledCheck.Text = "Module Enabled";
             // 
             // _rcStatusLabel
             // 
@@ -1404,6 +1418,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.TextBox _rdWebhookInput;
         private System.Windows.Forms.Label _rdInterdictLabel;
         private System.Windows.Forms.NumericUpDown _rdInterdictMonkCountInput;
+        private System.Windows.Forms.CheckBox _rdAutoRecruitMonksCheck;
         private System.Windows.Forms.Label _rdHintLabel;
         private System.Windows.Forms.Button _rdTestDiscordBtn;
         private System.Windows.Forms.Panel _rdSeparator;

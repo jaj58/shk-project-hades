@@ -90,7 +90,8 @@ namespace Kingdoms.Bot
         public bool Enabled = true;
         public int ScanIntervalSeconds = 10;
         public string DiscordWebhookUrl = "";
-        public int AutoInterdictMonkCount = 5;
+        public int AutoInterdictMonkCount = 1;
+        public bool AutoRecruitMonks = false;
         public List<RadarActionSettings> Actions = new List<RadarActionSettings>();
 
         public RadarActionSettings GetActionSettings(string actionKey)

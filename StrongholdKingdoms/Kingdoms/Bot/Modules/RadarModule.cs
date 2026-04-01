@@ -1,12 +1,23 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using CommonTypes;
 
 namespace Kingdoms.Bot.Modules
 {
     public class RadarModule : BotModuleBase
     {
-        public const string ACTION_ATTACK = "Attack";
+        // Action keys for radar event categories
+        public const string ACTION_CAPTURE = "Capture";
+        public const string ACTION_RAZE = "Raze";
+        public const string ACTION_RANSACK = "Ransack";
+        public const string ACTION_PILLAGE_STOCKPILE = "PillageStockpile";
+        public const string ACTION_PILLAGE_GRANARY = "PillageGranary";
+        public const string ACTION_PILLAGE_BANQUET = "PillageBanquet";
+        public const string ACTION_PILLAGE_ALE = "PillageAle";
+        public const string ACTION_PILLAGE_ARMOURY = "PillageArmoury";
+        public const string ACTION_VANDALISE = "Vandalise";
+        public const string ACTION_GOLD_RAID = "GoldRaid";
         public const string ACTION_SCOUT = "Scout";
         public const string ACTION_CAPTAIN = "Captain";
         public const string ACTION_MONK = "Monk";
@@ -21,7 +32,16 @@ namespace Kingdoms.Bot.Modules
 
         public static readonly string[] AllActionKeys = new string[]
         {
-            ACTION_ATTACK,
+            ACTION_CAPTURE,
+            ACTION_RAZE,
+            ACTION_RANSACK,
+            ACTION_PILLAGE_STOCKPILE,
+            ACTION_PILLAGE_GRANARY,
+            ACTION_PILLAGE_BANQUET,
+            ACTION_PILLAGE_ALE,
+            ACTION_PILLAGE_ARMOURY,
+            ACTION_VANDALISE,
+            ACTION_GOLD_RAID,
             ACTION_SCOUT,
             ACTION_CAPTAIN,
             ACTION_MONK,
@@ -35,8 +55,21 @@ namespace Kingdoms.Bot.Modules
             ACTION_FORAGING
         };
 
+        // Attack type constants matching the game
+        private const int ATTACK_TYPE_CAPTURE = 1;
+        private const int ATTACK_TYPE_PILLAGE_STOCKPILE = 2;
+        private const int ATTACK_TYPE_RANSACK = 3;
+        private const int ATTACK_TYPE_PILLAGE_GRANARY = 4;
+        private const int ATTACK_TYPE_PILLAGE_BANQUET = 5;
+        private const int ATTACK_TYPE_PILLAGE_ALE = 6;
+        private const int ATTACK_TYPE_PILLAGE_ARMOURY = 7;
+        private const int ATTACK_TYPE_RAZE = 9;
+        private const int ATTACK_TYPE_VANDALISE = 11;
+        private const int ATTACK_TYPE_GOLD_RAID = 12;
+
         private Dictionary<long, bool> _knownArmyIds = new Dictionary<long, bool>();
         private Dictionary<long, bool> _knownPersonIds = new Dictionary<long, bool>();
+        private Dictionary<int, DateTime> _villagesSentInterdict = new Dictionary<int, DateTime>();
         private bool _firstScan = true;
 
         public override string ModuleName
@@ -60,6 +93,7 @@ namespace Kingdoms.Bot.Modules
         {
             _knownArmyIds.Clear();
             _knownPersonIds.Clear();
+            _villagesSentInterdict.Clear();
             _firstScan = true;
         }
 
@@ -104,11 +138,9 @@ namespace Kingdoms.Bot.Modules
                 if (_firstScan)
                     continue;
 
-                // Only care about armies targeting user's villages
                 if (!IsTargetingUser(army.targetVillageID))
                     continue;
 
-                // Returning armies are not threats
                 if (army.lootType >= 0)
                     continue;
 
@@ -141,7 +173,7 @@ namespace Kingdoms.Bot.Modules
                     DiscordNotifier.SendAsync(settings.DiscordWebhookUrl,
                         "\u26A0 " + actionLabel + " Incoming!", message, 16736352);
 
-                if (actionSettings.AutoInterdict && settings.AutoInterdictMonkCount > 0)
+                if (actionSettings.AutoInterdict)
                     TryAutoInterdict(army.targetVillageID, settings);
             }
 
@@ -180,7 +212,6 @@ namespace Kingdoms.Bot.Modules
                 if (!IsTargetingUser(targetVillage))
                     continue;
 
-                // Monks heading toward user
                 string actionKey = ClassifyPerson(person, targetVillage);
                 if (actionKey == null) continue;
 
@@ -203,6 +234,9 @@ namespace Kingdoms.Bot.Modules
                 if (actionSettings.DiscordNotify && !string.IsNullOrEmpty(settings.DiscordWebhookUrl))
                     DiscordNotifier.SendAsync(settings.DiscordWebhookUrl,
                         "\u26A0 " + actionLabel + " Incoming!", message, 15105570);
+
+                if (actionSettings.AutoInterdict)
+                    TryAutoInterdict(targetVillage, settings);
             }
 
             List<long> staleIds = new List<long>();
@@ -226,23 +260,7 @@ namespace Kingdoms.Bot.Modules
             int targetVillage = army.targetVillageID;
             VillageData vData = GameEngine.Instance.World.getVillageData(targetVillage);
 
-            // Scout-only armies (attackType 11 = scout)
-            if (army.attackType == 11)
-                return ACTION_SCOUT;
-
-            // Captain-only (attackType 12 = captain)
-            if (army.attackType == 12)
-                return ACTION_CAPTAIN;
-
-            // Foraging (attackType 9)
-            if (army.attackType == 9)
-                return ACTION_FORAGING;
-
-            // Reinforcements (attackType 13 = tutorial/reinforcement marker)
-            if (army.attackType == 13)
-                return ACTION_REINFORCEMENT;
-
-            // Capital-level attacks
+            // Capital-level attacks take priority
             if (vData != null)
             {
                 if (vData.countryCapital)
@@ -255,14 +273,46 @@ namespace Kingdoms.Bot.Modules
                     return ACTION_ATTACK_PARISH;
             }
 
-            // Generic attack (attackType 1=normal, 2=pillage, 3=ransack, 4=raze, 5=vandalise, 6..7=siege)
-            return ACTION_ATTACK;
+            // Scouts: check troop composition, not attackType (scouts use attackType 1)
+            if (army.numScouts > 0 && army.numPeasants == 0 && army.numArchers == 0 &&
+                army.numPikemen == 0 && army.numSwordsmen == 0 && army.numCatapults == 0)
+                return ACTION_SCOUT;
+
+            // Captains: check troop composition or attackType 18
+            if (army.numCaptains > 0 || army.attackType == 18)
+                return ACTION_CAPTAIN;
+
+            switch (army.attackType)
+            {
+                case ATTACK_TYPE_CAPTURE:
+                    return ACTION_CAPTURE;
+                case ATTACK_TYPE_PILLAGE_STOCKPILE:
+                    return ACTION_PILLAGE_STOCKPILE;
+                case ATTACK_TYPE_RANSACK:
+                    return ACTION_RANSACK;
+                case ATTACK_TYPE_PILLAGE_GRANARY:
+                    return ACTION_PILLAGE_GRANARY;
+                case ATTACK_TYPE_PILLAGE_BANQUET:
+                    return ACTION_PILLAGE_BANQUET;
+                case ATTACK_TYPE_PILLAGE_ALE:
+                    return ACTION_PILLAGE_ALE;
+                case ATTACK_TYPE_PILLAGE_ARMOURY:
+                    return ACTION_PILLAGE_ARMOURY;
+                case ATTACK_TYPE_RAZE:
+                    return ACTION_RAZE;
+                case ATTACK_TYPE_VANDALISE:
+                    return ACTION_VANDALISE;
+                case ATTACK_TYPE_GOLD_RAID:
+                    return ACTION_GOLD_RAID;
+                default:
+                    return ACTION_CAPTURE;
+            }
         }
 
         private string ClassifyPerson(WorldMap.LocalPerson person, int targetVillage)
         {
             if (person.person.personType != 4)
-                return null; // Only monks
+                return null;
 
             VillageData vData = GameEngine.Instance.World.getVillageData(targetVillage);
             if (vData != null)
@@ -276,30 +326,230 @@ namespace Kingdoms.Bot.Modules
             return ACTION_MONK;
         }
 
-        private void TryAutoInterdict(int targetVillageId, RadarSettings settings)
-        {
-            if (settings.AutoInterdictMonkCount <= 0)
-                return;
+        // =================================================================
+        // Auto-interdict — mirrors proven VillageSelfID logic
+        // =================================================================
 
-            if (!GameEngine.Instance.World.isUserVillage(targetVillageId))
+        private void TryAutoInterdict(int villageId, RadarSettings settings)
+        {
+            int numberOfMonks = settings.AutoInterdictMonkCount;
+            if (numberOfMonks <= 0) numberOfMonks = 1;
+
+            // Don't interdict capitals
+            if (GameEngine.Instance.World.isCapital(villageId))
             {
-                LogWarning("Auto-interdict: target village [" + targetVillageId + "] is not owned by user.");
+                LogDebug("Auto-interdict: skipping capital village " + villageId);
                 return;
             }
 
+            // Throttle: don't re-interdict same village within 30 seconds
+            if (_villagesSentInterdict.ContainsKey(villageId))
+            {
+                if ((DateTime.Now - _villagesSentInterdict[villageId]).TotalSeconds < 30)
+                {
+                    LogDebug("Auto-interdict: throttled for village " + villageId);
+                    return;
+                }
+                _villagesSentInterdict[villageId] = DateTime.Now;
+            }
+            else
+            {
+                _villagesSentInterdict[villageId] = DateTime.Now;
+            }
+
+            VillageMap village = GameEngine.Instance.getVillage(villageId);
+            if (village == null)
+            {
+                LogWarning("Auto-interdict: village " + villageId + " not loaded.");
+                return;
+            }
+
+            // Check ordination research (required to have monks at all)
+            if (GameEngine.Instance.World.UserResearchData.Research_Ordination == 0)
+            {
+                LogWarning("Auto-interdict: Ordination not researched. Cannot use monks.");
+                return;
+            }
+
+            // Check eucharist research (required for interdict)
+            if (GameEngine.Instance.World.UserResearchData.Research_Eucharist <= 0)
+            {
+                LogWarning("Auto-interdict: Eucharist not researched. Cannot interdict.");
+                return;
+            }
+
+            // Check excommunication
+            if (GameEngine.Instance.World.isVillageExcommunicated(villageId))
+            {
+                LogWarning("Auto-interdict: village " + villageId + " is excommunicated.");
+                return;
+            }
+
+            // Check faith points cost
             try
             {
-                int monkCount = settings.AutoInterdictMonkCount;
-                // command 4 = interdict, data = -1
-                RemoteServices.Instance.SendPeople(targetVillageId, targetVillageId, 4, monkCount, 4, -1);
-                LogInfo("Auto-interdict sent " + monkCount + " monks from [" + targetVillageId +
-                        "] to [" + targetVillageId + "]");
+                int costPerMonk = TradingCalcs.adjustInterdictionCostByTargetRank(
+                    GameEngine.Instance.LocalWorldData.MonkCommandPointsCost_Interdicts,
+                    GameEngine.Instance.World.getRank(),
+                    GameEngine.Instance.World.SecondAgeWorld);
+                int totalCost = costPerMonk * numberOfMonks;
+                double currentFaith = GameEngine.Instance.World.getCurrentFaithPoints();
+                if (totalCost > currentFaith)
+                {
+                    LogWarning("Auto-interdict: not enough faith points (" + currentFaith + " < " + totalCost + ").");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWarning("Auto-interdict: faith point check failed: " + ex.Message);
+            }
+
+            // Count monks at home
+            int athome = village.calcTotalMonksAtHome();
+            LogDebug("Auto-interdict: village " + villageId + " has " + athome + " monks at home.");
+
+            // If not enough monks, try to recruit
+            if (athome < numberOfMonks && settings.AutoRecruitMonks)
+            {
+                LogInfo("Auto-interdict: recruiting " + (numberOfMonks - athome) + " monk(s) for village " + villageId);
+                int made = MakeMonks(villageId, numberOfMonks - athome, village);
+                if (made > 0)
+                    athome = village.calcTotalMonksAtHome();
+            }
+
+            if (athome <= 0)
+            {
+                LogWarning("Auto-interdict: no monks available at village " + villageId + ".");
+                return;
+            }
+
+            if (athome < numberOfMonks)
+                numberOfMonks = athome;
+
+            try
+            {
+                LogInfo("Auto-interdict: sending " + numberOfMonks + " monk(s) to interdict village " + villageId);
+                RemoteServices.Instance.set_SendPeople_UserCallBack(
+                    new RemoteServices.SendPeople_UserCallBack(SendPeopleCallback));
+                RemoteServices.Instance.SendPeople(villageId, villageId, 4, numberOfMonks, 4, -1);
             }
             catch (Exception ex)
             {
                 LogError("Auto-interdict failed: " + ex.Message);
             }
         }
+
+        // Mirrors proven MakeMonks logic from RadarService
+        private int MakeMonks(int villageId, int numberOfMonks, VillageMap village)
+        {
+            try
+            {
+                if (numberOfMonks <= 0) return 0;
+
+                // Max monks from ordination research
+                int researchMonkLevel = ResearchData.ordinationResearchMonkLevels[
+                    (int)GameEngine.Instance.World.UserResearchData.Research_Ordination];
+                numberOfMonks = Math.Min(numberOfMonks, researchMonkLevel);
+
+                // How many total monks already exist for this village
+                int athome = 0;
+                int totalMonks = GameEngine.Instance.World.countVillagePeople(villageId, 4, ref athome);
+                int canMake = researchMonkLevel - totalMonks;
+                numberOfMonks = Math.Min(numberOfMonks, canMake);
+                if (numberOfMonks <= 0)
+                {
+                    LogDebug("MakeMonks: village " + villageId + " already at monk limit.");
+                    return 0;
+                }
+
+                // Check spare workers
+                int spareWorkers = village.m_spareWorkers;
+                if (numberOfMonks > spareWorkers)
+                {
+                    LogDebug("MakeMonks: only " + spareWorkers + " spare workers at village " + villageId);
+                    numberOfMonks = spareWorkers;
+                }
+
+                // Check unit capacity
+                int unitCapacity = GameEngine.Instance.LocalWorldData.Village_UnitCapacity;
+                int currentUsage = village.calcUnitUsages();
+                int unitSizeMonk = GameEngine.Instance.LocalWorldData.UnitSize_Priests;
+                int neededSpace = numberOfMonks * unitSizeMonk;
+                int availableSpace = unitCapacity - currentUsage;
+                if (availableSpace < neededSpace)
+                {
+                    numberOfMonks = availableSpace / unitSizeMonk;
+                    LogDebug("MakeMonks: unit capacity limited, can make " + numberOfMonks + " monk(s).");
+                }
+
+                if (numberOfMonks <= 0) return 0;
+
+                LogInfo("MakeMonks: recruiting " + numberOfMonks + " monk(s) at village " + villageId);
+                // makePeople(4) = 1 monk, makePeople(1000+N) = N monks
+                if (numberOfMonks == 1)
+                    village.makePeople(4);
+                else
+                    village.makePeople(1000 + numberOfMonks);
+
+                return numberOfMonks;
+            }
+            catch (Exception ex)
+            {
+                LogError("MakeMonks failed: " + ex.Message);
+                return 0;
+            }
+        }
+
+        private void SendPeopleCallback(SendPeople_ReturnType returnData)
+        {
+            try
+            {
+                if (!returnData.Success)
+                {
+                    BotLogger.Log("Radar", BotLogLevel.Warning,
+                        "Interdict failed for village " +
+                        GameEngine.Instance.World.getVillageName(returnData.targetVillageID) +
+                        ": " + CommonTypes.ErrorCodes.getErrorString(returnData.m_errorCode, returnData.m_errorID));
+                    if (_villagesSentInterdict.ContainsKey(returnData.targetVillageID))
+                        _villagesSentInterdict.Remove(returnData.targetVillageID);
+                }
+                else
+                {
+                    BotLogger.Log("Radar", BotLogLevel.Info,
+                        "Successful interdict at village " +
+                        GameEngine.Instance.World.getVillageName(returnData.targetVillageID));
+                    GameEngine.Instance.World.importOrphanedPeople(
+                        returnData.people, returnData.currentTime, -2);
+                    GameEngine.Instance.World.setFaithPointsData(
+                        returnData.currentFaithPointsLevel, returnData.currentFaithPointsRate);
+
+                    // Auto re-recruit monks after interdict, matching proven code
+                    if (Engine != null && Engine.Settings != null &&
+                        Engine.Settings.Radar.AutoRecruitMonks)
+                    {
+                        int monkLimit = (int)GameEngine.Instance.World.UserResearchData.Research_Ordination;
+                        int monksUsed = returnData.people != null ? returnData.people.Count : 0;
+                        int toRecruit = monkLimit - monksUsed;
+                        if (toRecruit > 0)
+                        {
+                            VillageMap village = GameEngine.Instance.getVillage(returnData.targetVillageID);
+                            if (village != null)
+                                MakeMonks(returnData.targetVillageID, toRecruit, village);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                BotLogger.Log("Radar", BotLogLevel.Error,
+                    "SendPeople callback error: " + ex.Message);
+            }
+        }
+
+        // =================================================================
+        // UI helpers
+        // =================================================================
 
         private static void ShowSystemNotification(string title, string body)
         {
@@ -365,7 +615,16 @@ namespace Kingdoms.Bot.Modules
         {
             switch (actionKey)
             {
-                case ACTION_ATTACK: return "Attack";
+                case ACTION_CAPTURE: return "Capture";
+                case ACTION_RAZE: return "Raze";
+                case ACTION_RANSACK: return "Ransack";
+                case ACTION_PILLAGE_STOCKPILE: return "Pillage Stockpile";
+                case ACTION_PILLAGE_GRANARY: return "Pillage Granary";
+                case ACTION_PILLAGE_BANQUET: return "Pillage Banquet";
+                case ACTION_PILLAGE_ALE: return "Pillage Ale";
+                case ACTION_PILLAGE_ARMOURY: return "Pillage Armoury";
+                case ACTION_VANDALISE: return "Vandalise";
+                case ACTION_GOLD_RAID: return "Gold Raid";
                 case ACTION_SCOUT: return "Scout";
                 case ACTION_CAPTAIN: return "Captain";
                 case ACTION_MONK: return "Monk";
@@ -385,6 +644,7 @@ namespace Kingdoms.Bot.Modules
         {
             _knownArmyIds.Clear();
             _knownPersonIds.Clear();
+            _villagesSentInterdict.Clear();
         }
     }
 }
