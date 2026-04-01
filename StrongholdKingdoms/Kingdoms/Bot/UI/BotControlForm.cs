@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
+using CommonTypes;
 using Kingdoms.Bot.Modules;
 
 namespace Kingdoms.Bot.UI
@@ -28,8 +29,13 @@ namespace Kingdoms.Bot.UI
 
         // Recruiting runtime state
         private Timer _rcRefreshTimer;
-        private List<RecruitVillagePanel> _rcVillagePanels = new List<RecruitVillagePanel>();
+        private List<RecruitVillagePanel> _rcVillagePanels = 	new List<RecruitVillagePanel>();
         private List<RecruitVillagePanel> _rcCapitalPanels = new List<RecruitVillagePanel>();
+
+        // Castle Repair runtime state
+        private Timer _crRefreshTimer;
+        private List<CastleRepairVillageRow> _crVillageRows = new List<CastleRepairVillageRow>();
+        private int _crLastPresetCount = -1;
 
         public static void ShowInstance()
         {
@@ -62,6 +68,7 @@ namespace Kingdoms.Bot.UI
                 WireUpVillageSyncTab();
                 WireUpRadarTab();
                 WireUpRecruitingTab();
+                WireUpCastleRepairTab();
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -70,6 +77,7 @@ namespace Kingdoms.Bot.UI
                 RdLoadFromSettings();
                 RdBuildActionRows();
                 RcLoadFromSettings();
+                CrLoadFromSettings();
             }
         }
 
@@ -171,7 +179,7 @@ namespace Kingdoms.Bot.UI
 
             if (syncModule == null)
             {
-                _vsVillageListPanel.ResumeLayout();
+                _vsVillageListPanel.ResumeLayout(false);
                 return;
             }
 
@@ -191,21 +199,22 @@ namespace Kingdoms.Bot.UI
             });
 
             bool alternate = false;
-            foreach (int id in allIds)
+            // Add in reverse so DockStyle.Top stacks them in the correct order
+            for (int i = allIds.Count - 1; i >= 0; i--)
             {
+                int id = allIds[i];
                 bool enabled = settings == null || settings.IsVillageEnabled(id);
                 string name = VsGetVillageName(id);
                 string typeLabel = VillageSyncModule.GetVillageTypeLabel(id);
 
-                VillageRow row = new VillageRow(id, name, typeLabel, enabled, alternate);
+                VillageRow row = new VillageRow(id, name, typeLabel, enabled, (allIds.Count - 1 - i) % 2 != 0);
                 row.Dock = DockStyle.Top;
                 _vsVillageListPanel.Controls.Add(row);
-                _vsVillageListPanel.Controls.SetChildIndex(row, 0);
                 _vsVillageRows.Add(row);
-                alternate = !alternate;
             }
 
-            _vsVillageListPanel.ResumeLayout();
+            _vsVillageListPanel.ResumeLayout(false);
+            _vsVillageListPanel.PerformLayout();
         }
 
         private void VsSetAllChecked(bool isChecked)
@@ -413,23 +422,23 @@ namespace Kingdoms.Bot.UI
             if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
                 settings = BotEngine.Instance.Settings.Radar;
 
-            bool alternate = false;
-            foreach (string key in RadarModule.AllActionKeys)
+            string[] keys = RadarModule.AllActionKeys;
+            // Add in reverse for correct DockStyle.Top stacking
+            for (int i = keys.Length - 1; i >= 0; i--)
             {
-                string label = RadarModule.GetActionLabel(key);
+                string label = RadarModule.GetActionLabel(keys[i]);
                 RadarActionSettings actionSettings = settings != null
-                    ? settings.GetActionSettings(key)
+                    ? settings.GetActionSettings(keys[i])
                     : new RadarActionSettings();
 
-                ActionRow row = new ActionRow(key, label, actionSettings, alternate);
+                ActionRow row = new ActionRow(keys[i], label, actionSettings, (keys.Length - 1 - i) % 2 != 0);
                 row.Dock = DockStyle.Top;
                 _rdActionListPanel.Controls.Add(row);
-                _rdActionListPanel.Controls.SetChildIndex(row, 0);
                 _rdActionRows.Add(row);
-                alternate = !alternate;
             }
 
-            _rdActionListPanel.ResumeLayout();
+            _rdActionListPanel.ResumeLayout(false);
+            _rdActionListPanel.PerformLayout();
         }
 
         private void RdUpdateStatusDisplay()
@@ -577,16 +586,16 @@ namespace Kingdoms.Bot.UI
 
             if (GameEngine.Instance == null || GameEngine.Instance.World == null)
             {
-                _rcVillageListPanel.ResumeLayout();
-                _rcCapitalsListPanel.ResumeLayout();
+                _rcVillageListPanel.ResumeLayout(false);
+                _rcCapitalsListPanel.ResumeLayout(false);
                 return;
             }
 
             List<WorldMap.UserVillageData> villages = GameEngine.Instance.World.getUserVillageList();
             if (villages == null)
             {
-                _rcVillageListPanel.ResumeLayout();
-                _rcCapitalsListPanel.ResumeLayout();
+                _rcVillageListPanel.ResumeLayout(false);
+                _rcCapitalsListPanel.ResumeLayout(false);
                 return;
             }
 
@@ -594,9 +603,11 @@ namespace Kingdoms.Bot.UI
             if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
                 settings = BotEngine.Instance.Settings.Recruiting;
 
-            bool altVillage = false;
-            bool altCapital = false;
-            for (int i = villages.Count - 1; i >= 0; i--)
+            // Separate into villages and capitals first, then add in reverse for correct dock order
+            List<RecruitVillagePanel> villagePanels = new List<RecruitVillagePanel>();
+            List<RecruitVillagePanel> capitalPanels = new List<RecruitVillagePanel>();
+
+            for (int i = 0; i < villages.Count; i++)
             {
                 int id = villages[i].villageID;
                 string name = RcGetVillageName(id);
@@ -610,25 +621,31 @@ namespace Kingdoms.Bot.UI
                     || typeLabel == "Province"
                     || typeLabel == "Country";
 
-                RecruitVillagePanel panel = new RecruitVillagePanel(id, name, vs, isCapital ? altCapital : altVillage);
-                panel.Dock = DockStyle.Top;
-
                 if (isCapital)
-                {
-                    _rcCapitalsListPanel.Controls.Add(panel);
-                    _rcCapitalPanels.Add(panel);
-                    altCapital = !altCapital;
-                }
+                    capitalPanels.Add(new RecruitVillagePanel(id, name, vs, capitalPanels.Count % 2 != 0));
                 else
-                {
-                    _rcVillageListPanel.Controls.Add(panel);
-                    _rcVillagePanels.Add(panel);
-                    altVillage = !altVillage;
-                }
+                    villagePanels.Add(new RecruitVillagePanel(id, name, vs, villagePanels.Count % 2 != 0));
             }
 
-            _rcVillageListPanel.ResumeLayout();
-            _rcCapitalsListPanel.ResumeLayout();
+            // Add in reverse for correct DockStyle.Top stacking
+            for (int i = villagePanels.Count - 1; i >= 0; i--)
+            {
+                villagePanels[i].Dock = DockStyle.Top;
+                _rcVillageListPanel.Controls.Add(villagePanels[i]);
+            }
+            _rcVillagePanels = villagePanels;
+
+            for (int i = capitalPanels.Count - 1; i >= 0; i--)
+            {
+                capitalPanels[i].Dock = DockStyle.Top;
+                _rcCapitalsListPanel.Controls.Add(capitalPanels[i]);
+            }
+            _rcCapitalPanels = capitalPanels;
+
+            _rcVillageListPanel.ResumeLayout(false);
+            _rcVillageListPanel.PerformLayout();
+            _rcCapitalsListPanel.ResumeLayout(false);
+            _rcCapitalsListPanel.PerformLayout();
         }
 
         private void RcDisbandClick()
@@ -681,6 +698,267 @@ namespace Kingdoms.Bot.UI
             if (GameEngine.Instance != null && GameEngine.Instance.World != null)
                 return GameEngine.Instance.World.getVillageName(villageId);
             return "Village " + villageId;
+        }
+
+        // =====================================================================
+        // Castle Repair tab runtime
+        // =====================================================================
+
+        private void WireUpCastleRepairTab()
+        {
+            _crRefreshBtn.Click += delegate { CrPopulateVillageList(); };
+            _crRepairAllBtn.Click += delegate { CrRepairAllNow(); };
+
+            _crEnabledCheck.CheckedChanged += delegate { CrPushToSettings(); };
+            _crIntervalInput.ValueChanged += delegate { CrPushToSettings(); };
+            _crDelayInput.ValueChanged += delegate { CrPushToSettings(); };
+            _crRepairOnAttackCheck.CheckedChanged += delegate { CrPushToSettings(); };
+
+            CrBuildColumnHeaders();
+
+            _crRefreshTimer = new Timer();
+            _crRefreshTimer.Interval = 2000;
+            _crRefreshTimer.Tick += delegate { CrUpdateStatusDisplay(); };
+            _crRefreshTimer.Start();
+        }
+
+        private void CrBuildColumnHeaders()
+        {
+            Label hdrName = new Label();
+            hdrName.Text = "Village";
+            hdrName.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            hdrName.ForeColor = TextSec;
+            hdrName.AutoSize = true;
+            hdrName.Location = new Point(8, 5);
+            _crColHeader.Controls.Add(hdrName);
+
+            Label hdrType = new Label();
+            hdrType.Text = "Type";
+            hdrType.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            hdrType.ForeColor = TextSec;
+            hdrType.AutoSize = true;
+            hdrType.Location = new Point(130, 5);
+            _crColHeader.Controls.Add(hdrType);
+
+            Label hdrInfra = new Label();
+            hdrInfra.Text = "Infra";
+            hdrInfra.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            hdrInfra.ForeColor = TextSec;
+            hdrInfra.AutoSize = true;
+            hdrInfra.Location = new Point(200, 5);
+            _crColHeader.Controls.Add(hdrInfra);
+
+            Label hdrTroops = new Label();
+            hdrTroops.Text = "Troops";
+            hdrTroops.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            hdrTroops.ForeColor = TextSec;
+            hdrTroops.AutoSize = true;
+            hdrTroops.Location = new Point(270, 5);
+            _crColHeader.Controls.Add(hdrTroops);
+
+            Label hdrInfraPreset = new Label();
+            hdrInfraPreset.Text = "Infra Preset";
+            hdrInfraPreset.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            hdrInfraPreset.ForeColor = TextSec;
+            hdrInfraPreset.AutoSize = true;
+            hdrInfraPreset.Location = new Point(320, 5);
+            _crColHeader.Controls.Add(hdrInfraPreset);
+
+            Label hdrTroopPreset = new Label();
+            hdrTroopPreset.Text = "Troop Preset";
+            hdrTroopPreset.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            hdrTroopPreset.ForeColor = TextSec;
+            hdrTroopPreset.AutoSize = true;
+            hdrTroopPreset.Location = new Point(520, 5);
+            _crColHeader.Controls.Add(hdrTroopPreset);
+        }
+
+        private void CrRepairAllNow()
+        {
+            if (BotEngine.Instance == null) return;
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                CastleRepairModule crm = m as CastleRepairModule;
+                if (crm != null)
+                {
+                    CrWriteToSettings();
+                    crm.RepairAllNow();
+                    break;
+                }
+            }
+        }
+
+        private void CrPushToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            CastleRepairSettings s = BotEngine.Instance.Settings.CastleRepair;
+            s.Enabled = _crEnabledCheck.Checked;
+            s.IntervalSeconds = (int)_crIntervalInput.Value;
+            s.DelayBetweenVillagesMs = (int)_crDelayInput.Value;
+            s.RepairOnAttack = _crRepairOnAttackCheck.Checked;
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                if (m is CastleRepairModule)
+                    m.Enabled = s.Enabled;
+            }
+        }
+
+        private void CrLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            CastleRepairSettings s = BotEngine.Instance.Settings.CastleRepair;
+            _crEnabledCheck.Checked = s.Enabled;
+            _crIntervalInput.Value = Math.Max(_crIntervalInput.Minimum,
+                Math.Min(_crIntervalInput.Maximum, s.IntervalSeconds));
+            _crDelayInput.Value = Math.Max(_crDelayInput.Minimum,
+                Math.Min(_crDelayInput.Maximum, s.DelayBetweenVillagesMs));
+            _crRepairOnAttackCheck.Checked = s.RepairOnAttack;
+
+            CrPopulateVillageList();
+        }
+
+        private void CrWriteToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            CastleRepairSettings s = BotEngine.Instance.Settings.CastleRepair;
+            s.Enabled = _crEnabledCheck.Checked;
+            s.IntervalSeconds = (int)_crIntervalInput.Value;
+            s.DelayBetweenVillagesMs = (int)_crDelayInput.Value;
+            s.RepairOnAttack = _crRepairOnAttackCheck.Checked;
+
+            foreach (CastleRepairVillageRow row in _crVillageRows)
+                row.WriteToSettings(s);
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                if (m is CastleRepairModule)
+                    m.Enabled = s.Enabled;
+            }
+        }
+
+        private void CrPopulateVillageList()
+        {
+            _crVillageListPanel.SuspendLayout();
+            foreach (CastleRepairVillageRow row in _crVillageRows)
+            {
+                _crVillageListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
+            _crVillageRows.Clear();
+
+            CastleRepairModule repairModule = null;
+            if (BotEngine.Instance != null)
+            {
+                foreach (IBotModule m in BotEngine.Instance.Modules)
+                {
+                    repairModule = m as CastleRepairModule;
+                    if (repairModule != null) break;
+                }
+            }
+
+            if (repairModule == null)
+            {
+                _crVillageListPanel.ResumeLayout();
+                return;
+            }
+
+            List<int> allIds = repairModule.GetAllKnownVillageIds();
+            CastleRepairSettings settings = (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+                ? BotEngine.Instance.Settings.CastleRepair
+                : null;
+
+            List<string> infraPresets = CastleRepairModule.GetPresetNames(PresetType.INFRASTRUCTURE);
+            List<string> troopPresets = CastleRepairModule.GetPresetNames(PresetType.TROOP_DEFEND);
+
+            allIds.Sort(delegate(int a, int b)
+            {
+                int wa = CrGetSortWeight(a);
+                int wb = CrGetSortWeight(b);
+                if (wa != wb) return wb.CompareTo(wa);
+                string na = CrGetVillageName(a);
+                string nb = CrGetVillageName(b);
+                return string.Compare(na, nb, StringComparison.OrdinalIgnoreCase);
+            });
+
+            // Build all rows first
+            List<CastleRepairVillageRow> rows = new List<CastleRepairVillageRow>();
+            for (int i = 0; i < allIds.Count; i++)
+            {
+                int id = allIds[i];
+                string name = CrGetVillageName(id);
+                string typeLabel = VillageSyncModule.GetVillageTypeLabel(id);
+                VillageCastleRepairSettings vs = settings != null
+                    ? settings.GetVillageSettings(id)
+                    : null;
+
+                CastleRepairVillageRow row = new CastleRepairVillageRow(
+                    id, name, typeLabel, vs, infraPresets, troopPresets, i % 2 != 0);
+                row.Dock = DockStyle.Top;
+                rows.Add(row);
+            }
+
+            // Add in reverse for correct DockStyle.Top stacking
+            for (int i = rows.Count - 1; i >= 0; i--)
+                _crVillageListPanel.Controls.Add(rows[i]);
+
+            _crVillageRows = rows;
+
+            _crVillageListPanel.ResumeLayout(false);
+            _crVillageListPanel.PerformLayout();
+        }
+
+        private void CrUpdateStatusDisplay()
+        {
+            if (_crEnabledCheck == null) return;
+
+            bool enabled = _crEnabledCheck.Checked;
+            _crStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
+            _crStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+
+            // Auto-refresh combo boxes when cloud presets become available
+            try
+            {
+                int currentCount = PresetManager.Instance.m_presets != null
+                    ? PresetManager.Instance.m_presets.Count : 0;
+                if (currentCount != _crLastPresetCount && _crLastPresetCount >= 0)
+                {
+                    _crLastPresetCount = currentCount;
+                    CrPopulateVillageList();
+                }
+                else if (_crLastPresetCount < 0)
+                {
+                    _crLastPresetCount = currentCount;
+                }
+            }
+            catch { }
+        }
+
+        private static string CrGetVillageName(int villageId)
+        {
+            if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                return GameEngine.Instance.World.getVillageName(villageId);
+            return "Village " + villageId;
+        }
+
+        private static int CrGetSortWeight(int villageId)
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+                return 0;
+            VillageData data = GameEngine.Instance.World.getVillageData(villageId);
+            if (data == null) return 0;
+            if (data.countryCapital) return 4;
+            if (data.provinceCapital) return 3;
+            if (data.countyCapital) return 2;
+            if (data.regionCapital) return 1;
+            return 0;
         }
 
         // =====================================================================
@@ -794,6 +1072,11 @@ namespace Kingdoms.Bot.UI
                 RcWriteToSettings();
                 tabName = "Recruiting";
             }
+            else if (_tabControl.SelectedTab == _crPage)
+            {
+                CrWriteToSettings();
+                tabName = "Castle Repair";
+            }
 
             BotEngine.Instance.SaveSettings();
             BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings saved.");
@@ -820,6 +1103,11 @@ namespace Kingdoms.Bot.UI
             {
                 RcLoadFromSettings();
                 tabName = "Recruiting";
+            }
+            else if (_tabControl.SelectedTab == _crPage)
+            {
+                CrLoadFromSettings();
+                tabName = "Castle Repair";
             }
 
             RefreshStatus();

@@ -10,6 +10,8 @@ namespace Kingdoms.Bot.UI
         private static readonly Color BgOdd = Color.FromArgb(36, 38, 48);
         private static readonly Color TextPrimary = Color.FromArgb(230, 230, 240);
 
+        private static readonly Font LabelFont = new Font("Segoe UI", 9f);
+
         private string _actionKey;
         private RadarActionSettings _boundSettings;
         private CheckBox _monitorCheck;
@@ -26,25 +28,25 @@ namespace Kingdoms.Bot.UI
             this.Height = 28;
             this.BackColor = alternate ? BgOdd : BgEven;
 
+            this.SuspendLayout();
+
             Label nameLabel = new Label();
             nameLabel.Text = label;
-            nameLabel.Font = new Font("Segoe UI", 9f);
+            nameLabel.Font = LabelFont;
             nameLabel.ForeColor = TextPrimary;
             nameLabel.AutoSize = true;
             nameLabel.Location = new Point(16, 5);
-            this.Controls.Add(nameLabel);
 
             _monitorCheck = MakeCheck(210, settings.Monitor);
-            this.Controls.Add(_monitorCheck);
-
             _systemNotifyCheck = MakeCheck(280, settings.SystemNotify);
-            this.Controls.Add(_systemNotifyCheck);
-
             _discordNotifyCheck = MakeCheck(350, settings.DiscordNotify);
-            this.Controls.Add(_discordNotifyCheck);
-
             _autoInterdictCheck = MakeCheck(420, settings.AutoInterdict);
-            this.Controls.Add(_autoInterdictCheck);
+
+            this.Controls.AddRange(new Control[] {
+                nameLabel, _monitorCheck, _systemNotifyCheck,
+                _discordNotifyCheck, _autoInterdictCheck
+            });
+            this.ResumeLayout(false);
 
             _monitorCheck.CheckedChanged += delegate { PushToSettings(); };
             _systemNotifyCheck.CheckedChanged += delegate { PushToSettings(); };

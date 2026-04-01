@@ -13,6 +13,7 @@ namespace Kingdoms.Bot
         public VillageSyncSettings VillageSync = new VillageSyncSettings();
         public RadarSettings Radar = new RadarSettings();
         public RecruitingSettings Recruiting = new RecruitingSettings();
+        public CastleRepairSettings CastleRepair = new CastleRepairSettings();
 
         private static string GetSettingsFilePath()
         {
@@ -196,5 +197,38 @@ namespace Kingdoms.Bot
         public string UnitKey = "";
         public int TargetCount;
         public int Priority = 1;
+    }
+
+    [Serializable]
+    public class CastleRepairSettings
+    {
+        public bool Enabled;
+        public int IntervalSeconds = 300;
+        public int DelayBetweenVillagesMs = 5000;
+        public bool RepairOnAttack;
+        public List<VillageCastleRepairSettings> Villages = new List<VillageCastleRepairSettings>();
+
+        public VillageCastleRepairSettings GetVillageSettings(int villageId)
+        {
+            foreach (VillageCastleRepairSettings v in Villages)
+            {
+                if (v.VillageId == villageId) return v;
+            }
+            VillageCastleRepairSettings newV = new VillageCastleRepairSettings();
+            newV.VillageId = villageId;
+            Villages.Add(newV);
+            return newV;
+        }
+    }
+
+    [Serializable]
+    public class VillageCastleRepairSettings
+    {
+        public int VillageId;
+        public bool RepairInfrastructure;
+        public bool RepairTroops;
+        public string LayoutSource = "Local";
+        public string InfrastructurePresetName = "";
+        public string TroopPresetName = "";
     }
 }

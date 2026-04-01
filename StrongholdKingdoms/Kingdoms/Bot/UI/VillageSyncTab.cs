@@ -15,6 +15,10 @@ namespace Kingdoms.Bot.UI
         private static readonly Color TypeCountry = Color.FromArgb(255, 200, 80);
         private static readonly Color TypeVillage = Color.FromArgb(160, 165, 180);
 
+        private static readonly Font NameFont = new Font("Segoe UI", 8.5f);
+        private static readonly Font TypeFont = new Font("Segoe UI", 7.5f, FontStyle.Bold);
+        private static readonly Font IdFont = new Font("Segoe UI", 7.5f);
+
         private CheckBox _check;
         private int _villageId;
         private string _typeLabel;
@@ -35,25 +39,25 @@ namespace Kingdoms.Bot.UI
             this.Height = 26;
             this.BackColor = alternate ? BgOdd : BgEven;
 
+            this.SuspendLayout();
+
             _check = new CheckBox();
             _check.Checked = enabled;
             _check.AutoSize = true;
             _check.Location = new Point(20, 4);
             _check.FlatStyle = FlatStyle.Flat;
             _check.ForeColor = TextPrimary;
-            this.Controls.Add(_check);
 
             Label nameLabel = new Label();
             nameLabel.Text = name;
-            nameLabel.Font = new Font("Segoe UI", 8.5f);
+            nameLabel.Font = NameFont;
             nameLabel.ForeColor = TextPrimary;
             nameLabel.AutoSize = true;
             nameLabel.Location = new Point(60, 5);
-            this.Controls.Add(nameLabel);
 
             Label typeTag = new Label();
             typeTag.Text = typeLabel;
-            typeTag.Font = new Font("Segoe UI", 7.5f, FontStyle.Bold);
+            typeTag.Font = TypeFont;
             typeTag.AutoSize = true;
             typeTag.Location = new Point(360, 6);
             switch (typeLabel)
@@ -64,15 +68,16 @@ namespace Kingdoms.Bot.UI
                 case "Parish": typeTag.ForeColor = TypeParish; break;
                 default: typeTag.ForeColor = TypeVillage; break;
             }
-            this.Controls.Add(typeTag);
 
             Label idLabel = new Label();
             idLabel.Text = villageId.ToString();
-            idLabel.Font = new Font("Segoe UI", 7.5f);
+            idLabel.Font = IdFont;
             idLabel.ForeColor = TextSecondary;
             idLabel.AutoSize = true;
             idLabel.Location = new Point(460, 6);
-            this.Controls.Add(idLabel);
+
+            this.Controls.AddRange(new Control[] { _check, nameLabel, typeTag, idLabel });
+            this.ResumeLayout(false);
         }
     }
 }

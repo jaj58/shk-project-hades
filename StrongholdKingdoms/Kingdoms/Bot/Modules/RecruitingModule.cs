@@ -230,7 +230,6 @@ namespace Kingdoms.Bot.Modules
                 return;
             }
 
-            // Get unit entries sorted by priority (lower rank = higher priority)
             List<UnitRecruitEntry> sorted = new List<UnitRecruitEntry>(villageSetting.Units);
             sorted.Sort(delegate(UnitRecruitEntry a, UnitRecruitEntry b)
             {
@@ -289,7 +288,6 @@ namespace Kingdoms.Bot.Modules
                     LogError("Failed to recruit " + entry.UnitKey + " in village " + villageId + ": " + ex.Message);
                 }
 
-                // Only recruit the highest priority unit that needs troops per tick
                 break;
             }
         }

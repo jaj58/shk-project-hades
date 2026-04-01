@@ -47,6 +47,7 @@ namespace Kingdoms.Bot.UI
             this._villageSyncPage = new System.Windows.Forms.TabPage();
             this._radarPage = new System.Windows.Forms.TabPage();
             this._recruitingPage = new System.Windows.Forms.TabPage();
+            this._crPage = new System.Windows.Forms.TabPage();
             this._logPanel = new System.Windows.Forms.Panel();
             this._logBox = new System.Windows.Forms.RichTextBox();
             this._logHeader = new System.Windows.Forms.Label();
@@ -113,6 +114,20 @@ namespace Kingdoms.Bot.UI
             this._rcColHeaderCapitals = new System.Windows.Forms.Panel();
             this._rcVillageListPanel = new System.Windows.Forms.Panel();
             this._rcCapitalsListPanel = new System.Windows.Forms.Panel();
+            // Castle Repair tab controls
+            this._crSettingsPanel = new System.Windows.Forms.Panel();
+            this._crEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._crStatusLabel = new System.Windows.Forms.Label();
+            this._crIntervalLabel = new System.Windows.Forms.Label();
+            this._crIntervalInput = new System.Windows.Forms.NumericUpDown();
+            this._crDelayLabel = new System.Windows.Forms.Label();
+            this._crDelayInput = new System.Windows.Forms.NumericUpDown();
+            this._crRepairOnAttackCheck = new System.Windows.Forms.CheckBox();
+            this._crRepairAllBtn = new System.Windows.Forms.Button();
+            this._crRefreshBtn = new System.Windows.Forms.Button();
+            this._crSeparator = new System.Windows.Forms.Panel();
+            this._crColHeader = new System.Windows.Forms.Panel();
+            this._crVillageListPanel = new System.Windows.Forms.Panel();
             // SuspendLayout
             this._footerPanel.SuspendLayout();
             this._headerPanel.SuspendLayout();
@@ -123,22 +138,18 @@ namespace Kingdoms.Bot.UI
             this._villageSyncPage.SuspendLayout();
             this._radarPage.SuspendLayout();
             this._recruitingPage.SuspendLayout();
-            this._logPanel.SuspendLayout();
-            this._vsSettingsPanel.SuspendLayout();
+            this._crPage.SuspendLayout();
+            this._rcSubTabs.SuspendLayout();
+            this._rcSettingsPanel.SuspendLayout();
+            this._crSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._vsIntervalInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._vsDelayInput)).BeginInit();
-            this._vsButtonBar.SuspendLayout();
-            this._vsColHeader.SuspendLayout();
-            this._rdSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._rdScanIntervalInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._rdInterdictMonkCountInput)).BeginInit();
-            this._rdColHeader.SuspendLayout();
-            this._rcSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._rcIntervalInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._rcDelayInput)).BeginInit();
-            this._rcSubTabs.SuspendLayout();
-            this._rcVillagesTab.SuspendLayout();
-            this._rcCapitalsTab.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._crIntervalInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._crDelayInput)).BeginInit();
             this.SuspendLayout();
             // 
             // _footerPanel
@@ -306,11 +317,52 @@ namespace Kingdoms.Bot.UI
             this._mainSplit.SplitterWidth = 3;
             this._mainSplit.TabIndex = 4;
             // 
+            // _logPanel
+            // 
+            this._logPanel.Controls.Add(this._logBox);
+            this._logPanel.Controls.Add(this._logHeader);
+            this._logPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._logPanel.BackColor = System.Drawing.Color.FromArgb(24, 24, 32);
+            this._logPanel.Location = new System.Drawing.Point(0, 0);
+            this._logPanel.Name = "_logPanel";
+            this._logPanel.Size = new System.Drawing.Size(820, 192);
+            this._logPanel.TabIndex = 0;
+            // 
+            // _logHeader
+            // 
+            this._logHeader.BackColor = System.Drawing.Color.FromArgb(32, 34, 44);
+            this._logHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this._logHeader.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._logHeader.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
+            this._logHeader.Location = new System.Drawing.Point(0, 0);
+            this._logHeader.Name = "_logHeader";
+            this._logHeader.Padding = new System.Windows.Forms.Padding(12, 0, 0, 0);
+            this._logHeader.Size = new System.Drawing.Size(820, 24);
+            this._logHeader.TabIndex = 0;
+            this._logHeader.Text = "Log Output";
+            this._logHeader.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // _logBox
+            // 
+            this._logBox.BackColor = System.Drawing.Color.FromArgb(18, 18, 24);
+            this._logBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this._logBox.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._logBox.Font = new System.Drawing.Font("Consolas", 8.5F);
+            this._logBox.ForeColor = System.Drawing.Color.FromArgb(200, 200, 210);
+            this._logBox.Location = new System.Drawing.Point(0, 24);
+            this._logBox.Name = "_logBox";
+            this._logBox.ReadOnly = true;
+            this._logBox.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
+            this._logBox.Size = new System.Drawing.Size(820, 168);
+            this._logBox.TabIndex = 1;
+            this._logBox.Text = "";
+            // 
             // _tabControl
             // 
             this._tabControl.Controls.Add(this._villageSyncPage);
             this._tabControl.Controls.Add(this._radarPage);
             this._tabControl.Controls.Add(this._recruitingPage);
+            this._tabControl.Controls.Add(this._crPage);
             this._tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this._tabControl.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._tabControl.Location = new System.Drawing.Point(0, 0);
@@ -851,18 +903,6 @@ namespace Kingdoms.Bot.UI
             this._rdActionListPanel.Size = new System.Drawing.Size(812, 177);
             this._rdActionListPanel.TabIndex = 3;
             // 
-            // _recruitingPage
-            // 
-            this._recruitingPage.BackColor = System.Drawing.Color.FromArgb(24, 24, 32);
-            this._recruitingPage.Controls.Add(this._rcSubTabs);
-            this._recruitingPage.Controls.Add(this._rcSeparator);
-            this._recruitingPage.Controls.Add(this._rcSettingsPanel);
-            this._recruitingPage.Location = new System.Drawing.Point(4, 24);
-            this._recruitingPage.Name = "_recruitingPage";
-            this._recruitingPage.Size = new System.Drawing.Size(812, 352);
-            this._recruitingPage.TabIndex = 2;
-            this._recruitingPage.Text = "Recruiting";
-            // 
             // _rcSettingsPanel
             // 
             this._rcSettingsPanel.BackColor = System.Drawing.Color.FromArgb(40, 42, 54);
@@ -878,30 +918,32 @@ namespace Kingdoms.Bot.UI
             this._rcSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._rcSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._rcSettingsPanel.Name = "_rcSettingsPanel";
-            this._rcSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 12);
+            this._rcSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
             this._rcSettingsPanel.Size = new System.Drawing.Size(812, 100);
             this._rcSettingsPanel.TabIndex = 0;
             // 
             // _rcEnabledCheck
             // 
             this._rcEnabledCheck.AutoSize = true;
-            this._rcEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._rcEnabledCheck.Checked = true;
+            this._rcEnabledCheck.CheckState = System.Windows.Forms.CheckState.Checked;
+            this._rcEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._rcEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this._rcEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
             this._rcEnabledCheck.Location = new System.Drawing.Point(16, 12);
             this._rcEnabledCheck.Name = "_rcEnabledCheck";
-            this._rcEnabledCheck.Size = new System.Drawing.Size(73, 19);
+            this._rcEnabledCheck.Size = new System.Drawing.Size(80, 23);
             this._rcEnabledCheck.TabIndex = 0;
-            this._rcEnabledCheck.Text = "Enabled";
-            this._rcEnabledCheck.UseVisualStyleBackColor = true;
+            this._rcEnabledCheck.Text = "Enable";
             // 
             // _rcStatusLabel
             // 
             this._rcStatusLabel.AutoSize = true;
             this._rcStatusLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._rcStatusLabel.ForeColor = System.Drawing.Color.FromArgb(80, 200, 120);
-            this._rcStatusLabel.Location = new System.Drawing.Point(120, 13);
+            this._rcStatusLabel.Location = new System.Drawing.Point(110, 14);
             this._rcStatusLabel.Name = "_rcStatusLabel";
-            this._rcStatusLabel.Size = new System.Drawing.Size(62, 15);
+            this._rcStatusLabel.Size = new System.Drawing.Size(65, 15);
             this._rcStatusLabel.TabIndex = 1;
             this._rcStatusLabel.Text = "ENABLED";
             // 
@@ -912,7 +954,7 @@ namespace Kingdoms.Bot.UI
             this._rcIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
             this._rcIntervalLabel.Location = new System.Drawing.Point(16, 42);
             this._rcIntervalLabel.Name = "_rcIntervalLabel";
-            this._rcIntervalLabel.Size = new System.Drawing.Size(134, 15);
+            this._rcIntervalLabel.Size = new System.Drawing.Size(137, 15);
             this._rcIntervalLabel.TabIndex = 2;
             this._rcIntervalLabel.Text = "Cycle interval (seconds):";
             // 
@@ -921,7 +963,8 @@ namespace Kingdoms.Bot.UI
             this._rcIntervalInput.BackColor = System.Drawing.Color.FromArgb(50, 52, 64);
             this._rcIntervalInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rcIntervalInput.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
-            this._rcIntervalInput.Location = new System.Drawing.Point(196, 40);
+            this._rcIntervalInput.Increment = new decimal(10);
+            this._rcIntervalInput.Location = new System.Drawing.Point(190, 40);
             this._rcIntervalInput.Maximum = new decimal(3600);
             this._rcIntervalInput.Minimum = new decimal(10);
             this._rcIntervalInput.Name = "_rcIntervalInput";
@@ -957,49 +1000,44 @@ namespace Kingdoms.Bot.UI
             // _rcRefreshBtn
             // 
             this._rcRefreshBtn.BackColor = System.Drawing.Color.FromArgb(80, 160, 255);
-            this._rcRefreshBtn.Cursor = System.Windows.Forms.Cursors.Hand;
             this._rcRefreshBtn.FlatAppearance.BorderSize = 0;
             this._rcRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._rcRefreshBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._rcRefreshBtn.ForeColor = System.Drawing.Color.White;
-            this._rcRefreshBtn.Location = new System.Drawing.Point(604, 38);
+            this._rcRefreshBtn.Location = new System.Drawing.Point(16, 70);
             this._rcRefreshBtn.Name = "_rcRefreshBtn";
             this._rcRefreshBtn.Size = new System.Drawing.Size(100, 24);
             this._rcRefreshBtn.TabIndex = 6;
             this._rcRefreshBtn.Text = "Refresh List";
-            this._rcRefreshBtn.UseVisualStyleBackColor = false;
             // 
             // _rcDisbandCombo
             // 
             this._rcDisbandCombo.BackColor = System.Drawing.Color.FromArgb(50, 52, 64);
-            this._rcDisbandCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this._rcDisbandCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._rcDisbandCombo.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._rcDisbandCombo.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
-            this._rcDisbandCombo.FormattingEnabled = true;
-            this._rcDisbandCombo.Location = new System.Drawing.Point(16, 70);
+            this._rcDisbandCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._rcDisbandCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._rcDisbandCombo.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._rcDisbandCombo.Location = new System.Drawing.Point(498, 70);
             this._rcDisbandCombo.Name = "_rcDisbandCombo";
-            this._rcDisbandCombo.Size = new System.Drawing.Size(200, 23);
+            this._rcDisbandCombo.Size = new System.Drawing.Size(160, 21);
             this._rcDisbandCombo.TabIndex = 7;
             // 
             // _rcDisbandBtn
             // 
             this._rcDisbandBtn.BackColor = System.Drawing.Color.FromArgb(240, 80, 80);
-            this._rcDisbandBtn.Cursor = System.Windows.Forms.Cursors.Hand;
             this._rcDisbandBtn.FlatAppearance.BorderSize = 0;
             this._rcDisbandBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._rcDisbandBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._rcDisbandBtn.ForeColor = System.Drawing.Color.White;
-            this._rcDisbandBtn.Location = new System.Drawing.Point(224, 70);
+            this._rcDisbandBtn.Location = new System.Drawing.Point(665, 70);
             this._rcDisbandBtn.Name = "_rcDisbandBtn";
-            this._rcDisbandBtn.Size = new System.Drawing.Size(120, 24);
+            this._rcDisbandBtn.Size = new System.Drawing.Size(70, 24);
             this._rcDisbandBtn.TabIndex = 8;
-            this._rcDisbandBtn.Text = "Disband All";
-            this._rcDisbandBtn.UseVisualStyleBackColor = false;
+            this._rcDisbandBtn.Text = "Go";
             // 
             // _rcSeparator
             // 
-            this._rcSeparator.BackColor = System.Drawing.Color.FromArgb(55, 58, 72);
+            this._rcSeparator.BackColor = System.Drawing.Color.FromArgb(60, 62, 74);
             this._rcSeparator.Dock = System.Windows.Forms.DockStyle.Top;
             this._rcSeparator.Location = new System.Drawing.Point(0, 100);
             this._rcSeparator.Name = "_rcSeparator";
@@ -1010,9 +1048,8 @@ namespace Kingdoms.Bot.UI
             // 
             this._rcSubTabs.Controls.Add(this._rcVillagesTab);
             this._rcSubTabs.Controls.Add(this._rcCapitalsTab);
-            this._rcSubTabs.Controls.Add(this._rcVassalsTab);
             this._rcSubTabs.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._rcSubTabs.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._rcSubTabs.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._rcSubTabs.Location = new System.Drawing.Point(0, 101);
             this._rcSubTabs.Name = "_rcSubTabs";
             this._rcSubTabs.SelectedIndex = 0;
@@ -1024,10 +1061,9 @@ namespace Kingdoms.Bot.UI
             this._rcVillagesTab.BackColor = System.Drawing.Color.FromArgb(24, 24, 32);
             this._rcVillagesTab.Controls.Add(this._rcVillageListPanel);
             this._rcVillagesTab.Controls.Add(this._rcColHeaderVillages);
-            this._rcVillagesTab.Location = new System.Drawing.Point(4, 24);
+            this._rcVillagesTab.Location = new System.Drawing.Point(4, 22);
             this._rcVillagesTab.Name = "_rcVillagesTab";
-            this._rcVillagesTab.Padding = new System.Windows.Forms.Padding(3);
-            this._rcVillagesTab.Size = new System.Drawing.Size(804, 223);
+            this._rcVillagesTab.Size = new System.Drawing.Size(804, 225);
             this._rcVillagesTab.TabIndex = 0;
             this._rcVillagesTab.Text = "Villages";
             // 
@@ -1036,39 +1072,28 @@ namespace Kingdoms.Bot.UI
             this._rcCapitalsTab.BackColor = System.Drawing.Color.FromArgb(24, 24, 32);
             this._rcCapitalsTab.Controls.Add(this._rcCapitalsListPanel);
             this._rcCapitalsTab.Controls.Add(this._rcColHeaderCapitals);
-            this._rcCapitalsTab.Location = new System.Drawing.Point(4, 24);
+            this._rcCapitalsTab.Location = new System.Drawing.Point(4, 22);
             this._rcCapitalsTab.Name = "_rcCapitalsTab";
-            this._rcCapitalsTab.Padding = new System.Windows.Forms.Padding(3);
-            this._rcCapitalsTab.Size = new System.Drawing.Size(804, 223);
+            this._rcCapitalsTab.Size = new System.Drawing.Size(804, 225);
             this._rcCapitalsTab.TabIndex = 1;
             this._rcCapitalsTab.Text = "Capitals";
             // 
-            // _rcVassalsTab
-            // 
-            this._rcVassalsTab.BackColor = System.Drawing.Color.FromArgb(24, 24, 32);
-            this._rcVassalsTab.Location = new System.Drawing.Point(4, 24);
-            this._rcVassalsTab.Name = "_rcVassalsTab";
-            this._rcVassalsTab.Padding = new System.Windows.Forms.Padding(3);
-            this._rcVassalsTab.Size = new System.Drawing.Size(804, 223);
-            this._rcVassalsTab.TabIndex = 2;
-            this._rcVassalsTab.Text = "Vassals";
-            // 
             // _rcColHeaderVillages
             // 
-            this._rcColHeaderVillages.BackColor = System.Drawing.Color.FromArgb(30, 32, 40);
+            this._rcColHeaderVillages.BackColor = System.Drawing.Color.FromArgb(32, 34, 44);
             this._rcColHeaderVillages.Dock = System.Windows.Forms.DockStyle.Top;
-            this._rcColHeaderVillages.Location = new System.Drawing.Point(3, 3);
+            this._rcColHeaderVillages.Location = new System.Drawing.Point(0, 0);
             this._rcColHeaderVillages.Name = "_rcColHeaderVillages";
-            this._rcColHeaderVillages.Size = new System.Drawing.Size(798, 24);
+            this._rcColHeaderVillages.Size = new System.Drawing.Size(804, 24);
             this._rcColHeaderVillages.TabIndex = 0;
             // 
             // _rcColHeaderCapitals
             // 
-            this._rcColHeaderCapitals.BackColor = System.Drawing.Color.FromArgb(30, 32, 40);
+            this._rcColHeaderCapitals.BackColor = System.Drawing.Color.FromArgb(32, 34, 44);
             this._rcColHeaderCapitals.Dock = System.Windows.Forms.DockStyle.Top;
-            this._rcColHeaderCapitals.Location = new System.Drawing.Point(3, 3);
+            this._rcColHeaderCapitals.Location = new System.Drawing.Point(0, 0);
             this._rcColHeaderCapitals.Name = "_rcColHeaderCapitals";
-            this._rcColHeaderCapitals.Size = new System.Drawing.Size(798, 24);
+            this._rcColHeaderCapitals.Size = new System.Drawing.Size(804, 24);
             this._rcColHeaderCapitals.TabIndex = 0;
             // 
             // _rcVillageListPanel
@@ -1078,7 +1103,7 @@ namespace Kingdoms.Bot.UI
             this._rcVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._rcVillageListPanel.Location = new System.Drawing.Point(0, 24);
             this._rcVillageListPanel.Name = "_rcVillageListPanel";
-            this._rcVillageListPanel.Size = new System.Drawing.Size(804, 199);
+            this._rcVillageListPanel.Size = new System.Drawing.Size(804, 201);
             this._rcVillageListPanel.TabIndex = 1;
             // 
             // _rcCapitalsListPanel
@@ -1088,48 +1113,198 @@ namespace Kingdoms.Bot.UI
             this._rcCapitalsListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._rcCapitalsListPanel.Location = new System.Drawing.Point(0, 24);
             this._rcCapitalsListPanel.Name = "_rcCapitalsListPanel";
-            this._rcCapitalsListPanel.Size = new System.Drawing.Size(804, 199);
+            this._rcCapitalsListPanel.Size = new System.Drawing.Size(804, 201);
             this._rcCapitalsListPanel.TabIndex = 1;
             // 
-            // _logPanel
+            // _recruitingPage
             // 
-            this._logPanel.BackColor = System.Drawing.Color.FromArgb(24, 24, 32);
-            this._logPanel.Controls.Add(this._logBox);
-            this._logPanel.Controls.Add(this._logHeader);
-            this._logPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._logPanel.Location = new System.Drawing.Point(0, 0);
-            this._logPanel.Name = "_logPanel";
-            this._logPanel.Padding = new System.Windows.Forms.Padding(8, 4, 8, 4);
-            this._logPanel.Size = new System.Drawing.Size(820, 193);
-            this._logPanel.TabIndex = 0;
+            this._recruitingPage.BackColor = System.Drawing.Color.FromArgb(24, 24, 32);
+            this._recruitingPage.Controls.Add(this._rcSubTabs);
+            this._recruitingPage.Controls.Add(this._rcSeparator);
+            this._recruitingPage.Controls.Add(this._rcSettingsPanel);
+            this._recruitingPage.Location = new System.Drawing.Point(4, 24);
+            this._recruitingPage.Name = "_recruitingPage";
+            this._recruitingPage.Size = new System.Drawing.Size(812, 352);
+            this._recruitingPage.TabIndex = 2;
+            this._recruitingPage.Text = "Recruiting";
             // 
-            // _logBox
+            // _crPage
             // 
-            this._logBox.BackColor = System.Drawing.Color.FromArgb(18, 18, 24);
-            this._logBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this._logBox.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._logBox.Font = new System.Drawing.Font("Consolas", 8.5F);
-            this._logBox.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
-            this._logBox.Location = new System.Drawing.Point(8, 26);
-            this._logBox.Name = "_logBox";
-            this._logBox.ReadOnly = true;
-            this._logBox.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-            this._logBox.Size = new System.Drawing.Size(804, 163);
-            this._logBox.TabIndex = 1;
-            this._logBox.Text = "";
-            this._logBox.WordWrap = false;
+            this._crPage.BackColor = System.Drawing.Color.FromArgb(24, 24, 32);
+            this._crPage.Controls.Add(this._crVillageListPanel);
+            this._crPage.Controls.Add(this._crColHeader);
+            this._crPage.Controls.Add(this._crSeparator);
+            this._crPage.Controls.Add(this._crSettingsPanel);
+            this._crPage.Location = new System.Drawing.Point(4, 24);
+            this._crPage.Name = "_crPage";
+            this._crPage.Size = new System.Drawing.Size(812, 352);
+            this._crPage.TabIndex = 3;
+            this._crPage.Text = "Castle Repair";
             // 
-            // _logHeader
+            // _crSettingsPanel
             // 
-            this._logHeader.Dock = System.Windows.Forms.DockStyle.Top;
-            this._logHeader.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this._logHeader.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
-            this._logHeader.Location = new System.Drawing.Point(8, 4);
-            this._logHeader.Name = "_logHeader";
-            this._logHeader.Padding = new System.Windows.Forms.Padding(4, 2, 0, 0);
-            this._logHeader.Size = new System.Drawing.Size(804, 22);
-            this._logHeader.TabIndex = 0;
-            this._logHeader.Text = "LOG";
+            this._crSettingsPanel.BackColor = System.Drawing.Color.FromArgb(40, 42, 54);
+            this._crSettingsPanel.Controls.Add(this._crRefreshBtn);
+            this._crSettingsPanel.Controls.Add(this._crRepairAllBtn);
+            this._crSettingsPanel.Controls.Add(this._crRepairOnAttackCheck);
+            this._crSettingsPanel.Controls.Add(this._crDelayInput);
+            this._crSettingsPanel.Controls.Add(this._crDelayLabel);
+            this._crSettingsPanel.Controls.Add(this._crIntervalInput);
+            this._crSettingsPanel.Controls.Add(this._crIntervalLabel);
+            this._crSettingsPanel.Controls.Add(this._crStatusLabel);
+            this._crSettingsPanel.Controls.Add(this._crEnabledCheck);
+            this._crSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._crSettingsPanel.Location = new System.Drawing.Point(0, 0);
+            this._crSettingsPanel.Name = "_crSettingsPanel";
+            this._crSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
+            this._crSettingsPanel.Size = new System.Drawing.Size(812, 150);
+            this._crSettingsPanel.TabIndex = 0;
+            // 
+            // _crEnabledCheck
+            // 
+            this._crEnabledCheck.AutoSize = true;
+            this._crEnabledCheck.Checked = true;
+            this._crEnabledCheck.CheckState = System.Windows.Forms.CheckState.Checked;
+            this._crEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._crEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this._crEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
+            this._crEnabledCheck.Location = new System.Drawing.Point(16, 10);
+            this._crEnabledCheck.Name = "_crEnabledCheck";
+            this._crEnabledCheck.Size = new System.Drawing.Size(136, 23);
+            this._crEnabledCheck.TabIndex = 0;
+            this._crEnabledCheck.Text = "Module Enabled";
+            // 
+            // _crStatusLabel
+            // 
+            this._crStatusLabel.AutoSize = true;
+            this._crStatusLabel.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._crStatusLabel.ForeColor = System.Drawing.Color.FromArgb(80, 200, 120);
+            this._crStatusLabel.Location = new System.Drawing.Point(200, 13);
+            this._crStatusLabel.Name = "_crStatusLabel";
+            this._crStatusLabel.Size = new System.Drawing.Size(56, 13);
+            this._crStatusLabel.TabIndex = 1;
+            this._crStatusLabel.Text = "ENABLED";
+            // 
+            // _crIntervalLabel
+            // 
+            this._crIntervalLabel.AutoSize = true;
+            this._crIntervalLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._crIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
+            this._crIntervalLabel.Location = new System.Drawing.Point(16, 42);
+            this._crIntervalLabel.Name = "_crIntervalLabel";
+            this._crIntervalLabel.Size = new System.Drawing.Size(137, 15);
+            this._crIntervalLabel.TabIndex = 2;
+            this._crIntervalLabel.Text = "Cycle interval (seconds):";
+            // 
+            // _crIntervalInput
+            // 
+            this._crIntervalInput.BackColor = System.Drawing.Color.FromArgb(50, 52, 64);
+            this._crIntervalInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._crIntervalInput.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
+            this._crIntervalInput.Increment = new decimal(10);
+            this._crIntervalInput.Location = new System.Drawing.Point(190, 40);
+            this._crIntervalInput.Maximum = new decimal(3600);
+            this._crIntervalInput.Minimum = new decimal(30);
+            this._crIntervalInput.Name = "_crIntervalInput";
+            this._crIntervalInput.Size = new System.Drawing.Size(80, 22);
+            this._crIntervalInput.TabIndex = 4;
+            this._crIntervalInput.Value = new decimal(120);
+            // 
+            // _crDelayLabel
+            // 
+            this._crDelayLabel.AutoSize = true;
+            this._crDelayLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._crDelayLabel.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
+            this._crDelayLabel.Location = new System.Drawing.Point(290, 42);
+            this._crDelayLabel.Name = "_crDelayLabel";
+            this._crDelayLabel.Size = new System.Drawing.Size(161, 15);
+            this._crDelayLabel.TabIndex = 5;
+            this._crDelayLabel.Text = "Delay between villages (ms):";
+            // 
+            // _crDelayInput
+            // 
+            this._crDelayInput.BackColor = System.Drawing.Color.FromArgb(50, 52, 64);
+            this._crDelayInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._crDelayInput.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
+            this._crDelayInput.Increment = new decimal(500);
+            this._crDelayInput.Location = new System.Drawing.Point(498, 40);
+            this._crDelayInput.Maximum = new decimal(30000);
+            this._crDelayInput.Minimum = new decimal(1000);
+            this._crDelayInput.Name = "_crDelayInput";
+            this._crDelayInput.Size = new System.Drawing.Size(80, 22);
+            this._crDelayInput.TabIndex = 6;
+            this._crDelayInput.Value = new decimal(3000);
+            // 
+            // _crRepairOnAttackCheck
+            // 
+            this._crRepairOnAttackCheck.AutoSize = true;
+            this._crRepairOnAttackCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._crRepairOnAttackCheck.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._crRepairOnAttackCheck.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
+            this._crRepairOnAttackCheck.Location = new System.Drawing.Point(16, 70);
+            this._crRepairOnAttackCheck.Name = "_crRepairOnAttackCheck";
+            this._crRepairOnAttackCheck.Size = new System.Drawing.Size(145, 19);
+            this._crRepairOnAttackCheck.TabIndex = 7;
+            this._crRepairOnAttackCheck.Text = "Repair on Attack/Spy";
+            this._crRepairOnAttackCheck.UseVisualStyleBackColor = true;
+            // 
+            // _crRepairAllBtn
+            // 
+            this._crRepairAllBtn.BackColor = System.Drawing.Color.FromArgb(50, 100, 180);
+            this._crRepairAllBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._crRepairAllBtn.FlatAppearance.BorderSize = 0;
+            this._crRepairAllBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._crRepairAllBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._crRepairAllBtn.ForeColor = System.Drawing.Color.White;
+            this._crRepairAllBtn.Location = new System.Drawing.Point(604, 68);
+            this._crRepairAllBtn.Name = "_crRepairAllBtn";
+            this._crRepairAllBtn.Size = new System.Drawing.Size(100, 24);
+            this._crRepairAllBtn.TabIndex = 8;
+            this._crRepairAllBtn.Text = "Repair All";
+            this._crRepairAllBtn.UseVisualStyleBackColor = false;
+            // 
+            // _crRefreshBtn
+            // 
+            this._crRefreshBtn.BackColor = System.Drawing.Color.FromArgb(80, 160, 255);
+            this._crRefreshBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._crRefreshBtn.FlatAppearance.BorderSize = 0;
+            this._crRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._crRefreshBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._crRefreshBtn.ForeColor = System.Drawing.Color.White;
+            this._crRefreshBtn.Location = new System.Drawing.Point(604, 38);
+            this._crRefreshBtn.Name = "_crRefreshBtn";
+            this._crRefreshBtn.Size = new System.Drawing.Size(100, 24);
+            this._crRefreshBtn.TabIndex = 9;
+            this._crRefreshBtn.Text = "Refresh List";
+            this._crRefreshBtn.UseVisualStyleBackColor = false;
+            // 
+            // _crSeparator
+            // 
+            this._crSeparator.BackColor = System.Drawing.Color.FromArgb(55, 58, 72);
+            this._crSeparator.Dock = System.Windows.Forms.DockStyle.Top;
+            this._crSeparator.Location = new System.Drawing.Point(0, 150);
+            this._crSeparator.Name = "_crSeparator";
+            this._crSeparator.Size = new System.Drawing.Size(812, 1);
+            this._crSeparator.TabIndex = 1;
+            // 
+            // _crColHeader
+            // 
+            this._crColHeader.BackColor = System.Drawing.Color.FromArgb(30, 32, 40);
+            this._crColHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this._crColHeader.Location = new System.Drawing.Point(0, 151);
+            this._crColHeader.Name = "_crColHeader";
+            this._crColHeader.Size = new System.Drawing.Size(812, 24);
+            this._crColHeader.TabIndex = 2;
+            // 
+            // _crVillageListPanel
+            // 
+            this._crVillageListPanel.AutoScroll = true;
+            this._crVillageListPanel.BackColor = System.Drawing.Color.FromArgb(24, 24, 32);
+            this._crVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._crVillageListPanel.Location = new System.Drawing.Point(0, 175);
+            this._crVillageListPanel.Name = "_crVillageListPanel";
+            this._crVillageListPanel.Size = new System.Drawing.Size(812, 177);
+            this._crVillageListPanel.TabIndex = 3;
             // 
             // BotControlForm
             // 
@@ -1158,26 +1333,20 @@ namespace Kingdoms.Bot.UI
             this._villageSyncPage.ResumeLayout(false);
             this._radarPage.ResumeLayout(false);
             this._recruitingPage.ResumeLayout(false);
-            this._logPanel.ResumeLayout(false);
-            this._vsSettingsPanel.ResumeLayout(false);
-            this._vsSettingsPanel.PerformLayout();
-            this._vsButtonBar.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this._vsIntervalInput)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this._vsDelayInput)).EndInit();
-            this._vsColHeader.ResumeLayout(false);
-            this._vsColHeader.PerformLayout();
-            this._rdSettingsPanel.ResumeLayout(false);
-            this._rdSettingsPanel.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this._rdScanIntervalInput)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this._rdInterdictMonkCountInput)).EndInit();
-            this._rdColHeader.ResumeLayout(false);
+            this._crPage.ResumeLayout(false);
+            this._rcSubTabs.ResumeLayout(false);
             this._rcSettingsPanel.ResumeLayout(false);
             this._rcSettingsPanel.PerformLayout();
+            this._crSettingsPanel.ResumeLayout(false);
+            this._crSettingsPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._vsIntervalInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._vsDelayInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._rdScanIntervalInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._rdInterdictMonkCountInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._rcIntervalInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._rcDelayInput)).EndInit();
-            this._rcSubTabs.ResumeLayout(false);
-            this._rcVillagesTab.ResumeLayout(false);
-            this._rcCapitalsTab.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this._crIntervalInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._crDelayInput)).EndInit();
             this.ResumeLayout(false);
         }
 
@@ -1198,6 +1367,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.TabPage _villageSyncPage;
         private System.Windows.Forms.TabPage _radarPage;
         private System.Windows.Forms.TabPage _recruitingPage;
+        private System.Windows.Forms.TabPage _crPage;
         private System.Windows.Forms.Panel _logPanel;
         private System.Windows.Forms.RichTextBox _logBox;
         private System.Windows.Forms.Label _logHeader;
@@ -1264,5 +1434,19 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Panel _rcColHeaderCapitals;
         private System.Windows.Forms.Panel _rcVillageListPanel;
         private System.Windows.Forms.Panel _rcCapitalsListPanel;
+        // Castle Repair tab controls
+        private System.Windows.Forms.Panel _crSettingsPanel;
+        private System.Windows.Forms.CheckBox _crEnabledCheck;
+        private System.Windows.Forms.Label _crStatusLabel;
+        private System.Windows.Forms.Label _crIntervalLabel;
+        private System.Windows.Forms.NumericUpDown _crIntervalInput;
+        private System.Windows.Forms.Label _crDelayLabel;
+        private System.Windows.Forms.NumericUpDown _crDelayInput;
+        private System.Windows.Forms.CheckBox _crRepairOnAttackCheck;
+        private System.Windows.Forms.Button _crRepairAllBtn;
+        private System.Windows.Forms.Button _crRefreshBtn;
+        private System.Windows.Forms.Panel _crSeparator;
+        private System.Windows.Forms.Panel _crColHeader;
+        private System.Windows.Forms.Panel _crVillageListPanel;
     }
 }
