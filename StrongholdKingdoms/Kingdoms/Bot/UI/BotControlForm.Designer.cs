@@ -725,7 +725,7 @@ namespace Kingdoms.Bot.UI
             this._rdStatusLabel.AutoSize = true;
             this._rdStatusLabel.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._rdStatusLabel.ForeColor = System.Drawing.Color.FromArgb(80, 200, 120);
-            this._rdStatusLabel.Location = new System.Drawing.Point(200, 13);
+            this._rdStatusLabel.Location = new System.Drawing.Point(160, 13);
             this._rdStatusLabel.Name = "_rdStatusLabel";
             this._rdStatusLabel.Size = new System.Drawing.Size(56, 13);
             this._rdStatusLabel.TabIndex = 1;
@@ -736,7 +736,7 @@ namespace Kingdoms.Bot.UI
             this._rdScanIntervalLabel.AutoSize = true;
             this._rdScanIntervalLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdScanIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
-            this._rdScanIntervalLabel.Location = new System.Drawing.Point(310, 13);
+            this._rdScanIntervalLabel.Location = new System.Drawing.Point(260, 13);
             this._rdScanIntervalLabel.Name = "_rdScanIntervalLabel";
             this._rdScanIntervalLabel.Size = new System.Drawing.Size(96, 15);
             this._rdScanIntervalLabel.TabIndex = 2;
@@ -747,7 +747,7 @@ namespace Kingdoms.Bot.UI
             this._rdScanIntervalInput.BackColor = System.Drawing.Color.FromArgb(50, 52, 64);
             this._rdScanIntervalInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdScanIntervalInput.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
-            this._rdScanIntervalInput.Location = new System.Drawing.Point(440, 11);
+            this._rdScanIntervalInput.Location = new System.Drawing.Point(370, 11);
             this._rdScanIntervalInput.Maximum = new decimal(120);
             this._rdScanIntervalInput.Minimum = new decimal(3);
             this._rdScanIntervalInput.Name = "_rdScanIntervalInput";
@@ -774,8 +774,23 @@ namespace Kingdoms.Bot.UI
             this._rdWebhookInput.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
             this._rdWebhookInput.Location = new System.Drawing.Point(170, 40);
             this._rdWebhookInput.Name = "_rdWebhookInput";
-            this._rdWebhookInput.Size = new System.Drawing.Size(540, 21);
+            this._rdWebhookInput.Size = new System.Drawing.Size(480, 21);
             this._rdWebhookInput.TabIndex = 5;
+            // 
+            // _rdTestDiscordBtn
+            // 
+            this._rdTestDiscordBtn.BackColor = System.Drawing.Color.FromArgb(80, 160, 255);
+            this._rdTestDiscordBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._rdTestDiscordBtn.FlatAppearance.BorderSize = 0;
+            this._rdTestDiscordBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._rdTestDiscordBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._rdTestDiscordBtn.ForeColor = System.Drawing.Color.White;
+            this._rdTestDiscordBtn.Location = new System.Drawing.Point(660, 38);
+            this._rdTestDiscordBtn.Name = "_rdTestDiscordBtn";
+            this._rdTestDiscordBtn.Size = new System.Drawing.Size(110, 24);
+            this._rdTestDiscordBtn.TabIndex = 10;
+            this._rdTestDiscordBtn.Text = "Test Webhook";
+            this._rdTestDiscordBtn.UseVisualStyleBackColor = false;
             // 
             // _rdInterdictLabel
             // 
@@ -793,11 +808,11 @@ namespace Kingdoms.Bot.UI
             this._rdInterdictMonkCountInput.BackColor = System.Drawing.Color.FromArgb(50, 52, 64);
             this._rdInterdictMonkCountInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdInterdictMonkCountInput.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
-            this._rdInterdictMonkCountInput.Location = new System.Drawing.Point(170, 70);
+            this._rdInterdictMonkCountInput.Location = new System.Drawing.Point(150, 70);
             this._rdInterdictMonkCountInput.Maximum = new decimal(100);
             this._rdInterdictMonkCountInput.Minimum = new decimal(1);
             this._rdInterdictMonkCountInput.Name = "_rdInterdictMonkCountInput";
-            this._rdInterdictMonkCountInput.Size = new System.Drawing.Size(60, 22);
+            this._rdInterdictMonkCountInput.Size = new System.Drawing.Size(55, 22);
             this._rdInterdictMonkCountInput.TabIndex = 7;
             this._rdInterdictMonkCountInput.Value = new decimal(1);
             // 
@@ -807,7 +822,7 @@ namespace Kingdoms.Bot.UI
             this._rdAutoRecruitMonksCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._rdAutoRecruitMonksCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdAutoRecruitMonksCheck.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
-            this._rdAutoRecruitMonksCheck.Location = new System.Drawing.Point(250, 72);
+            this._rdAutoRecruitMonksCheck.Location = new System.Drawing.Point(220, 72);
             this._rdAutoRecruitMonksCheck.Name = "_rdAutoRecruitMonksCheck";
             this._rdAutoRecruitMonksCheck.Size = new System.Drawing.Size(140, 19);
             this._rdAutoRecruitMonksCheck.TabIndex = 8;
@@ -818,7 +833,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinArmySizeLabel.AutoSize = true;
             this._rdMinArmySizeLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMinArmySizeLabel.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
-            this._rdMinArmySizeLabel.Location = new System.Drawing.Point(410, 72);
+            this._rdMinArmySizeLabel.Location = new System.Drawing.Point(400, 72);
             this._rdMinArmySizeLabel.Name = "_rdMinArmySizeLabel";
             this._rdMinArmySizeLabel.Size = new System.Drawing.Size(100, 15);
             this._rdMinArmySizeLabel.TabIndex = 20;
@@ -829,7 +844,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinArmySizeInput.BackColor = System.Drawing.Color.FromArgb(50, 52, 64);
             this._rdMinArmySizeInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMinArmySizeInput.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
-            this._rdMinArmySizeInput.Location = new System.Drawing.Point(540, 70);
+            this._rdMinArmySizeInput.Location = new System.Drawing.Point(530, 70);
             this._rdMinArmySizeInput.Maximum = new decimal(10000);
             this._rdMinArmySizeInput.Minimum = new decimal(0);
             this._rdMinArmySizeInput.Name = "_rdMinArmySizeInput";
@@ -847,21 +862,6 @@ namespace Kingdoms.Bot.UI
             this._rdHintLabel.Size = new System.Drawing.Size(384, 12);
             this._rdHintLabel.TabIndex = 9;
             this._rdHintLabel.Text = "Configure which actions to monitor below. Tick columns to enable per-action features.";
-            // 
-            // _rdTestDiscordBtn
-            // 
-            this._rdTestDiscordBtn.BackColor = System.Drawing.Color.FromArgb(80, 160, 255);
-            this._rdTestDiscordBtn.Cursor = System.Windows.Forms.Cursors.Hand;
-            this._rdTestDiscordBtn.FlatAppearance.BorderSize = 0;
-            this._rdTestDiscordBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._rdTestDiscordBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
-            this._rdTestDiscordBtn.ForeColor = System.Drawing.Color.White;
-            this._rdTestDiscordBtn.Location = new System.Drawing.Point(540, 68);
-            this._rdTestDiscordBtn.Name = "_rdTestDiscordBtn";
-            this._rdTestDiscordBtn.Size = new System.Drawing.Size(110, 24);
-            this._rdTestDiscordBtn.TabIndex = 10;
-            this._rdTestDiscordBtn.Text = "Test Webhook";
-            this._rdTestDiscordBtn.UseVisualStyleBackColor = false;
             // 
             // _rdSeparator
             // 
