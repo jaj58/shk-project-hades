@@ -445,10 +445,6 @@ namespace Kingdoms.Bot.Modules
                 army.numPikemen == 0 && army.numSwordsmen == 0 && army.numCatapults == 0)
                 return ACTION_SCOUT;
 
-            // Captains
-            if (army.numCaptains > 0 || army.attackType == 18)
-                return ACTION_CAPTAIN;
-
             // Foraging
             if (army.attackType == 9)
                 return ACTION_FORAGING;
