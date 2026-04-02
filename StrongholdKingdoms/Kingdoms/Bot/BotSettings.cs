@@ -92,6 +92,7 @@ namespace Kingdoms.Bot
         public string DiscordWebhookUrl = "";
         public int AutoInterdictMonkCount = 1;
         public bool AutoRecruitMonks = false;
+        public int MinArmySizeForInterdict = 100;
         public List<RadarActionSettings> Actions = new List<RadarActionSettings>();
 
         public RadarActionSettings GetActionSettings(string actionKey)

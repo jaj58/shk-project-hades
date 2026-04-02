@@ -321,7 +321,22 @@ namespace Kingdoms.Bot.Modules
                         "\u26A0 " + actionLabel + " Incoming!", message, 16736352);
 
                 if (actionSettings.AutoInterdict)
-                    TryAutoInterdict(army.targetVillageID, pending.Settings);
+                {
+                    int totalArmySize = pending.NumPeasants + pending.NumArchers +
+                        pending.NumPikemen + pending.NumSwordsmen +
+                        pending.NumCatapults + pending.NumCaptains;
+                    int minSize = pending.Settings.MinArmySizeForInterdict;
+
+                    if (totalArmySize >= minSize)
+                    {
+                        TryAutoInterdict(army.targetVillageID, pending.Settings);
+                    }
+                    else
+                    {
+                        LogInfo("Auto-interdict skipped for army " + pending.ArmyID +
+                            ": army size " + totalArmySize + " below minimum threshold of " + minSize + ".");
+                    }
+                }
             }
             catch (Exception ex)
             {

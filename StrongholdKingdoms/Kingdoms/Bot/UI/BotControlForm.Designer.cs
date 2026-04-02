@@ -85,6 +85,8 @@ namespace Kingdoms.Bot.UI
             this._rdInterdictLabel = new System.Windows.Forms.Label();
             this._rdInterdictMonkCountInput = new System.Windows.Forms.NumericUpDown();
             this._rdAutoRecruitMonksCheck = new System.Windows.Forms.CheckBox();
+            this._rdMinArmySizeLabel = new System.Windows.Forms.Label();
+            this._rdMinArmySizeInput = new System.Windows.Forms.NumericUpDown();
             this._rdHintLabel = new System.Windows.Forms.Label();
             this._rdTestDiscordBtn = new System.Windows.Forms.Button();
             this._rdSeparator = new System.Windows.Forms.Panel();
@@ -147,11 +149,12 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._vsDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._rdScanIntervalInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._rdInterdictMonkCountInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._rdMinArmySizeInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._rcIntervalInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._rcDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._crIntervalInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._crDelayInput)).BeginInit();
-            this.SuspendLayout();
+            this.ResumeLayout(false);
             // 
             // _footerPanel
             // 
@@ -683,6 +686,8 @@ namespace Kingdoms.Bot.UI
             // _rdSettingsPanel
             // 
             this._rdSettingsPanel.BackColor = System.Drawing.Color.FromArgb(40, 42, 54);
+            this._rdSettingsPanel.Controls.Add(this._rdMinArmySizeInput);
+            this._rdSettingsPanel.Controls.Add(this._rdMinArmySizeLabel);
             this._rdSettingsPanel.Controls.Add(this._rdAutoRecruitMonksCheck);
             this._rdSettingsPanel.Controls.Add(this._rdTestDiscordBtn);
             this._rdSettingsPanel.Controls.Add(this._rdHintLabel);
@@ -807,6 +812,30 @@ namespace Kingdoms.Bot.UI
             this._rdAutoRecruitMonksCheck.Size = new System.Drawing.Size(140, 19);
             this._rdAutoRecruitMonksCheck.TabIndex = 8;
             this._rdAutoRecruitMonksCheck.Text = "Auto-recruit monks";
+            // 
+            // _rdMinArmySizeLabel
+            // 
+            this._rdMinArmySizeLabel.AutoSize = true;
+            this._rdMinArmySizeLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._rdMinArmySizeLabel.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
+            this._rdMinArmySizeLabel.Location = new System.Drawing.Point(410, 72);
+            this._rdMinArmySizeLabel.Name = "_rdMinArmySizeLabel";
+            this._rdMinArmySizeLabel.Size = new System.Drawing.Size(100, 15);
+            this._rdMinArmySizeLabel.TabIndex = 20;
+            this._rdMinArmySizeLabel.Text = "Min army size for ID:";
+            // 
+            // _rdMinArmySizeInput
+            // 
+            this._rdMinArmySizeInput.BackColor = System.Drawing.Color.FromArgb(50, 52, 64);
+            this._rdMinArmySizeInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._rdMinArmySizeInput.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
+            this._rdMinArmySizeInput.Location = new System.Drawing.Point(540, 70);
+            this._rdMinArmySizeInput.Maximum = new decimal(10000);
+            this._rdMinArmySizeInput.Minimum = new decimal(0);
+            this._rdMinArmySizeInput.Name = "_rdMinArmySizeInput";
+            this._rdMinArmySizeInput.Size = new System.Drawing.Size(60, 22);
+            this._rdMinArmySizeInput.TabIndex = 21;
+            this._rdMinArmySizeInput.Value = new decimal(100);
             // 
             // _rdHintLabel
             // 
@@ -1357,6 +1386,7 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._vsDelayInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._rdScanIntervalInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._rdInterdictMonkCountInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._rdMinArmySizeInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._rcIntervalInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._rcDelayInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._crIntervalInput)).EndInit();
@@ -1419,6 +1449,8 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Label _rdInterdictLabel;
         private System.Windows.Forms.NumericUpDown _rdInterdictMonkCountInput;
         private System.Windows.Forms.CheckBox _rdAutoRecruitMonksCheck;
+        private System.Windows.Forms.Label _rdMinArmySizeLabel;
+        private System.Windows.Forms.NumericUpDown _rdMinArmySizeInput;
         private System.Windows.Forms.Label _rdHintLabel;
         private System.Windows.Forms.Button _rdTestDiscordBtn;
         private System.Windows.Forms.Panel _rdSeparator;

@@ -340,6 +340,7 @@ namespace Kingdoms.Bot.UI
             _rdWebhookInput.TextChanged += delegate { RdPushToSettings(); };
             _rdInterdictMonkCountInput.ValueChanged += delegate { RdPushToSettings(); };
             _rdAutoRecruitMonksCheck.CheckedChanged += delegate { RdPushToSettings(); };
+            _rdMinArmySizeInput.ValueChanged += delegate { RdPushToSettings(); };
 
             _rdRefreshTimer = new Timer();
             _rdRefreshTimer.Interval = 2000;
@@ -358,6 +359,7 @@ namespace Kingdoms.Bot.UI
             s.DiscordWebhookUrl = _rdWebhookInput.Text.Trim();
             s.AutoInterdictMonkCount = (int)_rdInterdictMonkCountInput.Value;
             s.AutoRecruitMonks = _rdAutoRecruitMonksCheck.Checked;
+            s.MinArmySizeForInterdict = (int)_rdMinArmySizeInput.Value;
 
             foreach (IBotModule m in BotEngine.Instance.Modules)
             {
@@ -379,6 +381,8 @@ namespace Kingdoms.Bot.UI
             _rdInterdictMonkCountInput.Value = Math.Max(_rdInterdictMonkCountInput.Minimum,
                 Math.Min(_rdInterdictMonkCountInput.Maximum, s.AutoInterdictMonkCount));
             _rdAutoRecruitMonksCheck.Checked = s.AutoRecruitMonks;
+            _rdMinArmySizeInput.Value = Math.Max(_rdMinArmySizeInput.Minimum,
+                Math.Min(_rdMinArmySizeInput.Maximum, s.MinArmySizeForInterdict));
 
             foreach (ActionRow row in _rdActionRows)
             {
@@ -398,6 +402,7 @@ namespace Kingdoms.Bot.UI
             s.DiscordWebhookUrl = _rdWebhookInput.Text.Trim();
             s.AutoInterdictMonkCount = (int)_rdInterdictMonkCountInput.Value;
             s.AutoRecruitMonks = _rdAutoRecruitMonksCheck.Checked;
+            s.MinArmySizeForInterdict = (int)_rdMinArmySizeInput.Value;
 
             foreach (ActionRow row in _rdActionRows)
             {
