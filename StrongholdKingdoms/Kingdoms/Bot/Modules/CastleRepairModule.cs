@@ -566,6 +566,15 @@ namespace Kingdoms.Bot.Modules
             return null;
         }
 
+        public void NotifyAttackLanded(int villageId)
+        {
+            if (!_pendingRepairOnAttack.ContainsKey(villageId))
+            {
+                LogInfo("Radar notified attack landed at village " + villageId + ", queuing repair.");
+                _pendingRepairOnAttack[villageId] = true;
+            }
+        }
+
         public static List<string> GetPresetNames(PresetType type)
         {
             List<string> names = new List<string>();

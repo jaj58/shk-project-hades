@@ -69,8 +69,32 @@ namespace Kingdoms.Bot.Modules
 
         private Dictionary<long, bool> _knownArmyIds = new Dictionary<long, bool>();
         private Dictionary<long, bool> _knownPersonIds = new Dictionary<long, bool>();
+        private Dictionary<long, int> _incomingAttackTargets = new Dictionary<long, int>();
         private Dictionary<int, DateTime> _villagesSentInterdict = new Dictionary<int, DateTime>();
         private bool _firstScan = true;
+
+        // Pending army detail lookups — keyed by armyID
+        private Dictionary<long, PendingArmyLookup> _pendingLookups = new Dictionary<long, PendingArmyLookup>();
+
+        private class PendingArmyLookup
+        {
+            public long ArmyID;
+            public WorldMap.LocalArmyData Army;
+            public string ActionKey;
+            public RadarSettings Settings;
+            public DateTime RequestTime;
+            public bool Completed;
+            public bool Notified;
+            public int NumPeasants;
+            public int NumArchers;
+            public int NumPikemen;
+            public int NumSwordsmen;
+            public int NumCatapults;
+            public int NumCaptains;
+            public int PillagePercent;
+            public int LootType;
+            public double LootLevel;
+        }
 
         public override string ModuleName
         {
@@ -93,7 +117,9 @@ namespace Kingdoms.Bot.Modules
         {
             _knownArmyIds.Clear();
             _knownPersonIds.Clear();
+            _incomingAttackTargets.Clear();
             _villagesSentInterdict.Clear();
+            _pendingLookups.Clear();
             _firstScan = true;
         }
 
@@ -108,6 +134,7 @@ namespace Kingdoms.Bot.Modules
 
             if (settings == null) return;
 
+            ProcessPendingLookups(settings);
             ScanArmies(settings);
             ScanPeople(settings);
 
@@ -147,34 +174,53 @@ namespace Kingdoms.Bot.Modules
                 string actionKey = ClassifyArmy(army);
                 if (actionKey == null) continue;
 
+                // Track incoming attacks for repair-on-attack (any offensive action)
+                if (actionKey != ACTION_SCOUT && actionKey != ACTION_FORAGING && actionKey != ACTION_REINFORCEMENT)
+                    _incomingAttackTargets[army.armyID] = army.targetVillageID;
+
                 RadarActionSettings actionSettings = settings.GetActionSettings(actionKey);
                 if (!actionSettings.Monitor) continue;
 
-                string sourceName = GetVillageName(army.travelFromVillageID);
-                string targetName = GetVillageName(army.targetVillageID);
-                string timeLeft = GetTimeLeft(army.serverEndTime);
-                string actionLabel = GetActionLabel(actionKey);
+                // Queue a detail lookup — notifications fire inside the callback for speed
+                if (!_pendingLookups.ContainsKey(army.armyID))
+                {
+                    PendingArmyLookup pending = new PendingArmyLookup();
+                    pending.ArmyID = army.armyID;
+                    pending.Army = army;
+                    pending.ActionKey = actionKey;
+                    pending.Settings = settings;
+                    pending.RequestTime = DateTime.Now;
+                    pending.Completed = false;
+                    pending.Notified = false;
+                    _pendingLookups[army.armyID] = pending;
 
-                string message = actionLabel + " detected!\n" +
-                    "From: " + sourceName + " [" + army.travelFromVillageID + "]\n" +
-                    "To: " + targetName + " [" + army.targetVillageID + "]\n" +
-                    "ETA: " + timeLeft;
+                    try
+                    {
+                        RemoteServices.Instance.set_RetrieveAttackResult_UserCallBack(
+                            new RemoteServices.RetrieveAttackResult_UserCallBack(this.RetrieveAttackResultCallback));
+                        RemoteServices.Instance.RetrieveAttackResult(
+                            army.armyID, GameEngine.Instance.World.StoredVillageFactionPos);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWarning("Failed to request army details for " + army.armyID + ": " + ex.Message);
+                        pending.Completed = true;
+                    }
+                }
+            }
 
-                string troopInfo = GetTroopInfo(army);
-                if (troopInfo.Length > 0)
-                    message += "\n" + troopInfo;
-
-                LogWarning(message.Replace("\n", " | "));
-
-                if (actionSettings.SystemNotify)
-                    ShowSystemNotification(actionLabel, message);
-
-                if (actionSettings.DiscordNotify && !string.IsNullOrEmpty(settings.DiscordWebhookUrl))
-                    DiscordNotifier.SendAsync(settings.DiscordWebhookUrl,
-                        "\u26A0 " + actionLabel + " Incoming!", message, 16736352);
-
-                if (actionSettings.AutoInterdict)
-                    TryAutoInterdict(army.targetVillageID, settings);
+            // Detect landed attacks: tracked armies that disappeared
+            List<long> landedIds = new List<long>();
+            foreach (long armyId in _incomingAttackTargets.Keys)
+            {
+                if (!currentIds.ContainsKey(armyId))
+                    landedIds.Add(armyId);
+            }
+            foreach (long armyId in landedIds)
+            {
+                int targetVillageId = _incomingAttackTargets[armyId];
+                _incomingAttackTargets.Remove(armyId);
+                NotifyCastleRepairModule(targetVillageId);
             }
 
             // Clean up stale IDs
@@ -186,6 +232,127 @@ namespace Kingdoms.Bot.Modules
             }
             foreach (long id in staleIds)
                 _knownArmyIds.Remove(id);
+        }
+
+        // Called by the game when RetrieveAttackResult completes — fires notifications immediately
+        private void RetrieveAttackResultCallback(RetrieveAttackResult_ReturnType returnData)
+        {
+            try
+            {
+                if (returnData == null || !returnData.Success)
+                {
+                    foreach (PendingArmyLookup p in _pendingLookups.Values)
+                    {
+                        if (!p.Completed)
+                        {
+                            p.Completed = true;
+                            FireNotification(p);
+                            break;
+                        }
+                    }
+                    return;
+                }
+
+                if (returnData.armyData != null)
+                {
+                    long armyId = returnData.armyData.armyID;
+                    if (_pendingLookups.ContainsKey(armyId))
+                    {
+                        PendingArmyLookup pending = _pendingLookups[armyId];
+                        pending.NumPeasants = returnData.armyData.numPeasants;
+                        pending.NumArchers = returnData.armyData.numArchers;
+                        pending.NumPikemen = returnData.armyData.numPikemen;
+                        pending.NumSwordsmen = returnData.armyData.numSwordsmen;
+                        pending.NumCatapults = returnData.armyData.numCatapults;
+                        pending.NumCaptains = returnData.armyData.numCaptains;
+                        pending.PillagePercent = returnData.armyData.pillagePercent;
+                        pending.LootType = returnData.armyData.lootType;
+                        pending.LootLevel = returnData.armyData.lootLevel;
+                        pending.Completed = true;
+                        LogDebug("Received detailed army data for armyID " + armyId);
+                        FireNotification(pending);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("RetrieveAttackResult callback error: " + ex.Message);
+            }
+        }
+
+        // Sends the actual notification for a completed lookup
+        private void FireNotification(PendingArmyLookup pending)
+        {
+            if (pending.Notified) return;
+            pending.Notified = true;
+
+            try
+            {
+                WorldMap.LocalArmyData army = pending.Army;
+                RadarActionSettings actionSettings = pending.Settings.GetActionSettings(pending.ActionKey);
+
+                string sourceName = GetVillageName(army.travelFromVillageID);
+                string targetName = GetVillageName(army.targetVillageID);
+                string timeLeft = GetTimeLeft(army.serverEndTime);
+                string actionLabel = GetActionLabel(pending.ActionKey);
+
+                string message = actionLabel + " detected!\n" +
+                    "From: " + sourceName + " [" + army.travelFromVillageID + "]\n" +
+                    "To: " + targetName + " [" + army.targetVillageID + "]\n" +
+                    "ETA: " + timeLeft + "\n" +
+                    "P:" + pending.NumPeasants +
+                    " , Arch:" + pending.NumArchers +
+                    " , Pike:" + pending.NumPikemen +
+                    " , Swords:" + pending.NumSwordsmen +
+                    " , Cats:" + pending.NumCatapults +
+                    " , Caps:" + pending.NumCaptains;
+
+                string troopInfo = GetTroopInfo(army);
+                if (troopInfo.Length > 0)
+                    message += "\n" + troopInfo;
+
+                LogWarning(message.Replace("\n", " | "));
+
+                if (actionSettings.SystemNotify)
+                    ShowSystemNotification(actionLabel, message);
+
+                if (actionSettings.DiscordNotify && !string.IsNullOrEmpty(pending.Settings.DiscordWebhookUrl))
+                    DiscordNotifier.SendAsync(pending.Settings.DiscordWebhookUrl,
+                        "\u26A0 " + actionLabel + " Incoming!", message, 16736352);
+
+                if (actionSettings.AutoInterdict)
+                    TryAutoInterdict(army.targetVillageID, pending.Settings);
+            }
+            catch (Exception ex)
+            {
+                LogError("FireNotification error for armyID " + pending.ArmyID + ": " + ex.Message);
+            }
+        }
+
+        // Fallback: process any lookups that timed out without a callback
+        private void ProcessPendingLookups(RadarSettings settings)
+        {
+            if (_pendingLookups.Count == 0) return;
+
+            List<long> toRemove = new List<long>();
+
+            foreach (KeyValuePair<long, PendingArmyLookup> kvp in _pendingLookups)
+            {
+                PendingArmyLookup pending = kvp.Value;
+
+                if (!pending.Completed && (DateTime.Now - pending.RequestTime).TotalSeconds > 5)
+                {
+                    LogDebug("Army detail lookup timed out for armyID " + pending.ArmyID + ", proceeding with basic info.");
+                    pending.Completed = true;
+                    FireNotification(pending);
+                }
+
+                if (pending.Completed && pending.Notified)
+                    toRemove.Add(kvp.Key);
+            }
+
+            foreach (long id in toRemove)
+                _pendingLookups.Remove(id);
         }
 
         private void ScanPeople(RadarSettings settings)
@@ -273,15 +440,24 @@ namespace Kingdoms.Bot.Modules
                     return ACTION_ATTACK_PARISH;
             }
 
-            // Scouts: check troop composition, not attackType (scouts use attackType 1)
+            // Scouts: scout-only armies
             if (army.numScouts > 0 && army.numPeasants == 0 && army.numArchers == 0 &&
                 army.numPikemen == 0 && army.numSwordsmen == 0 && army.numCatapults == 0)
                 return ACTION_SCOUT;
 
-            // Captains: check troop composition or attackType 18
+            // Captains
             if (army.numCaptains > 0 || army.attackType == 18)
                 return ACTION_CAPTAIN;
 
+            // Foraging
+            if (army.attackType == 9)
+                return ACTION_FORAGING;
+
+            // Reinforcements
+            if (army.attackType == 13)
+                return ACTION_REINFORCEMENT;
+
+            // Granular attack types
             switch (army.attackType)
             {
                 case ATTACK_TYPE_CAPTURE:
@@ -327,7 +503,7 @@ namespace Kingdoms.Bot.Modules
         }
 
         // =================================================================
-        // Auto-interdict — mirrors proven VillageSelfID logic
+        // Auto-interdict
         // =================================================================
 
         private void TryAutoInterdict(int villageId, RadarSettings settings)
@@ -440,7 +616,6 @@ namespace Kingdoms.Bot.Modules
             }
         }
 
-        // Mirrors proven MakeMonks logic from RadarService
         private int MakeMonks(int villageId, int numberOfMonks, VillageMap village)
         {
             try
@@ -486,7 +661,6 @@ namespace Kingdoms.Bot.Modules
                 if (numberOfMonks <= 0) return 0;
 
                 LogInfo("MakeMonks: recruiting " + numberOfMonks + " monk(s) at village " + villageId);
-                // makePeople(4) = 1 monk, makePeople(1000+N) = N monks
                 if (numberOfMonks == 1)
                     village.makePeople(4);
                 else
@@ -524,13 +698,16 @@ namespace Kingdoms.Bot.Modules
                     GameEngine.Instance.World.setFaithPointsData(
                         returnData.currentFaithPointsLevel, returnData.currentFaithPointsRate);
 
-                    // Auto re-recruit monks after interdict, matching proven code
+                    // Auto re-recruit monks after interdict
                     if (Engine != null && Engine.Settings != null &&
                         Engine.Settings.Radar.AutoRecruitMonks)
                     {
-                        int monkLimit = (int)GameEngine.Instance.World.UserResearchData.Research_Ordination;
-                        int monksUsed = returnData.people != null ? returnData.people.Count : 0;
-                        int toRecruit = monkLimit - monksUsed;
+                        int monkLimit = ResearchData.ordinationResearchMonkLevels[
+                            (int)GameEngine.Instance.World.UserResearchData.Research_Ordination];
+                        int athome = 0;
+                        int totalMonks = GameEngine.Instance.World.countVillagePeople(
+                            returnData.targetVillageID, 4, ref athome);
+                        int toRecruit = monkLimit - totalMonks;
                         if (toRecruit > 0)
                         {
                             VillageMap village = GameEngine.Instance.getVillage(returnData.targetVillageID);
@@ -644,7 +821,23 @@ namespace Kingdoms.Bot.Modules
         {
             _knownArmyIds.Clear();
             _knownPersonIds.Clear();
+            _incomingAttackTargets.Clear();
             _villagesSentInterdict.Clear();
+            _pendingLookups.Clear();
+        }
+
+        private void NotifyCastleRepairModule(int villageId)
+        {
+            if (Engine == null) return;
+            foreach (IBotModule module in Engine.Modules)
+            {
+                CastleRepairModule crModule = module as CastleRepairModule;
+                if (crModule != null && crModule.Enabled)
+                {
+                    crModule.NotifyAttackLanded(villageId);
+                    break;
+                }
+            }
         }
     }
 }
