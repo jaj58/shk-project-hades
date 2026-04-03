@@ -123,6 +123,14 @@ namespace Kingdoms.Bot.UI
             this._vaMinTroopsInput = new System.Windows.Forms.NumericUpDown();
             this._vaRefreshBtn = new System.Windows.Forms.Button();
             this._vaSeparator = new System.Windows.Forms.Panel();
+            this._vaColHeader = new System.Windows.Forms.Panel();
+            this._vaColTgt = new System.Windows.Forms.Label();
+            this._vaColPri = new System.Windows.Forms.Label();
+            this._vaColPeasants = new System.Windows.Forms.Label();
+            this._vaColArchers = new System.Windows.Forms.Label();
+            this._vaColPikemen = new System.Windows.Forms.Label();
+            this._vaColSwordsmen = new System.Windows.Forms.Label();
+            this._vaColCatapults = new System.Windows.Forms.Label();
             this._vaVassalListPanel = new System.Windows.Forms.Panel();
             // Castle Repair tab controls
             this._crSettingsPanel = new System.Windows.Forms.Panel();
@@ -151,6 +159,7 @@ namespace Kingdoms.Bot.UI
             this._crPage.SuspendLayout();
             this._rcSubTabs.SuspendLayout();
             this._rcSettingsPanel.SuspendLayout();
+            this._vaColHeader.SuspendLayout();
             this._crSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._vsIntervalInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._vsDelayInput)).BeginInit();
@@ -615,7 +624,7 @@ namespace Kingdoms.Bot.UI
             this._vsColHeader.BackColor = System.Drawing.Color.FromArgb(30, 32, 40);
             this._vsColHeader.Controls.Add(this._vsHdrSync);
             this._vsColHeader.Controls.Add(this._vsHdrName);
-                this._vsColHeader.Controls.Add(this._vsHdrType);
+            this._vsColHeader.Controls.Add(this._vsHdrType);
             this._vsColHeader.Controls.Add(this._vsHdrId);
             this._vsColHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this._vsColHeader.Location = new System.Drawing.Point(0, 127);
@@ -1172,6 +1181,7 @@ namespace Kingdoms.Bot.UI
             // 
             this._rcVassalsTab.BackColor = System.Drawing.Color.FromArgb(24, 24, 32);
             this._rcVassalsTab.Controls.Add(this._vaVassalListPanel);
+            this._rcVassalsTab.Controls.Add(this._vaColHeader);
             this._rcVassalsTab.Controls.Add(this._vaSeparator);
             this._rcVassalsTab.Controls.Add(this._vaSettingsPanel);
             this._rcVassalsTab.Location = new System.Drawing.Point(4, 22);
@@ -1241,14 +1251,101 @@ namespace Kingdoms.Bot.UI
             this._vaSeparator.Size = new System.Drawing.Size(804, 1);
             this._vaSeparator.TabIndex = 1;
             // 
+            // _vaColHeader
+            // 
+            this._vaColHeader.BackColor = System.Drawing.Color.FromArgb(30, 32, 40);
+            this._vaColHeader.Controls.Add(this._vaColTgt);
+            this._vaColHeader.Controls.Add(this._vaColPri);
+            this._vaColHeader.Controls.Add(this._vaColPeasants);
+            this._vaColHeader.Controls.Add(this._vaColArchers);
+            this._vaColHeader.Controls.Add(this._vaColPikemen);
+            this._vaColHeader.Controls.Add(this._vaColSwordsmen);
+            this._vaColHeader.Controls.Add(this._vaColCatapults);
+            this._vaColHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this._vaColHeader.Location = new System.Drawing.Point(0, 37);
+            this._vaColHeader.Name = "_vaColHeader";
+            this._vaColHeader.Size = new System.Drawing.Size(804, 24);
+            this._vaColHeader.TabIndex = 2;
+            // 
+            // _vaColTgt
+            // 
+            this._vaColTgt.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._vaColTgt.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
+            this._vaColTgt.Location = new System.Drawing.Point(170, 5);
+            this._vaColTgt.Name = "_vaColTgt";
+            this._vaColTgt.AutoSize = true;
+            this._vaColTgt.TabIndex = 0;
+            this._vaColTgt.Text = "Tgt/Pri";
+            // 
+            // _vaColPri
+            // 
+            this._vaColPri.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._vaColPri.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
+            this._vaColPri.Location = new System.Drawing.Point(170, 5);
+            this._vaColPri.Name = "_vaColPri";
+            this._vaColPri.Size = new System.Drawing.Size(0, 0);
+            this._vaColPri.TabIndex = 1;
+            this._vaColPri.Text = "";
+            this._vaColPri.Visible = false;
+            // 
+            // _vaColPeasants
+            // 
+            this._vaColPeasants.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._vaColPeasants.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
+            this._vaColPeasants.Location = new System.Drawing.Point(200, 5);
+            this._vaColPeasants.Name = "_vaColPeasants";
+            this._vaColPeasants.Size = new System.Drawing.Size(60, 14);
+            this._vaColPeasants.TabIndex = 2;
+            this._vaColPeasants.Text = "Peasants";
+            // 
+            // _vaColArchers
+            // 
+            this._vaColArchers.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._vaColArchers.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
+            this._vaColArchers.Location = new System.Drawing.Point(320, 5);
+            this._vaColArchers.Name = "_vaColArchers";
+            this._vaColArchers.Size = new System.Drawing.Size(60, 14);
+            this._vaColArchers.TabIndex = 3;
+            this._vaColArchers.Text = "Archers";
+            // 
+            // _vaColPikemen
+            // 
+            this._vaColPikemen.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._vaColPikemen.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
+            this._vaColPikemen.Location = new System.Drawing.Point(440, 5);
+            this._vaColPikemen.Name = "_vaColPikemen";
+            this._vaColPikemen.Size = new System.Drawing.Size(60, 14);
+            this._vaColPikemen.TabIndex = 4;
+            this._vaColPikemen.Text = "Pikemen";
+            // 
+            // _vaColSwordsmen
+            // 
+            this._vaColSwordsmen.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._vaColSwordsmen.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
+            this._vaColSwordsmen.Location = new System.Drawing.Point(560, 5);
+            this._vaColSwordsmen.Name = "_vaColSwordsmen";
+            this._vaColSwordsmen.Size = new System.Drawing.Size(80, 14);
+            this._vaColSwordsmen.TabIndex = 5;
+            this._vaColSwordsmen.Text = "Swordsmen";
+            // 
+            // _vaColCatapults
+            // 
+            this._vaColCatapults.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._vaColCatapults.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
+            this._vaColCatapults.Location = new System.Drawing.Point(680, 5);
+            this._vaColCatapults.Name = "_vaColCatapults";
+            this._vaColCatapults.Size = new System.Drawing.Size(80, 14);
+            this._vaColCatapults.TabIndex = 6;
+            this._vaColCatapults.Text = "Catapults";
+            // 
             // _vaVassalListPanel
             // 
             this._vaVassalListPanel.AutoScroll = true;
             this._vaVassalListPanel.BackColor = System.Drawing.Color.FromArgb(24, 24, 32);
             this._vaVassalListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._vaVassalListPanel.Location = new System.Drawing.Point(0, 37);
+            this._vaVassalListPanel.Location = new System.Drawing.Point(0, 61);
             this._vaVassalListPanel.Name = "_vaVassalListPanel";
-            this._vaVassalListPanel.Size = new System.Drawing.Size(804, 188);
+            this._vaVassalListPanel.Size = new System.Drawing.Size(804, 164);
             this._vaVassalListPanel.TabIndex = 2;
             // 
             // _recruitingPage
@@ -1472,11 +1569,15 @@ namespace Kingdoms.Bot.UI
             this._rcSubTabs.ResumeLayout(false);
             this._rcSettingsPanel.ResumeLayout(false);
             this._rcSettingsPanel.PerformLayout();
+            this._vaColHeader.ResumeLayout(false);
+            this._vaColHeader.PerformLayout();
             this._crSettingsPanel.ResumeLayout(false);
             this._crSettingsPanel.PerformLayout();
             this._rcVassalsTab.ResumeLayout(false);
             this._vaSettingsPanel.ResumeLayout(false);
             this._vaSettingsPanel.PerformLayout();
+            this._vaColHeader.ResumeLayout(false);
+            this._vaColHeader.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._vsIntervalInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._vsDelayInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._rdScanIntervalInput)).EndInit();
@@ -1583,6 +1684,14 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _vaMinTroopsInput;
         private System.Windows.Forms.Button _vaRefreshBtn;
         private System.Windows.Forms.Panel _vaSeparator;
+        private System.Windows.Forms.Panel _vaColHeader;
+        private System.Windows.Forms.Label _vaColTgt;
+        private System.Windows.Forms.Label _vaColPri;
+        private System.Windows.Forms.Label _vaColPeasants;
+        private System.Windows.Forms.Label _vaColArchers;
+        private System.Windows.Forms.Label _vaColPikemen;
+        private System.Windows.Forms.Label _vaColSwordsmen;
+        private System.Windows.Forms.Label _vaColCatapults;
         private System.Windows.Forms.Panel _vaVassalListPanel;
         // Castle Repair tab controls
         private System.Windows.Forms.Panel _crSettingsPanel;
