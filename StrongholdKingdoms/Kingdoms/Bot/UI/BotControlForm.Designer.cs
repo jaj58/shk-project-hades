@@ -1271,11 +1271,11 @@ namespace Kingdoms.Bot.UI
             // 
             this._vaColTgt.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._vaColTgt.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
-            this._vaColTgt.Location = new System.Drawing.Point(170, 5);
+            this._vaColTgt.Location = new System.Drawing.Point(8, 5);
             this._vaColTgt.Name = "_vaColTgt";
             this._vaColTgt.AutoSize = true;
             this._vaColTgt.TabIndex = 0;
-            this._vaColTgt.Text = "Tgt/Pri";
+            this._vaColTgt.Text = "Vassal";
             // 
             // _vaColPri
             // 
@@ -1294,49 +1294,49 @@ namespace Kingdoms.Bot.UI
             this._vaColPeasants.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
             this._vaColPeasants.Location = new System.Drawing.Point(200, 5);
             this._vaColPeasants.Name = "_vaColPeasants";
-            this._vaColPeasants.Size = new System.Drawing.Size(60, 14);
+            this._vaColPeasants.AutoSize = true;
             this._vaColPeasants.TabIndex = 2;
-            this._vaColPeasants.Text = "Peasants";
+            this._vaColPeasants.Text = "Peasants  T / P";
             // 
             // _vaColArchers
             // 
             this._vaColArchers.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._vaColArchers.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
-            this._vaColArchers.Location = new System.Drawing.Point(320, 5);
+            this._vaColArchers.Location = new System.Drawing.Point(318, 5);
             this._vaColArchers.Name = "_vaColArchers";
-            this._vaColArchers.Size = new System.Drawing.Size(60, 14);
+            this._vaColArchers.AutoSize = true;
             this._vaColArchers.TabIndex = 3;
-            this._vaColArchers.Text = "Archers";
+            this._vaColArchers.Text = "Archers  T / P";
             // 
             // _vaColPikemen
             // 
             this._vaColPikemen.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._vaColPikemen.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
-            this._vaColPikemen.Location = new System.Drawing.Point(440, 5);
+            this._vaColPikemen.Location = new System.Drawing.Point(436, 5);
             this._vaColPikemen.Name = "_vaColPikemen";
-            this._vaColPikemen.Size = new System.Drawing.Size(60, 14);
+            this._vaColPikemen.AutoSize = true;
             this._vaColPikemen.TabIndex = 4;
-            this._vaColPikemen.Text = "Pikemen";
+            this._vaColPikemen.Text = "Pikemen  T / P";
             // 
             // _vaColSwordsmen
             // 
             this._vaColSwordsmen.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._vaColSwordsmen.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
-            this._vaColSwordsmen.Location = new System.Drawing.Point(560, 5);
+            this._vaColSwordsmen.Location = new System.Drawing.Point(554, 5);
             this._vaColSwordsmen.Name = "_vaColSwordsmen";
-            this._vaColSwordsmen.Size = new System.Drawing.Size(80, 14);
+            this._vaColSwordsmen.AutoSize = true;
             this._vaColSwordsmen.TabIndex = 5;
-            this._vaColSwordsmen.Text = "Swordsmen";
+            this._vaColSwordsmen.Text = "Swords  T / P";
             // 
             // _vaColCatapults
             // 
             this._vaColCatapults.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._vaColCatapults.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
-            this._vaColCatapults.Location = new System.Drawing.Point(680, 5);
+            this._vaColCatapults.Location = new System.Drawing.Point(672, 5);
             this._vaColCatapults.Name = "_vaColCatapults";
-            this._vaColCatapults.Size = new System.Drawing.Size(80, 14);
+            this._vaColCatapults.AutoSize = true;
             this._vaColCatapults.TabIndex = 6;
-            this._vaColCatapults.Text = "Catapults";
+            this._vaColCatapults.Text = "Catapults  T / P";
             // 
             // _vaVassalListPanel
             // 
