@@ -117,6 +117,13 @@ namespace Kingdoms.Bot.UI
             this._rcColHeaderCapitals = new System.Windows.Forms.Panel();
             this._rcVillageListPanel = new System.Windows.Forms.Panel();
             this._rcCapitalsListPanel = new System.Windows.Forms.Panel();
+            // Vassals sub-tab controls
+            this._vaSettingsPanel = new System.Windows.Forms.Panel();
+            this._vaMinTroopsLabel = new System.Windows.Forms.Label();
+            this._vaMinTroopsInput = new System.Windows.Forms.NumericUpDown();
+            this._vaRefreshBtn = new System.Windows.Forms.Button();
+            this._vaSeparator = new System.Windows.Forms.Panel();
+            this._vaVassalListPanel = new System.Windows.Forms.Panel();
             // Castle Repair tab controls
             this._crSettingsPanel = new System.Windows.Forms.Panel();
             this._crEnabledCheck = new System.Windows.Forms.CheckBox();
@@ -154,6 +161,7 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._rcDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._crIntervalInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._crDelayInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._vaMinTroopsInput)).BeginInit();
             this.ResumeLayout(false);
             // 
             // _footerPanel
@@ -1091,6 +1099,7 @@ namespace Kingdoms.Bot.UI
             // 
             this._rcSubTabs.Controls.Add(this._rcVillagesTab);
             this._rcSubTabs.Controls.Add(this._rcCapitalsTab);
+            this._rcSubTabs.Controls.Add(this._rcVassalsTab);
             this._rcSubTabs.Dock = System.Windows.Forms.DockStyle.Fill;
             this._rcSubTabs.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._rcSubTabs.Location = new System.Drawing.Point(0, 101);
@@ -1158,6 +1167,89 @@ namespace Kingdoms.Bot.UI
             this._rcCapitalsListPanel.Name = "_rcCapitalsListPanel";
             this._rcCapitalsListPanel.Size = new System.Drawing.Size(804, 201);
             this._rcCapitalsListPanel.TabIndex = 1;
+            // 
+            // _rcVassalsTab
+            // 
+            this._rcVassalsTab.BackColor = System.Drawing.Color.FromArgb(24, 24, 32);
+            this._rcVassalsTab.Controls.Add(this._vaVassalListPanel);
+            this._rcVassalsTab.Controls.Add(this._vaSeparator);
+            this._rcVassalsTab.Controls.Add(this._vaSettingsPanel);
+            this._rcVassalsTab.Location = new System.Drawing.Point(4, 22);
+            this._rcVassalsTab.Name = "_rcVassalsTab";
+            this._rcVassalsTab.Size = new System.Drawing.Size(804, 225);
+            this._rcVassalsTab.TabIndex = 2;
+            this._rcVassalsTab.Text = "Vassals";
+            // 
+            // _vaSettingsPanel
+            // 
+            this._vaSettingsPanel.BackColor = System.Drawing.Color.FromArgb(40, 42, 54);
+            this._vaSettingsPanel.Controls.Add(this._vaRefreshBtn);
+            this._vaSettingsPanel.Controls.Add(this._vaMinTroopsInput);
+            this._vaSettingsPanel.Controls.Add(this._vaMinTroopsLabel);
+            this._vaSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._vaSettingsPanel.Location = new System.Drawing.Point(0, 0);
+            this._vaSettingsPanel.Name = "_vaSettingsPanel";
+            this._vaSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 6, 16, 6);
+            this._vaSettingsPanel.Size = new System.Drawing.Size(804, 36);
+            this._vaSettingsPanel.TabIndex = 0;
+            // 
+            // _vaMinTroopsLabel
+            // 
+            this._vaMinTroopsLabel.AutoSize = true;
+            this._vaMinTroopsLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._vaMinTroopsLabel.ForeColor = System.Drawing.Color.FromArgb(160, 165, 180);
+            this._vaMinTroopsLabel.Location = new System.Drawing.Point(16, 9);
+            this._vaMinTroopsLabel.Name = "_vaMinTroopsLabel";
+            this._vaMinTroopsLabel.Size = new System.Drawing.Size(104, 15);
+            this._vaMinTroopsLabel.TabIndex = 0;
+            this._vaMinTroopsLabel.Text = "Min. troops to send:";
+            // 
+            // _vaMinTroopsInput
+            // 
+            this._vaMinTroopsInput.BackColor = System.Drawing.Color.FromArgb(50, 52, 64);
+            this._vaMinTroopsInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._vaMinTroopsInput.ForeColor = System.Drawing.Color.FromArgb(230, 230, 240);
+            this._vaMinTroopsInput.Location = new System.Drawing.Point(140, 6);
+            this._vaMinTroopsInput.Maximum = new decimal(10000);
+            this._vaMinTroopsInput.Minimum = new decimal(0);
+            this._vaMinTroopsInput.Name = "_vaMinTroopsInput";
+            this._vaMinTroopsInput.Size = new System.Drawing.Size(60, 22);
+            this._vaMinTroopsInput.TabIndex = 1;
+            this._vaMinTroopsInput.Value = new decimal(100);
+            // 
+            // _vaRefreshBtn
+            // 
+            this._vaRefreshBtn.BackColor = System.Drawing.Color.FromArgb(80, 160, 255);
+            this._vaRefreshBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._vaRefreshBtn.FlatAppearance.BorderSize = 0;
+            this._vaRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._vaRefreshBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._vaRefreshBtn.ForeColor = System.Drawing.Color.White;
+            this._vaRefreshBtn.Location = new System.Drawing.Point(220, 5);
+            this._vaRefreshBtn.Name = "_vaRefreshBtn";
+            this._vaRefreshBtn.Size = new System.Drawing.Size(100, 24);
+            this._vaRefreshBtn.TabIndex = 2;
+            this._vaRefreshBtn.Text = "Refresh List";
+            this._vaRefreshBtn.UseVisualStyleBackColor = false;
+            // 
+            // _vaSeparator
+            // 
+            this._vaSeparator.BackColor = System.Drawing.Color.FromArgb(55, 58, 72);
+            this._vaSeparator.Dock = System.Windows.Forms.DockStyle.Top;
+            this._vaSeparator.Location = new System.Drawing.Point(0, 36);
+            this._vaSeparator.Name = "_vaSeparator";
+            this._vaSeparator.Size = new System.Drawing.Size(804, 1);
+            this._vaSeparator.TabIndex = 1;
+            // 
+            // _vaVassalListPanel
+            // 
+            this._vaVassalListPanel.AutoScroll = true;
+            this._vaVassalListPanel.BackColor = System.Drawing.Color.FromArgb(24, 24, 32);
+            this._vaVassalListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._vaVassalListPanel.Location = new System.Drawing.Point(0, 37);
+            this._vaVassalListPanel.Name = "_vaVassalListPanel";
+            this._vaVassalListPanel.Size = new System.Drawing.Size(804, 188);
+            this._vaVassalListPanel.TabIndex = 2;
             // 
             // _recruitingPage
             // 
@@ -1382,6 +1474,9 @@ namespace Kingdoms.Bot.UI
             this._rcSettingsPanel.PerformLayout();
             this._crSettingsPanel.ResumeLayout(false);
             this._crSettingsPanel.PerformLayout();
+            this._rcVassalsTab.ResumeLayout(false);
+            this._vaSettingsPanel.ResumeLayout(false);
+            this._vaSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._vsIntervalInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._vsDelayInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._rdScanIntervalInput)).EndInit();
@@ -1391,6 +1486,7 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._rcDelayInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._crIntervalInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._crDelayInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._vaMinTroopsInput)).EndInit();
             this.ResumeLayout(false);
         }
 
@@ -1481,6 +1577,13 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Panel _rcColHeaderCapitals;
         private System.Windows.Forms.Panel _rcVillageListPanel;
         private System.Windows.Forms.Panel _rcCapitalsListPanel;
+        // Vassals sub-tab controls
+        private System.Windows.Forms.Panel _vaSettingsPanel;
+        private System.Windows.Forms.Label _vaMinTroopsLabel;
+        private System.Windows.Forms.NumericUpDown _vaMinTroopsInput;
+        private System.Windows.Forms.Button _vaRefreshBtn;
+        private System.Windows.Forms.Panel _vaSeparator;
+        private System.Windows.Forms.Panel _vaVassalListPanel;
         // Castle Repair tab controls
         private System.Windows.Forms.Panel _crSettingsPanel;
         private System.Windows.Forms.CheckBox _crEnabledCheck;

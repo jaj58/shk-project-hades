@@ -804,14 +804,14 @@ namespace Kingdoms
           {
             if (!flag)
             {
-              str += (string) (object) ch;
+              str += ch.ToString();
               flag = true;
             }
             else
               break;
           }
           else
-            str += (string) (object) ch;
+            str += ch;
         }
         buildTime = str;
       }

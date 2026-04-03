@@ -126,6 +126,7 @@ namespace Kingdoms.Bot
         public int DelayBetweenVillagesMs = 3000;
         public List<int> ExcludedVillageIds = new List<int>();
         public List<VillageRecruitSettings> Villages = new List<VillageRecruitSettings>();
+        public VassalRecruitingSettings VassalRecruiting = new VassalRecruitingSettings();
 
         public bool IsVillageEnabled(int villageId)
         {
@@ -227,10 +228,87 @@ namespace Kingdoms.Bot
     public class VillageCastleRepairSettings
     {
         public int VillageId;
-        public bool RepairInfrastructure;
-        public bool RepairTroops;
+        public bool RepairInfrastructure = true;
+        public bool RepairTroops = true;
         public string LayoutSource = "Local";
         public string InfrastructurePresetName = "";
         public string TroopPresetName = "";
+    }
+
+    [Serializable]
+    public class VassalRecruitingSettings
+    {
+        public int MinTroopsToSend = 1;
+        public List<VassalVillageRecruitSettings> Vassals = new List<VassalVillageRecruitSettings>();
+
+        public VassalVillageRecruitSettings GetVassalSettings(int vassalVillageId)
+        {
+            foreach (VassalVillageRecruitSettings v in Vassals)
+            {
+                if (v.VassalVillageId == vassalVillageId) return v;
+            }
+            VassalVillageRecruitSettings newV = new VassalVillageRecruitSettings();
+            newV.VassalVillageId = vassalVillageId;
+            newV.InitDefaults();
+            Vassals.Add(newV);
+            return newV;
+        }
+
+        public bool IsVassalEnabled(int vassalVillageId)
+        {
+            foreach (VassalVillageRecruitSettings v in Vassals)
+            {
+                if (v.VassalVillageId == vassalVillageId) return v.Enabled;
+            }
+            return false;
+        }
+    }
+
+    [Serializable]
+    public class VassalVillageRecruitSettings
+    {
+        public int VassalVillageId;
+        public bool Enabled;
+        public List<VassalUnitRecruitEntry> Units = new List<VassalUnitRecruitEntry>();
+
+        public static readonly string[] VassalUnitKeys = new string[]
+        {
+            "Peasants", "Archers", "Pikemen", "Swordsmen", "Catapults"
+        };
+
+        public void InitDefaults()
+        {
+            if (Units.Count > 0) return;
+            for (int i = 0; i < VassalUnitKeys.Length; i++)
+            {
+                VassalUnitRecruitEntry entry = new VassalUnitRecruitEntry();
+                entry.UnitKey = VassalUnitKeys[i];
+                entry.TargetCount = 0;
+                entry.Priority = i + 1;
+                Units.Add(entry);
+            }
+        }
+
+        public VassalUnitRecruitEntry GetEntry(string unitKey)
+        {
+            foreach (VassalUnitRecruitEntry e in Units)
+            {
+                if (e.UnitKey == unitKey) return e;
+            }
+            VassalUnitRecruitEntry newE = new VassalUnitRecruitEntry();
+            newE.UnitKey = unitKey;
+            newE.TargetCount = 0;
+            newE.Priority = Units.Count + 1;
+            Units.Add(newE);
+            return newE;
+        }
+    }
+
+    [Serializable]
+    public class VassalUnitRecruitEntry
+    {
+        public string UnitKey = "";
+        public int TargetCount;
+        public int Priority = 1;
     }
 }

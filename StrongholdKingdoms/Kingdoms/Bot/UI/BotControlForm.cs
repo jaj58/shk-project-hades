@@ -37,6 +37,9 @@ namespace Kingdoms.Bot.UI
         private List<CastleRepairVillageRow> _crVillageRows = new List<CastleRepairVillageRow>();
         private int _crLastPresetCount = -1;
 
+        // Vassals tab runtime state
+        private List<VassalVillagePanel> _vaVassalPanels = new List<VassalVillagePanel>();
+
         public static void ShowInstance()
         {
             if (_instance == null || _instance.IsDisposed)
@@ -69,6 +72,7 @@ namespace Kingdoms.Bot.UI
                 WireUpRadarTab();
                 WireUpRecruitingTab();
                 WireUpCastleRepairTab();
+                WireUpVassalsTab();
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -78,6 +82,7 @@ namespace Kingdoms.Bot.UI
                 RdBuildActionRows();
                 RcLoadFromSettings();
                 CrLoadFromSettings();
+                VaLoadFromSettings();
             }
         }
 
@@ -971,6 +976,153 @@ namespace Kingdoms.Bot.UI
         }
 
         // =====================================================================
+        // Vassals tab runtime
+        // =====================================================================
+
+        private void WireUpVassalsTab()
+        {
+            _vaRefreshBtn.Click += delegate { VaRequestVassalLoad(); };
+            _vaMinTroopsInput.ValueChanged += delegate { VaPushMinTroops(); };
+        }
+
+        private void VaRequestVassalLoad()
+        {
+            if (GameEngine.Instance == null)
+                return;
+
+            _vaRefreshBtn.Enabled = false;
+            _vaRefreshBtn.Text = "Loading...";
+
+            RemoteServices.Instance.set_VassalInfo_UserCallBack(
+                new RemoteServices.VassalInfo_UserCallBack(VaVassalInfoCallback));
+            RemoteServices.Instance.VassalInfo(-1);
+        }
+
+        private void VaVassalInfoCallback(VassalInfo_ReturnType returnData)
+        {
+            if (returnData.Success && GameEngine.Instance != null && GameEngine.Instance.vassalsManager != null)
+            {
+                GameEngine.Instance.vassalsManager.importVassals(returnData.liegeLordInfo, returnData.vassals);
+                GameEngine.Instance.vassalsManager.importVassalRequests(returnData.requestsYouveMade, returnData.requestsOfYou);
+                GameEngine.Instance.World.updateUserVassals();
+            }
+
+            if (_vaRefreshBtn.InvokeRequired)
+            {
+                _vaRefreshBtn.BeginInvoke(new MethodInvoker(delegate
+                {
+                    _vaRefreshBtn.Enabled = true;
+                    _vaRefreshBtn.Text = "Refresh List";
+                    VaBuildVassalList();
+                }));
+            }
+            else
+            {
+                _vaRefreshBtn.Enabled = true;
+                _vaRefreshBtn.Text = "Refresh List";
+                VaBuildVassalList();
+            }
+        }
+
+        private void VaPushMinTroops()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            BotEngine.Instance.Settings.Recruiting.VassalRecruiting.MinTroopsToSend = (int)_vaMinTroopsInput.Value;
+        }
+
+        private void VaLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            VassalRecruitingSettings s = BotEngine.Instance.Settings.Recruiting.VassalRecruiting;
+            _vaMinTroopsInput.Value = Math.Max(_vaMinTroopsInput.Minimum,
+                Math.Min(_vaMinTroopsInput.Maximum, s.MinTroopsToSend));
+
+            VaRequestVassalLoad();
+        }
+
+        private void VaWriteToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            VassalRecruitingSettings s = BotEngine.Instance.Settings.Recruiting.VassalRecruiting;
+            s.MinTroopsToSend = (int)_vaMinTroopsInput.Value;
+
+            foreach (VassalVillagePanel panel in _vaVassalPanels)
+                panel.WriteToSettings(s);
+        }
+
+        private void VaBuildVassalList()
+        {
+            _vaVassalListPanel.SuspendLayout();
+
+            foreach (VassalVillagePanel panel in _vaVassalPanels)
+            {
+                _vaVassalListPanel.Controls.Remove(panel);
+                panel.Dispose();
+            }
+            _vaVassalPanels.Clear();
+
+            if (GameEngine.Instance == null || GameEngine.Instance.vassalsManager == null)
+            {
+                _vaVassalListPanel.ResumeLayout(false);
+                _vaVassalListPanel.PerformLayout();
+                return;
+            }
+
+            VassalRecruitingSettings settings = (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+                ? BotEngine.Instance.Settings.Recruiting.VassalRecruiting
+                : null;
+
+            CommonTypes.VassalInfo[] vassals = GameEngine.Instance.vassalsManager.GetVassals();
+            if (vassals == null || vassals.Length == 0)
+            {
+                _vaVassalListPanel.ResumeLayout(false);
+                _vaVassalListPanel.PerformLayout();
+                return;
+            }
+
+            List<VassalVillagePanel> panels = new List<VassalVillagePanel>();
+            for (int i = 0; i < vassals.Length; i++)
+            {
+                CommonTypes.VassalInfo vi = vassals[i];
+                int vid = vi.villageID;
+                string name = VaGetVassalName(vid, vi.vassalPlayerName);
+
+                VassalVillageRecruitSettings vs = settings != null
+                    ? settings.GetVassalSettings(vid)
+                    : null;
+
+                VassalVillagePanel panel = new VassalVillagePanel(vid, name, vs, i % 2 != 0);
+                panel.Dock = DockStyle.Top;
+                panels.Add(panel);
+            }
+
+            for (int i = panels.Count - 1; i >= 0; i--)
+                _vaVassalListPanel.Controls.Add(panels[i]);
+
+            _vaVassalPanels = panels;
+
+            _vaVassalListPanel.ResumeLayout(false);
+            _vaVassalListPanel.PerformLayout();
+        }
+
+        private static string VaGetVassalName(int villageId, string playerName)
+        {
+            string villageName = "Village " + villageId;
+            if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                villageName = GameEngine.Instance.World.getVillageName(villageId);
+
+            if (!string.IsNullOrEmpty(playerName))
+                return villageName + " (" + playerName + ")";
+            return villageName;
+        }
+
+        // =====================================================================
         // Log
         // =====================================================================
 
@@ -1079,6 +1231,7 @@ namespace Kingdoms.Bot.UI
             else if (_tabControl.SelectedTab == _recruitingPage)
             {
                 RcWriteToSettings();
+                VaWriteToSettings();
                 tabName = "Recruiting";
             }
             else if (_tabControl.SelectedTab == _crPage)
@@ -1111,6 +1264,7 @@ namespace Kingdoms.Bot.UI
             else if (_tabControl.SelectedTab == _recruitingPage)
             {
                 RcLoadFromSettings();
+                VaLoadFromSettings();
                 tabName = "Recruiting";
             }
             else if (_tabControl.SelectedTab == _crPage)

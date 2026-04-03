@@ -180,10 +180,14 @@ namespace Kingdoms
 
     public void Reset()
     {
-      this.liegeLordInfo.villageID = -1;
-      this.cachedVassalInfo = (VassalInfo[]) null;
-      this.cachedRequestsSentByYou = (VassalRequestInfo[]) null;
-      this.cachedRequestsSentToYou = (VassalRequestInfo[]) null;
+      if (this.liegeLordInfo != null)
+        this.liegeLordInfo.villageID = -1;
+      else
+        this.liegeLordInfo = new VassalInfo() { villageID = -1 };
+        
+      this.cachedVassalInfo = null;
+      this.cachedRequestsSentByYou = null;
+      this.cachedRequestsSentToYou = null;
     }
 
     public delegate void VassalsUpdatedCallback();
