@@ -210,7 +210,7 @@ namespace Kingdoms.Bot.UI
             {
                 int wa = VsGetSortWeight(a);
                 int wb = VsGetSortWeight(b);
-                if (wa != wb) return wb.CompareTo(wa);
+                if (wa != wb) return wa.CompareTo(wb);
                 string na = VsGetVillageName(a);
                 string nb = VsGetVillageName(b);
                 return string.Compare(na, nb, StringComparison.OrdinalIgnoreCase);
@@ -791,10 +791,27 @@ namespace Kingdoms.Bot.UI
 
             CrBuildColumnHeaders();
 
+            // Wire Copy Settings button (defined in Designer)
+            _crCopySettingsBtn.Click += delegate { CrCopySettingsClick(); };
+
             _crRefreshTimer = new Timer();
             _crRefreshTimer.Interval = 2000;
             _crRefreshTimer.Tick += delegate { CrUpdateStatusDisplay(); };
             _crRefreshTimer.Start();
+        }
+
+        private void CrCopySettingsClick()
+        {
+            CrWriteToSettings();
+
+            CopyCastleRepairSettingsForm form = new CopyCastleRepairSettingsForm();
+            form.ShowDialog(this);
+
+            if (form.Copied)
+            {
+                CrLoadFromSettings();
+                CrPopulateVillageList();
+            }
         }
 
         private void CrBuildColumnHeaders()
@@ -957,7 +974,7 @@ namespace Kingdoms.Bot.UI
             {
                 int wa = CrGetSortWeight(a);
                 int wb = CrGetSortWeight(b);
-                if (wa != wb) return wb.CompareTo(wa);
+                if (wa != wb) return wa.CompareTo(wb);
                 string na = CrGetVillageName(a);
                 string nb = CrGetVillageName(b);
                 return string.Compare(na, nb, StringComparison.OrdinalIgnoreCase);

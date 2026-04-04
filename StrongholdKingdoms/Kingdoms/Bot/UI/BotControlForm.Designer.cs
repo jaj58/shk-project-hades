@@ -130,6 +130,7 @@ namespace Kingdoms.Bot.UI
             this._crSeparator = new System.Windows.Forms.Panel();
             this._crSettingsPanel = new System.Windows.Forms.Panel();
             this._crRefreshBtn = new System.Windows.Forms.Button();
+            this._crCopySettingsBtn = new System.Windows.Forms.Button();
             this._crRepairAllBtn = new System.Windows.Forms.Button();
             this._crRepairOnAttackCheck = new System.Windows.Forms.CheckBox();
             this._crDelayInput = new System.Windows.Forms.NumericUpDown();
@@ -152,8 +153,8 @@ namespace Kingdoms.Bot.UI
             this._trDeleteRouteBtn = new System.Windows.Forms.Button();
             this._trAddRouteBtn = new System.Windows.Forms.Button();
             this._trSettingsPanel = new System.Windows.Forms.Panel();
-            this._trIgnoreTransactionsCheck = new System.Windows.Forms.CheckBox();
             this._trPrioritiseMarketsCheck = new System.Windows.Forms.CheckBox();
+            this._trIgnoreTransactionsCheck = new System.Windows.Forms.CheckBox();
             this._trAutoHireLimitInput = new System.Windows.Forms.NumericUpDown();
             this._trAutoHireLimitLabel = new System.Windows.Forms.Label();
             this._trAutoHireCheck = new System.Windows.Forms.CheckBox();
@@ -229,10 +230,10 @@ namespace Kingdoms.Bot.UI
             this._footerPanel.Controls.Add(this._loadBtn);
             this._footerPanel.Controls.Add(this._saveBtn);
             this._footerPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this._footerPanel.Location = new System.Drawing.Point(0, 696);
+            this._footerPanel.Location = new System.Drawing.Point(0, 856);
             this._footerPanel.Name = "_footerPanel";
             this._footerPanel.Padding = new System.Windows.Forms.Padding(12, 0, 12, 0);
-            this._footerPanel.Size = new System.Drawing.Size(960, 44);
+            this._footerPanel.Size = new System.Drawing.Size(1150, 44);
             this._footerPanel.TabIndex = 0;
             // 
             // _versionLabel
@@ -241,7 +242,7 @@ namespace Kingdoms.Bot.UI
             this._versionLabel.AutoSize = true;
             this._versionLabel.Font = new System.Drawing.Font("Segoe UI", 8F);
             this._versionLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._versionLabel.Location = new System.Drawing.Point(764, 14);
+            this._versionLabel.Location = new System.Drawing.Point(954, 14);
             this._versionLabel.Name = "_versionLabel";
             this._versionLabel.Size = new System.Drawing.Size(36, 13);
             this._versionLabel.TabIndex = 3;
@@ -299,9 +300,9 @@ namespace Kingdoms.Bot.UI
             // 
             this._footerSep.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
             this._footerSep.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this._footerSep.Location = new System.Drawing.Point(0, 695);
+            this._footerSep.Location = new System.Drawing.Point(0, 855);
             this._footerSep.Name = "_footerSep";
-            this._footerSep.Size = new System.Drawing.Size(960, 1);
+            this._footerSep.Size = new System.Drawing.Size(1150, 1);
             this._footerSep.TabIndex = 1;
             // 
             // _headerPanel
@@ -313,7 +314,7 @@ namespace Kingdoms.Bot.UI
             this._headerPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._headerPanel.Location = new System.Drawing.Point(0, 0);
             this._headerPanel.Name = "_headerPanel";
-            this._headerPanel.Size = new System.Drawing.Size(960, 56);
+            this._headerPanel.Size = new System.Drawing.Size(1150, 56);
             this._headerPanel.TabIndex = 2;
             // 
             // _masterToggleBtn
@@ -325,7 +326,7 @@ namespace Kingdoms.Bot.UI
             this._masterToggleBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._masterToggleBtn.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._masterToggleBtn.ForeColor = System.Drawing.Color.White;
-            this._masterToggleBtn.Location = new System.Drawing.Point(674, 10);
+            this._masterToggleBtn.Location = new System.Drawing.Point(864, 10);
             this._masterToggleBtn.Name = "_masterToggleBtn";
             this._masterToggleBtn.Size = new System.Drawing.Size(130, 36);
             this._masterToggleBtn.TabIndex = 2;
@@ -361,7 +362,7 @@ namespace Kingdoms.Bot.UI
             this._headerSep.Dock = System.Windows.Forms.DockStyle.Top;
             this._headerSep.Location = new System.Drawing.Point(0, 56);
             this._headerSep.Name = "_headerSep";
-            this._headerSep.Size = new System.Drawing.Size(960, 1);
+            this._headerSep.Size = new System.Drawing.Size(1150, 1);
             this._headerSep.TabIndex = 3;
             // 
             // _mainSplit
@@ -381,8 +382,8 @@ namespace Kingdoms.Bot.UI
             // 
             this._mainSplit.Panel2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
             this._mainSplit.Panel2.Controls.Add(this._logPanel);
-            this._mainSplit.Size = new System.Drawing.Size(960, 638);
-            this._mainSplit.SplitterDistance = 420;
+            this._mainSplit.Size = new System.Drawing.Size(1150, 798);
+            this._mainSplit.SplitterDistance = 525;
             this._mainSplit.SplitterWidth = 3;
             this._mainSplit.TabIndex = 4;
             // 
@@ -398,7 +399,7 @@ namespace Kingdoms.Bot.UI
             this._tabControl.Location = new System.Drawing.Point(0, 0);
             this._tabControl.Name = "_tabControl";
             this._tabControl.SelectedIndex = 0;
-            this._tabControl.Size = new System.Drawing.Size(960, 420);
+            this._tabControl.Size = new System.Drawing.Size(1150, 525);
             this._tabControl.TabIndex = 0;
             // 
             // _villageSyncPage
@@ -411,7 +412,7 @@ namespace Kingdoms.Bot.UI
             this._villageSyncPage.Controls.Add(this._vsSettingsPanel);
             this._villageSyncPage.Location = new System.Drawing.Point(4, 24);
             this._villageSyncPage.Name = "_villageSyncPage";
-            this._villageSyncPage.Size = new System.Drawing.Size(952, 392);
+            this._villageSyncPage.Size = new System.Drawing.Size(1142, 497);
             this._villageSyncPage.TabIndex = 0;
             this._villageSyncPage.Text = "Village Sync";
             // 
@@ -422,7 +423,7 @@ namespace Kingdoms.Bot.UI
             this._vsVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._vsVillageListPanel.Location = new System.Drawing.Point(0, 149);
             this._vsVillageListPanel.Name = "_vsVillageListPanel";
-            this._vsVillageListPanel.Size = new System.Drawing.Size(952, 243);
+            this._vsVillageListPanel.Size = new System.Drawing.Size(1142, 348);
             this._vsVillageListPanel.TabIndex = 4;
             // 
             // _vsColHeader
@@ -436,7 +437,7 @@ namespace Kingdoms.Bot.UI
             this._vsColHeader.Location = new System.Drawing.Point(0, 127);
             this._vsColHeader.Name = "_vsColHeader";
             this._vsColHeader.Padding = new System.Windows.Forms.Padding(16, 0, 16, 0);
-            this._vsColHeader.Size = new System.Drawing.Size(952, 22);
+            this._vsColHeader.Size = new System.Drawing.Size(1142, 22);
             this._vsColHeader.TabIndex = 3;
             // 
             // _vsHdrSync
@@ -492,7 +493,7 @@ namespace Kingdoms.Bot.UI
             this._vsListHeader.Location = new System.Drawing.Point(0, 101);
             this._vsListHeader.Name = "_vsListHeader";
             this._vsListHeader.Padding = new System.Windows.Forms.Padding(16, 6, 0, 0);
-            this._vsListHeader.Size = new System.Drawing.Size(952, 26);
+            this._vsListHeader.Size = new System.Drawing.Size(1142, 26);
             this._vsListHeader.TabIndex = 2;
             this._vsListHeader.Text = "VILLAGES";
             // 
@@ -502,7 +503,7 @@ namespace Kingdoms.Bot.UI
             this._vsSeparator.Dock = System.Windows.Forms.DockStyle.Top;
             this._vsSeparator.Location = new System.Drawing.Point(0, 100);
             this._vsSeparator.Name = "_vsSeparator";
-            this._vsSeparator.Size = new System.Drawing.Size(952, 1);
+            this._vsSeparator.Size = new System.Drawing.Size(1142, 1);
             this._vsSeparator.TabIndex = 1;
             // 
             // _vsSettingsPanel
@@ -520,7 +521,7 @@ namespace Kingdoms.Bot.UI
             this._vsSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._vsSettingsPanel.Name = "_vsSettingsPanel";
             this._vsSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 12);
-            this._vsSettingsPanel.Size = new System.Drawing.Size(952, 100);
+            this._vsSettingsPanel.Size = new System.Drawing.Size(1142, 100);
             this._vsSettingsPanel.TabIndex = 0;
             // 
             // _vsButtonBar
@@ -737,7 +738,7 @@ namespace Kingdoms.Bot.UI
             this._radarPage.Controls.Add(this._rdSettingsPanel);
             this._radarPage.Location = new System.Drawing.Point(4, 24);
             this._radarPage.Name = "_radarPage";
-            this._radarPage.Size = new System.Drawing.Size(812, 352);
+            this._radarPage.Size = new System.Drawing.Size(952, 392);
             this._radarPage.TabIndex = 1;
             this._radarPage.Text = "Radar";
             // 
@@ -748,7 +749,7 @@ namespace Kingdoms.Bot.UI
             this._rdActionListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._rdActionListPanel.Location = new System.Drawing.Point(0, 175);
             this._rdActionListPanel.Name = "_rdActionListPanel";
-            this._rdActionListPanel.Size = new System.Drawing.Size(812, 177);
+            this._rdActionListPanel.Size = new System.Drawing.Size(952, 217);
             this._rdActionListPanel.TabIndex = 3;
             // 
             // _rdColHeader
@@ -762,7 +763,7 @@ namespace Kingdoms.Bot.UI
             this._rdColHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this._rdColHeader.Location = new System.Drawing.Point(0, 151);
             this._rdColHeader.Name = "_rdColHeader";
-            this._rdColHeader.Size = new System.Drawing.Size(812, 24);
+            this._rdColHeader.Size = new System.Drawing.Size(952, 24);
             this._rdColHeader.TabIndex = 2;
             // 
             // _rdColActionType
@@ -821,7 +822,7 @@ namespace Kingdoms.Bot.UI
             this._rdSeparator.Dock = System.Windows.Forms.DockStyle.Top;
             this._rdSeparator.Location = new System.Drawing.Point(0, 150);
             this._rdSeparator.Name = "_rdSeparator";
-            this._rdSeparator.Size = new System.Drawing.Size(812, 1);
+            this._rdSeparator.Size = new System.Drawing.Size(952, 1);
             this._rdSeparator.TabIndex = 1;
             // 
             // _rdSettingsPanel
@@ -844,7 +845,7 @@ namespace Kingdoms.Bot.UI
             this._rdSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._rdSettingsPanel.Name = "_rdSettingsPanel";
             this._rdSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._rdSettingsPanel.Size = new System.Drawing.Size(812, 150);
+            this._rdSettingsPanel.Size = new System.Drawing.Size(952, 150);
             this._rdSettingsPanel.TabIndex = 0;
             // 
             // _rdMinArmySizeInput
@@ -1039,7 +1040,7 @@ namespace Kingdoms.Bot.UI
             this._recruitingPage.Controls.Add(this._rcSettingsPanel);
             this._recruitingPage.Location = new System.Drawing.Point(4, 24);
             this._recruitingPage.Name = "_recruitingPage";
-            this._recruitingPage.Size = new System.Drawing.Size(812, 352);
+            this._recruitingPage.Size = new System.Drawing.Size(1142, 497);
             this._recruitingPage.TabIndex = 2;
             this._recruitingPage.Text = "Recruiting";
             // 
@@ -1053,7 +1054,7 @@ namespace Kingdoms.Bot.UI
             this._rcSubTabs.Location = new System.Drawing.Point(0, 101);
             this._rcSubTabs.Name = "_rcSubTabs";
             this._rcSubTabs.SelectedIndex = 0;
-            this._rcSubTabs.Size = new System.Drawing.Size(812, 251);
+            this._rcSubTabs.Size = new System.Drawing.Size(1142, 396);
             this._rcSubTabs.TabIndex = 2;
             // 
             // _rcVillagesTab
@@ -1063,7 +1064,7 @@ namespace Kingdoms.Bot.UI
             this._rcVillagesTab.Controls.Add(this._rcColHeaderVillages);
             this._rcVillagesTab.Location = new System.Drawing.Point(4, 22);
             this._rcVillagesTab.Name = "_rcVillagesTab";
-            this._rcVillagesTab.Size = new System.Drawing.Size(804, 225);
+            this._rcVillagesTab.Size = new System.Drawing.Size(1134, 370);
             this._rcVillagesTab.TabIndex = 0;
             this._rcVillagesTab.Text = "Villages";
             // 
@@ -1074,7 +1075,7 @@ namespace Kingdoms.Bot.UI
             this._rcVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._rcVillageListPanel.Location = new System.Drawing.Point(0, 24);
             this._rcVillageListPanel.Name = "_rcVillageListPanel";
-            this._rcVillageListPanel.Size = new System.Drawing.Size(804, 201);
+            this._rcVillageListPanel.Size = new System.Drawing.Size(1134, 346);
             this._rcVillageListPanel.TabIndex = 1;
             // 
             // _rcColHeaderVillages
@@ -1083,7 +1084,7 @@ namespace Kingdoms.Bot.UI
             this._rcColHeaderVillages.Dock = System.Windows.Forms.DockStyle.Top;
             this._rcColHeaderVillages.Location = new System.Drawing.Point(0, 0);
             this._rcColHeaderVillages.Name = "_rcColHeaderVillages";
-            this._rcColHeaderVillages.Size = new System.Drawing.Size(804, 24);
+            this._rcColHeaderVillages.Size = new System.Drawing.Size(1134, 24);
             this._rcColHeaderVillages.TabIndex = 0;
             // 
             // _rcCapitalsTab
@@ -1305,7 +1306,7 @@ namespace Kingdoms.Bot.UI
             this._rcSeparator.Dock = System.Windows.Forms.DockStyle.Top;
             this._rcSeparator.Location = new System.Drawing.Point(0, 100);
             this._rcSeparator.Name = "_rcSeparator";
-            this._rcSeparator.Size = new System.Drawing.Size(812, 1);
+            this._rcSeparator.Size = new System.Drawing.Size(1142, 1);
             this._rcSeparator.TabIndex = 1;
             // 
             // _rcSettingsPanel
@@ -1324,7 +1325,7 @@ namespace Kingdoms.Bot.UI
             this._rcSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._rcSettingsPanel.Name = "_rcSettingsPanel";
             this._rcSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._rcSettingsPanel.Size = new System.Drawing.Size(812, 100);
+            this._rcSettingsPanel.Size = new System.Drawing.Size(1142, 100);
             this._rcSettingsPanel.TabIndex = 0;
             // 
             // _rcDisbandBtn
@@ -1483,7 +1484,7 @@ namespace Kingdoms.Bot.UI
             this._crPage.Controls.Add(this._crSettingsPanel);
             this._crPage.Location = new System.Drawing.Point(4, 24);
             this._crPage.Name = "_crPage";
-            this._crPage.Size = new System.Drawing.Size(952, 392);
+            this._crPage.Size = new System.Drawing.Size(1142, 497);
             this._crPage.TabIndex = 3;
             this._crPage.Text = "Castle Repair";
             // 
@@ -1494,7 +1495,7 @@ namespace Kingdoms.Bot.UI
             this._crVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._crVillageListPanel.Location = new System.Drawing.Point(0, 175);
             this._crVillageListPanel.Name = "_crVillageListPanel";
-            this._crVillageListPanel.Size = new System.Drawing.Size(952, 217);
+            this._crVillageListPanel.Size = new System.Drawing.Size(1142, 322);
             this._crVillageListPanel.TabIndex = 3;
             // 
             // _crColHeader
@@ -1503,7 +1504,7 @@ namespace Kingdoms.Bot.UI
             this._crColHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this._crColHeader.Location = new System.Drawing.Point(0, 151);
             this._crColHeader.Name = "_crColHeader";
-            this._crColHeader.Size = new System.Drawing.Size(952, 24);
+            this._crColHeader.Size = new System.Drawing.Size(1142, 24);
             this._crColHeader.TabIndex = 2;
             // 
             // _crSeparator
@@ -1512,12 +1513,13 @@ namespace Kingdoms.Bot.UI
             this._crSeparator.Dock = System.Windows.Forms.DockStyle.Top;
             this._crSeparator.Location = new System.Drawing.Point(0, 150);
             this._crSeparator.Name = "_crSeparator";
-            this._crSeparator.Size = new System.Drawing.Size(952, 1);
+            this._crSeparator.Size = new System.Drawing.Size(1142, 1);
             this._crSeparator.TabIndex = 1;
             // 
             // _crSettingsPanel
             // 
             this._crSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
+            this._crSettingsPanel.Controls.Add(this._crCopySettingsBtn);
             this._crSettingsPanel.Controls.Add(this._crRefreshBtn);
             this._crSettingsPanel.Controls.Add(this._crRepairAllBtn);
             this._crSettingsPanel.Controls.Add(this._crRepairOnAttackCheck);
@@ -1531,7 +1533,7 @@ namespace Kingdoms.Bot.UI
             this._crSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._crSettingsPanel.Name = "_crSettingsPanel";
             this._crSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._crSettingsPanel.Size = new System.Drawing.Size(952, 150);
+            this._crSettingsPanel.Size = new System.Drawing.Size(1142, 150);
             this._crSettingsPanel.TabIndex = 0;
             // 
             // _crRefreshBtn
@@ -1548,6 +1550,21 @@ namespace Kingdoms.Bot.UI
             this._crRefreshBtn.TabIndex = 9;
             this._crRefreshBtn.Text = "Refresh List";
             this._crRefreshBtn.UseVisualStyleBackColor = false;
+            // 
+            // _crCopySettingsBtn
+            // 
+            this._crCopySettingsBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(60)))), ((int)(((byte)(80)))), ((int)(((byte)(140)))));
+            this._crCopySettingsBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._crCopySettingsBtn.FlatAppearance.BorderSize = 0;
+            this._crCopySettingsBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._crCopySettingsBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._crCopySettingsBtn.ForeColor = System.Drawing.Color.White;
+            this._crCopySettingsBtn.Location = new System.Drawing.Point(716, 38);
+            this._crCopySettingsBtn.Name = "_crCopySettingsBtn";
+            this._crCopySettingsBtn.Size = new System.Drawing.Size(100, 24);
+            this._crCopySettingsBtn.TabIndex = 10;
+            this._crCopySettingsBtn.Text = "Copy Settings";
+            this._crCopySettingsBtn.UseVisualStyleBackColor = false;
             // 
             // _crRepairAllBtn
             // 
@@ -1691,7 +1708,7 @@ namespace Kingdoms.Bot.UI
             this._tradePage.Controls.Add(this._trSettingsPanel);
             this._tradePage.Location = new System.Drawing.Point(4, 24);
             this._tradePage.Name = "_tradePage";
-            this._tradePage.Size = new System.Drawing.Size(952, 392);
+            this._tradePage.Size = new System.Drawing.Size(1142, 497);
             this._tradePage.TabIndex = 4;
             this._tradePage.Text = "Trade";
             // 
@@ -1704,7 +1721,7 @@ namespace Kingdoms.Bot.UI
             this._trSubTabs.Location = new System.Drawing.Point(0, 100);
             this._trSubTabs.Name = "_trSubTabs";
             this._trSubTabs.SelectedIndex = 0;
-            this._trSubTabs.Size = new System.Drawing.Size(952, 292);
+            this._trSubTabs.Size = new System.Drawing.Size(1142, 397);
             this._trSubTabs.TabIndex = 1;
             // 
             // _trMarketsTab
@@ -1717,7 +1734,7 @@ namespace Kingdoms.Bot.UI
             this._trMarketsTab.Controls.Add(this._trMarketRefreshBtn);
             this._trMarketsTab.Location = new System.Drawing.Point(4, 22);
             this._trMarketsTab.Name = "_trMarketsTab";
-            this._trMarketsTab.Size = new System.Drawing.Size(944, 266);
+            this._trMarketsTab.Size = new System.Drawing.Size(1134, 371);
             this._trMarketsTab.TabIndex = 0;
             this._trMarketsTab.Text = "Markets";
             // 
@@ -1726,9 +1743,9 @@ namespace Kingdoms.Bot.UI
             this._trMarketVillageListPanel.AutoScroll = true;
             this._trMarketVillageListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
             this._trMarketVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._trMarketVillageListPanel.Location = new System.Drawing.Point(0, 36);
+            this._trMarketVillageListPanel.Location = new System.Drawing.Point(0, 0);
             this._trMarketVillageListPanel.Name = "_trMarketVillageListPanel";
-            this._trMarketVillageListPanel.Size = new System.Drawing.Size(944, 190);
+            this._trMarketVillageListPanel.Size = new System.Drawing.Size(1134, 371);
             this._trMarketVillageListPanel.TabIndex = 4;
             // 
             // _trAddMarketsBtn
@@ -1815,9 +1832,9 @@ namespace Kingdoms.Bot.UI
             this._trRoutesListPanel.AutoScroll = true;
             this._trRoutesListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
             this._trRoutesListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._trRoutesListPanel.Location = new System.Drawing.Point(0, 36);
+            this._trRoutesListPanel.Location = new System.Drawing.Point(0, 0);
             this._trRoutesListPanel.Name = "_trRoutesListPanel";
-            this._trRoutesListPanel.Size = new System.Drawing.Size(944, 190);
+            this._trRoutesListPanel.Size = new System.Drawing.Size(944, 266);
             this._trRoutesListPanel.TabIndex = 3;
             // 
             // _trRefreshRoutesBtn
@@ -1889,8 +1906,22 @@ namespace Kingdoms.Bot.UI
             this._trSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._trSettingsPanel.Name = "_trSettingsPanel";
             this._trSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._trSettingsPanel.Size = new System.Drawing.Size(952, 100);
+            this._trSettingsPanel.Size = new System.Drawing.Size(1142, 100);
             this._trSettingsPanel.TabIndex = 0;
+            // 
+            // _trPrioritiseMarketsCheck
+            // 
+            this._trPrioritiseMarketsCheck.AutoSize = true;
+            this._trPrioritiseMarketsCheck.Checked = true;
+            this._trPrioritiseMarketsCheck.CheckState = System.Windows.Forms.CheckState.Checked;
+            this._trPrioritiseMarketsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._trPrioritiseMarketsCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trPrioritiseMarketsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._trPrioritiseMarketsCheck.Location = new System.Drawing.Point(500, 70);
+            this._trPrioritiseMarketsCheck.Name = "_trPrioritiseMarketsCheck";
+            this._trPrioritiseMarketsCheck.Size = new System.Drawing.Size(114, 19);
+            this._trPrioritiseMarketsCheck.TabIndex = 16;
+            this._trPrioritiseMarketsCheck.Text = "Prioritise Markets";
             // 
             // _trIgnoreTransactionsCheck
             // 
@@ -1903,19 +1934,6 @@ namespace Kingdoms.Bot.UI
             this._trIgnoreTransactionsCheck.Size = new System.Drawing.Size(165, 19);
             this._trIgnoreTransactionsCheck.TabIndex = 15;
             this._trIgnoreTransactionsCheck.Text = "Ignore current transactions";
-            // 
-            // _trPrioritiseMarketsCheck
-            // 
-            this._trPrioritiseMarketsCheck.AutoSize = true;
-            this._trPrioritiseMarketsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._trPrioritiseMarketsCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
-            this._trPrioritiseMarketsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trPrioritiseMarketsCheck.Location = new System.Drawing.Point(500, 70);
-            this._trPrioritiseMarketsCheck.Name = "_trPrioritiseMarketsCheck";
-            this._trPrioritiseMarketsCheck.Size = new System.Drawing.Size(140, 19);
-            this._trPrioritiseMarketsCheck.TabIndex = 16;
-            this._trPrioritiseMarketsCheck.Text = "Prioritise Markets";
-            this._trPrioritiseMarketsCheck.Checked = true;
             // 
             // _trAutoHireLimitInput
             // 
@@ -2064,7 +2082,7 @@ namespace Kingdoms.Bot.UI
             this._trMerchantsPerTradeLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._trMerchantsPerTradeLabel.Location = new System.Drawing.Point(345, 42);
             this._trMerchantsPerTradeLabel.Name = "_trMerchantsPerTradeLabel";
-            this._trMerchantsPerTradeLabel.Size = new System.Drawing.Size(98, 15);
+            this._trMerchantsPerTradeLabel.Size = new System.Drawing.Size(122, 15);
             this._trMerchantsPerTradeLabel.TabIndex = 6;
             this._trMerchantsPerTradeLabel.Text = "Min merchants/trade:";
             // 
@@ -2178,7 +2196,7 @@ namespace Kingdoms.Bot.UI
             this._logPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._logPanel.Location = new System.Drawing.Point(0, 0);
             this._logPanel.Name = "_logPanel";
-            this._logPanel.Size = new System.Drawing.Size(960, 215);
+            this._logPanel.Size = new System.Drawing.Size(1150, 270);
             this._logPanel.TabIndex = 0;
             // 
             // _logBox
@@ -2192,7 +2210,7 @@ namespace Kingdoms.Bot.UI
             this._logBox.Name = "_logBox";
             this._logBox.ReadOnly = true;
             this._logBox.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-            this._logBox.Size = new System.Drawing.Size(960, 191);
+            this._logBox.Size = new System.Drawing.Size(1150, 246);
             this._logBox.TabIndex = 1;
             this._logBox.Text = "";
             // 
@@ -2205,7 +2223,7 @@ namespace Kingdoms.Bot.UI
             this._logHeader.Location = new System.Drawing.Point(0, 0);
             this._logHeader.Name = "_logHeader";
             this._logHeader.Padding = new System.Windows.Forms.Padding(12, 0, 0, 0);
-            this._logHeader.Size = new System.Drawing.Size(960, 24);
+            this._logHeader.Size = new System.Drawing.Size(1150, 24);
             this._logHeader.TabIndex = 0;
             this._logHeader.Text = "Log Output";
             this._logHeader.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -2407,6 +2425,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _crRepairOnAttackCheck;
         private System.Windows.Forms.Button _crRepairAllBtn;
         private System.Windows.Forms.Button _crRefreshBtn;
+        private System.Windows.Forms.Button _crCopySettingsBtn;
         private System.Windows.Forms.Panel _crSeparator;
         private System.Windows.Forms.Panel _crColHeader;
         private System.Windows.Forms.Panel _crVillageListPanel;
