@@ -375,6 +375,16 @@ namespace Kingdoms.Bot
             TradeTypes.Add(newE);
             return newE;
         }
+
+        public void CopySettingsFrom(VillageMarketTradeInfo source)
+        {
+            this.IsTrading = source.IsTrading;
+            this.TradeTypes.Clear();
+            foreach (TradeTypeEntry e in source.TradeTypes)
+                this.TradeTypes.Add(e.Clone());
+            this.MarketTargets.Clear();
+            this.MarketTargets.AddRange(source.MarketTargets);
+        }
     }
 
     [Serializable]

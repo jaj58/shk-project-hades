@@ -634,4 +634,258 @@ namespace Kingdoms.Bot.UI
         public TradeMarketVillageRow() { }
         public void WriteToSettings(TradeSettings s) { }
     }
+
+    // =========================================================================
+    // Copy Market Settings popup
+    // =========================================================================
+
+    internal class CopyMarketSettingsForm : Form
+    {
+        private static readonly Color FormBg = Color.FromArgb(28, 30, 38);
+        private static readonly Color InputBg = Color.FromArgb(50, 52, 64);
+        private static readonly Color TextPri = Color.FromArgb(230, 230, 240);
+        private static readonly Color TextSec = Color.FromArgb(160, 165, 180);
+        private static readonly Color AccentCol = Color.FromArgb(80, 160, 255);
+
+        private ComboBox _sourceCombo;
+        private CheckedListBox _targetList;
+        private CheckBox _copyMarketsCheck;
+        private Button _copyBtn;
+        private Button _cancelBtn;
+        private Button _selectAllBtn;
+        private Button _selectNoneBtn;
+        private Label _statusLabel;
+
+        private bool _copied;
+        public bool Copied { get { return _copied; } }
+
+        public CopyMarketSettingsForm()
+        {
+            _copied = false;
+            this.Text = "Copy Market Settings";
+            this.BackColor = FormBg;
+            this.ForeColor = TextPri;
+            this.Font = new Font("Segoe UI", 9f);
+            this.ClientSize = new Size(440, 420);
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.ShowInTaskbar = false;
+
+            BuildUI();
+            PopulateVillages();
+        }
+
+        private void BuildUI()
+        {
+            Label srcLbl = MakeLabel("Copy from:", 14, 14);
+            this.Controls.Add(srcLbl);
+
+            _sourceCombo = new ComboBox();
+            _sourceCombo.BackColor = InputBg;
+            _sourceCombo.ForeColor = TextPri;
+            _sourceCombo.FlatStyle = FlatStyle.Flat;
+            _sourceCombo.Font = new Font("Segoe UI", 9f);
+            _sourceCombo.DropDownStyle = ComboBoxStyle.DropDownList;
+            _sourceCombo.Location = new Point(14, 34);
+            _sourceCombo.Size = new Size(410, 24);
+            this.Controls.Add(_sourceCombo);
+
+            Label tgtLbl = MakeLabel("Copy to (select one or more):", 14, 66);
+            this.Controls.Add(tgtLbl);
+
+            _targetList = new CheckedListBox();
+            _targetList.BackColor = InputBg;
+            _targetList.ForeColor = TextPri;
+            _targetList.Font = new Font("Segoe UI", 8.5f);
+            _targetList.BorderStyle = BorderStyle.FixedSingle;
+            _targetList.CheckOnClick = true;
+            _targetList.Location = new Point(14, 86);
+            _targetList.Size = new Size(410, 240);
+            this.Controls.Add(_targetList);
+
+            _selectAllBtn = MakeSmallButton("Select All", 14, 332);
+            _selectAllBtn.Click += delegate
+            {
+                for (int i = 0; i < _targetList.Items.Count; i++)
+                    _targetList.SetItemChecked(i, true);
+            };
+            this.Controls.Add(_selectAllBtn);
+
+            _selectNoneBtn = MakeSmallButton("Select None", 100, 332);
+            _selectNoneBtn.Click += delegate
+            {
+                for (int i = 0; i < _targetList.Items.Count; i++)
+                    _targetList.SetItemChecked(i, false);
+            };
+            this.Controls.Add(_selectNoneBtn);
+
+            _copyMarketsCheck = new CheckBox();
+            _copyMarketsCheck.Text = "Also copy market targets list";
+            _copyMarketsCheck.FlatStyle = FlatStyle.Flat;
+            _copyMarketsCheck.ForeColor = TextPri;
+            _copyMarketsCheck.Font = new Font("Segoe UI", 8.5f);
+            _copyMarketsCheck.Location = new Point(210, 334);
+            _copyMarketsCheck.AutoSize = true;
+            _copyMarketsCheck.Checked = true;
+            this.Controls.Add(_copyMarketsCheck);
+
+            _statusLabel = new Label();
+            _statusLabel.Text = "";
+            _statusLabel.Font = new Font("Segoe UI", 8.5f);
+            _statusLabel.ForeColor = Color.FromArgb(100, 220, 100);
+            _statusLabel.AutoSize = true;
+            _statusLabel.Location = new Point(14, 366);
+            this.Controls.Add(_statusLabel);
+
+            _copyBtn = MakeButton("Copy", AccentCol, 230, 380);
+            _copyBtn.Click += delegate { DoCopy(); };
+            this.Controls.Add(_copyBtn);
+
+            _cancelBtn = MakeButton("Close", Color.FromArgb(70, 72, 84), 340, 380);
+            _cancelBtn.Click += delegate { this.Close(); };
+            this.Controls.Add(_cancelBtn);
+        }
+
+        private void PopulateVillages()
+        {
+            List<int> ids = GetUserVillageIds();
+            Dictionary<int, string> names = GetVillageNames(ids);
+
+            foreach (int id in ids)
+            {
+                string display = "[" + id + "] " + names[id];
+                _sourceCombo.Items.Add(new VillageItem(id, display));
+                _targetList.Items.Add(new VillageItem(id, display));
+            }
+
+            if (_sourceCombo.Items.Count > 0)
+                _sourceCombo.SelectedIndex = 0;
+        }
+
+        private void DoCopy()
+        {
+            VillageItem sourceItem = _sourceCombo.SelectedItem as VillageItem;
+            if (sourceItem == null)
+            {
+                _statusLabel.ForeColor = Color.FromArgb(255, 100, 100);
+                _statusLabel.Text = "Select a source village.";
+                return;
+            }
+
+            List<int> targetIds = new List<int>();
+            for (int i = 0; i < _targetList.Items.Count; i++)
+            {
+                if (_targetList.GetItemChecked(i))
+                {
+                    VillageItem item = (VillageItem)_targetList.Items[i];
+                    if (item.VillageId != sourceItem.VillageId)
+                        targetIds.Add(item.VillageId);
+                }
+            }
+
+            if (targetIds.Count == 0)
+            {
+                _statusLabel.ForeColor = Color.FromArgb(255, 100, 100);
+                _statusLabel.Text = "Select at least one target village.";
+                return;
+            }
+
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            TradeSettings s = BotEngine.Instance.Settings.Trade;
+            VillageMarketTradeInfo source = s.GetVillageMarketInfo(sourceItem.VillageId);
+
+            int count = 0;
+            foreach (int targetId in targetIds)
+            {
+                VillageMarketTradeInfo target = s.GetVillageMarketInfo(targetId);
+                // Copy trade type settings
+                target.IsTrading = source.IsTrading;
+                target.TradeTypes.Clear();
+                foreach (TradeTypeEntry e in source.TradeTypes)
+                    target.TradeTypes.Add(e.Clone());
+
+                // Optionally copy market targets
+                if (_copyMarketsCheck.Checked)
+                {
+                    target.MarketTargets.Clear();
+                    target.MarketTargets.AddRange(source.MarketTargets);
+                }
+                count++;
+            }
+
+            _copied = true;
+            _statusLabel.ForeColor = Color.FromArgb(100, 220, 100);
+            _statusLabel.Text = "Copied settings to " + count + " village(s).";
+            BotLogger.Log("Trade", BotLogLevel.Info,
+                "Copied market settings from " + sourceItem.Display + " to " + count + " village(s).");
+        }
+
+        private static List<int> GetUserVillageIds()
+        {
+            if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+            {
+                List<int> ids = GameEngine.Instance.World.getUserVillageIDList();
+                if (ids != null) return ids;
+            }
+            return new List<int>();
+        }
+
+        private static Dictionary<int, string> GetVillageNames(List<int> ids)
+        {
+            Dictionary<int, string> names = new Dictionary<int, string>();
+            foreach (int id in ids)
+            {
+                string name = "Village " + id;
+                if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                    name = GameEngine.Instance.World.getVillageName(id);
+                names[id] = name;
+            }
+            return names;
+        }
+
+        private static Label MakeLabel(string text, int x, int y)
+        {
+            Label lbl = new Label();
+            lbl.Text = text;
+            lbl.Font = new Font("Segoe UI", 8.5f);
+            lbl.ForeColor = Color.FromArgb(160, 165, 180);
+            lbl.AutoSize = true;
+            lbl.Location = new Point(x, y);
+            return lbl;
+        }
+
+        private static Button MakeButton(string text, Color bg, int x, int y)
+        {
+            Button btn = new Button();
+            btn.Text = text;
+            btn.BackColor = bg;
+            btn.ForeColor = Color.White;
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            btn.Size = new Size(100, 30);
+            btn.Location = new Point(x, y);
+            btn.Cursor = Cursors.Hand;
+            return btn;
+        }
+
+        private static Button MakeSmallButton(string text, int x, int y)
+        {
+            Button btn = new Button();
+            btn.Text = text;
+            btn.BackColor = Color.FromArgb(50, 52, 64);
+            btn.ForeColor = Color.White;
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Font = new Font("Segoe UI", 8f);
+            btn.Size = new Size(80, 24);
+            btn.Location = new Point(x, y);
+            btn.Cursor = Cursors.Hand;
+            return btn;
+        }
+    }
 }

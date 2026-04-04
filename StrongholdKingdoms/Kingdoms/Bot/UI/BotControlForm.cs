@@ -1425,6 +1425,19 @@ namespace Kingdoms.Bot.UI
             _trMarketCountLabel.Location = new Point(640, 10);
             topBar.Controls.Add(_trMarketCountLabel);
 
+            Button copyBtn = new Button();
+            copyBtn.Text = "Copy Settings";
+            copyBtn.BackColor = Color.FromArgb(60, 80, 140);
+            copyBtn.ForeColor = Color.White;
+            copyBtn.FlatStyle = FlatStyle.Flat;
+            copyBtn.FlatAppearance.BorderSize = 0;
+            copyBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            copyBtn.Size = new Size(100, 24);
+            copyBtn.Location = new Point(760, 5);
+            copyBtn.Cursor = Cursors.Hand;
+            copyBtn.Click += delegate { TrCopySettingsClick(); };
+            topBar.Controls.Add(copyBtn);
+
             // Left panel: village list
             Panel leftPanel = new Panel();
             leftPanel.Dock = DockStyle.Left;
@@ -1619,6 +1632,21 @@ namespace Kingdoms.Bot.UI
 
             // Re-select current village to refresh markets list
             TrOnVillageSelected();
+        }
+
+        private void TrCopySettingsClick()
+        {
+            // Save current village's grid first so the source data is up to date
+            TrSaveCurrentVillage();
+
+            CopyMarketSettingsForm form = new CopyMarketSettingsForm();
+            form.ShowDialog(this);
+
+            if (form.Copied)
+            {
+                // Refresh the current village view to reflect any changes
+                TrOnVillageSelected();
+            }
         }
 
         private void TrBuildRoutesList()
