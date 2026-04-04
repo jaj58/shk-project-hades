@@ -307,6 +307,16 @@ namespace Kingdoms.Bot.Modules
                     " , Cats:" + pending.NumCatapults +
                     " , Caps:" + pending.NumCaptains;
 
+                if (pending.ActionKey == ACTION_PILLAGE_STOCKPILE ||
+                    pending.ActionKey == ACTION_PILLAGE_GRANARY ||
+                    pending.ActionKey == ACTION_PILLAGE_BANQUET ||
+                    pending.ActionKey == ACTION_PILLAGE_ALE ||
+                    pending.ActionKey == ACTION_PILLAGE_ARMOURY ||
+                    pending.ActionKey == ACTION_GOLD_RAID)
+                {
+                    message += "\nPillage: " + pending.PillagePercent + "%";
+                }
+
                 string troopInfo = GetTroopInfo(army);
                 if (troopInfo.Length > 0)
                     message += "\n" + troopInfo;
@@ -460,9 +470,9 @@ namespace Kingdoms.Bot.Modules
                 army.numPikemen == 0 && army.numSwordsmen == 0 && army.numCatapults == 0)
                 return ACTION_SCOUT;
 
-            // Foraging
-            if (army.attackType == 9)
-                return ACTION_FORAGING;
+            //// Foraging
+            //if (army.attackType == 9)
+            //    return ACTION_FORAGING;
 
             // Reinforcements
             if (army.attackType == 13)
