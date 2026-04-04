@@ -16,6 +16,7 @@ namespace Kingdoms.Bot
         public RecruitingSettings Recruiting = new RecruitingSettings();
         public CastleRepairSettings CastleRepair = new CastleRepairSettings();
         public TradeSettings Trade = new TradeSettings();
+        public VillageBuilderSettings VillageBuilder = new VillageBuilderSettings();
 
         private static string GetSettingsFilePath()
         {
@@ -515,5 +516,70 @@ namespace Kingdoms.Bot
                 return "Resource " + resourceId;
             }
         }
+    }
+
+    [Serializable]
+    public class VillageBuilderSettings
+    {
+        public bool Enabled;
+        public int CycleIntervalSeconds = 30;
+        public int DelayBetweenVillagesMs = 5000;
+        public bool WaitForResources = true;
+        public List<VillageBuildLayout> Layouts = new List<VillageBuildLayout>();
+
+        public VillageBuildLayout GetLayout(int villageId)
+        {
+            foreach (VillageBuildLayout l in Layouts)
+            {
+                if (l.VillageId == villageId) return l;
+            }
+            return null;
+        }
+
+        public VillageBuildLayout GetOrCreateLayout(int villageId)
+        {
+            VillageBuildLayout l = GetLayout(villageId);
+            if (l == null)
+            {
+                l = new VillageBuildLayout();
+                l.VillageId = villageId;
+                Layouts.Add(l);
+            }
+            return l;
+        }
+    }
+
+    [Serializable]
+    public class VillageBuildLayout
+    {
+        public int VillageId;
+        public bool Enabled;
+        public List<BuildingEntry> Buildings = new List<BuildingEntry>();
+
+        public void CopyBuildingsFrom(VillageBuildLayout source)
+        {
+            Buildings.Clear();
+            foreach (BuildingEntry e in source.Buildings)
+            {
+                BuildingEntry copy = new BuildingEntry();
+                copy.BuildingType = e.BuildingType;
+                copy.X = e.X;
+                copy.Y = e.Y;
+                copy.Placed = false;
+                copy.Status = "";
+                Buildings.Add(copy);
+            }
+        }
+    }
+
+    [Serializable]
+    public class BuildingEntry
+    {
+        public int BuildingType;
+        public int X;
+        public int Y;
+        public bool Placed;
+        [System.Xml.Serialization.XmlIgnore]
+        public string Status = "";
     }
 }

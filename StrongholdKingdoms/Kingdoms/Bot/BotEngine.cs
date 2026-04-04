@@ -40,6 +40,7 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.CastleRepairModule());
             RegisterModule(new Modules.TradeModule());
             RegisterModule(new Modules.CardExpiryModule());
+            RegisterModule(new Modules.VillageBuilderModule());
 
             foreach (IBotModule module in _modules)
             {
@@ -83,6 +84,8 @@ namespace Kingdoms.Bot
                     module.Enabled = _settings.Trade.Enabled;
                 else if (module is Modules.CardExpiryModule)
                     module.Enabled = true; // Always enabled — monitors cards for other modules
+                else if (module is Modules.VillageBuilderModule)
+                    module.Enabled = _settings.VillageBuilder.Enabled;
             }
         }
 
@@ -104,6 +107,8 @@ namespace Kingdoms.Bot
                     _settings.CastleRepair.Enabled = module.Enabled;
                 else if (module is Modules.TradeModule)
                     _settings.Trade.Enabled = module.Enabled;
+                else if (module is Modules.VillageBuilderModule)
+                    _settings.VillageBuilder.Enabled = module.Enabled;
             }
 
             _settings.Save();

@@ -48,6 +48,11 @@ namespace Kingdoms.Bot.UI
         private List<TradeRouteRow> _trRouteRows = new List<TradeRouteRow>();
         // Player Routes tab
         private List<PlayerTradeRouteRow> _trPlayerRouteRows = new List<PlayerTradeRouteRow>();
+
+        // Village Builder tab
+        private List<BuildingListRow> _bldBuildingRows = new List<BuildingListRow>();
+        private int _bldSelectedVillageId = -1;
+        private Timer _bldRefreshTimer;
         private int _trSelectedRouteIndex = -1;
 
         // Vassals tab runtime state
@@ -87,6 +92,7 @@ namespace Kingdoms.Bot.UI
                 WireUpCastleRepairTab();
                 WireUpVassalsTab();
                 WireUpTradeTab();
+                WireUpBuilderTab();
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -98,6 +104,7 @@ namespace Kingdoms.Bot.UI
                 CrLoadFromSettings();
                 VaLoadFromSettings();
                 TrLoadFromSettings();
+                BldLoadFromSettings();
             }
         }
 
@@ -1350,6 +1357,11 @@ namespace Kingdoms.Bot.UI
                 TrWriteToSettings();
                 tabName = "Trade";
             }
+            else if (_tabControl.SelectedTab == _builderPage)
+            {
+                BldWriteToSettings();
+                tabName = "Village Builder";
+            }
 
             BotEngine.Instance.SaveSettings();
             BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings saved.");
@@ -1387,6 +1399,11 @@ namespace Kingdoms.Bot.UI
             {
                 TrLoadFromSettings();
                 tabName = "Trade";
+            }
+            else if (_tabControl.SelectedTab == _builderPage)
+            {
+                BldLoadFromSettings();
+                tabName = "Village Builder";
             }
 
             RefreshStatus();
@@ -2086,6 +2103,377 @@ namespace Kingdoms.Bot.UI
             if (GameEngine.Instance != null && GameEngine.Instance.World != null)
                 return GameEngine.Instance.World.getVillageName(villageId);
             return "Village " + villageId;
+        }
+
+        // =====================================================================
+        // Village Builder tab runtime
+        // =====================================================================
+
+        private void WireUpBuilderTab()
+        {
+            // Wire events for Designer-defined controls
+            _bldEnabledCheck.CheckedChanged += delegate { BldWriteToSettings(); };
+            _bldVillageCombo.SelectedIndexChanged += delegate { BldVillageSelected(); };
+            _bldVillageEnabledCheck.CheckedChanged += delegate { BldVillageEnabledChanged(); };
+            _bldCopySettingsBtn.Click += delegate { BldCopySettingsClick(); };
+            _bldImportFileBtn.Click += delegate { BldImportFromFile(); };
+            _bldRefreshStateBtn.Click += delegate { BldRefreshState(); };
+            _bldExportFileBtn.Click += delegate { BldExportToFile(); };
+            _bldClearLayoutBtn.Click += delegate { BldClearLayout(); };
+
+            // Build column header labels dynamically
+            string[] cols = new string[] { "Building", "Type", "Status", "X", "Y", "Done" };
+            int[] colX = new int[] { 8, 216, 264, 392, 436, 480 };
+            for (int i = 0; i < cols.Length; i++)
+            {
+                Label cl = new Label();
+                cl.Text = cols[i];
+                cl.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+                cl.ForeColor = Color.FromArgb(160, 165, 180);
+                cl.AutoSize = true;
+                cl.Location = new Point(colX[i], 4);
+                _bldColHeader.Controls.Add(cl);
+            }
+
+            // Refresh timer
+            _bldRefreshTimer = new Timer();
+            _bldRefreshTimer.Interval = 2000;
+            _bldRefreshTimer.Tick += delegate { BldUpdateStatusDisplay(); };
+            _bldRefreshTimer.Start();
+        }
+
+        private void BldLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            VillageBuilderSettings s = BotEngine.Instance.Settings.VillageBuilder;
+            _bldEnabledCheck.Checked = s.Enabled;
+            _bldIntervalInput.Value = Math.Max(_bldIntervalInput.Minimum,
+                Math.Min(_bldIntervalInput.Maximum, s.CycleIntervalSeconds));
+            _bldDelayInput.Value = Math.Max(_bldDelayInput.Minimum,
+                Math.Min(_bldDelayInput.Maximum, s.DelayBetweenVillagesMs));
+            _bldWaitForResourcesCheck.Checked = s.WaitForResources;
+
+            BldPopulateVillageCombo();
+        }
+
+        private void BldWriteToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            VillageBuilderSettings s = BotEngine.Instance.Settings.VillageBuilder;
+            s.Enabled = _bldEnabledCheck.Checked;
+            s.CycleIntervalSeconds = (int)_bldIntervalInput.Value;
+            s.DelayBetweenVillagesMs = (int)_bldDelayInput.Value;
+            s.WaitForResources = _bldWaitForResourcesCheck.Checked;
+
+            // Save current village enabled state
+            if (_bldSelectedVillageId > 0)
+            {
+                VillageBuildLayout layout = s.GetOrCreateLayout(_bldSelectedVillageId);
+                layout.Enabled = _bldVillageEnabledCheck.Checked;
+            }
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                if (m is VillageBuilderModule)
+                    m.Enabled = s.Enabled;
+            }
+        }
+
+        private void BldPopulateVillageCombo()
+        {
+            _bldVillageCombo.Items.Clear();
+            _bldSelectedVillageId = -1;
+
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+                return;
+
+            List<int> ids = GameEngine.Instance.World.getUserVillageIDList();
+            if (ids == null) return;
+
+            foreach (int id in ids)
+            {
+                string name = GameEngine.Instance.World.getVillageName(id);
+                _bldVillageCombo.Items.Add(new BldComboItem(id, "[" + id + "] " + name));
+            }
+
+            if (_bldVillageCombo.Items.Count > 0)
+                _bldVillageCombo.SelectedIndex = 0;
+        }
+
+        private void BldVillageSelected()
+        {
+            BldComboItem item = _bldVillageCombo.SelectedItem as BldComboItem;
+            if (item == null) return;
+
+            _bldSelectedVillageId = item.VillageId;
+
+            if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+            {
+                VillageBuildLayout layout = BotEngine.Instance.Settings.VillageBuilder.GetLayout(_bldSelectedVillageId);
+                _bldVillageEnabledCheck.Checked = layout != null && layout.Enabled;
+
+                // Auto-load current village buildings if no layout exists yet
+                if (layout == null || layout.Buildings.Count == 0)
+                {
+                    BldAutoLoadFromVillage();
+                }
+            }
+
+            BldRefreshBuildingList();
+        }
+
+        private void BldVillageEnabledChanged()
+        {
+            if (_bldSelectedVillageId <= 0) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            VillageBuildLayout layout = BotEngine.Instance.Settings.VillageBuilder.GetOrCreateLayout(_bldSelectedVillageId);
+            layout.Enabled = _bldVillageEnabledCheck.Checked;
+        }
+
+        private void BldRefreshBuildingList()
+        {
+            _bldBuildingListPanel.SuspendLayout();
+            foreach (BuildingListRow row in _bldBuildingRows)
+            {
+                _bldBuildingListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
+            _bldBuildingRows.Clear();
+
+            if (_bldSelectedVillageId <= 0 || BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+            {
+                _bldBuildingListPanel.ResumeLayout();
+                return;
+            }
+
+            VillageBuildLayout layout = BotEngine.Instance.Settings.VillageBuilder.GetLayout(_bldSelectedVillageId);
+            if (layout == null || layout.Buildings.Count == 0)
+            {
+                _bldBuildingListPanel.ResumeLayout();
+                return;
+            }
+
+            for (int i = layout.Buildings.Count - 1; i >= 0; i--)
+            {
+                BuildingListRow row = new BuildingListRow(layout.Buildings[i], i);
+                row.Dock = DockStyle.Top;
+                _bldBuildingListPanel.Controls.Add(row);
+                _bldBuildingRows.Add(row);
+            }
+
+            _bldBuildingListPanel.ResumeLayout();
+        }
+
+        private void BldImportFromFile()
+        {
+            if (_bldSelectedVillageId <= 0) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            OpenFileDialog dlg = new OpenFileDialog();
+            dlg.Filter = "Layout files (*.txt)|*.txt|All files (*.*)|*.*";
+            dlg.Title = "Import Village Layout";
+            if (dlg.ShowDialog(this) != DialogResult.OK) return;
+
+            try
+            {
+                List<BuildingEntry> buildings = VillageBuilderModule.ImportLayoutFromFile(dlg.FileName);
+                if (buildings.Count == 0)
+                {
+                    BotLogger.Log("Village Builder", BotLogLevel.Warning, "No buildings found in file.");
+                    return;
+                }
+
+                VillageBuildLayout layout = BotEngine.Instance.Settings.VillageBuilder.GetOrCreateLayout(_bldSelectedVillageId);
+                layout.Buildings.Clear();
+                layout.Buildings.AddRange(buildings);
+
+                BotLogger.Log("Village Builder", BotLogLevel.Info,
+                    "Imported " + buildings.Count + " buildings from file for village " + _bldSelectedVillageId + ".");
+
+                BldRefreshBuildingList();
+            }
+            catch (Exception ex)
+            {
+                BotLogger.Log("Village Builder", BotLogLevel.Error, "Import failed: " + ex.Message);
+            }
+        }
+
+        private void BldAutoLoadFromVillage()
+        {
+            if (_bldSelectedVillageId <= 0) return;
+            if (GameEngine.Instance == null) return;
+
+            VillageMap village = GameEngine.Instance.getVillage(_bldSelectedVillageId);
+            if (village == null) return;
+
+            List<BuildingEntry> buildings = VillageBuilderModule.ImportFromVillage(village);
+            if (buildings.Count == 0) return;
+
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            VillageBuildLayout layout = BotEngine.Instance.Settings.VillageBuilder.GetOrCreateLayout(_bldSelectedVillageId);
+            layout.Buildings.Clear();
+            layout.Buildings.AddRange(buildings);
+
+            // Mark all as already placed since they exist in the village
+            foreach (BuildingEntry entry in layout.Buildings)
+            {
+                entry.Placed = true;
+                entry.Status = "Already built";
+            }
+
+            BotLogger.Log("Village Builder", BotLogLevel.Info,
+                "Auto-loaded " + buildings.Count + " buildings from village " + _bldSelectedVillageId + ".");
+        }
+
+        private void BldRefreshState()
+        {
+            if (_bldSelectedVillageId <= 0) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            VillageBuildLayout layout = BotEngine.Instance.Settings.VillageBuilder.GetLayout(_bldSelectedVillageId);
+            if (layout == null || layout.Buildings.Count == 0) return;
+
+            VillageMap village = GameEngine.Instance != null
+                ? GameEngine.Instance.getVillage(_bldSelectedVillageId) : null;
+
+            if (village == null)
+            {
+                BotLogger.Log("Village Builder", BotLogLevel.Warning, "Village not loaded, cannot refresh state.");
+                return;
+            }
+
+            int updated = 0;
+            foreach (BuildingEntry entry in layout.Buildings)
+            {
+                bool wasPlaced = entry.Placed;
+                bool exists = false;
+                bool constructing = false;
+
+                try
+                {
+                    foreach (VillageMapBuilding b in village.Buildings)
+                    {
+                        if (b.buildingType == entry.BuildingType &&
+                            b.buildingLocation.X == entry.X &&
+                            b.buildingLocation.Y == entry.Y)
+                        {
+                            if (b.complete)
+                                exists = true;
+                            else
+                                constructing = true;
+                            break;
+                        }
+                    }
+                }
+                catch { }
+
+                if (exists)
+                {
+                    entry.Placed = true;
+                    entry.Status = "Already built";
+                }
+                else if (constructing)
+                {
+                    entry.Status = "Constructing";
+                }
+                else if (!entry.Placed)
+                {
+                    entry.Status = "Pending";
+                }
+
+                if (entry.Placed != wasPlaced)
+                    updated++;
+            }
+
+            BotLogger.Log("Village Builder", BotLogLevel.Info,
+                "Refreshed building state for village " + _bldSelectedVillageId +
+                ". " + updated + " status change(s).");
+
+            BldRefreshBuildingList();
+        }
+
+        private void BldExportToFile()
+        {
+            if (_bldSelectedVillageId <= 0) return;
+            if (GameEngine.Instance == null) return;
+
+            VillageMap village = GameEngine.Instance.getVillage(_bldSelectedVillageId);
+            if (village == null)
+            {
+                BotLogger.Log("Village Builder", BotLogLevel.Warning, "Village not loaded.");
+                return;
+            }
+
+            SaveFileDialog dlg = new SaveFileDialog();
+            dlg.Filter = "Layout files (*.txt)|*.txt|All files (*.*)|*.*";
+            dlg.Title = "Export Village Layout";
+            dlg.FileName = "village_" + _bldSelectedVillageId + ".txt";
+            if (dlg.ShowDialog(this) != DialogResult.OK) return;
+
+            try
+            {
+                VillageBuilderModule.ExportLayoutToFile(dlg.FileName, village);
+                BotLogger.Log("Village Builder", BotLogLevel.Info,
+                    "Exported village layout to " + dlg.FileName);
+            }
+            catch (Exception ex)
+            {
+                BotLogger.Log("Village Builder", BotLogLevel.Error, "Export failed: " + ex.Message);
+            }
+        }
+
+        private void BldClearLayout()
+        {
+            if (_bldSelectedVillageId <= 0) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            VillageBuildLayout layout = BotEngine.Instance.Settings.VillageBuilder.GetLayout(_bldSelectedVillageId);
+            if (layout != null)
+            {
+                layout.Buildings.Clear();
+                BotLogger.Log("Village Builder", BotLogLevel.Info, "Cleared layout for village " + _bldSelectedVillageId + ".");
+            }
+
+            BldRefreshBuildingList();
+        }
+
+        private void BldCopySettingsClick()
+        {
+            BldWriteToSettings();
+            CopyBuilderSettingsForm form = new CopyBuilderSettingsForm();
+            form.ShowDialog(this);
+            if (form.Copied)
+                BldRefreshBuildingList();
+        }
+
+        private void BldUpdateStatusDisplay()
+        {
+            if (_bldEnabledCheck == null) return;
+
+            if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+            {
+                bool moduleEnabled = BotEngine.Instance.Settings.VillageBuilder.Enabled;
+                if (_bldEnabledCheck.Checked != moduleEnabled)
+                    _bldEnabledCheck.Checked = moduleEnabled;
+            }
+
+            bool enabled = _bldEnabledCheck.Checked;
+            _bldStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
+            _bldStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+        }
+
+        private class BldComboItem
+        {
+            public int VillageId;
+            public string Display;
+            public BldComboItem(int id, string display) { VillageId = id; Display = display; }
+            public override string ToString() { return Display; }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)

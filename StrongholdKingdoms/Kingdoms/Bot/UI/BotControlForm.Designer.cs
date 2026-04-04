@@ -140,6 +140,25 @@ namespace Kingdoms.Bot.UI
             this._crStatusLabel = new System.Windows.Forms.Label();
             this._crEnabledCheck = new System.Windows.Forms.CheckBox();
             this._tradePage = new System.Windows.Forms.TabPage();
+            this._builderPage = new System.Windows.Forms.TabPage();
+            this._bldSettingsPanel = new System.Windows.Forms.Panel();
+            this._bldEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._bldStatusLabel = new System.Windows.Forms.Label();
+            this._bldIntervalLabel = new System.Windows.Forms.Label();
+            this._bldIntervalInput = new System.Windows.Forms.NumericUpDown();
+            this._bldDelayLabel = new System.Windows.Forms.Label();
+            this._bldDelayInput = new System.Windows.Forms.NumericUpDown();
+            this._bldWaitForResourcesCheck = new System.Windows.Forms.CheckBox();
+            this._bldCopySettingsBtn = new System.Windows.Forms.Button();
+            this._bldNavPanel = new System.Windows.Forms.Panel();
+            this._bldVillageCombo = new System.Windows.Forms.ComboBox();
+            this._bldVillageEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._bldImportFileBtn = new System.Windows.Forms.Button();
+            this._bldRefreshStateBtn = new System.Windows.Forms.Button();
+            this._bldExportFileBtn = new System.Windows.Forms.Button();
+            this._bldClearLayoutBtn = new System.Windows.Forms.Button();
+            this._bldColHeader = new System.Windows.Forms.Panel();
+            this._bldBuildingListPanel = new System.Windows.Forms.Panel();
             this._trSubTabs = new System.Windows.Forms.TabControl();
             this._trMarketsTab = new System.Windows.Forms.TabPage();
             this._trMarketVillageListPanel = new System.Windows.Forms.Panel();
@@ -211,6 +230,10 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._crDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._crIntervalInput)).BeginInit();
             this._tradePage.SuspendLayout();
+            this._builderPage.SuspendLayout();
+            this._bldSettingsPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._bldIntervalInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._bldDelayInput)).BeginInit();
             this._trSubTabs.SuspendLayout();
             this._trMarketsTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._trMarketDistanceInput)).BeginInit();
@@ -398,6 +421,7 @@ namespace Kingdoms.Bot.UI
             this._tabControl.Controls.Add(this._recruitingPage);
             this._tabControl.Controls.Add(this._crPage);
             this._tabControl.Controls.Add(this._tradePage);
+            this._tabControl.Controls.Add(this._builderPage);
             this._tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this._tabControl.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._tabControl.Location = new System.Drawing.Point(0, 0);
@@ -1716,6 +1740,256 @@ namespace Kingdoms.Bot.UI
             this._tradePage.TabIndex = 4;
             this._tradePage.Text = "Trade";
             // 
+            // _builderPage
+            // 
+            this._builderPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._builderPage.Controls.Add(this._bldBuildingListPanel);
+            this._builderPage.Controls.Add(this._bldColHeader);
+            this._builderPage.Controls.Add(this._bldNavPanel);
+            this._builderPage.Controls.Add(this._bldSettingsPanel);
+            this._builderPage.Location = new System.Drawing.Point(4, 24);
+            this._builderPage.Name = "_builderPage";
+            this._builderPage.Size = new System.Drawing.Size(1142, 497);
+            this._builderPage.TabIndex = 5;
+            this._builderPage.Text = "Village Builder";
+            //
+            // _bldSettingsPanel
+            //
+            this._bldSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
+            this._bldSettingsPanel.Controls.Add(this._bldCopySettingsBtn);
+            this._bldSettingsPanel.Controls.Add(this._bldWaitForResourcesCheck);
+            this._bldSettingsPanel.Controls.Add(this._bldDelayInput);
+            this._bldSettingsPanel.Controls.Add(this._bldDelayLabel);
+            this._bldSettingsPanel.Controls.Add(this._bldIntervalInput);
+            this._bldSettingsPanel.Controls.Add(this._bldIntervalLabel);
+            this._bldSettingsPanel.Controls.Add(this._bldStatusLabel);
+            this._bldSettingsPanel.Controls.Add(this._bldEnabledCheck);
+            this._bldSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._bldSettingsPanel.Location = new System.Drawing.Point(0, 0);
+            this._bldSettingsPanel.Name = "_bldSettingsPanel";
+            this._bldSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
+            this._bldSettingsPanel.Size = new System.Drawing.Size(1142, 100);
+            this._bldSettingsPanel.TabIndex = 0;
+            //
+            // _bldEnabledCheck
+            //
+            this._bldEnabledCheck.AutoSize = true;
+            this._bldEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bldEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this._bldEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._bldEnabledCheck.Location = new System.Drawing.Point(16, 12);
+            this._bldEnabledCheck.Name = "_bldEnabledCheck";
+            this._bldEnabledCheck.Size = new System.Drawing.Size(185, 23);
+            this._bldEnabledCheck.TabIndex = 0;
+            this._bldEnabledCheck.Text = "Enable Village Builder";
+            //
+            // _bldStatusLabel
+            //
+            this._bldStatusLabel.AutoSize = true;
+            this._bldStatusLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._bldStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
+            this._bldStatusLabel.Location = new System.Drawing.Point(220, 14);
+            this._bldStatusLabel.Name = "_bldStatusLabel";
+            this._bldStatusLabel.Size = new System.Drawing.Size(68, 15);
+            this._bldStatusLabel.TabIndex = 1;
+            this._bldStatusLabel.Text = "DISABLED";
+            //
+            // _bldIntervalLabel
+            //
+            this._bldIntervalLabel.AutoSize = true;
+            this._bldIntervalLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._bldIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._bldIntervalLabel.Location = new System.Drawing.Point(16, 42);
+            this._bldIntervalLabel.Name = "_bldIntervalLabel";
+            this._bldIntervalLabel.Size = new System.Drawing.Size(73, 15);
+            this._bldIntervalLabel.TabIndex = 2;
+            this._bldIntervalLabel.Text = "Interval (s):";
+            //
+            // _bldIntervalInput
+            //
+            this._bldIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._bldIntervalInput.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this._bldIntervalInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._bldIntervalInput.Location = new System.Drawing.Point(100, 40);
+            this._bldIntervalInput.Maximum = new decimal(new int[] { 600, 0, 0, 0 });
+            this._bldIntervalInput.Minimum = new decimal(new int[] { 10, 0, 0, 0 });
+            this._bldIntervalInput.Name = "_bldIntervalInput";
+            this._bldIntervalInput.Size = new System.Drawing.Size(60, 23);
+            this._bldIntervalInput.TabIndex = 3;
+            this._bldIntervalInput.Value = new decimal(new int[] { 30, 0, 0, 0 });
+            //
+            // _bldDelayLabel
+            //
+            this._bldDelayLabel.AutoSize = true;
+            this._bldDelayLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._bldDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._bldDelayLabel.Location = new System.Drawing.Point(180, 42);
+            this._bldDelayLabel.Name = "_bldDelayLabel";
+            this._bldDelayLabel.Size = new System.Drawing.Size(69, 15);
+            this._bldDelayLabel.TabIndex = 4;
+            this._bldDelayLabel.Text = "Delay (ms):";
+            //
+            // _bldDelayInput
+            //
+            this._bldDelayInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._bldDelayInput.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this._bldDelayInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._bldDelayInput.Increment = new decimal(new int[] { 500, 0, 0, 0 });
+            this._bldDelayInput.Location = new System.Drawing.Point(260, 40);
+            this._bldDelayInput.Maximum = new decimal(new int[] { 30000, 0, 0, 0 });
+            this._bldDelayInput.Minimum = new decimal(new int[] { 1000, 0, 0, 0 });
+            this._bldDelayInput.Name = "_bldDelayInput";
+            this._bldDelayInput.Size = new System.Drawing.Size(70, 23);
+            this._bldDelayInput.TabIndex = 5;
+            this._bldDelayInput.Value = new decimal(new int[] { 5000, 0, 0, 0 });
+            //
+            // _bldWaitForResourcesCheck
+            //
+            this._bldWaitForResourcesCheck.AutoSize = true;
+            this._bldWaitForResourcesCheck.Checked = true;
+            this._bldWaitForResourcesCheck.CheckState = System.Windows.Forms.CheckState.Checked;
+            this._bldWaitForResourcesCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bldWaitForResourcesCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._bldWaitForResourcesCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._bldWaitForResourcesCheck.Location = new System.Drawing.Point(350, 40);
+            this._bldWaitForResourcesCheck.Name = "_bldWaitForResourcesCheck";
+            this._bldWaitForResourcesCheck.Size = new System.Drawing.Size(127, 19);
+            this._bldWaitForResourcesCheck.TabIndex = 6;
+            this._bldWaitForResourcesCheck.Text = "Wait for resources";
+            //
+            // _bldCopySettingsBtn
+            //
+            this._bldCopySettingsBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(60)))), ((int)(((byte)(80)))), ((int)(((byte)(140)))));
+            this._bldCopySettingsBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._bldCopySettingsBtn.FlatAppearance.BorderSize = 0;
+            this._bldCopySettingsBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bldCopySettingsBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._bldCopySettingsBtn.ForeColor = System.Drawing.Color.White;
+            this._bldCopySettingsBtn.Location = new System.Drawing.Point(16, 70);
+            this._bldCopySettingsBtn.Name = "_bldCopySettingsBtn";
+            this._bldCopySettingsBtn.Size = new System.Drawing.Size(110, 24);
+            this._bldCopySettingsBtn.TabIndex = 7;
+            this._bldCopySettingsBtn.Text = "Copy Settings";
+            this._bldCopySettingsBtn.UseVisualStyleBackColor = false;
+            //
+            // _bldNavPanel
+            //
+            this._bldNavPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(32)))), ((int)(((byte)(40)))));
+            this._bldNavPanel.Controls.Add(this._bldClearLayoutBtn);
+            this._bldNavPanel.Controls.Add(this._bldExportFileBtn);
+            this._bldNavPanel.Controls.Add(this._bldRefreshStateBtn);
+            this._bldNavPanel.Controls.Add(this._bldImportFileBtn);
+            this._bldNavPanel.Controls.Add(this._bldVillageEnabledCheck);
+            this._bldNavPanel.Controls.Add(this._bldVillageCombo);
+            this._bldNavPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._bldNavPanel.Location = new System.Drawing.Point(0, 100);
+            this._bldNavPanel.Name = "_bldNavPanel";
+            this._bldNavPanel.Size = new System.Drawing.Size(1142, 36);
+            this._bldNavPanel.TabIndex = 1;
+            //
+            // _bldVillageCombo
+            //
+            this._bldVillageCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._bldVillageCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._bldVillageCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bldVillageCombo.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this._bldVillageCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._bldVillageCombo.Location = new System.Drawing.Point(16, 6);
+            this._bldVillageCombo.Name = "_bldVillageCombo";
+            this._bldVillageCombo.Size = new System.Drawing.Size(300, 23);
+            this._bldVillageCombo.TabIndex = 0;
+            //
+            // _bldVillageEnabledCheck
+            //
+            this._bldVillageEnabledCheck.AutoSize = true;
+            this._bldVillageEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bldVillageEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._bldVillageEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._bldVillageEnabledCheck.Location = new System.Drawing.Point(330, 8);
+            this._bldVillageEnabledCheck.Name = "_bldVillageEnabledCheck";
+            this._bldVillageEnabledCheck.Size = new System.Drawing.Size(121, 19);
+            this._bldVillageEnabledCheck.TabIndex = 1;
+            this._bldVillageEnabledCheck.Text = "Build this village";
+            //
+            // _bldImportFileBtn
+            //
+            this._bldImportFileBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(160)))), ((int)(((byte)(255)))));
+            this._bldImportFileBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._bldImportFileBtn.FlatAppearance.BorderSize = 0;
+            this._bldImportFileBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bldImportFileBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._bldImportFileBtn.ForeColor = System.Drawing.Color.White;
+            this._bldImportFileBtn.Location = new System.Drawing.Point(520, 6);
+            this._bldImportFileBtn.Name = "_bldImportFileBtn";
+            this._bldImportFileBtn.Size = new System.Drawing.Size(120, 24);
+            this._bldImportFileBtn.TabIndex = 2;
+            this._bldImportFileBtn.Text = "Import From File";
+            this._bldImportFileBtn.UseVisualStyleBackColor = false;
+            //
+            // _bldRefreshStateBtn
+            //
+            this._bldRefreshStateBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(100)))), ((int)(((byte)(180)))));
+            this._bldRefreshStateBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._bldRefreshStateBtn.FlatAppearance.BorderSize = 0;
+            this._bldRefreshStateBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bldRefreshStateBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._bldRefreshStateBtn.ForeColor = System.Drawing.Color.White;
+            this._bldRefreshStateBtn.Location = new System.Drawing.Point(650, 6);
+            this._bldRefreshStateBtn.Name = "_bldRefreshStateBtn";
+            this._bldRefreshStateBtn.Size = new System.Drawing.Size(110, 24);
+            this._bldRefreshStateBtn.TabIndex = 3;
+            this._bldRefreshStateBtn.Text = "Refresh State";
+            this._bldRefreshStateBtn.UseVisualStyleBackColor = false;
+            //
+            // _bldExportFileBtn
+            //
+            this._bldExportFileBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(100)))), ((int)(((byte)(180)))));
+            this._bldExportFileBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._bldExportFileBtn.FlatAppearance.BorderSize = 0;
+            this._bldExportFileBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bldExportFileBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._bldExportFileBtn.ForeColor = System.Drawing.Color.White;
+            this._bldExportFileBtn.Location = new System.Drawing.Point(770, 6);
+            this._bldExportFileBtn.Name = "_bldExportFileBtn";
+            this._bldExportFileBtn.Size = new System.Drawing.Size(110, 24);
+            this._bldExportFileBtn.TabIndex = 4;
+            this._bldExportFileBtn.Text = "Export To File";
+            this._bldExportFileBtn.UseVisualStyleBackColor = false;
+            //
+            // _bldClearLayoutBtn
+            //
+            this._bldClearLayoutBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(60)))), ((int)(((byte)(60)))));
+            this._bldClearLayoutBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._bldClearLayoutBtn.FlatAppearance.BorderSize = 0;
+            this._bldClearLayoutBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bldClearLayoutBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._bldClearLayoutBtn.ForeColor = System.Drawing.Color.White;
+            this._bldClearLayoutBtn.Location = new System.Drawing.Point(890, 6);
+            this._bldClearLayoutBtn.Name = "_bldClearLayoutBtn";
+            this._bldClearLayoutBtn.Size = new System.Drawing.Size(100, 24);
+            this._bldClearLayoutBtn.TabIndex = 5;
+            this._bldClearLayoutBtn.Text = "Clear Layout";
+            this._bldClearLayoutBtn.UseVisualStyleBackColor = false;
+            //
+            // _bldColHeader
+            //
+            this._bldColHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(36)))), ((int)(((byte)(38)))), ((int)(((byte)(50)))));
+            this._bldColHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this._bldColHeader.Location = new System.Drawing.Point(0, 136);
+            this._bldColHeader.Name = "_bldColHeader";
+            this._bldColHeader.Size = new System.Drawing.Size(1142, 22);
+            this._bldColHeader.TabIndex = 2;
+            //
+            // _bldBuildingListPanel
+            //
+            this._bldBuildingListPanel.AutoScroll = true;
+            this._bldBuildingListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._bldBuildingListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._bldBuildingListPanel.Location = new System.Drawing.Point(0, 158);
+            this._bldBuildingListPanel.Name = "_bldBuildingListPanel";
+            this._bldBuildingListPanel.Size = new System.Drawing.Size(1142, 339);
+            this._bldBuildingListPanel.TabIndex = 3;
+            // 
             // _trSubTabs
             // 
             this._trSubTabs.Controls.Add(this._trMarketsTab);
@@ -2346,6 +2620,11 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._trMerchantsPerTradeInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._trDelayInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._trIntervalInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._bldIntervalInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._bldDelayInput)).EndInit();
+            this._bldSettingsPanel.ResumeLayout(false);
+            this._bldSettingsPanel.PerformLayout();
+            this._builderPage.ResumeLayout(false);
             this._logPanel.ResumeLayout(false);
             this.ResumeLayout(false);
 
@@ -2470,6 +2749,25 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Panel _crVillageListPanel;
         // Trade tab controls
         private System.Windows.Forms.TabPage _tradePage;
+        private System.Windows.Forms.TabPage _builderPage;
+        private System.Windows.Forms.Panel _bldSettingsPanel;
+        private System.Windows.Forms.CheckBox _bldEnabledCheck;
+        private System.Windows.Forms.Label _bldStatusLabel;
+        private System.Windows.Forms.Label _bldIntervalLabel;
+        private System.Windows.Forms.NumericUpDown _bldIntervalInput;
+        private System.Windows.Forms.Label _bldDelayLabel;
+        private System.Windows.Forms.NumericUpDown _bldDelayInput;
+        private System.Windows.Forms.CheckBox _bldWaitForResourcesCheck;
+        private System.Windows.Forms.Button _bldCopySettingsBtn;
+        private System.Windows.Forms.Panel _bldNavPanel;
+        private System.Windows.Forms.ComboBox _bldVillageCombo;
+        private System.Windows.Forms.CheckBox _bldVillageEnabledCheck;
+        private System.Windows.Forms.Button _bldImportFileBtn;
+        private System.Windows.Forms.Button _bldRefreshStateBtn;
+        private System.Windows.Forms.Button _bldExportFileBtn;
+        private System.Windows.Forms.Button _bldClearLayoutBtn;
+        private System.Windows.Forms.Panel _bldColHeader;
+        private System.Windows.Forms.Panel _bldBuildingListPanel;
         private System.Windows.Forms.TabControl _trSubTabs;
         private System.Windows.Forms.TabPage _trMarketsTab;
         private System.Windows.Forms.TabPage _trRoutesTab;
