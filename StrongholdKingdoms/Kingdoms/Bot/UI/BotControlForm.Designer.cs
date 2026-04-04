@@ -156,6 +156,7 @@ namespace Kingdoms.Bot.UI
             this._trAddRouteBtn = new System.Windows.Forms.Button();
             this._trSettingsPanel = new System.Windows.Forms.Panel();
             this._trPrioritiseMarketsCheck = new System.Windows.Forms.CheckBox();
+            this._trDisableOnCardExpiryCheck = new System.Windows.Forms.CheckBox();
             this._trIgnoreTransactionsCheck = new System.Windows.Forms.CheckBox();
             this._trAutoHireLimitInput = new System.Windows.Forms.NumericUpDown();
             this._trAutoHireLimitLabel = new System.Windows.Forms.Label();
@@ -1909,6 +1910,7 @@ namespace Kingdoms.Bot.UI
             // _trSettingsPanel
             // 
             this._trSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
+            this._trSettingsPanel.Controls.Add(this._trDisableOnCardExpiryCheck);
             this._trSettingsPanel.Controls.Add(this._trPrioritiseMarketsCheck);
             this._trSettingsPanel.Controls.Add(this._trIgnoreTransactionsCheck);
             this._trSettingsPanel.Controls.Add(this._trAutoHireLimitInput);
@@ -1946,6 +1948,18 @@ namespace Kingdoms.Bot.UI
             this._trPrioritiseMarketsCheck.Size = new System.Drawing.Size(114, 19);
             this._trPrioritiseMarketsCheck.TabIndex = 16;
             this._trPrioritiseMarketsCheck.Text = "Prioritise Markets";
+            // 
+            // _trDisableOnCardExpiryCheck
+            // 
+            this._trDisableOnCardExpiryCheck.AutoSize = true;
+            this._trDisableOnCardExpiryCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._trDisableOnCardExpiryCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trDisableOnCardExpiryCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._trDisableOnCardExpiryCheck.Location = new System.Drawing.Point(650, 70);
+            this._trDisableOnCardExpiryCheck.Name = "_trDisableOnCardExpiryCheck";
+            this._trDisableOnCardExpiryCheck.Size = new System.Drawing.Size(165, 19);
+            this._trDisableOnCardExpiryCheck.TabIndex = 17;
+            this._trDisableOnCardExpiryCheck.Text = "Disable on card expiry";
             // 
             // _trIgnoreTransactionsCheck
             // 
@@ -2480,6 +2494,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _trAutoHireLimitInput;
         private System.Windows.Forms.CheckBox _trIgnoreTransactionsCheck;
         private System.Windows.Forms.CheckBox _trPrioritiseMarketsCheck;
+        private System.Windows.Forms.CheckBox _trDisableOnCardExpiryCheck;
         private System.Windows.Forms.Panel _trMarketVillageListPanel;
         private System.Windows.Forms.Button _trMarketRefreshBtn;
         private System.Windows.Forms.Button _trAddMarketsBtn;

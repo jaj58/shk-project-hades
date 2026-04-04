@@ -1805,6 +1805,7 @@ namespace Kingdoms.Bot.UI
                 Math.Min(_trAutoHireLimitInput.Maximum, s.AutoHireMerchantsLimit));
             _trIgnoreTransactionsCheck.Checked = s.IgnoreCurrentTransactions;
             _trPrioritiseMarketsCheck.Checked = s.PrioritiseMarkets;
+            _trDisableOnCardExpiryCheck.Checked = s.DisableOnTradeCardExpiry;
 
             TrRefreshMarkets();
             TrBuildRoutesList();
@@ -1827,6 +1828,7 @@ namespace Kingdoms.Bot.UI
             s.AutoHireMerchantsLimit = (int)_trAutoHireLimitInput.Value;
             s.IgnoreCurrentTransactions = _trIgnoreTransactionsCheck.Checked;
             s.PrioritiseMarkets = _trPrioritiseMarketsCheck.Checked;
+            s.DisableOnTradeCardExpiry = _trDisableOnCardExpiryCheck.Checked;
 
             // Save currently displayed village's resource grid
             TrSaveCurrentVillage();
@@ -2065,6 +2067,15 @@ namespace Kingdoms.Bot.UI
         private void TrUpdateStatusDisplay()
         {
             if (_trEnabledCheck == null) return;
+
+            // Sync checkbox with module state (module may have been disabled by card expiry)
+            if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+            {
+                bool moduleEnabled = BotEngine.Instance.Settings.Trade.Enabled;
+                if (_trEnabledCheck.Checked != moduleEnabled)
+                    _trEnabledCheck.Checked = moduleEnabled;
+            }
+
             bool enabled = _trEnabledCheck.Checked;
             _trStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
             _trStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;

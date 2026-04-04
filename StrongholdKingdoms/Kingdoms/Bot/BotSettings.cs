@@ -327,6 +327,7 @@ namespace Kingdoms.Bot
         public int AutoHireMerchantsLimit = 50;
         public bool IgnoreCurrentTransactions = false;
         public bool PrioritiseMarkets = true; // true = markets first, false = village routes first
+        public bool DisableOnTradeCardExpiry = false;
         public List<VillageMarketTradeInfo> VillageMarketSettings = new List<VillageMarketTradeInfo>();
         public List<TradeRouteSettings> Routes = new List<TradeRouteSettings>();
         public List<PlayerTradeRouteSettings> PlayerRoutes = new List<PlayerTradeRouteSettings>();
