@@ -496,8 +496,21 @@ namespace Kingdoms.Bot.UI
             _rcIntervalInput.ValueChanged += delegate { RcPushToSettings(); };
             _rcDelayInput.ValueChanged += delegate { RcPushToSettings(); };
 
-            RcBuildColumnHeaders(_rcColHeaderVillages);
-            RcBuildColumnHeaders(_rcColHeaderCapitals);
+            // Villages tab: add toolbar above column header
+            RcBuildColumnHeaders(_rcColHeaderVillages, RecruitingModule.AllUnitKeys);
+            Panel villageToolbar = RcMakeToolbarPanel();
+            Button copyVillagesBtn = RcMakeCopyButton();
+            copyVillagesBtn.Click += delegate { RcCopySettingsClick(CopyRecruitSettingsForm.CopyMode.Villages); };
+            villageToolbar.Controls.Add(copyVillagesBtn);
+            _rcVillagesTab.Controls.Add(villageToolbar);
+
+            // Capitals tab: add toolbar above column header, use capital-only unit keys
+            RcBuildColumnHeaders(_rcColHeaderCapitals, RecruitingModule.CapitalUnitKeys);
+            Panel capitalToolbar = RcMakeToolbarPanel();
+            Button copyCapitalsBtn = RcMakeCopyButton();
+            copyCapitalsBtn.Click += delegate { RcCopySettingsClick(CopyRecruitSettingsForm.CopyMode.Capitals); };
+            capitalToolbar.Controls.Add(copyCapitalsBtn);
+            _rcCapitalsTab.Controls.Add(capitalToolbar);
 
             _rcRefreshTimer = new Timer();
             _rcRefreshTimer.Interval = 2000;
@@ -505,7 +518,43 @@ namespace Kingdoms.Bot.UI
             _rcRefreshTimer.Start();
         }
 
-        private void RcBuildColumnHeaders(Panel headerPanel)
+        private static Panel RcMakeToolbarPanel()
+        {
+            Panel bar = new Panel();
+            bar.Dock = DockStyle.Top;
+            bar.Height = 28;
+            bar.BackColor = Color.FromArgb(36, 38, 48);
+            return bar;
+        }
+
+        private static Button RcMakeCopyButton()
+        {
+            Button btn = new Button();
+            btn.Text = "Copy Settings";
+            btn.BackColor = Color.FromArgb(60, 80, 140);
+            btn.ForeColor = Color.White;
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Font = new Font("Segoe UI", 7.5f, FontStyle.Bold);
+            btn.Size = new Size(90, 22);
+            btn.Location = new Point(8, 3);
+            btn.Cursor = Cursors.Hand;
+            return btn;
+        }
+
+        private void RcCopySettingsClick(CopyRecruitSettingsForm.CopyMode mode)
+        {
+            // Save current panels to settings first
+            RcWriteToSettings();
+
+            CopyRecruitSettingsForm form = new CopyRecruitSettingsForm(mode);
+            form.ShowDialog(this);
+
+            if (form.Copied)
+                RcBuildVillageList();
+        }
+
+        private void RcBuildColumnHeaders(Panel headerPanel, string[] unitKeys)
         {
             Label villageHdr = new Label();
             villageHdr.Text = "Village";
@@ -515,7 +564,6 @@ namespace Kingdoms.Bot.UI
             villageHdr.Location = new Point(8, 5);
             headerPanel.Controls.Add(villageHdr);
 
-            string[] unitKeys = RecruitingModule.AllUnitKeys;
             for (int i = 0; i < unitKeys.Length; i++)
             {
                 int x = RecruitVillagePanel.VillageNameWidth + (i * RecruitVillagePanel.UnitColWidth);
@@ -649,7 +697,7 @@ namespace Kingdoms.Bot.UI
                     || typeLabel == "Country";
 
                 if (isCapital)
-                    capitalPanels.Add(new RecruitVillagePanel(id, name, vs, capitalPanels.Count % 2 != 0));
+                    capitalPanels.Add(new RecruitVillagePanel(id, name, vs, capitalPanels.Count % 2 != 0, RecruitingModule.CapitalUnitKeys));
                 else
                     villagePanels.Add(new RecruitVillagePanel(id, name, vs, villagePanels.Count % 2 != 0));
             }
@@ -996,6 +1044,32 @@ namespace Kingdoms.Bot.UI
         {
             _vaRefreshBtn.Click += delegate { VaRequestVassalLoad(); };
             _vaMinTroopsInput.ValueChanged += delegate { VaPushMinTroops(); };
+
+            // Copy Settings button next to Refresh List in vassal settings panel
+            Button copyVassalsBtn = new Button();
+            copyVassalsBtn.Text = "Copy Settings";
+            copyVassalsBtn.BackColor = Color.FromArgb(60, 80, 140);
+            copyVassalsBtn.ForeColor = Color.White;
+            copyVassalsBtn.FlatStyle = FlatStyle.Flat;
+            copyVassalsBtn.FlatAppearance.BorderSize = 0;
+            copyVassalsBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            copyVassalsBtn.Size = new Size(100, 24);
+            copyVassalsBtn.Location = new Point(_vaRefreshBtn.Right + 10, _vaRefreshBtn.Top);
+            copyVassalsBtn.Cursor = Cursors.Hand;
+            copyVassalsBtn.Click += delegate { VaCopySettingsClick(); };
+            _vaSettingsPanel.Controls.Add(copyVassalsBtn);
+        }
+
+        private void VaCopySettingsClick()
+        {
+            // Save current panels to settings first
+            VaWriteToSettings();
+
+            CopyRecruitSettingsForm form = new CopyRecruitSettingsForm(CopyRecruitSettingsForm.CopyMode.Vassals);
+            form.ShowDialog(this);
+
+            if (form.Copied)
+                VaBuildVassalList();
         }
 
         private void VaRequestVassalLoad()

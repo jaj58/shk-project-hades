@@ -15,7 +15,7 @@ namespace Kingdoms.Bot.UI
         private static readonly Font NameFont = new Font("Segoe UI", 8f, FontStyle.Bold);
         private static readonly Font InputFont = new Font("Segoe UI", 7f);
 
-        private static readonly string[] UnitKeys = RecruitingModule.AllUnitKeys;
+        private string[] _unitKeys;
 
         private int _villageId;
         private NumericUpDown[] _targetInputs;
@@ -28,8 +28,14 @@ namespace Kingdoms.Bot.UI
         public int VillageId { get { return _villageId; } }
 
         public RecruitVillagePanel(int villageId, string villageName, VillageRecruitSettings settings, bool alternate)
+            : this(villageId, villageName, settings, alternate, RecruitingModule.AllUnitKeys)
+        {
+        }
+
+        public RecruitVillagePanel(int villageId, string villageName, VillageRecruitSettings settings, bool alternate, string[] unitKeys)
         {
             _villageId = villageId;
+            _unitKeys = unitKeys;
             this.Height = RowHeight;
             this.BackColor = alternate ? BgOdd : BgEven;
 
@@ -42,18 +48,17 @@ namespace Kingdoms.Bot.UI
             nameLabel.Location = new Point(8, 3);
             nameLabel.Size = new Size(VillageNameWidth - 12, 18);
 
-            _targetInputs = new NumericUpDown[UnitKeys.Length];
-            _priorityInputs = new NumericUpDown[UnitKeys.Length];
+            _targetInputs = new NumericUpDown[_unitKeys.Length];
+            _priorityInputs = new NumericUpDown[_unitKeys.Length];
 
-            // 1 name label + 9 target + 9 priority = 19 controls
-            Control[] allControls = new Control[1 + UnitKeys.Length * 2];
+            Control[] allControls = new Control[1 + _unitKeys.Length * 2];
             allControls[0] = nameLabel;
 
-            for (int i = 0; i < UnitKeys.Length; i++)
+            for (int i = 0; i < _unitKeys.Length; i++)
             {
                 UnitRecruitEntry entry = null;
                 if (settings != null)
-                    entry = settings.GetEntry(UnitKeys[i]);
+                    entry = settings.GetEntry(_unitKeys[i]);
 
                 int target = entry != null ? entry.TargetCount : 0;
                 int priority = entry != null ? entry.Priority : i + 1;
@@ -95,9 +100,9 @@ namespace Kingdoms.Bot.UI
         public void WriteToSettings(RecruitingSettings settings)
         {
             VillageRecruitSettings vs = settings.GetVillageSettings(_villageId);
-            for (int i = 0; i < UnitKeys.Length; i++)
+            for (int i = 0; i < _unitKeys.Length; i++)
             {
-                UnitRecruitEntry entry = vs.GetEntry(UnitKeys[i]);
+                UnitRecruitEntry entry = vs.GetEntry(_unitKeys[i]);
                 entry.TargetCount = (int)_targetInputs[i].Value;
                 entry.Priority = (int)_priorityInputs[i].Value;
             }

@@ -19,6 +19,15 @@ namespace Kingdoms.Bot.Modules
             "Traders"
         };
 
+        public static readonly string[] CapitalUnitKeys = new string[]
+        {
+            "Peasants",
+            "Archers",
+            "Pikemen",
+            "Swordsmen",
+            "Catapults"
+        };
+
         public static readonly string[] DisbandOptions = new string[]
         {
             "Peasants",
