@@ -2066,7 +2066,7 @@ namespace Kingdoms.Bot.UI
             this._trMerchantsPerTradeLabel.Name = "_trMerchantsPerTradeLabel";
             this._trMerchantsPerTradeLabel.Size = new System.Drawing.Size(98, 15);
             this._trMerchantsPerTradeLabel.TabIndex = 6;
-            this._trMerchantsPerTradeLabel.Text = "Merchants/trade:";
+            this._trMerchantsPerTradeLabel.Text = "Min merchants/trade:";
             // 
             // _trDelayInput
             // 

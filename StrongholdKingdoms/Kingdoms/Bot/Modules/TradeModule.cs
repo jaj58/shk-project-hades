@@ -24,6 +24,13 @@ namespace Kingdoms.Bot.Modules
         private Dictionary<int, List<TradeRouteSettings>> _routesBySender =
             new Dictionary<int, List<TradeRouteSettings>>();
 
+        // Price fetch state
+        private bool _waitingForPrices;
+        private DateTime _priceFetchStarted = DateTime.MinValue;
+        private int _priceFetchVillageId = -1;
+        private const double PriceFetchTimeoutSeconds = 15.0;
+        private const double PriceCacheValidMinutes = 3.0;
+
         public override string ModuleName
         {
             get { return "Trade"; }
@@ -48,12 +55,45 @@ namespace Kingdoms.Bot.Modules
         {
             _currentVillageIndex = 0;
             _villageQueue.Clear();
+            _waitingForPrices = false;
         }
 
         protected override void OnTick()
         {
             TradeSettings settings = Settings;
             if (settings == null) return;
+
+            // If waiting for price data, check timeout
+            if (_waitingForPrices)
+            {
+                if ((DateTime.Now - _priceFetchStarted).TotalSeconds > PriceFetchTimeoutSeconds)
+                {
+                    LogWarning("Price fetch timed out for village " + _priceFetchVillageId + ", proceeding without prices.");
+                    _waitingForPrices = false;
+                }
+                else
+                {
+                    // Check if we got the data
+                    if (HasFreshPricesForVillage(_priceFetchVillageId, settings))
+                    {
+                        LogDebug("Price data received for " + GetVillageName(_priceFetchVillageId));
+                        _waitingForPrices = false;
+                    }
+                    else
+                    {
+                        return; // Still waiting
+                    }
+                }
+
+                // Now process the village we were waiting on
+                _lastVillageAction = DateTime.Now;
+                ProcessVillage(_priceFetchVillageId, settings);
+                _priceFetchVillageId = -1;
+
+                if (_currentVillageIndex >= _villageQueue.Count)
+                    LogInfo("Trade cycle complete. Processed " + _villageQueue.Count + " village(s).");
+                return;
+            }
 
             // If we're mid-cycle, process next village
             if (_villageQueue.Count > 0 && _currentVillageIndex < _villageQueue.Count)
@@ -63,10 +103,20 @@ namespace Kingdoms.Bot.Modules
 
                 int villageId = _villageQueue[_currentVillageIndex];
                 _currentVillageIndex++;
+
+                // Check if this village needs market trading and needs price data
+                VillageMarketTradeInfo marketInfo = settings.GetVillageMarketInfo(villageId);
+                if (marketInfo.IsTrading && marketInfo.MarketTargets.Count > 0 &&
+                    !HasFreshPricesForVillage(villageId, settings))
+                {
+                    // Need to fetch prices first
+                    RequestPrices(villageId, marketInfo, settings);
+                    return;
+                }
+
                 _lastVillageAction = DateTime.Now;
                 ProcessVillage(villageId, settings);
 
-                // If we just finished the last village, log it
                 if (_currentVillageIndex >= _villageQueue.Count)
                     LogInfo("Trade cycle complete. Processed " + _villageQueue.Count + " village(s).");
                 return;
@@ -89,6 +139,140 @@ namespace Kingdoms.Bot.Modules
             {
                 LogDebug("No villages to trade.");
                 return;
+            }
+        }
+
+        private bool HasFreshPricesForVillage(int villageId, TradeSettings settings)
+        {
+            VillageMarketTradeInfo info = settings.GetVillageMarketInfo(villageId);
+            if (info.MarketTargets.Count == 0) return true;
+
+            // Check if at least one market has fresh cache
+            foreach (int marketId in info.MarketTargets)
+            {
+                StockExchangeCache cache;
+                if (_stockExchangeCache.TryGetValue(marketId, out cache) &&
+                    (DateTime.Now - cache.LastUpdated).TotalMinutes < PriceCacheValidMinutes)
+                    return true;
+            }
+            return false;
+        }
+
+        private void RequestPrices(int villageId, VillageMarketTradeInfo marketInfo, TradeSettings settings)
+        {
+            _waitingForPrices = true;
+            _priceFetchStarted = DateTime.Now;
+            _priceFetchVillageId = villageId;
+
+            // Build list of markets we need data for (up to 20, sorted by distance)
+            List<int> marketsToFetch = new List<int>();
+            foreach (int marketId in marketInfo.MarketTargets)
+            {
+                StockExchangeCache cache;
+                if (!_stockExchangeCache.TryGetValue(marketId, out cache) ||
+                    (DateTime.Now - cache.LastUpdated).TotalMinutes >= PriceCacheValidMinutes)
+                {
+                    marketsToFetch.Add(marketId);
+                }
+            }
+
+            if (marketsToFetch.Count > 20)
+                marketsToFetch.RemoveRange(20, marketsToFetch.Count - 20);
+
+            LogDebug(GetVillageName(villageId) + ": Fetching prices from " + marketsToFetch.Count + " market(s)...");
+
+            try
+            {
+                RemoteServices.Instance.set_GetStockExchangeData_UserCallBack(
+                    new RemoteServices.GetStockExchangeData_UserCallBack(OnStockExchangeDataReceived));
+
+                if (marketsToFetch.Count > 0 && GameEngine.Instance.World.isAccountPremium())
+                {
+                    // Premium: fetch multiple at once
+                    RemoteServices.Instance.GetStockExchangePremiumData(villageId, marketsToFetch.ToArray());
+                }
+                else
+                {
+                    // Standard: fetch just the first market
+                    int targetMarket = marketsToFetch.Count > 0 ? marketsToFetch[0] : marketInfo.MarketTargets[0];
+                    RemoteServices.Instance.GetStockExchangeData(targetMarket, true);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                LogError("Failed to request stock exchange data: " + ex.Message);
+                _waitingForPrices = false;
+            }
+        }
+
+        private void OnStockExchangeDataReceived(GetStockExchangeData_ReturnType returnData)
+        {
+            if (returnData == null || !returnData.Success) return;
+
+            // Store the main market data
+            StockExchangePanel.StockExchangeInfo info = new StockExchangePanel.StockExchangeInfo();
+            info.lastTime = DateTime.Now;
+            info.villageID = returnData.villageID;
+            info.woodLevel = returnData.woodLevel;
+            info.stoneLevel = returnData.stoneLevel;
+            info.ironLevel = returnData.ironLevel;
+            info.pitchLevel = returnData.pitchLevel;
+            info.aleLevel = returnData.aleLevel;
+            info.applesLevel = returnData.applesLevel;
+            info.breadLevel = returnData.breadLevel;
+            info.meatLevel = returnData.meatLevel;
+            info.cheeseLevel = returnData.cheeseLevel;
+            info.vegLevel = returnData.vegLevel;
+            info.fishLevel = returnData.fishLevel;
+            info.bowsLevel = returnData.bowsLevel;
+            info.pikesLevel = returnData.pikesLevel;
+            info.swordsLevel = returnData.swordsLevel;
+            info.armourLevel = returnData.armourLevel;
+            info.catapultsLevel = returnData.catapultsLevel;
+            info.furnitureLevel = returnData.furnitureLevel;
+            info.clothesLevel = returnData.clothesLevel;
+            info.saltLevel = returnData.saltLevel;
+            info.venisonLevel = returnData.venisonLevel;
+            info.silkLevel = returnData.silkLevel;
+            info.spicesLevel = returnData.spicesLevel;
+            info.metalwareLevel = returnData.metalwareLevel;
+            info.wineLevel = returnData.wineLevel;
+            UpdateStockExchangeCache(returnData.villageID, info);
+
+            // Store premium multi-market data if available
+            if (returnData.otherVillages != null)
+            {
+                foreach (GetStockExchangeData_ReturnType other in returnData.otherVillages)
+                {
+                    StockExchangePanel.StockExchangeInfo otherInfo = new StockExchangePanel.StockExchangeInfo();
+                    otherInfo.lastTime = DateTime.Now;
+                    otherInfo.villageID = other.villageID;
+                    otherInfo.woodLevel = other.woodLevel;
+                    otherInfo.stoneLevel = other.stoneLevel;
+                    otherInfo.ironLevel = other.ironLevel;
+                    otherInfo.pitchLevel = other.pitchLevel;
+                    otherInfo.aleLevel = other.aleLevel;
+                    otherInfo.applesLevel = other.applesLevel;
+                    otherInfo.breadLevel = other.breadLevel;
+                    otherInfo.meatLevel = other.meatLevel;
+                    otherInfo.cheeseLevel = other.cheeseLevel;
+                    otherInfo.vegLevel = other.vegLevel;
+                    otherInfo.fishLevel = other.fishLevel;
+                    otherInfo.bowsLevel = other.bowsLevel;
+                    otherInfo.pikesLevel = other.pikesLevel;
+                    otherInfo.swordsLevel = other.swordsLevel;
+                    otherInfo.armourLevel = other.armourLevel;
+                    otherInfo.catapultsLevel = other.catapultsLevel;
+                    otherInfo.furnitureLevel = other.furnitureLevel;
+                    otherInfo.clothesLevel = other.clothesLevel;
+                    otherInfo.saltLevel = other.saltLevel;
+                    otherInfo.venisonLevel = other.venisonLevel;
+                    otherInfo.silkLevel = other.silkLevel;
+                    otherInfo.spicesLevel = other.spicesLevel;
+                    otherInfo.metalwareLevel = other.metalwareLevel;
+                    otherInfo.wineLevel = other.wineLevel;
+                    UpdateStockExchangeCache(other.villageID, otherInfo);
+                }
             }
         }
 
@@ -353,6 +537,12 @@ namespace Kingdoms.Bot.Modules
             return false;
         }
 
+        /// <summary>
+        /// Find the best market for a trade. Uses stock levels to calculate prices:
+        /// - Selling: pick the market where the price is highest (lowest stock = highest price)
+        /// - Buying: pick the market where the price is lowest (highest stock = lowest price)
+        /// Falls back to nearest market if no cache data available.
+        /// </summary>
         private int FindBestMarket(VillageMarketTradeInfo villageInfo, int controlPrice,
             int resourceId, bool selling, int sourceVillageId)
         {
@@ -360,28 +550,60 @@ namespace Kingdoms.Bot.Modules
                 return -1;
 
             int bestMarket = -1;
+            int bestStock = selling ? int.MaxValue : int.MinValue;
             double bestDistSq = double.MaxValue;
+            bool foundCachedMarket = false;
 
             foreach (int marketId in villageInfo.MarketTargets)
             {
-                double distSq = GameEngine.Instance.World.getSquareDistance(
-                    sourceVillageId, marketId);
-
-                // If we have cached data, use it for price checking
                 StockExchangeCache cache;
-                if (_stockExchangeCache.TryGetValue(marketId, out cache) &&
-                    (DateTime.Now - cache.LastUpdated).TotalMinutes < 5.0)
+                bool hasFreshCache = _stockExchangeCache.TryGetValue(marketId, out cache) &&
+                    (DateTime.Now - cache.LastUpdated).TotalMinutes < PriceCacheValidMinutes;
+
+                if (hasFreshCache)
                 {
                     int stockLevel = cache.GetLevel(resourceId);
+
+                    // Check price control
                     if (!CheckPrice(controlPrice, !selling, stockLevel, resourceId))
                         continue;
-                }
-                // If no cache, still allow the trade (server validates)
 
-                if (distSq < bestDistSq)
+                    double distSq = GameEngine.Instance.World.getSquareDistance(sourceVillageId, marketId);
+
+                    if (selling)
+                    {
+                        // For selling: lower stock = higher price = better for seller
+                        if (!foundCachedMarket || stockLevel < bestStock ||
+                            (stockLevel == bestStock && distSq < bestDistSq))
+                        {
+                            bestStock = stockLevel;
+                            bestMarket = marketId;
+                            bestDistSq = distSq;
+                            foundCachedMarket = true;
+                        }
+                    }
+                    else
+                    {
+                        // For buying: higher stock = lower price = better for buyer
+                        if (!foundCachedMarket || stockLevel > bestStock ||
+                            (stockLevel == bestStock && distSq < bestDistSq))
+                        {
+                            bestStock = stockLevel;
+                            bestMarket = marketId;
+                            bestDistSq = distSq;
+                            foundCachedMarket = true;
+                        }
+                    }
+                }
+                else if (!foundCachedMarket)
                 {
-                    bestDistSq = distSq;
-                    bestMarket = marketId;
+                    // Fallback: no cache, just pick nearest
+                    double distSq = GameEngine.Instance.World.getSquareDistance(sourceVillageId, marketId);
+                    if (distSq < bestDistSq)
+                    {
+                        bestDistSq = distSq;
+                        bestMarket = marketId;
+                    }
                 }
             }
 

@@ -1444,17 +1444,16 @@ namespace Kingdoms.Bot.UI
             // Right panel: markets IDs list
             Panel rightPanel = new Panel();
             rightPanel.Dock = DockStyle.Right;
-            rightPanel.Width = 120;
+            rightPanel.Width = 110;
             rightPanel.BackColor = Color.FromArgb(28, 30, 38);
-            rightPanel.Padding = new Padding(4, 4, 4, 4);
+            rightPanel.Padding = new Padding(2, 0, 2, 2);
 
             Label marketsHdr = new Label();
             marketsHdr.Text = "Markets:";
             marketsHdr.Dock = DockStyle.Top;
             marketsHdr.Font = new Font("Segoe UI", 7.5f, FontStyle.Bold);
             marketsHdr.ForeColor = Color.FromArgb(160, 165, 180);
-            marketsHdr.Height = 18;
-            rightPanel.Controls.Add(marketsHdr);
+            marketsHdr.Height = 16;
 
             _trMarketsListBox = new ListBox();
             _trMarketsListBox.Dock = DockStyle.Fill;
@@ -1462,10 +1461,9 @@ namespace Kingdoms.Bot.UI
             _trMarketsListBox.ForeColor = Color.FromArgb(230, 230, 240);
             _trMarketsListBox.Font = new Font("Segoe UI", 7f);
             _trMarketsListBox.BorderStyle = BorderStyle.FixedSingle;
+            _trMarketsListBox.IntegralHeight = false;
             rightPanel.Controls.Add(_trMarketsListBox);
-            // Ensure list is below header
-            rightPanel.Controls.SetChildIndex(_trMarketsListBox, 1);
-            rightPanel.Controls.SetChildIndex(marketsHdr, 0);
+            rightPanel.Controls.Add(marketsHdr);
 
             // Center: resource grid
             _trResourceGrid = new TradeResourceGrid();
