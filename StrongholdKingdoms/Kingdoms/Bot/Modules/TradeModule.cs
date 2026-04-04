@@ -24,6 +24,10 @@ namespace Kingdoms.Bot.Modules
         private Dictionary<int, List<TradeRouteSettings>> _routesBySender =
             new Dictionary<int, List<TradeRouteSettings>>();
 
+        // For player route processing: which player routes involve a given village as sender
+        private Dictionary<int, List<PlayerTradeRouteSettings>> _playerRoutesBySender =
+            new Dictionary<int, List<PlayerTradeRouteSettings>>();
+
         // Price fetch state
         private bool _waitingForPrices;
         private DateTime _priceFetchStarted = DateTime.MinValue;
@@ -280,6 +284,7 @@ namespace Kingdoms.Bot.Modules
         {
             _villageQueue.Clear();
             _routesBySender.Clear();
+            _playerRoutesBySender.Clear();
 
             // Index routes by sender village
             foreach (TradeRouteSettings route in settings.Routes)
@@ -300,7 +305,33 @@ namespace Kingdoms.Bot.Modules
                 }
             }
 
-            // Collect unique villages from both market villages and route senders
+            // Index player routes by sender village
+            foreach (PlayerTradeRouteSettings route in settings.PlayerRoutes)
+            {
+                if (!route.Enabled || route.FromVillages.Count == 0 ||
+                    route.TargetVillageId <= 0 || route.Resources.Count == 0)
+                    continue;
+
+                if (route.IsComplete())
+                {
+                    route.Enabled = false;
+                    LogInfo("[Player Route '" + route.Name + "'] All resources delivered. Route disabled.");
+                    continue;
+                }
+
+                foreach (int senderId in route.FromVillages)
+                {
+                    List<PlayerTradeRouteSettings> list;
+                    if (!_playerRoutesBySender.TryGetValue(senderId, out list))
+                    {
+                        list = new List<PlayerTradeRouteSettings>();
+                        _playerRoutesBySender[senderId] = list;
+                    }
+                    list.Add(route);
+                }
+            }
+
+            // Collect unique villages from market villages, route senders, and player route senders
             Dictionary<int, bool> seen = new Dictionary<int, bool>();
 
             if (GameEngine.Instance != null && GameEngine.Instance.World != null)
@@ -310,14 +341,12 @@ namespace Kingdoms.Bot.Modules
                 {
                     foreach (int id in userVillages)
                     {
-                        // Include if this village has market trading enabled
                         VillageMarketTradeInfo info = settings.GetVillageMarketInfo(id);
                         bool hasMarkets = info.IsTrading;
-
-                        // Include if this village is a route sender
                         bool hasRoutes = _routesBySender.ContainsKey(id);
+                        bool hasPlayerRoutes = _playerRoutesBySender.ContainsKey(id);
 
-                        if (hasMarkets || hasRoutes)
+                        if (hasMarkets || hasRoutes || hasPlayerRoutes)
                         {
                             if (!seen.ContainsKey(id))
                             {
@@ -330,7 +359,8 @@ namespace Kingdoms.Bot.Modules
             }
 
             LogDebug("Queue built: " + _villageQueue.Count + " village(s). " +
-                     _routesBySender.Count + " village(s) with routes.");
+                     _routesBySender.Count + " village(s) with routes. " +
+                     _playerRoutesBySender.Count + " village(s) with player routes.");
         }
 
         /// <summary>
@@ -355,15 +385,17 @@ namespace Kingdoms.Bot.Modules
             bool hasMarkets = marketInfo.IsTrading;
             List<TradeRouteSettings> villageRoutes;
             bool hasRoutes = _routesBySender.TryGetValue(villageId, out villageRoutes);
+            List<PlayerTradeRouteSettings> playerRoutes;
+            bool hasPlayerRoutes = _playerRoutesBySender.TryGetValue(villageId, out playerRoutes);
 
-            if (!hasMarkets && !hasRoutes)
+            if (!hasMarkets && !hasRoutes && !hasPlayerRoutes)
             {
-                LogDebug(villageName + ": No market trading or routes configured.");
+                LogDebug(villageName + ": No market trading, routes or player routes configured.");
                 return;
             }
 
             LogDebug(villageName + ": Processing (markets=" + hasMarkets + ", routes=" + hasRoutes +
-                ", merchants=" + map.m_numTradersAtHome + ")");
+                ", playerRoutes=" + hasPlayerRoutes + ", merchants=" + map.m_numTradersAtHome + ")");
 
             if (settings.PrioritiseMarkets)
             {
@@ -379,6 +411,10 @@ namespace Kingdoms.Bot.Modules
                 if (hasMarkets)
                     TryMarketTrade(map, villageId, villageName, marketInfo, settings);
             }
+
+            // Player routes always processed last (they're one-off deliveries)
+            if (hasPlayerRoutes)
+                TryPlayerRouteSend(map, villageId, villageName, playerRoutes, settings);
         }
 
         private void RefreshCapitalsList()
@@ -729,6 +765,90 @@ namespace Kingdoms.Bot.Modules
                                 (tradersAtHome - numMerchants) + " left.");
                         return true; // Only ONE send per village per tick
                     }
+                }
+            }
+
+            return false;
+        }
+
+        // =====================================================================
+        // Player Route Trading
+        // =====================================================================
+
+        private bool TryPlayerRouteSend(VillageMap senderMap, int senderId, string senderName,
+            List<PlayerTradeRouteSettings> routes, TradeSettings settings)
+        {
+            int tradersAtHome = senderMap.m_numTradersAtHome;
+            int movingTraders = CountMovingMerchants(senderId, false);
+
+            if (tradersAtHome <= 0)
+            {
+                LogDebug(senderName + " [Player Route]: No merchants at home.");
+                return false;
+            }
+
+            foreach (PlayerTradeRouteSettings route in routes)
+            {
+                if (!route.Enabled || route.TargetVillageId <= 0)
+                    continue;
+
+                if (route.IsComplete())
+                {
+                    route.Enabled = false;
+                    LogInfo("[Player Route '" + route.Name + "'] All resources delivered. Route disabled.");
+                    continue;
+                }
+
+                foreach (PlayerTradeResourceEntry resEntry in route.Resources)
+                {
+                    if (resEntry.TotalAmount <= 0 || resEntry.Remaining <= 0)
+                        continue;
+
+                    int resourceId = resEntry.ResourceId;
+                    double senderLevel = senderMap.getResourceLevel(resourceId);
+                    if (senderLevel <= route.KeepMinimum) continue;
+
+                    double canSend = senderLevel - route.KeepMinimum;
+                    int remaining = resEntry.Remaining;
+                    if (canSend > remaining) canSend = remaining;
+
+                    int carryLevel = GetCarryLevel(resourceId);
+                    if (canSend < carryLevel) continue;
+
+                    // Override min merchants — send even with 1 merchant to ensure all goods are sent
+                    int numMerchants = Math.Min((int)(canSend / carryLevel), tradersAtHome);
+                    numMerchants = Math.Min(numMerchants, route.MaxMerchantsPerTransaction);
+                    numMerchants = Math.Min(numMerchants, settings.MerchantsExchangeLimit - movingTraders);
+
+                    if (numMerchants <= 0) continue;
+
+                    int amount = numMerchants * carryLevel;
+                    // Don't send more than remaining
+                    if (amount > remaining)
+                    {
+                        numMerchants = (int)System.Math.Ceiling((double)remaining / carryLevel);
+                        if (numMerchants <= 0) numMerchants = 1;
+                        numMerchants = Math.Min(numMerchants, tradersAtHome);
+                        amount = numMerchants * carryLevel;
+                    }
+
+                    senderMap.sendResources(route.TargetVillageId, resourceId, amount);
+                    resEntry.AmountSent += amount;
+
+                    string resourceName = TradeModuleConstants.GetResourceName(resourceId);
+                    LogInfo(senderName + " [Player Route '" + route.Name + "'] -> " +
+                            GetVillageName(route.TargetVillageId) +
+                            ": " + amount + " " + resourceName +
+                            " (" + resEntry.AmountSent + "/" + resEntry.TotalAmount + " sent). " +
+                            (tradersAtHome - numMerchants) + " merchants left.");
+
+                    if (route.IsComplete())
+                    {
+                        route.Enabled = false;
+                        LogInfo("[Player Route '" + route.Name + "'] All resources delivered! Route auto-disabled.");
+                    }
+
+                    return true; // One send per village per tick
                 }
             }
 

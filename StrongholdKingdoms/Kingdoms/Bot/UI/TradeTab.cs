@@ -888,4 +888,456 @@ namespace Kingdoms.Bot.UI
             return btn;
         }
     }
+
+    // =========================================================================
+    // Player Trade Route Row (summary display in the list)
+    // =========================================================================
+
+    internal class PlayerTradeRouteRow : Panel
+    {
+        private static readonly Color BgEven = Color.FromArgb(30, 32, 40);
+        private static readonly Color BgOdd = Color.FromArgb(36, 38, 48);
+        private static readonly Color BgSelected = Color.FromArgb(50, 55, 75);
+        private static readonly Color TextPri = Color.FromArgb(230, 230, 240);
+        private static readonly Color TextSec = Color.FromArgb(160, 165, 180);
+        private static readonly Color ProgressGreen = Color.FromArgb(80, 200, 120);
+        private static readonly Color ProgressYellow = Color.FromArgb(220, 180, 60);
+
+        private PlayerTradeRouteSettings _route;
+        private CheckBox _enabledCheck;
+        private bool _isSelected;
+        private Color _normalBg;
+
+        public PlayerTradeRouteSettings Route { get { return _route; } }
+        public bool IsSelected { get { return _isSelected; } }
+
+        public PlayerTradeRouteRow(PlayerTradeRouteSettings route, bool alternate)
+        {
+            _route = route;
+            _normalBg = alternate ? BgOdd : BgEven;
+            this.Height = 24;
+            this.BackColor = _normalBg;
+            this.Cursor = Cursors.Hand;
+            this.Click += delegate { Select(); };
+
+            _enabledCheck = new CheckBox();
+            _enabledCheck.Checked = route.Enabled;
+            _enabledCheck.AutoSize = true;
+            _enabledCheck.FlatStyle = FlatStyle.Flat;
+            _enabledCheck.Location = new Point(6, 3);
+            _enabledCheck.CheckedChanged += delegate { _route.Enabled = _enabledCheck.Checked; };
+            this.Controls.Add(_enabledCheck);
+
+            AddLabel(route.Name, 28, 130, TextPri);
+
+            string fromText = route.FromVillages.Count + " village(s)";
+            AddLabel(fromText, 164, 96, TextSec);
+
+            string targetText = route.TargetVillageId > 0 ? route.TargetVillageId.ToString() : "(none)";
+            AddLabel(targetText, 264, 76, TextSec);
+
+            string resText = route.Resources.Count + " type(s)";
+            AddLabel(resText, 344, 170, TextSec);
+
+            // Progress
+            int totalAmount = 0;
+            int totalSent = 0;
+            foreach (PlayerTradeResourceEntry e in route.Resources)
+            {
+                totalAmount += e.TotalAmount;
+                totalSent += e.AmountSent;
+            }
+            string progressText = totalSent + " / " + totalAmount;
+            Color progressColor = (totalAmount > 0 && totalSent >= totalAmount) ? ProgressGreen : ProgressYellow;
+            Label progressLabel = AddLabel(progressText, 520, 130, progressColor);
+            if (route.IsComplete())
+                progressLabel.Text += " \u2713";
+
+            AddLabel(route.KeepMinimum.ToString(), 660, 60, TextSec);
+            AddLabel(route.MaxMerchantsPerTransaction.ToString(), 730, 50, TextSec);
+        }
+
+        private Label AddLabel(string text, int x, int width, Color color)
+        {
+            Label lbl = new Label();
+            lbl.Text = text;
+            lbl.Font = new Font("Segoe UI", 7.5f);
+            lbl.ForeColor = color;
+            lbl.Location = new Point(x, 4);
+            lbl.Size = new Size(width, 16);
+            lbl.Click += delegate { Select(); };
+            this.Controls.Add(lbl);
+            return lbl;
+        }
+
+        private void Select()
+        {
+            _isSelected = !_isSelected;
+            this.BackColor = _isSelected ? BgSelected : _normalBg;
+        }
+
+        public void WriteToSettings(TradeSettings s)
+        {
+            _route.Enabled = _enabledCheck.Checked;
+        }
+    }
+
+    // =========================================================================
+    // Player Trade Route Editor Form
+    // =========================================================================
+
+    internal class PlayerTradeRouteEditorForm : Form
+    {
+        private static readonly Color FormBg = Color.FromArgb(28, 30, 38);
+        private static readonly Color PanelBg = Color.FromArgb(36, 38, 48);
+        private static readonly Color InputBg = Color.FromArgb(50, 52, 64);
+        private static readonly Color TextPri = Color.FromArgb(230, 230, 240);
+        private static readonly Color TextSec = Color.FromArgb(160, 165, 180);
+        private static readonly Color AccentCol = Color.FromArgb(80, 160, 255);
+
+        private TextBox _nameInput;
+        private CheckBox _enabledCheck;
+        private ListBox _fromList;
+        private NumericUpDown _targetIdInput;
+        private NumericUpDown _keepMinInput;
+        private NumericUpDown _maxMerchantsInput;
+        private Panel _resourcePanel;
+        private List<PlayerResourceRow> _resourceRows = new List<PlayerResourceRow>();
+        private Button _saveBtn;
+        private Button _cancelBtn;
+
+        private PlayerTradeRouteSettings _route;
+        private bool _saved;
+        public bool Saved { get { return _saved; } }
+
+        public PlayerTradeRouteEditorForm(PlayerTradeRouteSettings route, string title)
+        {
+            _route = route;
+            _saved = false;
+
+            this.Text = title;
+            this.BackColor = FormBg;
+            this.ForeColor = TextPri;
+            this.Font = new Font("Segoe UI", 9f);
+            this.ClientSize = new Size(750, 520);
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.ShowInTaskbar = false;
+
+            BuildUI();
+            PopulateFromRoute();
+        }
+
+        private void BuildUI()
+        {
+            // Route name + enabled
+            Label nameLbl = MakeLabel("Route Name:", 14, 14);
+            this.Controls.Add(nameLbl);
+            _nameInput = new TextBox();
+            _nameInput.BackColor = InputBg;
+            _nameInput.ForeColor = TextPri;
+            _nameInput.BorderStyle = BorderStyle.FixedSingle;
+            _nameInput.Font = new Font("Segoe UI", 9f);
+            _nameInput.Location = new Point(110, 12);
+            _nameInput.Size = new Size(180, 22);
+            this.Controls.Add(_nameInput);
+
+            _enabledCheck = new CheckBox();
+            _enabledCheck.Text = "Enabled";
+            _enabledCheck.FlatStyle = FlatStyle.Flat;
+            _enabledCheck.ForeColor = TextPri;
+            _enabledCheck.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            _enabledCheck.Location = new Point(310, 12);
+            _enabledCheck.AutoSize = true;
+            this.Controls.Add(_enabledCheck);
+
+            int y = 44;
+
+            // From villages
+            Label fromLbl = MakeLabel("From Villages:", 14, y);
+            this.Controls.Add(fromLbl);
+            _fromList = new ListBox();
+            _fromList.BackColor = InputBg;
+            _fromList.ForeColor = TextPri;
+            _fromList.Font = new Font("Segoe UI", 8f);
+            _fromList.BorderStyle = BorderStyle.FixedSingle;
+            _fromList.SelectionMode = SelectionMode.MultiExtended;
+            _fromList.Location = new Point(14, y + 18);
+            _fromList.Size = new Size(220, 120);
+            this.Controls.Add(_fromList);
+
+            // Target village ID
+            Label targetLbl = MakeLabel("Target Village ID:", 250, y);
+            this.Controls.Add(targetLbl);
+            _targetIdInput = new NumericUpDown();
+            _targetIdInput.BackColor = InputBg;
+            _targetIdInput.ForeColor = TextPri;
+            _targetIdInput.BorderStyle = BorderStyle.FixedSingle;
+            _targetIdInput.Font = new Font("Segoe UI", 9f);
+            _targetIdInput.Location = new Point(250, y + 18);
+            _targetIdInput.Size = new Size(120, 22);
+            _targetIdInput.Maximum = 999999;
+            _targetIdInput.Minimum = 0;
+            this.Controls.Add(_targetIdInput);
+
+            // Keep minimum
+            Label keepLbl = MakeLabel("Keep Min:", 250, y + 50);
+            this.Controls.Add(keepLbl);
+            _keepMinInput = new NumericUpDown();
+            _keepMinInput.BackColor = InputBg;
+            _keepMinInput.ForeColor = TextPri;
+            _keepMinInput.BorderStyle = BorderStyle.FixedSingle;
+            _keepMinInput.Font = new Font("Segoe UI", 9f);
+            _keepMinInput.Location = new Point(250, y + 68);
+            _keepMinInput.Size = new Size(120, 22);
+            _keepMinInput.Maximum = 999999;
+            _keepMinInput.Minimum = 0;
+            this.Controls.Add(_keepMinInput);
+
+            // Max merchants per transaction
+            Label maxMerchLbl = MakeLabel("Max Merchants:", 390, y);
+            this.Controls.Add(maxMerchLbl);
+            _maxMerchantsInput = new NumericUpDown();
+            _maxMerchantsInput.BackColor = InputBg;
+            _maxMerchantsInput.ForeColor = TextPri;
+            _maxMerchantsInput.BorderStyle = BorderStyle.FixedSingle;
+            _maxMerchantsInput.Font = new Font("Segoe UI", 9f);
+            _maxMerchantsInput.Location = new Point(390, y + 18);
+            _maxMerchantsInput.Size = new Size(80, 22);
+            _maxMerchantsInput.Maximum = 500;
+            _maxMerchantsInput.Minimum = 1;
+            _maxMerchantsInput.Value = 50;
+            this.Controls.Add(_maxMerchantsInput);
+
+            // Resources section
+            int resY = 190;
+            Label resLbl = MakeLabel("Resources (select amount to send for each — 0 = skip):", 14, resY);
+            this.Controls.Add(resLbl);
+
+            // Resource header
+            Panel resHeader = new Panel();
+            resHeader.Location = new Point(14, resY + 18);
+            resHeader.Size = new Size(720, 18);
+            resHeader.BackColor = Color.FromArgb(36, 38, 50);
+            Label hdrName = new Label();
+            hdrName.Text = "Resource";
+            hdrName.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            hdrName.ForeColor = TextSec;
+            hdrName.AutoSize = true;
+            hdrName.Location = new Point(4, 2);
+            resHeader.Controls.Add(hdrName);
+            Label hdrTotal = new Label();
+            hdrTotal.Text = "Total Amount";
+            hdrTotal.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            hdrTotal.ForeColor = TextSec;
+            hdrTotal.AutoSize = true;
+            hdrTotal.Location = new Point(140, 2);
+            resHeader.Controls.Add(hdrTotal);
+            Label hdrSent = new Label();
+            hdrSent.Text = "Sent So Far";
+            hdrSent.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            hdrSent.ForeColor = TextSec;
+            hdrSent.AutoSize = true;
+            hdrSent.Location = new Point(260, 2);
+            resHeader.Controls.Add(hdrSent);
+            this.Controls.Add(resHeader);
+
+            _resourcePanel = new Panel();
+            _resourcePanel.Location = new Point(14, resY + 36);
+            _resourcePanel.Size = new Size(720, 240);
+            _resourcePanel.AutoScroll = true;
+            _resourcePanel.BackColor = Color.FromArgb(28, 30, 38);
+            this.Controls.Add(_resourcePanel);
+
+            int by = 480;
+            _saveBtn = MakeButton("Save", AccentCol, 540, by);
+            _saveBtn.Click += delegate { SaveAndClose(); };
+            this.Controls.Add(_saveBtn);
+
+            _cancelBtn = MakeButton("Cancel", Color.FromArgb(70, 72, 84), 650, by);
+            _cancelBtn.Click += delegate { this.Close(); };
+            this.Controls.Add(_cancelBtn);
+        }
+
+        private void PopulateFromRoute()
+        {
+            _nameInput.Text = _route.Name;
+            _enabledCheck.Checked = _route.Enabled;
+            _targetIdInput.Value = Math.Max(0, Math.Min(999999, _route.TargetVillageId));
+            _keepMinInput.Value = Math.Max(0, Math.Min(999999, _route.KeepMinimum));
+            _maxMerchantsInput.Value = Math.Max(1, Math.Min(500, _route.MaxMerchantsPerTransaction));
+
+            // Populate village list
+            if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+            {
+                List<int> ids = GameEngine.Instance.World.getUserVillageIDList();
+                if (ids != null)
+                {
+                    foreach (int id in ids)
+                    {
+                        string name = GameEngine.Instance.World.getVillageName(id);
+                        _fromList.Items.Add(new VillageItem(id, "[" + id + "] " + name));
+                    }
+                }
+            }
+
+            for (int i = 0; i < _fromList.Items.Count; i++)
+            {
+                VillageItem item = (VillageItem)_fromList.Items[i];
+                if (_route.FromVillages.Contains(item.VillageId))
+                    _fromList.SetSelected(i, true);
+            }
+
+            // Populate resources
+            byte[] resIds = TradeModuleConstants.TradeTypeIds;
+            int rowY = 0;
+            for (int idx = 0; idx < resIds.Length; idx++)
+            {
+                int resId = (int)resIds[idx];
+                string resName = TradeModuleConstants.GetResourceName(resId);
+                PlayerTradeResourceEntry existing = _route.GetResourceEntry(resId);
+                int total = existing != null ? existing.TotalAmount : 0;
+                int sent = existing != null ? existing.AmountSent : 0;
+
+                PlayerResourceRow row = new PlayerResourceRow(resId, resName, total, sent, idx);
+                row.Location = new Point(0, rowY);
+                row.Size = new Size(700, 22);
+                _resourcePanel.Controls.Add(row);
+                _resourceRows.Add(row);
+                rowY += 22;
+            }
+        }
+
+        private void SaveAndClose()
+        {
+            _route.Name = _nameInput.Text;
+            _route.Enabled = _enabledCheck.Checked;
+            _route.TargetVillageId = (int)_targetIdInput.Value;
+            _route.KeepMinimum = (int)_keepMinInput.Value;
+            _route.MaxMerchantsPerTransaction = (int)_maxMerchantsInput.Value;
+
+            _route.FromVillages.Clear();
+            foreach (object sel in _fromList.SelectedItems)
+            {
+                VillageItem item = sel as VillageItem;
+                if (item != null)
+                    _route.FromVillages.Add(item.VillageId);
+            }
+
+            _route.Resources.Clear();
+            foreach (PlayerResourceRow row in _resourceRows)
+            {
+                int total = row.TotalAmount;
+                if (total > 0)
+                {
+                    PlayerTradeResourceEntry entry = new PlayerTradeResourceEntry();
+                    entry.ResourceId = row.ResourceId;
+                    entry.TotalAmount = total;
+                    entry.AmountSent = row.AmountSent;
+                    _route.Resources.Add(entry);
+                }
+            }
+
+            _saved = true;
+            this.Close();
+        }
+
+        private static Label MakeLabel(string text, int x, int y)
+        {
+            Label lbl = new Label();
+            lbl.Text = text;
+            lbl.Font = new Font("Segoe UI", 8.5f);
+            lbl.ForeColor = Color.FromArgb(160, 165, 180);
+            lbl.AutoSize = true;
+            lbl.Location = new Point(x, y);
+            return lbl;
+        }
+
+        private static Button MakeButton(string text, Color bg, int x, int y)
+        {
+            Button btn = new Button();
+            btn.Text = text;
+            btn.BackColor = bg;
+            btn.ForeColor = Color.White;
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            btn.Size = new Size(100, 30);
+            btn.Location = new Point(x, y);
+            btn.Cursor = Cursors.Hand;
+            return btn;
+        }
+    }
+
+    // =========================================================================
+    // Player Resource Row (inside the editor form)
+    // =========================================================================
+
+    internal class PlayerResourceRow : Panel
+    {
+        private static readonly Color InputBg = Color.FromArgb(50, 52, 64);
+        private static readonly Color TextPri = Color.FromArgb(230, 230, 240);
+        private static readonly Color TextSec = Color.FromArgb(160, 165, 180);
+        private static readonly Color RowEven = Color.FromArgb(30, 32, 40);
+        private static readonly Color RowOdd = Color.FromArgb(36, 38, 48);
+
+        private int _resourceId;
+        private NumericUpDown _totalInput;
+        private int _amountSent;
+
+        public int ResourceId { get { return _resourceId; } }
+        public int TotalAmount { get { return (int)_totalInput.Value; } }
+        public int AmountSent { get { return _amountSent; } }
+
+        public PlayerResourceRow(int resourceId, string resourceName, int total, int sent, int index)
+        {
+            _resourceId = resourceId;
+            _amountSent = sent;
+            this.BackColor = index % 2 == 0 ? RowEven : RowOdd;
+
+            Label nameLabel = new Label();
+            nameLabel.Text = resourceName;
+            nameLabel.Font = new Font("Segoe UI", 8f);
+            nameLabel.ForeColor = TextPri;
+            nameLabel.Location = new Point(4, 2);
+            nameLabel.Size = new Size(130, 18);
+            this.Controls.Add(nameLabel);
+
+            _totalInput = new NumericUpDown();
+            _totalInput.BackColor = InputBg;
+            _totalInput.ForeColor = TextPri;
+            _totalInput.BorderStyle = BorderStyle.FixedSingle;
+            _totalInput.Font = new Font("Segoe UI", 8f);
+            _totalInput.Location = new Point(140, 1);
+            _totalInput.Size = new Size(100, 20);
+            _totalInput.Maximum = 999999;
+            _totalInput.Minimum = 0;
+            _totalInput.Value = Math.Max(0, Math.Min(999999, total));
+            this.Controls.Add(_totalInput);
+
+            Label sentLabel = new Label();
+            sentLabel.Text = sent.ToString();
+            sentLabel.Font = new Font("Segoe UI", 8f);
+            sentLabel.ForeColor = sent >= total && total > 0
+                ? Color.FromArgb(80, 200, 120)
+                : TextSec;
+            sentLabel.Location = new Point(260, 2);
+            sentLabel.Size = new Size(80, 18);
+            this.Controls.Add(sentLabel);
+
+            if (total > 0)
+            {
+                int remaining = Math.Max(0, total - sent);
+                Label remLabel = new Label();
+                remLabel.Text = "(" + remaining + " remaining)";
+                remLabel.Font = new Font("Segoe UI", 7f);
+                remLabel.ForeColor = TextSec;
+                remLabel.Location = new Point(340, 3);
+                remLabel.AutoSize = true;
+                this.Controls.Add(remLabel);
+            }
+        }
+    }
 }

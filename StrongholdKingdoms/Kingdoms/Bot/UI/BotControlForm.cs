@@ -46,6 +46,8 @@ namespace Kingdoms.Bot.UI
         private ListBox _trMarketsListBox;
         private Label _trMarketCountLabel;
         private List<TradeRouteRow> _trRouteRows = new List<TradeRouteRow>();
+        // Player Routes tab
+        private List<PlayerTradeRouteRow> _trPlayerRouteRows = new List<PlayerTradeRouteRow>();
         private int _trSelectedRouteIndex = -1;
 
         // Vassals tab runtime state
@@ -1407,6 +1409,8 @@ namespace Kingdoms.Bot.UI
             TrBuildMarketsTabLayout();
             // Build the Routes sub-tab layout programmatically
             TrBuildRoutesTabLayout();
+            // Build the Player Routes sub-tab
+            TrBuildPlayerRoutesTab();
 
             _trAddMarketsBtn.Click += delegate { TrAddMarketsClick(); };
             _trMarketRefreshBtn.Click += delegate { TrRefreshMarkets(); };
@@ -1579,6 +1583,206 @@ namespace Kingdoms.Bot.UI
             _trMarketsTab.Controls.Add(topBar);
         }
 
+        private void TrBuildPlayerRoutesTab()
+        {
+            _trPlayerRoutesTab.Controls.Clear();
+
+            // Top button bar
+            Panel btnBar = new Panel();
+            btnBar.Dock = DockStyle.Top;
+            btnBar.Height = 32;
+            btnBar.BackColor = Color.FromArgb(36, 38, 48);
+
+            Button addBtn = new Button();
+            addBtn.Text = "Add Route";
+            addBtn.BackColor = Color.FromArgb(80, 160, 255);
+            addBtn.ForeColor = Color.White;
+            addBtn.FlatStyle = FlatStyle.Flat;
+            addBtn.FlatAppearance.BorderSize = 0;
+            addBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            addBtn.Size = new Size(100, 24);
+            addBtn.Location = new Point(8, 4);
+            addBtn.Cursor = Cursors.Hand;
+            addBtn.Click += delegate { TrAddPlayerRouteClick(); };
+            btnBar.Controls.Add(addBtn);
+
+            Button deleteBtn = new Button();
+            deleteBtn.Text = "Delete Route";
+            deleteBtn.BackColor = Color.FromArgb(200, 60, 60);
+            deleteBtn.ForeColor = Color.White;
+            deleteBtn.FlatStyle = FlatStyle.Flat;
+            deleteBtn.FlatAppearance.BorderSize = 0;
+            deleteBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            deleteBtn.Size = new Size(100, 24);
+            deleteBtn.Location = new Point(118, 4);
+            deleteBtn.Cursor = Cursors.Hand;
+            deleteBtn.Click += delegate { TrDeletePlayerRouteClick(); };
+            btnBar.Controls.Add(deleteBtn);
+
+            Button refreshBtn = new Button();
+            refreshBtn.Text = "Refresh Routes";
+            refreshBtn.BackColor = Color.FromArgb(50, 100, 180);
+            refreshBtn.ForeColor = Color.White;
+            refreshBtn.FlatStyle = FlatStyle.Flat;
+            refreshBtn.FlatAppearance.BorderSize = 0;
+            refreshBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            refreshBtn.Size = new Size(110, 24);
+            refreshBtn.Location = new Point(228, 4);
+            refreshBtn.Cursor = Cursors.Hand;
+            refreshBtn.Click += delegate { TrBuildPlayerRoutesList(); };
+            btnBar.Controls.Add(refreshBtn);
+
+            Button editBtn = new Button();
+            editBtn.Text = "Edit Route";
+            editBtn.BackColor = Color.FromArgb(50, 100, 180);
+            editBtn.ForeColor = Color.White;
+            editBtn.FlatStyle = FlatStyle.Flat;
+            editBtn.FlatAppearance.BorderSize = 0;
+            editBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            editBtn.Size = new Size(100, 24);
+            editBtn.Location = new Point(348, 4);
+            editBtn.Cursor = Cursors.Hand;
+            editBtn.Click += delegate { TrEditPlayerRouteClick(); };
+            btnBar.Controls.Add(editBtn);
+
+            Button resetBtn = new Button();
+            resetBtn.Text = "Reset Progress";
+            resetBtn.BackColor = Color.FromArgb(180, 130, 50);
+            resetBtn.ForeColor = Color.White;
+            resetBtn.FlatStyle = FlatStyle.Flat;
+            resetBtn.FlatAppearance.BorderSize = 0;
+            resetBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            resetBtn.Size = new Size(110, 24);
+            resetBtn.Location = new Point(458, 4);
+            resetBtn.Cursor = Cursors.Hand;
+            resetBtn.Click += delegate { TrResetPlayerRouteClick(); };
+            btnBar.Controls.Add(resetBtn);
+
+            // Column header
+            Panel colHdr = new Panel();
+            colHdr.Dock = DockStyle.Top;
+            colHdr.Height = 22;
+            colHdr.BackColor = Color.FromArgb(36, 38, 50);
+            string[] cols = new string[] { "", "Name", "From", "Target ID", "Resources", "Progress", "Keep Min", "Max Merch" };
+            int[] colX = new int[] { 6, 28, 164, 264, 344, 520, 660, 730 };
+            for (int i = 0; i < cols.Length; i++)
+            {
+                Label cl = new Label();
+                cl.Text = cols[i];
+                cl.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+                cl.ForeColor = Color.FromArgb(160, 165, 180);
+                cl.AutoSize = true;
+                cl.Location = new Point(colX[i], 4);
+                colHdr.Controls.Add(cl);
+            }
+
+            _trPlayerRoutesListPanel.Dock = DockStyle.Fill;
+
+            _trPlayerRoutesTab.Controls.Add(_trPlayerRoutesListPanel);
+            _trPlayerRoutesTab.Controls.Add(colHdr);
+            _trPlayerRoutesTab.Controls.Add(btnBar);
+        }
+
+        private void TrBuildPlayerRoutesList()
+        {
+            _trPlayerRoutesListPanel.SuspendLayout();
+            foreach (PlayerTradeRouteRow row in _trPlayerRouteRows)
+            {
+                _trPlayerRoutesListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
+            _trPlayerRouteRows.Clear();
+
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+            {
+                _trPlayerRoutesListPanel.ResumeLayout();
+                return;
+            }
+
+            TradeSettings s = BotEngine.Instance.Settings.Trade;
+            for (int i = s.PlayerRoutes.Count - 1; i >= 0; i--)
+            {
+                PlayerTradeRouteRow row = new PlayerTradeRouteRow(s.PlayerRoutes[i], i % 2 != 0);
+                row.Dock = DockStyle.Top;
+                _trPlayerRoutesListPanel.Controls.Add(row);
+                _trPlayerRouteRows.Add(row);
+            }
+
+            _trPlayerRoutesListPanel.ResumeLayout();
+        }
+
+        private void TrAddPlayerRouteClick()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            PlayerTradeRouteSettings route = new PlayerTradeRouteSettings();
+            route.Name = "Player Route " + (BotEngine.Instance.Settings.Trade.PlayerRoutes.Count + 1);
+
+            PlayerTradeRouteEditorForm form = new PlayerTradeRouteEditorForm(route, "Add Player Route");
+            form.ShowDialog(this);
+
+            if (form.Saved)
+            {
+                BotEngine.Instance.Settings.Trade.PlayerRoutes.Add(route);
+                TrBuildPlayerRoutesList();
+            }
+        }
+
+        private void TrEditPlayerRouteClick()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            PlayerTradeRouteRow selected = null;
+            foreach (PlayerTradeRouteRow row in _trPlayerRouteRows)
+            {
+                if (row.IsSelected) { selected = row; break; }
+            }
+            if (selected == null) return;
+
+            PlayerTradeRouteEditorForm form = new PlayerTradeRouteEditorForm(selected.Route, "Edit Player Route");
+            form.ShowDialog(this);
+
+            if (form.Saved)
+                TrBuildPlayerRoutesList();
+        }
+
+        private void TrDeletePlayerRouteClick()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            PlayerTradeRouteRow selected = null;
+            foreach (PlayerTradeRouteRow row in _trPlayerRouteRows)
+            {
+                if (row.IsSelected) { selected = row; break; }
+            }
+            if (selected == null) return;
+
+            BotEngine.Instance.Settings.Trade.PlayerRoutes.Remove(selected.Route);
+            TrBuildPlayerRoutesList();
+        }
+
+        private void TrResetPlayerRouteClick()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            PlayerTradeRouteRow selected = null;
+            foreach (PlayerTradeRouteRow row in _trPlayerRouteRows)
+            {
+                if (row.IsSelected) { selected = row; break; }
+            }
+            if (selected == null) return;
+
+            selected.Route.ResetProgress();
+            selected.Route.Enabled = true;
+            TrBuildPlayerRoutesList();
+            BotLogger.Log("Trade", BotLogLevel.Info,
+                "Player route '" + selected.Route.Name + "' progress reset and re-enabled.");
+        }
+
         private void TrLoadFromSettings()
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
@@ -1604,6 +1808,7 @@ namespace Kingdoms.Bot.UI
 
             TrRefreshMarkets();
             TrBuildRoutesList();
+            TrBuildPlayerRoutesList();
         }
 
         private void TrWriteToSettings()
@@ -1627,6 +1832,9 @@ namespace Kingdoms.Bot.UI
             TrSaveCurrentVillage();
 
             foreach (TradeRouteRow row in _trRouteRows)
+                row.WriteToSettings(s);
+
+            foreach (PlayerTradeRouteRow row in _trPlayerRouteRows)
                 row.WriteToSettings(s);
 
             foreach (IBotModule m in BotEngine.Instance.Modules)

@@ -148,6 +148,8 @@ namespace Kingdoms.Bot.UI
             this._trMarketDistanceLabel = new System.Windows.Forms.Label();
             this._trMarketRefreshBtn = new System.Windows.Forms.Button();
             this._trRoutesTab = new System.Windows.Forms.TabPage();
+            this._trPlayerRoutesTab = new System.Windows.Forms.TabPage();
+            this._trPlayerRoutesListPanel = new System.Windows.Forms.Panel();
             this._trRoutesListPanel = new System.Windows.Forms.Panel();
             this._trRefreshRoutesBtn = new System.Windows.Forms.Button();
             this._trDeleteRouteBtn = new System.Windows.Forms.Button();
@@ -212,6 +214,7 @@ namespace Kingdoms.Bot.UI
             this._trMarketsTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._trMarketDistanceInput)).BeginInit();
             this._trRoutesTab.SuspendLayout();
+            this._trPlayerRoutesTab.SuspendLayout();
             this._trSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._trAutoHireLimitInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._trExchangeLimitInput)).BeginInit();
@@ -1716,6 +1719,7 @@ namespace Kingdoms.Bot.UI
             // 
             this._trSubTabs.Controls.Add(this._trMarketsTab);
             this._trSubTabs.Controls.Add(this._trRoutesTab);
+            this._trSubTabs.Controls.Add(this._trPlayerRoutesTab);
             this._trSubTabs.Dock = System.Windows.Forms.DockStyle.Fill;
             this._trSubTabs.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._trSubTabs.Location = new System.Drawing.Point(0, 100);
@@ -1826,6 +1830,26 @@ namespace Kingdoms.Bot.UI
             this._trRoutesTab.Size = new System.Drawing.Size(944, 266);
             this._trRoutesTab.TabIndex = 1;
             this._trRoutesTab.Text = "Village Routes";
+            // 
+            // _trPlayerRoutesTab
+            // 
+            this._trPlayerRoutesTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._trPlayerRoutesTab.Controls.Add(this._trPlayerRoutesListPanel);
+            this._trPlayerRoutesTab.Location = new System.Drawing.Point(4, 22);
+            this._trPlayerRoutesTab.Name = "_trPlayerRoutesTab";
+            this._trPlayerRoutesTab.Size = new System.Drawing.Size(944, 266);
+            this._trPlayerRoutesTab.TabIndex = 2;
+            this._trPlayerRoutesTab.Text = "Player Routes";
+            // 
+            // _trPlayerRoutesListPanel
+            // 
+            this._trPlayerRoutesListPanel.AutoScroll = true;
+            this._trPlayerRoutesListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._trPlayerRoutesListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._trPlayerRoutesListPanel.Location = new System.Drawing.Point(0, 0);
+            this._trPlayerRoutesListPanel.Name = "_trPlayerRoutesListPanel";
+            this._trPlayerRoutesListPanel.Size = new System.Drawing.Size(944, 266);
+            this._trPlayerRoutesListPanel.TabIndex = 0;
             // 
             // _trRoutesListPanel
             // 
@@ -2299,6 +2323,7 @@ namespace Kingdoms.Bot.UI
             this._trMarketsTab.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._trMarketDistanceInput)).EndInit();
             this._trRoutesTab.ResumeLayout(false);
+            this._trPlayerRoutesTab.ResumeLayout(false);
             this._trSettingsPanel.ResumeLayout(false);
             this._trSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._trAutoHireLimitInput)).EndInit();
@@ -2434,6 +2459,8 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.TabControl _trSubTabs;
         private System.Windows.Forms.TabPage _trMarketsTab;
         private System.Windows.Forms.TabPage _trRoutesTab;
+        private System.Windows.Forms.TabPage _trPlayerRoutesTab;
+        private System.Windows.Forms.Panel _trPlayerRoutesListPanel;
         private System.Windows.Forms.TabPage _trSettingsTab;
         private System.Windows.Forms.Panel _trSettingsPanel;
         private System.Windows.Forms.CheckBox _trEnabledCheck;

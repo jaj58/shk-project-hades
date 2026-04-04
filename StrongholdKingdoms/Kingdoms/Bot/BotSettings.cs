@@ -329,6 +329,7 @@ namespace Kingdoms.Bot
         public bool PrioritiseMarkets = true; // true = markets first, false = village routes first
         public List<VillageMarketTradeInfo> VillageMarketSettings = new List<VillageMarketTradeInfo>();
         public List<TradeRouteSettings> Routes = new List<TradeRouteSettings>();
+        public List<PlayerTradeRouteSettings> PlayerRoutes = new List<PlayerTradeRouteSettings>();
 
         public VillageMarketTradeInfo GetVillageMarketInfo(int villageId)
         {
@@ -425,6 +426,55 @@ namespace Kingdoms.Bot
         public int SendMaximum = 5000;
         public bool IsDistanceLimited;
         public int DistanceLimit = 100;
+    }
+
+    [Serializable]
+    public class PlayerTradeRouteSettings
+    {
+        public string Name = "";
+        public bool Enabled;
+        public List<int> FromVillages = new List<int>();
+        public int TargetVillageId;
+        public List<PlayerTradeResourceEntry> Resources = new List<PlayerTradeResourceEntry>();
+        public int KeepMinimum;
+        public int MaxMerchantsPerTransaction = 50;
+
+        public PlayerTradeResourceEntry GetResourceEntry(int resourceId)
+        {
+            foreach (PlayerTradeResourceEntry e in Resources)
+            {
+                if (e.ResourceId == resourceId) return e;
+            }
+            return null;
+        }
+
+        public bool IsComplete()
+        {
+            foreach (PlayerTradeResourceEntry e in Resources)
+            {
+                if (e.TotalAmount > 0 && e.AmountSent < e.TotalAmount) return false;
+            }
+            return Resources.Count > 0;
+        }
+
+        public void ResetProgress()
+        {
+            foreach (PlayerTradeResourceEntry e in Resources)
+                e.AmountSent = 0;
+        }
+    }
+
+    [Serializable]
+    public class PlayerTradeResourceEntry
+    {
+        public int ResourceId;
+        public int TotalAmount;
+        public int AmountSent;
+
+        public int Remaining
+        {
+            get { return Math.Max(0, TotalAmount - AmountSent); }
+        }
     }
 
     public static class TradeModuleConstants
