@@ -38,6 +38,7 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.RadarModule());
             RegisterModule(new Modules.RecruitingModule());
             RegisterModule(new Modules.CastleRepairModule());
+            RegisterModule(new Modules.TradeModule());
 
             foreach (IBotModule module in _modules)
             {
@@ -77,6 +78,8 @@ namespace Kingdoms.Bot
                     module.Enabled = _settings.Recruiting.Enabled;
                 else if (module is Modules.CastleRepairModule)
                     module.Enabled = _settings.CastleRepair.Enabled;
+                else if (module is Modules.TradeModule)
+                    module.Enabled = _settings.Trade.Enabled;
             }
         }
 
@@ -96,6 +99,8 @@ namespace Kingdoms.Bot
                     _settings.Recruiting.Enabled = module.Enabled;
                 else if (module is Modules.CastleRepairModule)
                     _settings.CastleRepair.Enabled = module.Enabled;
+                else if (module is Modules.TradeModule)
+                    _settings.Trade.Enabled = module.Enabled;
             }
 
             _settings.Save();

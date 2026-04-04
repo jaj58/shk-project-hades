@@ -37,6 +37,17 @@ namespace Kingdoms.Bot.UI
         private List<CastleRepairVillageRow> _crVillageRows = new List<CastleRepairVillageRow>();
         private int _crLastPresetCount = -1;
 
+        // Trade runtime state
+        private Timer _trRefreshTimer;
+        private int _trSelectedVillageId = -1;
+        private ListBox _trVillageListBox;
+        private CheckBox _trVillageTradingCheck;
+        private TradeResourceGrid _trResourceGrid;
+        private ListBox _trMarketsListBox;
+        private Label _trMarketCountLabel;
+        private List<TradeRouteRow> _trRouteRows = new List<TradeRouteRow>();
+        private int _trSelectedRouteIndex = -1;
+
         // Vassals tab runtime state
         private List<VassalVillagePanel> _vaVassalPanels = new List<VassalVillagePanel>();
 
@@ -73,6 +84,7 @@ namespace Kingdoms.Bot.UI
                 WireUpRecruitingTab();
                 WireUpCastleRepairTab();
                 WireUpVassalsTab();
+                WireUpTradeTab();
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -83,6 +95,7 @@ namespace Kingdoms.Bot.UI
                 RcLoadFromSettings();
                 CrLoadFromSettings();
                 VaLoadFromSettings();
+                TrLoadFromSettings();
             }
         }
 
@@ -1239,6 +1252,11 @@ namespace Kingdoms.Bot.UI
                 CrWriteToSettings();
                 tabName = "Castle Repair";
             }
+            else if (_tabControl.SelectedTab == _tradePage)
+            {
+                TrWriteToSettings();
+                tabName = "Trade";
+            }
 
             BotEngine.Instance.SaveSettings();
             BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings saved.");
@@ -1272,6 +1290,11 @@ namespace Kingdoms.Bot.UI
                 CrLoadFromSettings();
                 tabName = "Castle Repair";
             }
+            else if (_tabControl.SelectedTab == _tradePage)
+            {
+                TrLoadFromSettings();
+                tabName = "Trade";
+            }
 
             RefreshStatus();
             BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings reloaded from disk.");
@@ -1281,6 +1304,452 @@ namespace Kingdoms.Bot.UI
         {
             _logBox.Clear();
             BotLogger.Clear();
+        }
+
+        // =====================================================================
+        // Trade tab runtime
+        // =====================================================================
+
+        private void WireUpTradeTab()
+        {
+            // Build the Markets sub-tab layout programmatically
+            TrBuildMarketsTabLayout();
+            // Build the Routes sub-tab layout programmatically
+            TrBuildRoutesTabLayout();
+
+            _trAddMarketsBtn.Click += delegate { TrAddMarketsClick(); };
+            _trMarketRefreshBtn.Click += delegate { TrRefreshMarkets(); };
+
+            _trRefreshTimer = new Timer();
+            _trRefreshTimer.Interval = 2000;
+            _trRefreshTimer.Tick += delegate { TrUpdateStatusDisplay(); };
+            _trRefreshTimer.Start();
+        }
+
+        private void TrBuildRoutesTabLayout()
+        {
+            // Remove default controls and rebuild with proper layout
+            _trRoutesTab.Controls.Clear();
+
+            // Top button bar
+            Panel btnBar = new Panel();
+            btnBar.Dock = DockStyle.Top;
+            btnBar.Height = 32;
+            btnBar.BackColor = Color.FromArgb(36, 38, 48);
+
+            _trAddRouteBtn.Location = new Point(8, 4);
+            btnBar.Controls.Add(_trAddRouteBtn);
+            _trAddRouteBtn.Click += delegate { TrAddRouteClick(); };
+
+            _trDeleteRouteBtn.Location = new Point(118, 4);
+            btnBar.Controls.Add(_trDeleteRouteBtn);
+            _trDeleteRouteBtn.Click += delegate { TrDeleteRouteClick(); };
+
+            _trRefreshRoutesBtn.Location = new Point(238, 4);
+            btnBar.Controls.Add(_trRefreshRoutesBtn);
+            _trRefreshRoutesBtn.Click += delegate { TrBuildRoutesList(); };
+
+            Button editBtn = new Button();
+            editBtn.Text = "Edit Route";
+            editBtn.BackColor = Color.FromArgb(50, 100, 180);
+            editBtn.ForeColor = Color.White;
+            editBtn.FlatStyle = FlatStyle.Flat;
+            editBtn.FlatAppearance.BorderSize = 0;
+            editBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            editBtn.Size = new Size(100, 24);
+            editBtn.Location = new Point(348, 4);
+            editBtn.Cursor = Cursors.Hand;
+            editBtn.Click += delegate { TrEditRouteClick(); };
+            btnBar.Controls.Add(editBtn);
+
+            // Column header
+            Panel routeColHdr = new Panel();
+            routeColHdr.Dock = DockStyle.Top;
+            routeColHdr.Height = 22;
+            routeColHdr.BackColor = Color.FromArgb(36, 38, 50);
+            string[] routeCols = new string[] { "", "Name", "From", "To", "Resources", "Keep Min", "Merch", "Send Max", "Dist" };
+            int[] routeColX = new int[] { 6, 28, 164, 254, 344, 510, 566, 612, 674 };
+            for (int i = 0; i < routeCols.Length; i++)
+            {
+                Label cl = new Label();
+                cl.Text = routeCols[i];
+                cl.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+                cl.ForeColor = Color.FromArgb(160, 165, 180);
+                cl.AutoSize = true;
+                cl.Location = new Point(routeColX[i], 4);
+                routeColHdr.Controls.Add(cl);
+            }
+
+            // Routes list panel fills the rest
+            _trRoutesListPanel.Dock = DockStyle.Fill;
+
+            _trRoutesTab.Controls.Add(_trRoutesListPanel);
+            _trRoutesTab.Controls.Add(routeColHdr);
+            _trRoutesTab.Controls.Add(btnBar);
+        }
+
+        private void TrBuildMarketsTabLayout()
+        {
+            // Remove the default panels from the markets tab and rebuild
+            _trMarketsTab.Controls.Clear();
+
+            // Top bar: refresh + add markets + distance
+            Panel topBar = new Panel();
+            topBar.Dock = DockStyle.Top;
+            topBar.Height = 34;
+            topBar.BackColor = Color.FromArgb(36, 38, 48);
+            topBar.Controls.Add(_trMarketRefreshBtn);
+            _trMarketRefreshBtn.Location = new Point(8, 5);
+            topBar.Controls.Add(_trMarketDistanceLabel);
+            _trMarketDistanceLabel.Location = new Point(130, 9);
+            topBar.Controls.Add(_trMarketDistanceInput);
+            _trMarketDistanceInput.Location = new Point(230, 6);
+            topBar.Controls.Add(_trAddMarketsBtn);
+            _trAddMarketsBtn.Location = new Point(300, 5);
+
+            // "Should this village trade?" checkbox + market count
+            _trVillageTradingCheck = new CheckBox();
+            _trVillageTradingCheck.Text = "Should this village trade?";
+            _trVillageTradingCheck.FlatStyle = FlatStyle.Flat;
+            _trVillageTradingCheck.Font = new Font("Segoe UI", 8.5f);
+            _trVillageTradingCheck.ForeColor = Color.FromArgb(230, 230, 240);
+            _trVillageTradingCheck.AutoSize = true;
+            _trVillageTradingCheck.Location = new Point(430, 9);
+            topBar.Controls.Add(_trVillageTradingCheck);
+
+            _trMarketCountLabel = new Label();
+            _trMarketCountLabel.Text = "Total Markets: 0";
+            _trMarketCountLabel.Font = new Font("Segoe UI", 8f);
+            _trMarketCountLabel.ForeColor = Color.FromArgb(160, 165, 180);
+            _trMarketCountLabel.AutoSize = true;
+            _trMarketCountLabel.Location = new Point(640, 10);
+            topBar.Controls.Add(_trMarketCountLabel);
+
+            // Left panel: village list
+            Panel leftPanel = new Panel();
+            leftPanel.Dock = DockStyle.Left;
+            leftPanel.Width = 180;
+            leftPanel.BackColor = Color.FromArgb(28, 30, 38);
+            leftPanel.Padding = new Padding(4, 4, 4, 4);
+
+            _trVillageListBox = new ListBox();
+            _trVillageListBox.Dock = DockStyle.Fill;
+            _trVillageListBox.BackColor = Color.FromArgb(36, 38, 48);
+            _trVillageListBox.ForeColor = Color.FromArgb(230, 230, 240);
+            _trVillageListBox.Font = new Font("Segoe UI", 8f);
+            _trVillageListBox.BorderStyle = BorderStyle.FixedSingle;
+            _trVillageListBox.SelectedIndexChanged += delegate { TrOnVillageSelected(); };
+            leftPanel.Controls.Add(_trVillageListBox);
+
+            // Right panel: markets IDs list
+            Panel rightPanel = new Panel();
+            rightPanel.Dock = DockStyle.Right;
+            rightPanel.Width = 120;
+            rightPanel.BackColor = Color.FromArgb(28, 30, 38);
+            rightPanel.Padding = new Padding(4, 4, 4, 4);
+
+            Label marketsHdr = new Label();
+            marketsHdr.Text = "Markets:";
+            marketsHdr.Dock = DockStyle.Top;
+            marketsHdr.Font = new Font("Segoe UI", 7.5f, FontStyle.Bold);
+            marketsHdr.ForeColor = Color.FromArgb(160, 165, 180);
+            marketsHdr.Height = 18;
+            rightPanel.Controls.Add(marketsHdr);
+
+            _trMarketsListBox = new ListBox();
+            _trMarketsListBox.Dock = DockStyle.Fill;
+            _trMarketsListBox.BackColor = Color.FromArgb(36, 38, 48);
+            _trMarketsListBox.ForeColor = Color.FromArgb(230, 230, 240);
+            _trMarketsListBox.Font = new Font("Segoe UI", 7f);
+            _trMarketsListBox.BorderStyle = BorderStyle.FixedSingle;
+            rightPanel.Controls.Add(_trMarketsListBox);
+            // Ensure list is below header
+            rightPanel.Controls.SetChildIndex(_trMarketsListBox, 1);
+            rightPanel.Controls.SetChildIndex(marketsHdr, 0);
+
+            // Center: resource grid
+            _trResourceGrid = new TradeResourceGrid();
+            _trResourceGrid.Dock = DockStyle.Fill;
+
+            _trMarketsTab.Controls.Add(_trResourceGrid);
+            _trMarketsTab.Controls.Add(rightPanel);
+            _trMarketsTab.Controls.Add(leftPanel);
+            _trMarketsTab.Controls.Add(topBar);
+        }
+
+        private void TrLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            TradeSettings s = BotEngine.Instance.Settings.Trade;
+            _trEnabledCheck.Checked = s.Enabled;
+            _trIntervalInput.Value = Math.Max(_trIntervalInput.Minimum,
+                Math.Min(_trIntervalInput.Maximum, s.CycleIntervalSeconds));
+            _trDelayInput.Value = Math.Max(_trDelayInput.Minimum,
+                Math.Min(_trDelayInput.Maximum, s.DelayBetweenVillagesMs));
+            _trMerchantsPerTradeInput.Value = Math.Max(_trMerchantsPerTradeInput.Minimum,
+                Math.Min(_trMerchantsPerTradeInput.Maximum, s.MerchantsPerTrade));
+            _trTradeLimitInput.Value = Math.Max(_trTradeLimitInput.Minimum,
+                Math.Min(_trTradeLimitInput.Maximum, s.MerchantsTradeLimit));
+            _trExchangeLimitInput.Value = Math.Max(_trExchangeLimitInput.Minimum,
+                Math.Min(_trExchangeLimitInput.Maximum, s.MerchantsExchangeLimit));
+            _trAutoHireCheck.Checked = s.AutoHireMerchants;
+            _trAutoHireLimitInput.Value = Math.Max(_trAutoHireLimitInput.Minimum,
+                Math.Min(_trAutoHireLimitInput.Maximum, s.AutoHireMerchantsLimit));
+            _trIgnoreTransactionsCheck.Checked = s.IgnoreCurrentTransactions;
+            _trPrioritiseMarketsCheck.Checked = s.PrioritiseMarkets;
+
+            TrRefreshMarkets();
+            TrBuildRoutesList();
+        }
+
+        private void TrWriteToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            TradeSettings s = BotEngine.Instance.Settings.Trade;
+            s.Enabled = _trEnabledCheck.Checked;
+            s.CycleIntervalSeconds = (int)_trIntervalInput.Value;
+            s.DelayBetweenVillagesMs = (int)_trDelayInput.Value;
+            s.MerchantsPerTrade = (int)_trMerchantsPerTradeInput.Value;
+            s.MerchantsTradeLimit = (int)_trTradeLimitInput.Value;
+            s.MerchantsExchangeLimit = (int)_trExchangeLimitInput.Value;
+            s.AutoHireMerchants = _trAutoHireCheck.Checked;
+            s.AutoHireMerchantsLimit = (int)_trAutoHireLimitInput.Value;
+            s.IgnoreCurrentTransactions = _trIgnoreTransactionsCheck.Checked;
+            s.PrioritiseMarkets = _trPrioritiseMarketsCheck.Checked;
+
+            // Save currently displayed village's resource grid
+            TrSaveCurrentVillage();
+
+            foreach (TradeRouteRow row in _trRouteRows)
+                row.WriteToSettings(s);
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                if (m is TradeModule)
+                    m.Enabled = s.Enabled;
+            }
+        }
+
+        private void TrRefreshMarkets()
+        {
+            _trVillageListBox.Items.Clear();
+            _trSelectedVillageId = -1;
+
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+                return;
+
+            List<int> ids = GameEngine.Instance.World.getUserVillageIDList();
+            if (ids == null) return;
+
+            foreach (int id in ids)
+            {
+                string name = TrGetVillageName(id);
+                _trVillageListBox.Items.Add(new VillageItem(id, "[" + id + "] " + name));
+            }
+
+            if (_trVillageListBox.Items.Count > 0)
+                _trVillageListBox.SelectedIndex = 0;
+        }
+
+        private void TrOnVillageSelected()
+        {
+            // Save previous village first
+            TrSaveCurrentVillage();
+
+            VillageItem item = _trVillageListBox.SelectedItem as VillageItem;
+            if (item == null)
+            {
+                _trSelectedVillageId = -1;
+                return;
+            }
+
+            _trSelectedVillageId = item.VillageId;
+
+            TradeSettings settings = null;
+            if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+                settings = BotEngine.Instance.Settings.Trade;
+            if (settings == null) return;
+
+            VillageMarketTradeInfo info = settings.GetVillageMarketInfo(_trSelectedVillageId);
+            _trVillageTradingCheck.Checked = info.IsTrading;
+            _trResourceGrid.LoadVillage(info);
+
+            // Populate markets list
+            _trMarketsListBox.Items.Clear();
+            foreach (int marketId in info.MarketTargets)
+                _trMarketsListBox.Items.Add(marketId);
+            _trMarketCountLabel.Text = "Total Markets: " + info.MarketTargets.Count;
+        }
+
+        private void TrSaveCurrentVillage()
+        {
+            if (_trSelectedVillageId == -1) return;
+            TradeSettings settings = null;
+            if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+                settings = BotEngine.Instance.Settings.Trade;
+            if (settings == null) return;
+
+            VillageMarketTradeInfo info = settings.GetVillageMarketInfo(_trSelectedVillageId);
+            info.IsTrading = _trVillageTradingCheck.Checked;
+            _trResourceGrid.WriteToInfo(info);
+        }
+
+        private void TrAddMarketsClick()
+        {
+            TrSaveCurrentVillage();
+
+            TradeModule module = null;
+            if (BotEngine.Instance != null)
+            {
+                foreach (IBotModule m in BotEngine.Instance.Modules)
+                {
+                    module = m as TradeModule;
+                    if (module != null) break;
+                }
+            }
+
+            if (module != null)
+            {
+                double distance = (double)_trMarketDistanceInput.Value;
+                module.AddMarketsForAllVillages(distance);
+                BotLogger.Log("Trade", BotLogLevel.Info, "Markets found within distance " + distance);
+            }
+
+            // Re-select current village to refresh markets list
+            TrOnVillageSelected();
+        }
+
+        private void TrBuildRoutesList()
+        {
+            _trRoutesListPanel.SuspendLayout();
+            foreach (TradeRouteRow row in _trRouteRows)
+            {
+                _trRoutesListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
+            _trRouteRows.Clear();
+            _trSelectedRouteIndex = -1;
+
+            TradeSettings settings = null;
+            if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+                settings = BotEngine.Instance.Settings.Trade;
+
+            if (settings == null || settings.Routes.Count == 0)
+            {
+                _trRoutesListPanel.ResumeLayout();
+                return;
+            }
+
+            bool alternate = false;
+            for (int i = settings.Routes.Count - 1; i >= 0; i--)
+            {
+                TradeRouteSettings route = settings.Routes[i];
+                TradeRouteRow row = new TradeRouteRow(i, route, alternate);
+                row.Dock = DockStyle.Top;
+                int idx = i;
+                row.Click += delegate { TrSelectRoute(idx); };
+                // Also handle clicks on child labels
+                foreach (Control c in row.Controls)
+                {
+                    if (c is Label)
+                    {
+                        int capturedIdx = idx;
+                        c.Click += delegate { TrSelectRoute(capturedIdx); };
+                    }
+                }
+                _trRoutesListPanel.Controls.Add(row);
+                _trRouteRows.Add(row);
+                alternate = !alternate;
+            }
+            _trRoutesListPanel.ResumeLayout();
+        }
+
+        private void TrSelectRoute(int routeIndex)
+        {
+            _trSelectedRouteIndex = routeIndex;
+            foreach (TradeRouteRow row in _trRouteRows)
+                row.Selected = (row.RouteIndex == routeIndex);
+        }
+
+        private void TrAddRouteClick()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            TradeRouteSettings newRoute = new TradeRouteSettings();
+            newRoute.Name = "Route " + (BotEngine.Instance.Settings.Trade.Routes.Count + 1);
+            newRoute.Enabled = true;
+
+            TradeRouteEditorForm editor = new TradeRouteEditorForm(newRoute, "New Route");
+            editor.ShowDialog(this);
+
+            if (editor.Saved)
+            {
+                BotEngine.Instance.Settings.Trade.Routes.Add(newRoute);
+                TrBuildRoutesList();
+                BotLogger.Log("Trade", BotLogLevel.Info, "New trade route added: " + newRoute.Name);
+            }
+        }
+
+        private void TrEditRouteClick()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            TradeSettings s = BotEngine.Instance.Settings.Trade;
+            if (_trSelectedRouteIndex < 0 || _trSelectedRouteIndex >= s.Routes.Count)
+            {
+                BotLogger.Log("Trade", BotLogLevel.Warning, "Select a route to edit.");
+                return;
+            }
+
+            TradeRouteSettings route = s.Routes[_trSelectedRouteIndex];
+            TradeRouteEditorForm editor = new TradeRouteEditorForm(route, "Edit Route - " + route.Name);
+            editor.ShowDialog(this);
+
+            if (editor.Saved)
+            {
+                TrBuildRoutesList();
+                BotLogger.Log("Trade", BotLogLevel.Info, "Route updated: " + route.Name);
+            }
+        }
+
+        private void TrDeleteRouteClick()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            TradeSettings s = BotEngine.Instance.Settings.Trade;
+            if (_trSelectedRouteIndex < 0 || _trSelectedRouteIndex >= s.Routes.Count)
+            {
+                BotLogger.Log("Trade", BotLogLevel.Warning, "Select a route to delete.");
+                return;
+            }
+
+            string name = s.Routes[_trSelectedRouteIndex].Name;
+            s.Routes.RemoveAt(_trSelectedRouteIndex);
+            _trSelectedRouteIndex = -1;
+            TrBuildRoutesList();
+            BotLogger.Log("Trade", BotLogLevel.Info, "Deleted trade route: " + name);
+        }
+
+        private void TrUpdateStatusDisplay()
+        {
+            if (_trEnabledCheck == null) return;
+            bool enabled = _trEnabledCheck.Checked;
+            _trStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
+            _trStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+        }
+
+        private static string TrGetVillageName(int villageId)
+        {
+            if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                return GameEngine.Instance.World.getVillageName(villageId);
+            return "Village " + villageId;
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Xml.Serialization;
+using CommonTypes;
 
 namespace Kingdoms.Bot
 {
@@ -14,6 +15,7 @@ namespace Kingdoms.Bot
         public RadarSettings Radar = new RadarSettings();
         public RecruitingSettings Recruiting = new RecruitingSettings();
         public CastleRepairSettings CastleRepair = new CastleRepairSettings();
+        public TradeSettings Trade = new TradeSettings();
 
         private static string GetSettingsFilePath()
         {
@@ -310,5 +312,147 @@ namespace Kingdoms.Bot
         public string UnitKey = "";
         public int TargetCount;
         public int Priority = 1;
+    }
+
+    [Serializable]
+    public class TradeSettings
+    {
+        public bool Enabled = true;
+        public int CycleIntervalSeconds = 120;
+        public int DelayBetweenVillagesMs = 3000;
+        public int MerchantsPerTrade = 1;
+        public int MerchantsTradeLimit = 50;
+        public int MerchantsExchangeLimit = 50;
+        public bool AutoHireMerchants = false;
+        public int AutoHireMerchantsLimit = 50;
+        public bool IgnoreCurrentTransactions = false;
+        public bool PrioritiseMarkets = true; // true = markets first, false = village routes first
+        public List<VillageMarketTradeInfo> VillageMarketSettings = new List<VillageMarketTradeInfo>();
+        public List<TradeRouteSettings> Routes = new List<TradeRouteSettings>();
+
+        public VillageMarketTradeInfo GetVillageMarketInfo(int villageId)
+        {
+            foreach (VillageMarketTradeInfo v in VillageMarketSettings)
+            {
+                if (v.VillageId == villageId) return v;
+            }
+            VillageMarketTradeInfo newV = new VillageMarketTradeInfo();
+            newV.VillageId = villageId;
+            newV.InitDefaults();
+            VillageMarketSettings.Add(newV);
+            return newV;
+        }
+    }
+
+    [Serializable]
+    public class VillageMarketTradeInfo
+    {
+        public int VillageId;
+        public bool IsTrading;
+        public List<TradeTypeEntry> TradeTypes = new List<TradeTypeEntry>();
+        public List<int> MarketTargets = new List<int>();
+
+        public void InitDefaults()
+        {
+            if (TradeTypes.Count > 0) return;
+            byte[] resourceIds = TradeModuleConstants.TradeTypeIds;
+            for (int i = 0; i < resourceIds.Length; i++)
+            {
+                TradeTypeEntry entry = new TradeTypeEntry();
+                entry.ResourceId = resourceIds[i];
+                TradeTypes.Add(entry);
+            }
+        }
+
+        public TradeTypeEntry GetTradeType(byte resourceId)
+        {
+            foreach (TradeTypeEntry e in TradeTypes)
+            {
+                if (e.ResourceId == resourceId) return e;
+            }
+            TradeTypeEntry newE = new TradeTypeEntry();
+            newE.ResourceId = resourceId;
+            TradeTypes.Add(newE);
+            return newE;
+        }
+    }
+
+    [Serializable]
+    public class TradeTypeEntry
+    {
+        public byte ResourceId;
+        public bool Sell;
+        public int MinSellPrice;
+        public int SellLimit;
+        public bool Buy;
+        public int MaxBuyPrice = 150;
+        public int BuyLimit;
+
+        public TradeTypeEntry Clone()
+        {
+            TradeTypeEntry c = new TradeTypeEntry();
+            c.ResourceId = this.ResourceId;
+            c.Sell = this.Sell;
+            c.MinSellPrice = this.MinSellPrice;
+            c.SellLimit = this.SellLimit;
+            c.Buy = this.Buy;
+            c.MaxBuyPrice = this.MaxBuyPrice;
+            c.BuyLimit = this.BuyLimit;
+            return c;
+        }
+    }
+
+    [Serializable]
+    public class TradeRouteSettings
+    {
+        public string Name = "";
+        public bool Enabled;
+        public List<int> FromVillages = new List<int>();
+        public List<int> ToVillages = new List<int>();
+        public List<int> Resources = new List<int>();
+        public int KeepMinimum;
+        public int MaxMerchantsPerTransaction = 5;
+        public int SendMaximum = 5000;
+        public bool IsDistanceLimited;
+        public int DistanceLimit = 100;
+    }
+
+    public static class TradeModuleConstants
+    {
+        public static readonly byte[] TradeTypeIds = new byte[]
+        {
+            6, 7, 8, 9,         // Wood, Stone, Iron, Pitch
+            12, 13, 14, 15,     // Ale, Apples, Bread, Veg
+            16, 17, 18, 22,     // Meat, Cheese, Fish, Venison
+            21, 26, 19, 33,     // Furniture, Metalware, Clothes, Wine
+            23, 24, 25,         // Salt, Spices, Silk
+            29, 28, 31, 30, 32  // Bows, Pikes, Armour, Swords, Catapults
+        };
+
+        public static readonly byte[] WeaponsTypeIds = new byte[]
+        {
+            29, 28, 31, 30, 32
+        };
+
+        public static bool IsWeapon(byte resourceId)
+        {
+            for (int i = 0; i < WeaponsTypeIds.Length; i++)
+            {
+                if (WeaponsTypeIds[i] == resourceId) return true;
+            }
+            return false;
+        }
+
+        public static string GetResourceName(int resourceId)
+        {
+            try
+            {
+                return VillageBuildingsData.getResourceNames(resourceId);
+            }
+            catch
+            {
+                return "Resource " + resourceId;
+            }
+        }
     }
 }
