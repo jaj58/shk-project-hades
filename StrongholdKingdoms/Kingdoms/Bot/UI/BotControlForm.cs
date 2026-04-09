@@ -26,6 +26,7 @@ namespace Kingdoms.Bot.UI
         // Radar runtime state
         private Timer _rdRefreshTimer;
         private List<ActionRow> _rdActionRows = new List<ActionRow>();
+        private bool _rdLoading;
 
         // Recruiting runtime state
         private Timer _rcRefreshTimer;
@@ -53,6 +54,12 @@ namespace Kingdoms.Bot.UI
         private List<BuildingListRow> _bldBuildingRows = new List<BuildingListRow>();
         private int _bldSelectedVillageId = -1;
         private Timer _bldRefreshTimer;
+
+        // Auto Bomb tab
+        private List<BombArmyRow> _abArmyRows = new List<BombArmyRow>();
+        private List<PendingBombRow> _abPendingRows = new List<PendingBombRow>();
+        private Timer _abRefreshTimer;
+
         private int _trSelectedRouteIndex = -1;
 
         // Vassals tab runtime state
@@ -93,6 +100,7 @@ namespace Kingdoms.Bot.UI
                 WireUpVassalsTab();
                 WireUpTradeTab();
                 WireUpBuilderTab();
+                WireUpAutoBombTab();
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -105,6 +113,7 @@ namespace Kingdoms.Bot.UI
                 VaLoadFromSettings();
                 TrLoadFromSettings();
                 BldLoadFromSettings();
+                AbLoadFromSettings();
             }
         }
 
@@ -377,6 +386,7 @@ namespace Kingdoms.Bot.UI
 
         private void RdPushToSettings()
         {
+            if (_rdLoading) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
 
@@ -400,21 +410,29 @@ namespace Kingdoms.Bot.UI
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
 
-            RadarSettings s = BotEngine.Instance.Settings.Radar;
-            _rdEnabledCheck.Checked = s.Enabled;
-            _rdScanIntervalInput.Value = Math.Max(_rdScanIntervalInput.Minimum,
-                Math.Min(_rdScanIntervalInput.Maximum, s.ScanIntervalSeconds));
-            _rdWebhookInput.Text = s.DiscordWebhookUrl ?? "";
-            _rdInterdictMonkCountInput.Value = Math.Max(_rdInterdictMonkCountInput.Minimum,
-                Math.Min(_rdInterdictMonkCountInput.Maximum, s.AutoInterdictMonkCount));
-            _rdAutoRecruitMonksCheck.Checked = s.AutoRecruitMonks;
-            _rdMinArmySizeInput.Value = Math.Max(_rdMinArmySizeInput.Minimum,
-                Math.Min(_rdMinArmySizeInput.Maximum, s.MinArmySizeForInterdict));
-
-            foreach (ActionRow row in _rdActionRows)
+            _rdLoading = true;
+            try
             {
-                RadarActionSettings actionSettings = s.GetActionSettings(row.ActionKey);
-                row.SetValues(actionSettings);
+                RadarSettings s = BotEngine.Instance.Settings.Radar;
+                _rdEnabledCheck.Checked = s.Enabled;
+                _rdScanIntervalInput.Value = Math.Max(_rdScanIntervalInput.Minimum,
+                    Math.Min(_rdScanIntervalInput.Maximum, s.ScanIntervalSeconds));
+                _rdWebhookInput.Text = s.DiscordWebhookUrl ?? "";
+                _rdInterdictMonkCountInput.Value = Math.Max(_rdInterdictMonkCountInput.Minimum,
+                    Math.Min(_rdInterdictMonkCountInput.Maximum, s.AutoInterdictMonkCount));
+                _rdAutoRecruitMonksCheck.Checked = s.AutoRecruitMonks;
+                _rdMinArmySizeInput.Value = Math.Max(_rdMinArmySizeInput.Minimum,
+                    Math.Min(_rdMinArmySizeInput.Maximum, s.MinArmySizeForInterdict));
+
+                foreach (ActionRow row in _rdActionRows)
+                {
+                    RadarActionSettings actionSettings = s.GetActionSettings(row.ActionKey);
+                    row.SetValues(actionSettings);
+                }
+            }
+            finally
+            {
+                _rdLoading = false;
             }
         }
 
@@ -1362,6 +1380,11 @@ namespace Kingdoms.Bot.UI
                 BldWriteToSettings();
                 tabName = "Village Builder";
             }
+            else if (_tabControl.SelectedTab == _bombPage)
+            {
+                AbWriteToSettings();
+                tabName = "Auto Bomb";
+            }
 
             BotEngine.Instance.SaveSettings();
             BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings saved.");
@@ -1405,6 +1428,11 @@ namespace Kingdoms.Bot.UI
                 BldLoadFromSettings();
                 tabName = "Village Builder";
             }
+            else if (_tabControl.SelectedTab == _bombPage)
+            {
+                AbLoadFromSettings();
+                tabName = "Auto Bomb";
+            }
 
             RefreshStatus();
             BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings reloaded from disk.");
@@ -1429,6 +1457,7 @@ namespace Kingdoms.Bot.UI
             // Build the Player Routes sub-tab
             TrBuildPlayerRoutesTab();
 
+            _trEnabledCheck.CheckedChanged += delegate { TrWriteToSettings(); };
             _trAddMarketsBtn.Click += delegate { TrAddMarketsClick(); };
             _trMarketRefreshBtn.Click += delegate { TrRefreshMarkets(); };
 
@@ -2474,6 +2503,316 @@ namespace Kingdoms.Bot.UI
             public string Display;
             public BldComboItem(int id, string display) { VillageId = id; Display = display; }
             public override string ToString() { return Display; }
+        }
+
+        // =====================================================================
+        // Auto Bomb tab runtime
+        // =====================================================================
+
+        private void WireUpAutoBombTab()
+        {
+            // Wire events for Designer-defined controls
+            _abLoadArmiesBtn.Click += delegate { AbLoadArmies(); };
+            _abSelectAllBtn.Click += delegate { AbSetAllSelected(true); };
+            _abDeselectAllBtn.Click += delegate { AbSetAllSelected(false); };
+            _abSubmitBtn.Click += delegate { AbSubmitToQueue(); };
+            _abLaunchBtn.Click += delegate { AbLaunch(); };
+            _abCancelAllBtn.Click += delegate { AbCancelAll(); };
+            _abClearQueueBtn.Click += delegate { AbClearQueue(); };
+
+            // Build setup column header labels dynamically
+            string[] setupCols = new string[] { "", "Village", "Time", "Card", "Cap?", "Formation", "P", "Arch", "Pike", "Sw", "Cat", "Cap", "Stack", "Type" };
+            int[] setupColX = new int[] { 4, 24, 168, 246, 314, 334, 422, 456, 490, 524, 558, 588, 620, 664 };
+            for (int i = 0; i < setupCols.Length; i++)
+            {
+                Label cl = new Label();
+                cl.Text = setupCols[i];
+                cl.Font = new Font("Segoe UI", 6.5f, FontStyle.Bold);
+                cl.ForeColor = Color.FromArgb(160, 165, 180);
+                cl.AutoSize = true;
+                cl.Location = new Point(setupColX[i], 3);
+                _abSetupColHeader.Controls.Add(cl);
+            }
+
+            // Build pending column header labels dynamically
+            string[] pendCols = new string[] { "Stack", "Village", "Target", "Travel", "Send Time", "Arrival", "Formation", "Type", "Status" };
+            int[] pendColX = new int[] { 8, 42, 186, 250, 334, 408, 482, 566, 640 };
+            for (int i = 0; i < pendCols.Length; i++)
+            {
+                Label cl = new Label();
+                cl.Text = pendCols[i];
+                cl.Font = new Font("Segoe UI", 6.5f, FontStyle.Bold);
+                cl.ForeColor = Color.FromArgb(160, 165, 180);
+                cl.AutoSize = true;
+                cl.Location = new Point(pendColX[i], 3);
+                _abPendingColHeader.Controls.Add(cl);
+            }
+
+            // Refresh timer
+            _abRefreshTimer = new Timer();
+            _abRefreshTimer.Interval = 1000;
+            _abRefreshTimer.Tick += delegate { AbUpdateDisplay(); };
+            _abRefreshTimer.Start();
+        }
+
+        private void AbLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            AutoBombSettings s = BotEngine.Instance.Settings.AutoBomb;
+            _abEnabledCheck.Checked = s.Enabled;
+            _abTargetInput.Value = Math.Max(_abTargetInput.Minimum,
+                Math.Min(_abTargetInput.Maximum, s.TargetVillageId));
+            _abAutoCancelCheck.Checked = s.AutoCancelOnInterdict;
+            _abStackDelayInput.Value = Math.Max(_abStackDelayInput.Minimum,
+                Math.Min(_abStackDelayInput.Maximum, s.StackDelaySeconds));
+
+            AbRefreshPendingList();
+        }
+
+        private void AbWriteToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            AutoBombSettings s = BotEngine.Instance.Settings.AutoBomb;
+            s.Enabled = _abEnabledCheck.Checked;
+            s.TargetVillageId = (int)_abTargetInput.Value;
+            s.AutoCancelOnInterdict = _abAutoCancelCheck.Checked;
+            s.StackDelaySeconds = (int)_abStackDelayInput.Value;
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                if (m is AutoBombModule)
+                    m.Enabled = s.Enabled;
+            }
+        }
+
+        private void AbLoadArmies()
+        {
+            int targetId = (int)_abTargetInput.Value;
+            if (targetId <= 0)
+            {
+                BotLogger.Log("Auto Bomb", BotLogLevel.Warning, "Set a target village ID first.");
+                return;
+            }
+
+            _abArmyListPanel.SuspendLayout();
+            foreach (BombArmyRow row in _abArmyRows)
+            {
+                _abArmyListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
+            _abArmyRows.Clear();
+
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+            {
+                _abArmyListPanel.ResumeLayout();
+                return;
+            }
+
+            List<string> formations = AutoBombModule.GetFormationNames();
+            List<int> villageIds = GameEngine.Instance.World.getUserVillageIDList();
+            if (villageIds == null) { _abArmyListPanel.ResumeLayout(); return; }
+
+            int index = 0;
+            for (int vi = villageIds.Count - 1; vi >= 0; vi--)
+            {
+                int vid = villageIds[vi];
+                bool isCapital = GameEngine.Instance.World.isCapital(vid);
+
+                if (isCapital && !_abLoadCapitals.Checked) continue;
+                if (!isCapital && !_abLoadVillages.Checked) continue;
+
+                VillageMap village = GameEngine.Instance.getVillage(vid);
+                if (village == null) continue;
+
+                int peasants = 0, archers = 0, pikemen = 0, swordsmen = 0, captains = 0;
+                village.getVillageTroops(ref peasants, ref archers, ref pikemen, ref swordsmen, ref captains);
+
+                int totalTroops = peasants + archers + pikemen + swordsmen + captains;
+                if (totalTroops == 0) continue;
+
+                double baseTravelArmy = AutoBombModule.CalculateBaseTravelTime(vid, targetId, false);
+                double baseTravelCaptain = AutoBombModule.CalculateBaseTravelTime(vid, targetId, true);
+                string villageName = GameEngine.Instance.World.getVillageName(vid);
+
+                BombArmyRow row = new BombArmyRow(vid, targetId, villageName,
+                    baseTravelArmy, baseTravelCaptain,
+                    peasants, archers, pikemen, swordsmen, 0, captains,
+                    formations, index);
+                row.Dock = DockStyle.Top;
+                _abArmyListPanel.Controls.Add(row);
+                _abArmyRows.Add(row);
+                index++;
+            }
+
+            _abArmyListPanel.ResumeLayout();
+            BotLogger.Log("Auto Bomb", BotLogLevel.Info,
+                "Loaded " + _abArmyRows.Count + " armies targeting village " + targetId + ".");
+        }
+
+        private void AbSetAllSelected(bool selected)
+        {
+            foreach (BombArmyRow row in _abArmyRows)
+                row.Selected = selected;
+        }
+
+        private void AbSubmitToQueue()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            int targetId = (int)_abTargetInput.Value;
+            if (targetId <= 0)
+            {
+                BotLogger.Log("Auto Bomb", BotLogLevel.Warning, "Set a target village ID first.");
+                return;
+            }
+
+            AutoBombSettings s = BotEngine.Instance.Settings.AutoBomb;
+            s.TargetVillageId = targetId;
+            s.PendingAttacks.Clear();
+
+            int count = 0;
+            foreach (BombArmyRow row in _abArmyRows)
+            {
+                if (!row.Selected) continue;
+
+                BombAttackEntry entry = new BombAttackEntry();
+                entry.SourceVillageId = row.SourceVillageId;
+                entry.TargetVillageId = targetId;
+                entry.TravelTimeSeconds = row.EffectiveTravelTime;
+                entry.AttackType = row.SelectedAttackType;
+                entry.FormationName = row.SelectedFormation == "None" ? "" : row.SelectedFormation;
+                entry.Stack = row.StackOrder;
+                entry.NumPeasants = row.NumPeasants;
+                entry.NumArchers = row.NumArchers;
+                entry.NumPikemen = row.NumPikemen;
+                entry.NumSwordsmen = row.NumSwordsmen;
+                entry.NumCatapults = row.NumCatapults;
+                entry.NumCaptains = row.NumCaptains;
+                entry.CaptainsOnly = row.UseCaptains;
+                entry.CardType = row.SelectedCardType;
+                entry.Status = "Queued";
+                s.PendingAttacks.Add(entry);
+                count++;
+            }
+
+            BotLogger.Log("Auto Bomb", BotLogLevel.Info,
+                "Submitted " + count + " attack(s) to queue. Switch to Pending Attacks tab to launch.");
+
+            AbRefreshPendingList();
+            _bombSubTabs.SelectedTab = _bombPendingTab;
+        }
+
+        private void AbLaunch()
+        {
+            AbWriteToSettings();
+
+            // Ensure bot engine is enabled so ticks fire
+            if (BotEngine.Instance.Settings != null)
+                BotEngine.Instance.Settings.BotEnabled = true;
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                AutoBombModule bomb = m as AutoBombModule;
+                if (bomb != null)
+                {
+                    // Force-enable the module for the launch sequence
+                    m.Enabled = true;
+                    bomb.StartLaunch();
+                    return;
+                }
+            }
+        }
+
+        private void AbCancelAll()
+        {
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                AutoBombModule bomb = m as AutoBombModule;
+                if (bomb != null)
+                {
+                    bomb.CancelAll();
+                    AbRefreshPendingList();
+                    return;
+                }
+            }
+        }
+
+        private void AbClearQueue()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            BotEngine.Instance.Settings.AutoBomb.PendingAttacks.Clear();
+            AbRefreshPendingList();
+            BotLogger.Log("Auto Bomb", BotLogLevel.Info, "Queue cleared.");
+        }
+
+        private void AbRefreshPendingList()
+        {
+            _abPendingListPanel.SuspendLayout();
+            foreach (PendingBombRow row in _abPendingRows)
+            {
+                _abPendingListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
+            _abPendingRows.Clear();
+
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+            {
+                _abPendingListPanel.ResumeLayout();
+                return;
+            }
+
+            List<BombAttackEntry> attacks = BotEngine.Instance.Settings.AutoBomb.PendingAttacks;
+            // Sort by stack for display
+            List<BombAttackEntry> sorted = new List<BombAttackEntry>(attacks);
+            sorted.Sort(delegate(BombAttackEntry a, BombAttackEntry b) { return a.Stack.CompareTo(b.Stack); });
+
+            for (int i = sorted.Count - 1; i >= 0; i--)
+            {
+                PendingBombRow row = new PendingBombRow(sorted[i], i);
+                row.Dock = DockStyle.Top;
+                _abPendingListPanel.Controls.Add(row);
+                _abPendingRows.Add(row);
+            }
+
+            _abPendingListPanel.ResumeLayout();
+        }
+
+        private void AbUpdateDisplay()
+        {
+            if (_abEnabledCheck == null) return;
+
+            // Update status label
+            bool isLaunching = false;
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                AutoBombModule bomb = m as AutoBombModule;
+                if (bomb != null)
+                {
+                    isLaunching = bomb.IsLaunching;
+                    break;
+                }
+            }
+
+            if (isLaunching)
+            {
+                _abStatusLabel.Text = "LAUNCHING";
+                _abStatusLabel.ForeColor = Color.FromArgb(255, 120, 50);
+            }
+            else
+            {
+                bool enabled = _abEnabledCheck.Checked;
+                _abStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
+                _abStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+            }
+
+            // Refresh pending row statuses
+            foreach (PendingBombRow row in _abPendingRows)
+                row.RefreshStatus();
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)

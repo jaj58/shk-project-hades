@@ -6,12 +6,14 @@
 
 using CommonTypes;
 using DXGraphics;
+using Kingdoms.Bot;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Text;
+using System.Threading;
 
 //#nullable disable
 namespace Kingdoms
@@ -1659,6 +1661,29 @@ namespace Kingdoms
       this.recalcCastleLayout();
     }
 
+    public bool HasEnoughTroopsToPlace(ref int[] array)
+    {
+        array[6] = this.attackMaxPeasants;
+        array[7] = this.attackMaxArchers;
+        array[8] = this.attackMaxPikemen;
+        array[9] = this.attackMaxSwordsmen;
+        array[10] = this.attackMaxCatapults;
+        array[11] = this.attackMaxCaptains;
+        if (this.m_usingCastleTroopsOK)
+        {
+            array[6] += this.attackMaxPeasantsInCastle;
+            array[7] += this.attackMaxArchersInCastle;
+            array[8] += this.attackMaxPikemenInCastle;
+            array[9] += this.attackMaxSwordsmenInCastle;
+        }
+        for (int index = 0; index < 6; ++index)
+        {
+            if (array[index] > array[index + 6])
+                return false;
+        }
+        return true;
+    }
+
     public int countOwnPlacedTroops()
     {
       int num = 0;
@@ -1684,7 +1709,223 @@ namespace Kingdoms
       return num;
     }
 
-    public int countPlacedTroops()
+    public CastleElement TroopPlaceAttackerBG(int mapX, int mapY, byte elemType = 0)
+    {
+        CastleElement element = new CastleElement()
+        {
+            elementID = this.localTempElementNumber
+        };
+        --this.localTempElementNumber;
+        element.elementType = elemType;
+        element.xPos = (byte)mapX;
+        element.yPos = (byte)mapY;
+        this.elements.Add(element);
+        switch (elemType)
+        {
+            case 90:
+                ++this.attackNumPeasants;
+                break;
+            case 91:
+                ++this.attackNumSwordsmen;
+                break;
+            case 92:
+                ++this.attackNumArchers;
+                break;
+            case 93:
+                ++this.attackNumPikemen;
+                break;
+            case 94:
+                this.addNewCatapultTargetDefault(element);
+                ++this.attackNumCatapults;
+                break;
+            case 100:
+            case 101:
+            case 104:
+            case 105:
+            case 106:
+            case 107:
+                this.addNewCaptainDetails(element);
+                ++this.attackNumCaptains;
+                break;
+            case 102:
+            case 103:
+                this.addNewCaptainDetails(element);
+                ++this.attackNumCaptains;
+                break;
+        }
+        CastleMap.OnTroopPlaced_Delegate onTroopPlaced = this.OnTroopPlaced;
+        if (onTroopPlaced != null)
+            onTroopPlaced(element);
+        return element;
+    }
+
+    public bool RestoreAttackSetupBG(List<CastleMap.RestoreCastleElement> list)
+    {
+        int num = -1;
+        foreach (CastleMap.RestoreCastleElement restoreCastleElement in list)
+        {
+            int elementType = (int)restoreCastleElement.elementType;
+            if (restoreCastleElement.elementType >= (byte)100 && restoreCastleElement.elementType < (byte)109)
+                restoreCastleElement.elementType = (byte)100;
+            this.CurrentBrushSize = CastleMap.BrushSize.BRUSH_1X1;
+            if (this.castleLayout.map[(int)restoreCastleElement.xPos, (int)restoreCastleElement.yPos] == (byte)0 && this.castleLayout.canPlaceAttackerHere(elementType, (int)restoreCastleElement.xPos, (int)restoreCastleElement.yPos, this.attackerSetupForest))
+            {
+                CastleElement castleElement = this.TroopPlaceAttackerBG((int)restoreCastleElement.xPos, (int)restoreCastleElement.yPos, restoreCastleElement.elementType);
+                num = (int)restoreCastleElement.elementType;
+                if (restoreCastleElement.elementType == (byte)94)
+                {
+                    foreach (CatapultTarget catapultTarget in this.catapultTargets)
+                    {
+                        if (catapultTarget.elemID == castleElement.elementID)
+                        {
+                            catapultTarget.xPos = restoreCastleElement.targXPos;
+                            catapultTarget.yPos = restoreCastleElement.targYPos;
+                            if (!this.validateCatapultRange((int)restoreCastleElement.xPos, (int)restoreCastleElement.yPos, (int)catapultTarget.xPos, (int)catapultTarget.yPos, GameEngine.Instance.LocalWorldData.Castle_Catapult_MaxRange))
+                            {
+                                catapultTarget.createDefaultLocation((int)restoreCastleElement.xPos, (int)restoreCastleElement.yPos, castleElement);
+                                break;
+                            }
+                            break;
+                        }
+                    }
+                }
+                if (restoreCastleElement.elementType >= (byte)100 && restoreCastleElement.elementType < (byte)109)
+                {
+                    foreach (CaptainsDetails captainsDetail in this.captainsDetails)
+                    {
+                        if (captainsDetail.elemID == castleElement.elementID)
+                        {
+                            captainsDetail.seconds = restoreCastleElement.delay;
+                            break;
+                        }
+                    }
+                    if (elementType != 100)
+                        castleElement.elementType = (byte)elementType;
+                    if (elementType == 102 || elementType == 103)
+                    {
+                        this.addNewCatapultTargetDefault(castleElement);
+                        foreach (CatapultTarget catapultTarget in this.catapultTargets)
+                        {
+                            if (catapultTarget.elemID == castleElement.elementID)
+                            {
+                                catapultTarget.xPos = restoreCastleElement.targXPos;
+                                catapultTarget.yPos = restoreCastleElement.targYPos;
+                                break;
+                            }
+                        }
+                    }
+                }
+                CastlesCommon.buildCastleLayoutClient(this.elements, ref this.castleLayout);
+            }
+        }
+        if (num >= 0)
+            this.updateLayoutAndRedraw();
+        return true;
+    }
+
+    public bool RestoreAttackPresetBG(CastleMapPreset preset)
+    {
+        List<CastleMap.RestoreCastleElement> list = new List<CastleMap.RestoreCastleElement>();
+        string[] strArray1 = preset.Data.Split(' ');
+        int num1 = 0;
+        for (int index1 = 0; index1 < preset.ElementCount; ++index1)
+        {
+            CastleMap.RestoreCastleElement restoreCastleElement1 = new CastleMap.RestoreCastleElement();
+            string[] strArray2 = strArray1;
+            int index2 = num1;
+            int num2 = index2 + 1;
+            restoreCastleElement1.xPos = Convert.ToByte(strArray2[index2]);
+            string[] strArray3 = strArray1;
+            int index3 = num2;
+            int num3 = index3 + 1;
+            restoreCastleElement1.yPos = Convert.ToByte(strArray3[index3]);
+            string[] strArray4 = strArray1;
+            int index4 = num3;
+            num1 = index4 + 1;
+            restoreCastleElement1.elementType = Convert.ToByte(strArray4[index4]);
+            CastleMap.RestoreCastleElement restoreCastleElement2 = restoreCastleElement1;
+            if (restoreCastleElement2.elementType == (byte)94)
+            {
+                CastleMap.RestoreCastleElement restoreCastleElement3 = restoreCastleElement2;
+                string[] strArray5 = strArray1;
+                int num4 = num1;
+                int num5 = num4 + 1;
+                int index5 = num4;
+                int num6 = (int)Convert.ToByte(strArray5[index5]);
+                restoreCastleElement3.targXPos = (byte)num6;
+                CastleMap.RestoreCastleElement restoreCastleElement4 = restoreCastleElement2;
+                string[] strArray6 = strArray1;
+                int num7 = num5;
+                num1 = num7 + 1;
+                int index6 = num7;
+                int num8 = (int)Convert.ToByte(strArray6[index6]);
+                restoreCastleElement4.targYPos = (byte)num8;
+            }
+            if (restoreCastleElement2.elementType >= (byte)100 && restoreCastleElement2.elementType < (byte)109)
+            {
+                restoreCastleElement2.delay = Convert.ToByte(strArray1[num1++]);
+                if (restoreCastleElement2.elementType == (byte)102 || restoreCastleElement2.elementType == (byte)103)
+                {
+                    CastleMap.RestoreCastleElement restoreCastleElement3 = restoreCastleElement2;
+                    string[] strArray5 = strArray1;
+                    int num4 = num1;
+                    int num5 = num4 + 1;
+                    int index5 = num4;
+                    int num6 = (int)Convert.ToByte(strArray5[index5]);
+                    restoreCastleElement3.targXPos = (byte)num6;
+                    CastleMap.RestoreCastleElement restoreCastleElement4 = restoreCastleElement2;
+                    string[] strArray6 = strArray1;
+                    int num7 = num5;
+                    num1 = num7 + 1;
+                    int index6 = num7;
+                    int num8 = (int)Convert.ToByte(strArray6[index6]);
+                    restoreCastleElement4.targYPos = (byte)num8;
+                }
+                bool flag = false;
+                int researchTactics = (int)GameEngine.Instance.World.UserResearchData.Research_Tactics;
+                switch (restoreCastleElement2.elementType)
+                {
+                    case 100:
+                        flag = true;
+                        break;
+                    case 101:
+                        if (researchTactics > 0)
+                        {
+                            flag = true;
+                            break;
+                        }
+                        break;
+                    case 102:
+                        if (researchTactics > 1)
+                        {
+                            flag = true;
+                            break;
+                        }
+                        break;
+                    case 103:
+                        if (researchTactics > 3)
+                        {
+                            flag = true;
+                            break;
+                        }
+                        break;
+                    case 104:
+                        if (researchTactics > 2)
+                        {
+                            flag = true;
+                            break;
+                        }
+                        break;
+                }
+                if (!flag)
+                    continue;
+            }
+            list.Add(restoreCastleElement2);
+        }
+        return this.RestoreAttackSetupBG(list);
+    }
+
+        public int countPlacedTroops()
     {
       int num = 0;
       foreach (CastleElement element in this.elements)
@@ -7358,6 +7599,51 @@ namespace Kingdoms
       return false;
     }
 
+    public static void launchCastleAttackCallbackBG(LaunchCastleAttack_ReturnType returnData)
+    {
+        BotLogger.Log("CastleMap", BotLogLevel.Info, "launchCastleAttackCallbackBG fired - Success=" + returnData.Success +
+            " protected=" + returnData.protectedVillage +
+            " armyData=" + (returnData.armyData != null ? "present (id=" + returnData.armyData.armyID + ")" : "NULL") +
+            " errorCode=" + returnData.m_errorCode +
+            " source=" + returnData.sourceVillage +
+            " target=" + returnData.targetVillage);
+        if (returnData.protectedVillage)
+        {
+            BotLogger.Log("CastleMap", BotLogLevel.Error, "LaunchCastleAttack rejected: village is protected by interdiction.");
+        }
+        else if (returnData.Success)
+        {
+            if (returnData.villageResourcesAndStats != null)
+                GameEngine.Instance.getVillage(returnData.sourceVillage)?.importResourcesAndStats(returnData.villageResourcesAndStats, returnData.currentTime);
+            if (returnData.armyData != null)
+            {
+                ArmyReturnData[] armyReturnDataArray = new ArmyReturnData[1]
+                {
+                    returnData.armyData
+                };
+                GameEngine.Instance.World.doGetArmyData((IEnumerable<ArmyReturnData>)armyReturnDataArray, (IEnumerable<ArmyReturnData>)null, false);
+                GameEngine.Instance.World.addExistingArmy(returnData.armyData.armyID);
+                BotLogger.Log("CastleMap", BotLogLevel.Info, "Army created successfully, armyID=" + returnData.armyData.armyID);
+            }
+            else
+            {
+                BotLogger.Log("CastleMap", BotLogLevel.Error, "LaunchCastleAttack returned Success but armyData is null - server may have rejected the attack silently.");
+            }
+            if (SpecialVillageTypes.IS_TREASURE_CASTLE(GameEngine.Instance.World.getSpecial(returnData.targetVillage)))
+                GameEngine.Instance.World.setLastTreasureCastleAttackTime(VillageMap.getCurrentServerTime());
+            AttackTargetsPanel.addRecent(returnData.targetVillage);
+        }
+        else
+        {
+            BotLogger.Log("CastleMap", BotLogLevel.Error, "LaunchCastleAttack failed: errorCode=" + returnData.m_errorCode + " errorID=" + returnData.m_errorID);
+        }
+    }
+
+    public void SetUsingCastleTroopsOK(bool value)
+    {
+        this.m_usingCastleTroopsOK = value;
+    }
+
     public void setupLaunchArmy(int attackType, int pillagePercent, int captainsCommand)
     {
       this.attackRealAttackType = attackType;
@@ -7365,97 +7651,110 @@ namespace Kingdoms
       this.attackCaptainsCommand = captainsCommand;
     }
 
-    public void launchArmy()
+    public void launchArmy(bool background = false)
     {
-      byte[] fullData = this.castleLayout.createAttackerMapArray();
-      if (this.catapultTargets.Count > 0)
-      {
-        byte[] numArray1 = new byte[this.catapultTargets.Count * 4];
-        int num = 0;
-        foreach (CatapultTarget catapultTarget in this.catapultTargets)
+        byte[] fullData = this.castleLayout.createAttackerMapArray();
+        if (this.catapultTargets.Count > 0)
         {
-          foreach (CastleElement element in this.elements)
-          {
-            if ((element.elementType == (byte) 94 || element.elementType == (byte) 102 || element.elementType == (byte) 103) && element.elementID == catapultTarget.elemID)
+            byte[] numArray1 = new byte[this.catapultTargets.Count * 4];
+            int num = 0;
+            foreach (CatapultTarget catapultTarget in this.catapultTargets)
             {
-              catapultTarget.validate(element, GameEngine.Instance.LocalWorldData.Castle_Catapult_MaxRange);
-              if (!catapultTarget.valid)
-                catapultTarget.createDefaultLocation((int) element.xPos, (int) element.yPos, element);
-              numArray1[num * 4] = element.xPos;
-              numArray1[num * 4 + 1] = element.yPos;
-              numArray1[num * 4 + 2] = catapultTarget.xPos;
-              numArray1[num * 4 + 3] = catapultTarget.yPos;
-              ++num;
-              break;
+                foreach (CastleElement element in this.elements)
+                {
+                    if ((element.elementType == (byte)94 || element.elementType == (byte)102 || element.elementType == (byte)103) && element.elementID == catapultTarget.elemID)
+                    {
+                        catapultTarget.validate(element, GameEngine.Instance.LocalWorldData.Castle_Catapult_MaxRange);
+                        if (!catapultTarget.valid)
+                            catapultTarget.createDefaultLocation((int)element.xPos, (int)element.yPos, element);
+                        numArray1[num * 4] = element.xPos;
+                        numArray1[num * 4 + 1] = element.yPos;
+                        numArray1[num * 4 + 2] = catapultTarget.xPos;
+                        numArray1[num * 4 + 3] = catapultTarget.yPos;
+                        ++num;
+                        break;
+                    }
+                }
             }
-          }
-        }
-        byte[] numArray2 = new byte[fullData.Length + numArray1.Length];
-        int index1 = 0;
-        int index2 = 0;
-        while (index2 < fullData.Length)
-        {
-          numArray2[index1] = fullData[index2];
-          ++index2;
-          ++index1;
-        }
-        int index3 = 0;
-        while (index3 < numArray1.Length)
-        {
-          numArray2[index1] = numArray1[index3];
-          ++index3;
-          ++index1;
-        }
-        fullData = numArray2;
-      }
-      if (this.captainsDetails.Count > 0)
-      {
-        byte[] numArray3 = new byte[this.captainsDetails.Count * 3];
-        int num = 0;
-        foreach (CaptainsDetails captainsDetail in this.captainsDetails)
-        {
-          foreach (CastleElement element in this.elements)
-          {
-            if (element.elementType >= (byte) 100 && element.elementType <= (byte) 109 && element.elementID == captainsDetail.elemID)
+            byte[] numArray2 = new byte[fullData.Length + numArray1.Length];
+            int index1 = 0;
+            int index2 = 0;
+            while (index2 < fullData.Length)
             {
-              numArray3[num * 3] = element.xPos;
-              numArray3[num * 3 + 1] = element.yPos;
-              numArray3[num * 3 + 2] = captainsDetail.seconds;
-              ++num;
-              break;
+                numArray2[index1] = fullData[index2];
+                ++index2;
+                ++index1;
             }
-          }
+            int index3 = 0;
+            while (index3 < numArray1.Length)
+            {
+                numArray2[index1] = numArray1[index3];
+                ++index3;
+                ++index1;
+            }
+            fullData = numArray2;
         }
-        byte[] numArray4 = new byte[fullData.Length + numArray3.Length];
-        int index4 = 0;
-        int index5 = 0;
-        while (index5 < fullData.Length)
+        if (this.captainsDetails.Count > 0)
         {
-          numArray4[index4] = fullData[index5];
-          ++index5;
-          ++index4;
+            byte[] numArray1 = new byte[this.captainsDetails.Count * 3];
+            int num = 0;
+            foreach (CaptainsDetails captainsDetail in this.captainsDetails)
+            {
+                foreach (CastleElement element in this.elements)
+                {
+                    if (element.elementType >= (byte)100 && element.elementType <= (byte)109 && element.elementID == captainsDetail.elemID)
+                    {
+                        numArray1[num * 3] = element.xPos;
+                        numArray1[num * 3 + 1] = element.yPos;
+                        numArray1[num * 3 + 2] = captainsDetail.seconds;
+                        ++num;
+                        break;
+                    }
+                }
+            }
+            byte[] numArray2 = new byte[fullData.Length + numArray1.Length];
+            int index1 = 0;
+            int index2 = 0;
+            while (index2 < fullData.Length)
+            {
+                numArray2[index1] = fullData[index2];
+                ++index2;
+                ++index1;
+            }
+            int index3 = 0;
+            while (index3 < numArray1.Length)
+            {
+                numArray2[index1] = numArray1[index3];
+                ++index3;
+                ++index1;
+            }
+            fullData = numArray2;
         }
-        int index6 = 0;
-        while (index6 < numArray3.Length)
-        {
-          numArray4[index4] = numArray3[index6];
-          ++index6;
-          ++index4;
-        }
-        fullData = numArray4;
-      }
-      byte[] troopMap = CastlesCommon.compressCastleData(fullData);
-      int targetVillageID = -1;
-      if (this.placingAttackerRealMode)
-        targetVillageID = this.attackRealTargetVillage;
-      RemoteServices.Instance.set_LaunchCastleAttack_UserCallBack(new RemoteServices.LaunchCastleAttack_UserCallBack(this.launchCastleAttackCallback));
-      RemoteServices.Instance.LaunchCastleAttack(this.ParentOfAttackingVillage, this.m_villageID, targetVillageID, troopMap, this.attackNumPeasants, this.attackNumArchers, this.attackNumPikemen, this.attackNumSwordsmen, this.attackNumCatapults, this.attackRealAttackType, this.attackPillagePercent, this.attackCaptainsCommand, this.attackNumCaptains);
-      AllVillagesPanel.travellersChanged();
-      CastleMap.tempCompressedAttackerMap = troopMap;
-      GameEngine.Instance.flushVillage(this.m_villageID);
+        byte[] troopMap = CastlesCommon.compressCastleData(fullData);
+        int targetVillageID = -1;
+        if (this.placingAttackerRealMode)
+            targetVillageID = this.attackRealTargetVillage;
+        if (background )//|| DankBrowniesUI.Instance.RaidMode)
+            RemoteServices.Instance.set_LaunchCastleAttack_UserCallBack(new RemoteServices.LaunchCastleAttack_UserCallBack(CastleMap.launchCastleAttackCallbackBG));
+        else
+            RemoteServices.Instance.set_LaunchCastleAttack_UserCallBack(new RemoteServices.LaunchCastleAttack_UserCallBack(this.launchCastleAttackCallback));
+        //if (DankBrowniesUI.Instance.RaidMode)
+        //{
+        //    int dankRaidNumArmies = (int)DankBrowniesUI.Instance.DankRaidNumArmies;
+        //    int dankRaidTimeSpan = (int)DankBrowniesUI.Instance.DankRaidTimeSpan;
+        //    for (int index = 0; index < dankRaidNumArmies; ++index)
+        //    {
+        //        RemoteServices.Instance.LaunchCastleAttack(this.ParentOfAttackingVillage, this.m_villageID, targetVillageID, troopMap, this.attackNumPeasants, this.attackNumArchers, this.attackNumPikemen, this.attackNumSwordsmen, this.attackNumCatapults, this.attackRealAttackType, this.attackPillagePercent, this.attackCaptainsCommand, this.attackNumCaptains);
+        //        Thread.Sleep(dankRaidTimeSpan);
+        //    }
+        //}
+        RemoteServices.Instance.LaunchCastleAttack(this.ParentOfAttackingVillage, this.m_villageID, targetVillageID, troopMap, this.attackNumPeasants, this.attackNumArchers, this.attackNumPikemen, this.attackNumSwordsmen, this.attackNumCatapults, this.attackRealAttackType, this.attackPillagePercent, this.attackCaptainsCommand, this.attackNumCaptains);
+        AllVillagesPanel.travellersChanged();
+        CastleMap.tempCompressedAttackerMap = troopMap;
+        GameEngine.Instance.flushVillage(this.m_villageID);
     }
 
-    public void launchCastleAttackCallback(LaunchCastleAttack_ReturnType returnData)
+        public void launchCastleAttackCallback(LaunchCastleAttack_ReturnType returnData)
     {
       if (returnData.protectedVillage)
       {

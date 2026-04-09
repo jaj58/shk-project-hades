@@ -17,6 +17,7 @@ namespace Kingdoms.Bot
         public CastleRepairSettings CastleRepair = new CastleRepairSettings();
         public TradeSettings Trade = new TradeSettings();
         public VillageBuilderSettings VillageBuilder = new VillageBuilderSettings();
+        public AutoBombSettings AutoBomb = new AutoBombSettings();
 
         private static string GetSettingsFilePath()
         {
@@ -581,5 +582,72 @@ namespace Kingdoms.Bot
         public bool Placed;
         [System.Xml.Serialization.XmlIgnore]
         public string Status = "";
+    }
+
+    // =========================================================================
+    // Auto Bomb Settings
+    // =========================================================================
+
+    [Serializable]
+    public class AutoBombSettings
+    {
+        public bool Enabled;
+        public int TargetVillageId;
+        public bool AutoCancelOnInterdict = true;
+        public int StackDelaySeconds = 1;
+        public List<BombAttackEntry> PendingAttacks = new List<BombAttackEntry>();
+    }
+
+    [Serializable]
+    public class BombAttackEntry
+    {
+        public int SourceVillageId;
+        public int TargetVillageId;
+        public int AttackType; // 3=Vandalise, 9=Raze, 1=Capture
+        public string FormationName = "";
+        public int Stack = 1;
+        public double TravelTimeSeconds; // pre-calculated travel time to target
+        public int NumPeasants;
+        public int NumArchers;
+        public int NumPikemen;
+        public int NumSwordsmen;
+        public int NumCatapults;
+        public int NumCaptains;
+        public bool CaptainsOnly;
+        public int CardType; // 0=None, 1=x2 Basic, 2=x4 Advanced, 3=x6 Expert
+
+        // Runtime state (not serialized)
+        [System.Xml.Serialization.XmlIgnore]
+        public string Status = "Queued";
+        [System.Xml.Serialization.XmlIgnore]
+        public DateTime ScheduledSendTime = DateTime.MaxValue;
+        [System.Xml.Serialization.XmlIgnore]
+        public DateTime EstimatedArrivalTime = DateTime.MaxValue;
+        [System.Xml.Serialization.XmlIgnore]
+        public bool Sent;
+        [System.Xml.Serialization.XmlIgnore]
+        public bool Cancelled;
+
+        public string GetSourceName()
+        {
+            try
+            {
+                if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                    return GameEngine.Instance.World.getVillageName(SourceVillageId);
+            }
+            catch { }
+            return "Village " + SourceVillageId;
+        }
+
+        public static string GetAttackTypeName(int attackType)
+        {
+            switch (attackType)
+            {
+                case 3: return "Vandalise";
+                case 9: return "Raze";
+                case 1: return "Capture";
+                default: return "Attack " + attackType;
+            }
+        }
     }
 }

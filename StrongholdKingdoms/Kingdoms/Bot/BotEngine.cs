@@ -41,6 +41,7 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.TradeModule());
             RegisterModule(new Modules.CardExpiryModule());
             RegisterModule(new Modules.VillageBuilderModule());
+            RegisterModule(new Modules.AutoBombModule());
 
             foreach (IBotModule module in _modules)
             {
@@ -86,6 +87,8 @@ namespace Kingdoms.Bot
                     module.Enabled = true; // Always enabled — monitors cards for other modules
                 else if (module is Modules.VillageBuilderModule)
                     module.Enabled = _settings.VillageBuilder.Enabled;
+                else if (module is Modules.AutoBombModule)
+                    module.Enabled = _settings.AutoBomb.Enabled;
             }
         }
 
@@ -109,6 +112,8 @@ namespace Kingdoms.Bot
                     _settings.Trade.Enabled = module.Enabled;
                 else if (module is Modules.VillageBuilderModule)
                     _settings.VillageBuilder.Enabled = module.Enabled;
+                else if (module is Modules.AutoBombModule)
+                    _settings.AutoBomb.Enabled = module.Enabled;
             }
 
             _settings.Save();
@@ -125,6 +130,31 @@ namespace Kingdoms.Bot
         public void Tick()
         {
             if (!IsRunning)
+                return;
+
+            // Priority: if AutoBomb is actively launching, tick it first and
+            // skip all other modules so no network call can delay timing.
+            bool bombActive = false;
+            foreach (IBotModule module in _modules)
+            {
+                Modules.AutoBombModule bomb = module as Modules.AutoBombModule;
+                if (bomb != null && bomb.IsLaunching)
+                {
+                    bombActive = true;
+                    try
+                    {
+                        module.Tick();
+                    }
+                    catch (Exception ex)
+                    {
+                        BotLogger.Log(module.ModuleName, BotLogLevel.Error,
+                            "Tick error: " + ex.Message);
+                    }
+                    break;
+                }
+            }
+
+            if (bombActive)
                 return;
 
             foreach (IBotModule module in _modules)

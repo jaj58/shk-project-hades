@@ -6,6 +6,7 @@
 
 using CommonTypes;
 using DXGraphics;
+using Kingdoms.Bot;
 using StatTracking;
 using Stronghold.AuthClient;
 using Stronghold.ShieldClient;
@@ -6883,6 +6884,11 @@ namespace Kingdoms
       ref SparseArray armyRequestSentFlag,
       bool singleAdd)
     {
+      if(data == null)
+            {
+                BotLogger.Log("WorldMap", BotLogLevel.Error,("ArmyReturnData is null, cannot add army to array."));
+                return;
+            }
       WorldMap.LocalArmyData army = new WorldMap.LocalArmyData();
       army.armyID = data.armyID;
       army.homeVillageID = data.homeVillageID;
@@ -8683,7 +8689,15 @@ namespace Kingdoms
       return this.m_userHonourLevel + this.m_userHonourIncomeRate * ((DXTimer.GetCurrentMilliseconds() - this.m_lastHonourUpdate) / 1000.0);
     }
 
-    public double getCurrentHonourRate() => this.m_userHonourIncomeRate;
+    public bool IsPlayerVillage(int villageID)
+    {
+        if (villageID < 0 || villageID >= this.villageList.Length)
+            return false;
+        VillageData village = this.villageList[villageID];
+        return village.visible && !village.Capital && village.special == 0 && village.userID >= 0;
+    }
+
+        public double getCurrentHonourRate() => this.m_userHonourIncomeRate;
 
     public double getCurrentFaithPoints()
     {

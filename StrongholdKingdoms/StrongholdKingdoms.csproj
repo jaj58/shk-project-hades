@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!--Project was exported from assembly: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.43.10\StrongholdKingdoms.exe-->
   <PropertyGroup>
@@ -8,8 +8,22 @@
     <OutputType>WinExe</OutputType>
     <AssemblyName>StrongholdKingdoms</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
-    <ApplicationVersion>1.1.0.0</ApplicationVersion>
     <FileAlignment>512</FileAlignment>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.1.0.0</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -21,6 +35,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -31,6 +46,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="CommonTypes">
@@ -70,6 +86,53 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Kingdoms\Bot\BotEngine.cs" />
+    <Compile Include="Kingdoms\Bot\BotLogger.cs" />
+    <Compile Include="Kingdoms\Bot\BotModuleBase.cs" />
+    <Compile Include="Kingdoms\Bot\BotSettings.cs" />
+    <Compile Include="Kingdoms\Bot\DiscordNotifier.cs" />
+    <Compile Include="Kingdoms\Bot\IBotModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\AutoBombModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\CardExpiryModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\CastleRepairModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\RadarModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\RecruitingModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\TradeModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\VillageBuilderModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\VillageSyncModule.cs" />
+    <Compile Include="Kingdoms\Bot\UI\BotControlForm.Designer.cs">
+      <DependentUpon>BotControlForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\CastleRepairVillageRow.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\BotControlForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\CopyRecruitSettingsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\RadarTab.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\RecruitVillagePanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\TradeTab.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\VassalVillagePanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\AutoBombTab.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\VillageBuilderTab.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\VillageSyncTab.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="UICard.cs" />
     <Compile Include="UniversalDebugLog.cs" />
     <Compile Include="ReportsEntry.cs" />
@@ -1073,6 +1136,9 @@
     <EmbeddedResource Include="Kingdoms\BarracksPanel.resx" />
     <EmbeddedResource Include="Kingdoms\BattleResultPopup.resx" />
     <EmbeddedResource Include="Kingdoms\BigPointWindow.resx" />
+    <EmbeddedResource Include="Kingdoms\Bot\UI\BotControlForm.resx">
+      <DependentUpon>BotControlForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Kingdoms\BPPopupWindow.resx" />
     <EmbeddedResource Include="Kingdoms\BuyCrownsPopup.resx" />
     <EmbeddedResource Include="Kingdoms\BuyVillagePopupWindow.resx" />
@@ -1280,6 +1346,19 @@
     <EmbeddedResource Include="Kingdoms\WorldsEndPanel.resx" />
     <EmbeddedResource Include="Kingdoms\WorldsEndWindow.resx" />
     <EmbeddedResource Include="Kingdoms\WriteMailPopup.resx" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="write_castle_repair.ps1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="StrongholdKingdoms\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

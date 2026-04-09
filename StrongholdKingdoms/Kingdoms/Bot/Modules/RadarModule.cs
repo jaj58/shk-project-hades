@@ -30,6 +30,25 @@ namespace Kingdoms.Bot.Modules
         public const string ACTION_REINFORCEMENT = "Reinforcement";
         public const string ACTION_FORAGING = "Foraging";
 
+        // AI variants — source village has special > 0
+        public const string ACTION_AI_CAPTURE = "AICapture";
+        public const string ACTION_AI_RAZE = "AIRaze";
+        public const string ACTION_AI_RANSACK = "AIRansack";
+        public const string ACTION_AI_PILLAGE_STOCKPILE = "AIPillageStockpile";
+        public const string ACTION_AI_PILLAGE_GRANARY = "AIPillageGranary";
+        public const string ACTION_AI_PILLAGE_BANQUET = "AIPillageBanquet";
+        public const string ACTION_AI_PILLAGE_ALE = "AIPillageAle";
+        public const string ACTION_AI_PILLAGE_ARMOURY = "AIPillageArmoury";
+        public const string ACTION_AI_VANDALISE = "AIVandalise";
+        public const string ACTION_AI_GOLD_RAID = "AIGoldRaid";
+        public const string ACTION_AI_SCOUT = "AIScout";
+        public const string ACTION_AI_CAPTAIN = "AICaptain";
+        public const string ACTION_AI_ATTACK_PARISH = "AIAttackParish";
+        public const string ACTION_AI_ATTACK_COUNTY = "AIAttackCounty";
+        public const string ACTION_AI_ATTACK_PROVINCE = "AIAttackProvince";
+        public const string ACTION_AI_ATTACK_COUNTRY = "AIAttackCountry";
+        public const string ACTION_AI_FORAGING = "AIForaging";
+
         public static readonly string[] AllActionKeys = new string[]
         {
             ACTION_CAPTURE,
@@ -52,7 +71,24 @@ namespace Kingdoms.Bot.Modules
             ACTION_ATTACK_PROVINCE,
             ACTION_ATTACK_COUNTRY,
             ACTION_REINFORCEMENT,
-            ACTION_FORAGING
+            ACTION_FORAGING,
+            ACTION_AI_CAPTURE,
+            ACTION_AI_RAZE,
+            ACTION_AI_RANSACK,
+            ACTION_AI_PILLAGE_STOCKPILE,
+            ACTION_AI_PILLAGE_GRANARY,
+            ACTION_AI_PILLAGE_BANQUET,
+            ACTION_AI_PILLAGE_ALE,
+            ACTION_AI_PILLAGE_ARMOURY,
+            ACTION_AI_VANDALISE,
+            ACTION_AI_GOLD_RAID,
+            ACTION_AI_SCOUT,
+            ACTION_AI_CAPTAIN,
+            ACTION_AI_ATTACK_PARISH,
+            ACTION_AI_ATTACK_COUNTY,
+            ACTION_AI_ATTACK_PROVINCE,
+            ACTION_AI_ATTACK_COUNTRY,
+            ACTION_AI_FORAGING
         };
 
         // Attack type constants matching the game
@@ -175,7 +211,8 @@ namespace Kingdoms.Bot.Modules
                 if (actionKey == null) continue;
 
                 // Track incoming attacks for repair-on-attack (any offensive action)
-                if (actionKey != ACTION_SCOUT && actionKey != ACTION_FORAGING && actionKey != ACTION_REINFORCEMENT)
+                if (actionKey != ACTION_SCOUT && actionKey != ACTION_FORAGING && actionKey != ACTION_REINFORCEMENT
+                    && actionKey != ACTION_AI_SCOUT && actionKey != ACTION_AI_FORAGING)
                     _incomingAttackTargets[army.armyID] = army.targetVillageID;
 
                 RadarActionSettings actionSettings = settings.GetActionSettings(actionKey);
@@ -312,7 +349,13 @@ namespace Kingdoms.Bot.Modules
                     pending.ActionKey == ACTION_PILLAGE_BANQUET ||
                     pending.ActionKey == ACTION_PILLAGE_ALE ||
                     pending.ActionKey == ACTION_PILLAGE_ARMOURY ||
-                    pending.ActionKey == ACTION_GOLD_RAID)
+                    pending.ActionKey == ACTION_GOLD_RAID ||
+                    pending.ActionKey == ACTION_AI_PILLAGE_STOCKPILE ||
+                    pending.ActionKey == ACTION_AI_PILLAGE_GRANARY ||
+                    pending.ActionKey == ACTION_AI_PILLAGE_BANQUET ||
+                    pending.ActionKey == ACTION_AI_PILLAGE_ALE ||
+                    pending.ActionKey == ACTION_AI_PILLAGE_ARMOURY ||
+                    pending.ActionKey == ACTION_AI_GOLD_RAID)
                 {
                     message += "\nPillage: " + pending.PillagePercent + "%";
                 }
@@ -447,32 +490,40 @@ namespace Kingdoms.Bot.Modules
             return GameEngine.Instance.World.isUserVillage(villageId);
         }
 
+        private static bool IsAISource(int villageId)
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+                return false;
+            return GameEngine.Instance.World.getSpecial(villageId) > 0;
+        }
+
         private string ClassifyArmy(WorldMap.LocalArmyData army)
         {
             int targetVillage = army.targetVillageID;
             VillageData vData = GameEngine.Instance.World.getVillageData(targetVillage);
+            bool isAI = IsAISource(army.travelFromVillageID);
 
             // Capital-level attacks take priority
             if (vData != null)
             {
                 if (vData.countryCapital)
-                    return ACTION_ATTACK_COUNTRY;
+                    return isAI ? ACTION_AI_ATTACK_COUNTRY : ACTION_ATTACK_COUNTRY;
                 if (vData.provinceCapital)
-                    return ACTION_ATTACK_PROVINCE;
+                    return isAI ? ACTION_AI_ATTACK_PROVINCE : ACTION_ATTACK_PROVINCE;
                 if (vData.countyCapital)
-                    return ACTION_ATTACK_COUNTY;
+                    return isAI ? ACTION_AI_ATTACK_COUNTY : ACTION_ATTACK_COUNTY;
                 if (vData.regionCapital)
-                    return ACTION_ATTACK_PARISH;
+                    return isAI ? ACTION_AI_ATTACK_PARISH : ACTION_ATTACK_PARISH;
             }
 
             // Scouts: scout-only armies
             if (army.numScouts > 0 && army.numPeasants == 0 && army.numArchers == 0 &&
                 army.numPikemen == 0 && army.numSwordsmen == 0 && army.numCatapults == 0)
-                return ACTION_SCOUT;
+                return isAI ? ACTION_AI_SCOUT : ACTION_SCOUT;
 
             //// Foraging
             //if (army.attackType == 9)
-            //    return ACTION_FORAGING;
+            //    return isAI ? ACTION_AI_FORAGING : ACTION_FORAGING;
 
             // Reinforcements
             if (army.attackType == 13)
@@ -482,27 +533,27 @@ namespace Kingdoms.Bot.Modules
             switch (army.attackType)
             {
                 case ATTACK_TYPE_CAPTURE:
-                    return ACTION_CAPTURE;
+                    return isAI ? ACTION_AI_CAPTURE : ACTION_CAPTURE;
                 case ATTACK_TYPE_PILLAGE_STOCKPILE:
-                    return ACTION_PILLAGE_STOCKPILE;
+                    return isAI ? ACTION_AI_PILLAGE_STOCKPILE : ACTION_PILLAGE_STOCKPILE;
                 case ATTACK_TYPE_RANSACK:
-                    return ACTION_RANSACK;
+                    return isAI ? ACTION_AI_RANSACK : ACTION_RANSACK;
                 case ATTACK_TYPE_PILLAGE_GRANARY:
-                    return ACTION_PILLAGE_GRANARY;
+                    return isAI ? ACTION_AI_PILLAGE_GRANARY : ACTION_PILLAGE_GRANARY;
                 case ATTACK_TYPE_PILLAGE_BANQUET:
-                    return ACTION_PILLAGE_BANQUET;
+                    return isAI ? ACTION_AI_PILLAGE_BANQUET : ACTION_PILLAGE_BANQUET;
                 case ATTACK_TYPE_PILLAGE_ALE:
-                    return ACTION_PILLAGE_ALE;
+                    return isAI ? ACTION_AI_PILLAGE_ALE : ACTION_PILLAGE_ALE;
                 case ATTACK_TYPE_PILLAGE_ARMOURY:
-                    return ACTION_PILLAGE_ARMOURY;
+                    return isAI ? ACTION_AI_PILLAGE_ARMOURY : ACTION_PILLAGE_ARMOURY;
                 case ATTACK_TYPE_RAZE:
-                    return ACTION_RAZE;
+                    return isAI ? ACTION_AI_RAZE : ACTION_RAZE;
                 case ATTACK_TYPE_VANDALISE:
-                    return ACTION_VANDALISE;
+                    return isAI ? ACTION_AI_VANDALISE : ACTION_VANDALISE;
                 case ATTACK_TYPE_GOLD_RAID:
-                    return ACTION_GOLD_RAID;
+                    return isAI ? ACTION_AI_GOLD_RAID : ACTION_GOLD_RAID;
                 default:
-                    return ACTION_CAPTURE;
+                    return isAI ? ACTION_AI_CAPTURE : ACTION_CAPTURE;
             }
         }
 
@@ -834,6 +885,23 @@ namespace Kingdoms.Bot.Modules
                 case ACTION_ATTACK_COUNTRY: return "Attack (Country)";
                 case ACTION_REINFORCEMENT: return "Reinforcement";
                 case ACTION_FORAGING: return "Foraging";
+                case ACTION_AI_CAPTURE: return "AI Capture";
+                case ACTION_AI_RAZE: return "AI Raze";
+                case ACTION_AI_RANSACK: return "AI Ransack";
+                case ACTION_AI_PILLAGE_STOCKPILE: return "AI Pillage Stockpile";
+                case ACTION_AI_PILLAGE_GRANARY: return "AI Pillage Granary";
+                case ACTION_AI_PILLAGE_BANQUET: return "AI Pillage Banquet";
+                case ACTION_AI_PILLAGE_ALE: return "AI Pillage Ale";
+                case ACTION_AI_PILLAGE_ARMOURY: return "AI Pillage Armoury";
+                case ACTION_AI_VANDALISE: return "AI Vandalise";
+                case ACTION_AI_GOLD_RAID: return "AI Gold Raid";
+                case ACTION_AI_SCOUT: return "AI Scout";
+                case ACTION_AI_CAPTAIN: return "AI Captain";
+                case ACTION_AI_ATTACK_PARISH: return "AI Attack (Parish)";
+                case ACTION_AI_ATTACK_COUNTY: return "AI Attack (County)";
+                case ACTION_AI_ATTACK_PROVINCE: return "AI Attack (Province)";
+                case ACTION_AI_ATTACK_COUNTRY: return "AI Attack (Country)";
+                case ACTION_AI_FORAGING: return "AI Foraging";
                 default: return actionKey;
             }
         }
