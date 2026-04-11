@@ -69,7 +69,7 @@ namespace Kingdoms.Bot.UI
         {
             get
             {
-                if (_attackTypeCombo.SelectedIndex == 0) return 3; // Vandalise
+                if (_attackTypeCombo.SelectedIndex == 0) return 11; // Vandalise
                 if (_attackTypeCombo.SelectedIndex == 1) return 9; // Raze
                 if (_attackTypeCombo.SelectedIndex == 2) return 1; // Capture
                 return 3;
