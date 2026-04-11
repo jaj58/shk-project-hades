@@ -589,6 +589,18 @@ namespace Kingdoms.Bot
     // =========================================================================
 
     [Serializable]
+    public class SavedArmyConfig
+    {
+        public int SourceVillageId;
+        public string FormationName = "";
+        public int Stack = 1;
+        public int CardType;       // 0=None, 1=x2 Basic, 2=x4 Advanced, 3=x6 Expert
+        public bool CaptainsOnly;
+        public int AttackType = 11; // 11=Vandalise, 9=Raze, 1=Capture
+        public bool Selected = true;
+    }
+
+    [Serializable]
     public class AutoBombSettings
     {
         public bool Enabled;
@@ -596,6 +608,7 @@ namespace Kingdoms.Bot
         public bool AutoCancelOnInterdict = true;
         public int StackDelaySeconds = 1;
         public List<BombAttackEntry> PendingAttacks = new List<BombAttackEntry>();
+        public List<SavedArmyConfig> SavedConfigs = new List<SavedArmyConfig>();
     }
 
     [Serializable]
@@ -627,6 +640,16 @@ namespace Kingdoms.Bot
         public bool Sent;
         [System.Xml.Serialization.XmlIgnore]
         public bool Cancelled;
+        [System.Xml.Serialization.XmlIgnore]
+        public bool PreparationStarted;
+        [System.Xml.Serialization.XmlIgnore]
+        public bool Prepared;
+        [System.Xml.Serialization.XmlIgnore]
+        public CastleMap PreparedCastleMap;
+        [System.Xml.Serialization.XmlIgnore]
+        public int PreparedAttackType;
+        [System.Xml.Serialization.XmlIgnore]
+        public int PreparedPillagePercent;
 
         public string GetSourceName()
         {

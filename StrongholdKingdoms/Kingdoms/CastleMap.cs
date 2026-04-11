@@ -1310,7 +1310,7 @@ namespace Kingdoms
     protected Random sfxRandom = new Random();
     public bool attackerSetupMode;
     public bool attackerSetupForest;
-    private bool placingAttackerRealMode;
+    public bool placingAttackerRealMode;
     private int attackMaxPeasants;
     private int attackMaxArchers;
     private int attackMaxPikemen;
@@ -7734,8 +7734,12 @@ namespace Kingdoms
         int targetVillageID = -1;
         if (this.placingAttackerRealMode)
             targetVillageID = this.attackRealTargetVillage;
-        if (background )//|| DankBrowniesUI.Instance.RaidMode)
+        if (background)
+        {
+            if (this.attackRealAttackType == 0)
+                this.attackRealAttackType = 11;
             RemoteServices.Instance.set_LaunchCastleAttack_UserCallBack(new RemoteServices.LaunchCastleAttack_UserCallBack(CastleMap.launchCastleAttackCallbackBG));
+        }
         else
             RemoteServices.Instance.set_LaunchCastleAttack_UserCallBack(new RemoteServices.LaunchCastleAttack_UserCallBack(this.launchCastleAttackCallback));
         //if (DankBrowniesUI.Instance.RaidMode)
@@ -7748,6 +7752,30 @@ namespace Kingdoms
         //        Thread.Sleep(dankRaidTimeSpan);
         //    }
         //}
+        // Count non-zero bytes in raw fullData for diagnostics
+        int rawNonZero = 0;
+        for (int di = 0; di < fullData.Length; di++)
+        {
+            if (fullData[di] != 0) rawNonZero++;
+        }
+        BotLogger.Log("CastleMap", BotLogLevel.Info, "LaunchCastleAttack PARAMS: parent=" + this.ParentOfAttackingVillage +
+            " source=" + this.m_villageID +
+            " target=" + targetVillageID +
+            " troopMapLen=" + troopMap.Length +
+            " rawLen=" + fullData.Length +
+            " rawNonZero=" + rawNonZero +
+            " P=" + this.attackNumPeasants +
+            " A=" + this.attackNumArchers +
+            " Pk=" + this.attackNumPikemen +
+            " S=" + this.attackNumSwordsmen +
+            " C=" + this.attackNumCatapults +
+            " Cap=" + this.attackNumCaptains +
+            " attackType=" + this.attackRealAttackType +
+            " pillage=" + this.attackPillagePercent +
+            " captCmd=" + this.attackCaptainsCommand +
+            " realMode=" + this.placingAttackerRealMode +
+            " elements=" + (this.elements != null ? this.elements.Count.ToString() : "null") +
+            " bg=" + background);
         RemoteServices.Instance.LaunchCastleAttack(this.ParentOfAttackingVillage, this.m_villageID, targetVillageID, troopMap, this.attackNumPeasants, this.attackNumArchers, this.attackNumPikemen, this.attackNumSwordsmen, this.attackNumCatapults, this.attackRealAttackType, this.attackPillagePercent, this.attackCaptainsCommand, this.attackNumCaptains);
         AllVillagesPanel.travellersChanged();
         CastleMap.tempCompressedAttackerMap = troopMap;

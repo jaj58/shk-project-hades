@@ -2598,6 +2598,9 @@ namespace Kingdoms.Bot.UI
                 return;
             }
 
+            // Save current row configs before clearing
+            AbSaveArmyConfigs();
+
             _abArmyListPanel.SuspendLayout();
             foreach (BombArmyRow row in _abArmyRows)
             {
@@ -2616,6 +2619,14 @@ namespace Kingdoms.Bot.UI
             List<int> villageIds = GameEngine.Instance.World.getUserVillageIDList();
             if (villageIds == null) { _abArmyListPanel.ResumeLayout(); return; }
 
+            // Build a lookup from saved configs
+            Dictionary<int, SavedArmyConfig> savedLookup = new Dictionary<int, SavedArmyConfig>();
+            if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+            {
+                foreach (SavedArmyConfig cfg in BotEngine.Instance.Settings.AutoBomb.SavedConfigs)
+                    savedLookup[cfg.SourceVillageId] = cfg;
+            }
+
             int index = 0;
             for (int vi = villageIds.Count - 1; vi >= 0; vi--)
             {
@@ -2630,8 +2641,9 @@ namespace Kingdoms.Bot.UI
 
                 int peasants = 0, archers = 0, pikemen = 0, swordsmen = 0, captains = 0;
                 village.getVillageTroops(ref peasants, ref archers, ref pikemen, ref swordsmen, ref captains);
+                int catapults = village.m_numCatapults;
 
-                int totalTroops = peasants + archers + pikemen + swordsmen + captains;
+                int totalTroops = peasants + archers + pikemen + swordsmen + catapults + captains;
                 if (totalTroops == 0) continue;
 
                 double baseTravelArmy = AutoBombModule.CalculateBaseTravelTime(vid, targetId, false);
@@ -2640,9 +2652,15 @@ namespace Kingdoms.Bot.UI
 
                 BombArmyRow row = new BombArmyRow(vid, targetId, villageName,
                     baseTravelArmy, baseTravelCaptain,
-                    peasants, archers, pikemen, swordsmen, 0, captains,
+                    peasants, archers, pikemen, swordsmen, catapults, captains,
                     formations, index);
                 row.Dock = DockStyle.Top;
+
+                // Restore saved config for this village
+                SavedArmyConfig saved;
+                if (savedLookup.TryGetValue(vid, out saved))
+                    row.ApplySavedConfig(saved);
+
                 _abArmyListPanel.Controls.Add(row);
                 _abArmyRows.Add(row);
                 index++;
@@ -2650,7 +2668,30 @@ namespace Kingdoms.Bot.UI
 
             _abArmyListPanel.ResumeLayout();
             BotLogger.Log("Auto Bomb", BotLogLevel.Info,
-                "Loaded " + _abArmyRows.Count + " armies targeting village " + targetId + ".");
+                "Loaded " + _abArmyRows.Count + " armies targeting village " + targetId +
+                " (" + savedLookup.Count + " configs restored).");
+        }
+
+        private void AbSaveArmyConfigs()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+            if (_abArmyRows.Count == 0)
+                return;
+
+            AutoBombSettings s = BotEngine.Instance.Settings.AutoBomb;
+            // Update existing configs and add new ones (keyed by source village)
+            Dictionary<int, SavedArmyConfig> lookup = new Dictionary<int, SavedArmyConfig>();
+            foreach (SavedArmyConfig existing in s.SavedConfigs)
+                lookup[existing.SourceVillageId] = existing;
+
+            foreach (BombArmyRow row in _abArmyRows)
+            {
+                SavedArmyConfig cfg = row.ToSavedConfig();
+                lookup[cfg.SourceVillageId] = cfg;
+            }
+
+            s.SavedConfigs = new List<SavedArmyConfig>(lookup.Values);
         }
 
         private void AbSetAllSelected(bool selected)

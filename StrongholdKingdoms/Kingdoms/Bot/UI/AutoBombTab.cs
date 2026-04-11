@@ -95,6 +95,56 @@ namespace Kingdoms.Bot.UI
             }
         }
 
+        public void ApplySavedConfig(SavedArmyConfig cfg)
+        {
+            if (cfg == null) return;
+
+            _selectCheck.Checked = cfg.Selected;
+            _captainCheck.Checked = cfg.CaptainsOnly;
+
+            // Card type
+            if (cfg.CardType >= 0 && cfg.CardType < _cardCombo.Items.Count)
+                _cardCombo.SelectedIndex = cfg.CardType;
+
+            // Formation - match by name
+            if (!string.IsNullOrEmpty(cfg.FormationName))
+            {
+                for (int i = 0; i < _formationCombo.Items.Count; i++)
+                {
+                    if (_formationCombo.Items[i].ToString() == cfg.FormationName)
+                    {
+                        _formationCombo.SelectedIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            // Stack order
+            _stackInput.Value = Math.Max(_stackInput.Minimum, Math.Min(_stackInput.Maximum, cfg.Stack));
+
+            // Attack type - reverse map from int to combo index
+            int atkIdx = 0; // default Vandalise
+            if (cfg.AttackType == 9) atkIdx = 1;
+            else if (cfg.AttackType == 1) atkIdx = 2;
+            if (atkIdx < _attackTypeCombo.Items.Count)
+                _attackTypeCombo.SelectedIndex = atkIdx;
+
+            UpdateTimeDisplay();
+        }
+
+        public SavedArmyConfig ToSavedConfig()
+        {
+            SavedArmyConfig cfg = new SavedArmyConfig();
+            cfg.SourceVillageId = SourceVillageId;
+            cfg.Selected = Selected;
+            cfg.FormationName = SelectedFormation == "None" ? "" : SelectedFormation;
+            cfg.Stack = StackOrder;
+            cfg.CardType = SelectedCardType;
+            cfg.CaptainsOnly = UseCaptains;
+            cfg.AttackType = SelectedAttackType;
+            return cfg;
+        }
+
         public BombArmyRow(int sourceVillageId, int targetVillageId, string villageName,
             double baseTravelArmy, double baseTravelCaptain,
             int peasants, int archers, int pikemen, int swordsmen, int catapults, int captains,
