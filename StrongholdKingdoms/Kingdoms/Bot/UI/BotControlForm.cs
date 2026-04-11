@@ -2565,6 +2565,7 @@ namespace Kingdoms.Bot.UI
             _abTargetInput.Value = Math.Max(_abTargetInput.Minimum,
                 Math.Min(_abTargetInput.Maximum, s.TargetVillageId));
             _abAutoCancelCheck.Checked = s.AutoCancelOnInterdict;
+            _abFakeSendCheck.Checked = s.FakeSendEnabled;
             _abStackDelayInput.Value = Math.Max(_abStackDelayInput.Minimum,
                 Math.Min(_abStackDelayInput.Maximum, s.StackDelaySeconds));
 
@@ -2580,6 +2581,7 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _abEnabledCheck.Checked;
             s.TargetVillageId = (int)_abTargetInput.Value;
             s.AutoCancelOnInterdict = _abAutoCancelCheck.Checked;
+            s.FakeSendEnabled = _abFakeSendCheck.Checked;
             s.StackDelaySeconds = (int)_abStackDelayInput.Value;
 
             foreach (IBotModule m in BotEngine.Instance.Modules)

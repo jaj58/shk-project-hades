@@ -607,6 +607,7 @@ namespace Kingdoms.Bot
         public int TargetVillageId;
         public bool AutoCancelOnInterdict = true;
         public int StackDelaySeconds = 1;
+        public bool FakeSendEnabled;
         public List<BombAttackEntry> PendingAttacks = new List<BombAttackEntry>();
         public List<SavedArmyConfig> SavedConfigs = new List<SavedArmyConfig>();
     }

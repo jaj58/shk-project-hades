@@ -151,6 +151,7 @@ namespace Kingdoms.Bot.UI
             this._abTargetLabel = new System.Windows.Forms.Label();
             this._abTargetInput = new System.Windows.Forms.NumericUpDown();
             this._abAutoCancelCheck = new System.Windows.Forms.CheckBox();
+            this._abFakeSendCheck = new System.Windows.Forms.CheckBox();
             this._abStackDelayLabel = new System.Windows.Forms.Label();
             this._abStackDelayInput = new System.Windows.Forms.NumericUpDown();
             this._abLoadVillages = new System.Windows.Forms.CheckBox();
@@ -2081,6 +2082,7 @@ namespace Kingdoms.Bot.UI
             this._abSettingsPanel.Controls.Add(this._abLoadVillages);
             this._abSettingsPanel.Controls.Add(this._abStackDelayInput);
             this._abSettingsPanel.Controls.Add(this._abStackDelayLabel);
+            this._abSettingsPanel.Controls.Add(this._abFakeSendCheck);
             this._abSettingsPanel.Controls.Add(this._abAutoCancelCheck);
             this._abSettingsPanel.Controls.Add(this._abTargetInput);
             this._abSettingsPanel.Controls.Add(this._abTargetLabel);
@@ -2151,6 +2153,18 @@ namespace Kingdoms.Bot.UI
             this._abAutoCancelCheck.Size = new System.Drawing.Size(170, 19);
             this._abAutoCancelCheck.TabIndex = 4;
             this._abAutoCancelCheck.Text = "Auto-cancel on interdict";
+            //
+            // _abFakeSendCheck
+            //
+            this._abFakeSendCheck.AutoSize = true;
+            this._abFakeSendCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abFakeSendCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._abFakeSendCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abFakeSendCheck.Location = new System.Drawing.Point(600, 38);
+            this._abFakeSendCheck.Name = "_abFakeSendCheck";
+            this._abFakeSendCheck.Size = new System.Drawing.Size(210, 19);
+            this._abFakeSendCheck.TabIndex = 7;
+            this._abFakeSendCheck.Text = "Fake send, cancel after 4 minutes";
             //
             // _abStackDelayLabel
             //
@@ -3155,6 +3169,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Label _abTargetLabel;
         private System.Windows.Forms.NumericUpDown _abTargetInput;
         private System.Windows.Forms.CheckBox _abAutoCancelCheck;
+        private System.Windows.Forms.CheckBox _abFakeSendCheck;
         private System.Windows.Forms.Label _abStackDelayLabel;
         private System.Windows.Forms.NumericUpDown _abStackDelayInput;
         private System.Windows.Forms.CheckBox _abLoadVillages;

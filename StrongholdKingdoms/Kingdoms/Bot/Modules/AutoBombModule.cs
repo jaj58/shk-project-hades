@@ -19,6 +19,10 @@ namespace Kingdoms.Bot.Modules
         private PreAttackSetup_ReturnType _callbackResult;
         private readonly object _lock = new object();
 
+        // Fake send recall timer
+        private Timer _fakeSendTimer;
+        private volatile bool _fakeSendTriggered;
+
         public override string ModuleName
         {
             get { return "Auto Bomb"; }
@@ -74,8 +78,9 @@ namespace Kingdoms.Bot.Modules
                 if (CheckForInterdict(settings.TargetVillageId))
                 {
                     _interdictDetected = true;
-                    LogWarning("Interdict detected on target! Cancelling remaining attacks.");
+                    LogWarning("Interdict detected on target! Cancelling remaining attacks and recalling sent armies.");
                     CancelAll();
+                    RecallAll();
                 }
             }
         }
@@ -117,6 +122,8 @@ namespace Kingdoms.Bot.Modules
             }
 
             _interdictDetected = false;
+            _fakeSendTriggered = false;
+            DisposeFakeSendTimer();
             CalculateSchedule(settings);
 
             // Stop any existing thread
@@ -178,6 +185,7 @@ namespace Kingdoms.Bot.Modules
             _launching = false;
             _cancelEvent.Set();
             _callbackEvent.Set(); // Unblock any waiting callback
+            DisposeFakeSendTimer();
 
             if (_launchThread != null && _launchThread.IsAlive)
             {
@@ -354,8 +362,9 @@ namespace Kingdoms.Bot.Modules
                     if (settings.AutoCancelOnInterdict)
                     {
                         _interdictDetected = true;
-                        LogWarning("[Thread] Auto-cancelling remaining attacks due to interdict.");
+                        LogWarning("[Thread] Auto-cancelling remaining attacks and recalling sent armies due to interdict.");
                         CancelRemainingAttacks(settings);
+                        RecallAll();
                         _cancelEvent.Set();
                     }
                     else
@@ -626,6 +635,9 @@ namespace Kingdoms.Bot.Modules
                 LogInfo("[Thread] Stack " + entry.Stack + " SENT from " + entry.GetSourceName() +
                     " -> " + entry.TargetVillageId +
                     " (ETA: " + entry.EstimatedArrivalTime.ToString("HH:mm:ss") + ")");
+
+                // Start the fake send recall timer on the first successful send
+                StartFakeSendTimerIfNeeded();
             }
             catch (Exception ex)
             {
@@ -633,6 +645,41 @@ namespace Kingdoms.Bot.Modules
                 entry.Cancelled = true;
                 entry.PreparedCastleMap = null;
                 LogError("[Thread] Stack " + entry.Stack + " fire failed: " + ex.Message);
+            }
+        }
+
+        // =================================================================
+        // Fake send: cancel & recall after 4 minutes
+        // =================================================================
+
+        private void StartFakeSendTimerIfNeeded()
+        {
+            AutoBombSettings settings = Settings;
+            if (settings == null || !settings.FakeSendEnabled) return;
+            if (_fakeSendTriggered) return; // already started
+            if (_fakeSendTimer != null) return;
+
+            _fakeSendTimer = new Timer(FakeSendTimerCallback, null,
+                TimeSpan.FromMinutes(4), TimeSpan.FromMilliseconds(-1)); // one-shot
+            LogInfo("[FakeSend] Recall timer started — armies will be recalled in 4 minutes.");
+        }
+
+        private void FakeSendTimerCallback(object state)
+        {
+            if (_fakeSendTriggered) return;
+            _fakeSendTriggered = true;
+
+            LogWarning("[FakeSend] 4 minutes elapsed — cancelling remaining attacks and recalling all armies.");
+            CancelAll();
+            RecallAll();
+        }
+
+        private void DisposeFakeSendTimer()
+        {
+            if (_fakeSendTimer != null)
+            {
+                _fakeSendTimer.Dispose();
+                _fakeSendTimer = null;
             }
         }
 
