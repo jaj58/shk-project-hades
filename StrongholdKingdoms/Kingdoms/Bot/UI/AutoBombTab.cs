@@ -217,13 +217,13 @@ namespace Kingdoms.Bot.UI
             _formationCombo.Font = new Font("Segoe UI", 6.5f);
             _formationCombo.DropDownStyle = ComboBoxStyle.DropDownList;
             _formationCombo.Location = new Point(x, 1);
-            _formationCombo.Size = new Size(88, 20);
+            _formationCombo.Size = new Size(180, 20);
             _formationCombo.Items.Add("None");
             foreach (string name in formationNames)
                 _formationCombo.Items.Add(name);
             _formationCombo.SelectedIndex = 0;
             this.Controls.Add(_formationCombo);
-            x += 92;
+            x += 184;
 
             _peasantsLabel = MakeLabel(peasants.ToString(), x, 32);
             x += 34;

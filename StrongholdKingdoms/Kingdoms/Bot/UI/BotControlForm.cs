@@ -2522,7 +2522,7 @@ namespace Kingdoms.Bot.UI
 
             // Build setup column header labels dynamically
             string[] setupCols = new string[] { "", "Village", "Time", "Card", "Cap?", "Formation", "P", "Arch", "Pike", "Sw", "Cat", "Cap", "Stack", "Type" };
-            int[] setupColX = new int[] { 4, 24, 168, 246, 314, 334, 422, 456, 490, 524, 558, 588, 620, 664 };
+            int[] setupColX = new int[] { 4, 24, 168, 246, 314, 334, 514, 548, 582, 616, 650, 680, 712, 756 };
             for (int i = 0; i < setupCols.Length; i++)
             {
                 Label cl = new Label();
