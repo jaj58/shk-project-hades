@@ -278,30 +278,11 @@ namespace Kingdoms.Bot.Modules
             int consecutiveClean = 0;
             int pollCount = 0;
             const int RequiredCleanPolls = 2;
-            const int ArmyRefreshIntervalSeconds = 10;
-            DateTime lastArmyRefresh = DateTime.MinValue; // trigger immediate refresh on first iteration
 
             while (true)
             {
-                // Refresh army data periodically using an incremental fetch.
-                // getArmiesIfNewAttacks() only pulls new/changed armies since the last
-                // download (via highestDownloadedArmy), so the array is never wiped —
-                // armies stay visible on the map with no flickering.
-                // retrieveArmies() clears the whole array first and is what causes the
-                // visual disappear/reappear effect; we deliberately avoid it here.
-                if ((DateTime.Now - lastArmyRefresh).TotalSeconds >= ArmyRefreshIntervalSeconds)
-                {
-                    try
-                    {
-                        if (GameEngine.Instance != null && GameEngine.Instance.World != null)
-                            GameEngine.Instance.World.getArmiesIfNewAttacks();
-                    }
-                    catch { }
-                    lastArmyRefresh = DateTime.Now;
-                }
-
-                // 5-second wait keeps cancel/interdict response snappy even though
-                // army data only refreshes every 15 seconds.
+                // Army array is kept fresh by RadarModule — no refresh calls here.
+                // Polling every 5 seconds keeps cancel/interdict response snappy.
                 if (_cancelEvent.WaitOne(5000))
                 {
                     LogInfo("[Thread] Cancelled while waiting for armies to return.");
