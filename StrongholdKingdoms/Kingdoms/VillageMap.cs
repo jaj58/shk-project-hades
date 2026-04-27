@@ -8399,21 +8399,22 @@ namespace Kingdoms
 
     public int numFreeTraders() => this.m_numTradersAtHome;
 
-    public void sendResources(int villageID, int resource, int amount)
+    public bool sendResources(int villageID, int resource, int amount)
     {
       if (this.inMarketSend)
       {
         if ((DateTime.Now - this.lastMarketSend).TotalSeconds < 45.0)
-          return;
+          return false;
         this.inMarketSend = false;
       }
       if (this.inMarketSend)
-        return;
+        return false;
       this.inMarketSend = true;
       this.lastMarketSend = DateTime.Now;
       RemoteServices.Instance.set_SendMarketResources_UserCallBack(new RemoteServices.SendMarketResources_UserCallBack(this.sendMarketResourcesCallback));
       RemoteServices.Instance.SendMarketResources(this.m_villageID, villageID, resource, amount);
       AllVillagesPanel.travellersChanged();
+      return true;
     }
 
     private void sendMarketResourcesCallback(SendMarketResources_ReturnType returnData)
