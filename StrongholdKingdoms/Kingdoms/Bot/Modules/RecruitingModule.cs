@@ -97,8 +97,8 @@ namespace Kingdoms.Bot.Modules
                 case "Catapults": return village.m_numCatapults + village.LocallyMade_Catapults;
                 case "Captains": return village.m_numCaptains + village.LocallyMade_Captains;
                 case "Scouts": return village.m_numScouts + village.LocallyMade_Scouts;
-                case "Monks": return village.calcTotalMonksAtHome();
-                case "Traders": return village.calcTotalTradersAtHome();
+                case "Monks": return village.calcTotalMonksAtHome() + village.LocallyMadeMonks;
+                case "Traders": return village.calcTotalTradersAtHome() + village.LocallyMade_Traders;
                 default: return 0;
             }
         }
@@ -122,11 +122,15 @@ namespace Kingdoms.Bot.Modules
             if (village == null || GameEngine.Instance == null) return 0;
             int capacity = GameEngine.Instance.LocalWorldData.Village_UnitCapacity;
             int used = village.calcUnitUsages();
-            // Account for locally queued troops not yet confirmed by server
+            // Account for locally queued troops not yet confirmed by server.
+            // Each unit type costs its UnitSize slots (most cost 1, Scouts/Monks/Traders vary).
+            WorldData wd = GameEngine.Instance.LocalWorldData;
             int locallyMade = village.LocallyMade_Peasants + village.LocallyMade_Archers +
                               village.LocallyMade_Pikemen + village.LocallyMade_Swordsmen +
                               village.LocallyMade_Catapults + village.LocallyMade_Captains +
-                              village.LocallyMade_Scouts * GameEngine.Instance.LocalWorldData.UnitSize_Scout;
+                              village.LocallyMade_Scouts * wd.UnitSize_Scout +
+                              village.LocallyMadeMonks * wd.UnitSize_Priests +
+                              village.LocallyMade_Traders * wd.UnitSize_Trader;
             return Math.Max(capacity - used - locallyMade, 0);
         }
 
@@ -193,7 +197,7 @@ namespace Kingdoms.Bot.Modules
             if (_villageQueue.Count == 0 ||
                 _currentVillageIndex >= _villageQueue.Count)
             {
-                // Village queue exhausted � process vassals before starting a new cycle
+                // Village queue exhausted � process vassals before starting a new cycle
                 if (_vassalState != VassalState.Done)
                 {
                     ProcessVassalsTick(settings);
@@ -261,36 +265,57 @@ namespace Kingdoms.Bot.Modules
                 return;
             }
 
-            VillageRecruitSettings villageSetting = settings.GetVillageSettings(villageId);
-            if (villageSetting == null) return;
-
-            int sparePeasants = GetSparePeasants(village);
-            int spareUnitSpace = GetSpareUnitSpace(village);
-            int totalTroops = village.calcTotalTroops();
-            int maxArmySize = GetCommandResearchArmyLimit();
-            int spareArmySlots = Math.Max(maxArmySize - totalTroops, 0);
-
-            LogDebug("Village " + villageId + ": peasants=" + sparePeasants +
-                     ", unitSpace=" + spareUnitSpace +
-                     ", troops=" + totalTroops + "/" + maxArmySize);
-
-            if (sparePeasants <= 0)
+            // Capitals use a completely different gold source, cost formula, army cap, and
+            // research tree — route them to their own method rather than bolting on conditionals.
+            if (GameEngine.Instance.World != null && GameEngine.Instance.World.isCapital(villageId))
             {
-                LogDebug("Village " + villageId + " has no spare peasants, skipping.");
+                ProcessCapital(villageId, settings, village);
                 return;
             }
 
+            VillageRecruitSettings villageSetting = settings.GetVillageSettings(villageId);
+            if (villageSetting == null) return;
+
+            // Sum of locally queued army troops (not yet server-confirmed).
+            // These consume spare workers and army slots immediately on queue, so subtract
+            // them from both limits now — the old code handled this by decrementing local
+            // variables within a single pass; our tick-per-type design must do it upfront.
+            int locallyMadeArmyTroops = village.LocallyMade_Peasants + village.LocallyMade_Archers +
+                                        village.LocallyMade_Pikemen + village.LocallyMade_Swordsmen +
+                                        village.LocallyMade_Catapults + village.LocallyMade_Captains;
+
+            int sparePeasants  = Math.Max(GetSparePeasants(village) - locallyMadeArmyTroops, 0);
+            int spareUnitSpace = GetSpareUnitSpace(village);
+            int maxArmySize    = GetCommandResearchArmyLimit();
+            int totalTroops    = village.calcTotalTroops() + locallyMadeArmyTroops;
+            int spareArmySlots = Math.Max(maxArmySize - totalTroops, 0);
+
+            LogDebug("Village " + villageId + ": peasants=" + sparePeasants +
+                     " (locallyMadeArmy=" + locallyMadeArmyTroops + ")" +
+                     ", unitSpace=" + spareUnitSpace +
+                     ", troops=" + totalTroops + "/" + maxArmySize);
+
+            // Only bail out on unit space — non-army types (Monks/Traders/Scouts) can still
+            // be recruited even when peasants are 0 or the army is full.
             if (spareUnitSpace <= 0)
             {
                 LogDebug("Village " + villageId + " has no spare unit space, skipping.");
                 return;
             }
 
-            if (spareArmySlots <= 0)
-            {
-                LogDebug("Village " + villageId + " at max army size (" + maxArmySize + "), skipping.");
-                return;
-            }
+            int currentGold = (int)GameEngine.Instance.World.getCurrentGold();
+
+            // Read armoury stock levels for weapon-capped troop types.
+            // Armour is shared between Pikemen and Swordsmen — whichever type recruits
+            // first on a given tick reduces the pool; the server reflects updated levels
+            // on the next poll, so cross-tick depletion is handled naturally.
+            VillageMap.ArmouryLevels armoury = new VillageMap.ArmouryLevels();
+            village.getArmouryLevels(armoury);
+            int bowsAvail      = (int)armoury.bowsLevel;
+            int pikesAvail     = (int)armoury.pikesLevel;
+            int swordsAvail    = (int)armoury.swordsLevel;
+            int armourAvail    = (int)armoury.armourLevel;
+            int catapultsAvail = (int)armoury.catapultsLevel;
 
             List<UnitRecruitEntry> sorted = new List<UnitRecruitEntry>(villageSetting.Units);
             sorted.Sort(delegate(UnitRecruitEntry a, UnitRecruitEntry b)
@@ -303,53 +328,250 @@ namespace Kingdoms.Bot.Modules
                 if (entry.TargetCount <= 0) continue;
 
                 int current = GetCurrentCount(village, entry.UnitKey);
-                int needed = entry.TargetCount - current;
+                int needed  = entry.TargetCount - current;
                 if (needed <= 0) continue;
 
-                int unitSize = GetUnitSize(entry.UnitKey);
-                int maxBySpace = spareUnitSpace / unitSize;
-                int maxByPeasants = sparePeasants;
-                int maxByArmy = spareArmySlots;
-                int canRecruit = Math.Min(needed, Math.Min(maxBySpace, Math.Min(maxByPeasants, maxByArmy)));
+                // Monks/Traders/Scouts are people/special types: no research gate, no gold
+                // cost, no spare-worker consumption, don't count toward army size limit.
+                bool isArmyUnit = (entry.UnitKey != "Monks" &&
+                                   entry.UnitKey != "Traders" &&
+                                   entry.UnitKey != "Scouts");
+                int canRecruit;
+
+                if (isArmyUnit)
+                {
+                    // Research prerequisite
+                    if (!IsResearchDoneForVillage(entry.UnitKey))
+                    {
+                        LogDebug("Village " + villageId + ": " + entry.UnitKey + " not yet researched, skipping.");
+                        continue;
+                    }
+
+                    int unitSize   = GetUnitSize(entry.UnitKey);
+                    int maxBySpace = spareUnitSpace / unitSize;
+                    canRecruit = Math.Min(needed, Math.Min(maxBySpace,
+                                     Math.Min(sparePeasants, spareArmySlots)));
+
+                    // Armoury caps
+                    switch (entry.UnitKey)
+                    {
+                        case "Archers":
+                            canRecruit = Math.Min(canRecruit, bowsAvail);
+                            if (canRecruit < needed)
+                                LogDebug("Village " + villageId + ": bows limit Archers to " + canRecruit);
+                            break;
+                        case "Pikemen":
+                            canRecruit = Math.Min(canRecruit, Math.Min(pikesAvail, armourAvail));
+                            if (canRecruit < needed)
+                                LogDebug("Village " + villageId + ": pikes/armour limit Pikemen to " + canRecruit);
+                            break;
+                        case "Swordsmen":
+                            canRecruit = Math.Min(canRecruit, Math.Min(swordsAvail, armourAvail));
+                            if (canRecruit < needed)
+                                LogDebug("Village " + villageId + ": swords/armour limit Swordsmen to " + canRecruit);
+                            break;
+                        case "Catapults":
+                            canRecruit = Math.Min(canRecruit, catapultsAvail);
+                            if (canRecruit < needed)
+                                LogDebug("Village " + villageId + ": catapult parts limit Catapults to " + canRecruit);
+                            break;
+                    }
+
+                    // Gold cap — captains use a separate scaling cost (increases with each captain made)
+                    if (entry.UnitKey == "Captains")
+                    {
+                        int captainCost = GameEngine.Instance.LocalWorldData.CaptainGoldCost *
+                                          GameEngine.Instance.World.getNumMadeCaptains();
+                        if (currentGold < captainCost)
+                        {
+                            LogDebug("Village " + villageId + ": not enough gold for Captain" +
+                                     " (need " + captainCost + ", have " + currentGold + ").");
+                            continue;
+                        }
+                        canRecruit = 1; // always hire one captain at a time
+                    }
+                    else
+                    {
+                        int baseCost     = GetBarracksCost(entry.UnitKey);
+                        int adjustedCost = CardTypes.adjustTroopCost(
+                            GameEngine.Instance.cardsManager.UserCardData, baseCost);
+                        if (adjustedCost > 0 && currentGold < canRecruit * adjustedCost)
+                        {
+                            canRecruit = currentGold / adjustedCost;
+                            LogDebug("Village " + villageId + ": gold limits " +
+                                     entry.UnitKey + " to " + canRecruit);
+                        }
+                    }
+
+                    if (canRecruit <= 0)
+                    {
+                        LogDebug("Village " + villageId + ": want " + needed + " " + entry.UnitKey +
+                                 " but limited to 0 (space/peasants/army/armoury/gold).");
+                        continue;
+                    }
+
+                    try
+                    {
+                        village.makeTroops(GetTroopTypeId(entry.UnitKey), canRecruit, true);
+                        LogInfo("Village " + villageId + ": recruiting " + canRecruit + " " + entry.UnitKey +
+                                " (have " + current + "/" + entry.TargetCount + ")");
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError("Village " + villageId + ": failed to recruit " + entry.UnitKey + ": " + ex.Message);
+                    }
+                }
+                else
+                {
+                    // Non-army types: only constrained by unit space
+                    int unitSize   = GetUnitSize(entry.UnitKey);
+                    int maxBySpace = spareUnitSpace / unitSize;
+                    canRecruit = Math.Min(needed, maxBySpace);
+                    if (canRecruit <= 0)
+                    {
+                        LogDebug("Village " + villageId + ": want " + needed + " " + entry.UnitKey +
+                                 " but limited by unit space (max=" + maxBySpace + ")");
+                        continue;
+                    }
+
+                    try
+                    {
+                        if (IsPeopleType(entry.UnitKey))
+                        {
+                            int monkAmount = Math.Min(canRecruit, 4);
+                            village.makePeople(1000 + monkAmount);
+                            LogInfo("Village " + villageId + ": recruiting " + monkAmount + " " + entry.UnitKey +
+                                    " (have " + current + "/" + entry.TargetCount + ")");
+                        }
+                        else if (entry.UnitKey == "Traders")
+                        {
+                            int traderAmount = Math.Min(canRecruit, 4);
+                            village.makeTroops(-5, traderAmount, true);
+                            LogInfo("Village " + villageId + ": recruiting " + traderAmount + " " + entry.UnitKey +
+                                    " (have " + current + "/" + entry.TargetCount + ")");
+                        }
+                        else
+                        {
+                            village.makeTroops(GetTroopTypeId(entry.UnitKey), canRecruit, true);
+                            LogInfo("Village " + villageId + ": recruiting " + canRecruit + " " + entry.UnitKey +
+                                    " (have " + current + "/" + entry.TargetCount + ")");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError("Village " + villageId + ": failed to recruit " + entry.UnitKey + ": " + ex.Message);
+                    }
+                }
+
+                break; // one type per tick; next tick picks up the next deficit
+            }
+        }
+
+        /// <summary>
+        /// Recruits mercenary troops into a capital village.
+        /// Capitals differ from regular villages in four key ways:
+        ///   1. Gold comes from m_capitalGold, not the player's regular gold pool
+        ///   2. Cost = barracks base cost × MercenaryCostMultiplier (÷2 on 6th age worlds)
+        ///   3. No spare-worker requirement (mercenaries bypass the peasant pool)
+        ///   4. Army cap = (parishCapitalResearchData.Research_Command + 1) × 25
+        ///   5. Research is checked against the capital's own research tree
+        /// </summary>
+        private void ProcessCapital(int villageId, RecruitingSettings settings, VillageMap village)
+        {
+            VillageRecruitSettings villageSetting = settings.GetVillageSettings(villageId);
+            if (villageSetting == null)
+            {
+                LogDebug("Capital " + villageId + ": no settings configured, skipping.");
+                return;
+            }
+
+            int capitalGold = (int)village.m_capitalGold;
+            if (capitalGold <= 0)
+            {
+                LogDebug("Capital " + villageId + ": no capital gold available, skipping.");
+                return;
+            }
+
+            // Capital army limit from parish research — not the global command research
+            int maxArmySize = ((int)village.m_parishCapitalResearchData.Research_Command + 1) * 25;
+            int locallyMadeArmyTroops = village.LocallyMade_Peasants + village.LocallyMade_Archers +
+                                        village.LocallyMade_Pikemen + village.LocallyMade_Swordsmen +
+                                        village.LocallyMade_Catapults + village.LocallyMade_Captains;
+            int totalTroops    = village.calcTotalTroops() + locallyMadeArmyTroops;
+            int spareArmySlots = Math.Max(maxArmySize - totalTroops, 0);
+
+            LogDebug("Capital " + villageId + ": capitalGold=" + capitalGold +
+                     ", troops=" + totalTroops + "/" + maxArmySize);
+
+            if (spareArmySlots <= 0)
+            {
+                LogDebug("Capital " + villageId + " at max army size (" + maxArmySize + "), skipping.");
+                return;
+            }
+
+            WorldData wd          = GameEngine.Instance.LocalWorldData;
+            int costMultiplier    = wd.MercenaryCostMultiplier;
+            if (GameEngine.Instance.World.SixthAgeWorld)
+                costMultiplier /= 2;
+
+            // Capitals have their own research tree (parish/county/province research)
+            ResearchData capitalResearch = GameEngine.Instance.World.GetResearchDataForCurrentVillage();
+
+            List<UnitRecruitEntry> sorted = new List<UnitRecruitEntry>(villageSetting.Units);
+            sorted.Sort(delegate(UnitRecruitEntry a, UnitRecruitEntry b)
+            {
+                return a.Priority.CompareTo(b.Priority);
+            });
+
+            foreach (UnitRecruitEntry entry in sorted)
+            {
+                // Capitals only take the 5 standard barracks types — no Captains (barracks-only),
+                // no Scouts/Monks/Traders (don't apply to capitals)
+                if (Array.IndexOf(CapitalUnitKeys, entry.UnitKey) < 0) continue;
+                if (entry.TargetCount <= 0) continue;
+
+                if (!IsResearchDoneForCapital(entry.UnitKey, capitalResearch))
+                {
+                    LogDebug("Capital " + villageId + ": " + entry.UnitKey + " not yet researched, skipping.");
+                    continue;
+                }
+
+                int current = GetCurrentCount(village, entry.UnitKey);
+                int needed  = entry.TargetCount - current;
+                if (needed <= 0) continue;
+
+                // Mercenary cost (no armoury check — capitals buy troops directly)
+                int baseCost = GetBarracksCost(entry.UnitKey);
+                int mercCost = baseCost * costMultiplier;
+
+                int canRecruit = Math.Min(needed, spareArmySlots);
+                if (mercCost > 0 && capitalGold < canRecruit * mercCost)
+                {
+                    canRecruit = capitalGold / mercCost;
+                    LogDebug("Capital " + villageId + ": capital gold limits " + entry.UnitKey + " to " + canRecruit);
+                }
 
                 if (canRecruit <= 0)
                 {
-                    LogDebug("Village " + villageId + ": want " + needed + " " + entry.UnitKey +
-                             " but limited (space=" + maxBySpace + ", peasants=" + maxByPeasants +
-                             ", armySlots=" + maxByArmy + ")");
+                    LogDebug("Capital " + villageId + ": want " + needed + " " + entry.UnitKey +
+                             " but limited (armySlots=" + spareArmySlots +
+                             ", capitalGold=" + capitalGold + ")");
                     continue;
                 }
 
                 try
                 {
-                    if (IsPeopleType(entry.UnitKey))
-                    {
-                        int monkAmount = Math.Min(canRecruit, 4);
-                        village.makePeople(1000 + monkAmount);
-                        LogInfo("Village " + villageId + ": recruiting " + monkAmount + " " + entry.UnitKey +
-                                " (have " + current + "/" + entry.TargetCount + ")");
-                    }
-                    else if (entry.UnitKey == "Traders")
-                    {
-                        int traderAmount = Math.Min(canRecruit, 4);
-                        village.makeTroops(-5, traderAmount, true);
-                        LogInfo("Village " + villageId + ": recruiting " + traderAmount + " " + entry.UnitKey +
-                                " (have " + current + "/" + entry.TargetCount + ")");
-                    }
-                    else
-                    {
-                        int troopType = GetTroopTypeId(entry.UnitKey);
-                        village.makeTroops(troopType, canRecruit, true);
-                        LogInfo("Village " + villageId + ": recruiting " + canRecruit + " " + entry.UnitKey +
-                                " (have " + current + "/" + entry.TargetCount + ")");
-                    }
+                    village.makeTroops(GetTroopTypeId(entry.UnitKey), canRecruit, true);
+                    LogInfo("Capital " + villageId + ": recruiting " + canRecruit + " " + entry.UnitKey +
+                            " (have " + current + "/" + entry.TargetCount + ")" +
+                            " for " + (canRecruit * mercCost) + " capital gold");
                 }
                 catch (Exception ex)
                 {
-                    LogError("Village " + villageId + ": failed to recruit " + entry.UnitKey + ": " + ex.Message);
+                    LogError("Capital " + villageId + ": failed to recruit " + entry.UnitKey + ": " + ex.Message);
                 }
 
-                break;
+                break; // one type per tick
             }
         }
 
@@ -625,6 +847,61 @@ namespace Kingdoms.Bot.Modules
             catch (Exception ex)
             {
                 LogError("Vassal " + vassalVillageId + ": failed to send troops: " + ex.Message);
+            }
+        }
+
+        /// <summary>Returns the base barracks gold cost for a unit type (before card adjustments).</summary>
+        private static int GetBarracksCost(string unitKey)
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.LocalWorldData == null) return 0;
+            WorldData wd = GameEngine.Instance.LocalWorldData;
+            switch (unitKey)
+            {
+                case "Peasants":  return wd.Barracks_GoldCost_Peasant;
+                case "Archers":   return wd.Barracks_GoldCost_Archer;
+                case "Pikemen":   return wd.Barracks_GoldCost_Pikeman;
+                case "Swordsmen": return wd.Barracks_GoldCost_Swordsman;
+                case "Catapults": return wd.Barracks_GoldCost_Catapult;
+                default: return 0; // Captains handled separately; Scouts/Monks/Traders have no barracks cost
+            }
+        }
+
+        /// <summary>
+        /// Returns true if the player has researched the prerequisite for the given unit type
+        /// in a regular village (uses global user research data).
+        /// </summary>
+        private static bool IsResearchDoneForVillage(string unitKey)
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null) return false;
+            ResearchData r = GameEngine.Instance.World.UserResearchData;
+            if (r == null) return false;
+            switch (unitKey)
+            {
+                case "Peasants":  return r.Research_Conscription != 0;
+                case "Archers":   return r.Research_LongBow != 0;
+                case "Pikemen":   return r.Research_Pike != 0;
+                case "Swordsmen": return r.Research_Sword != 0;
+                case "Catapults": return r.Research_Catapult != 0;
+                case "Captains":  return r.Research_Captains != 0;
+                default: return true; // Scouts/Monks/Traders have no research gate
+            }
+        }
+
+        /// <summary>
+        /// Returns true if the given research data (a capital's own research tree) satisfies
+        /// the prerequisite for the given unit type.
+        /// </summary>
+        private static bool IsResearchDoneForCapital(string unitKey, ResearchData r)
+        {
+            if (r == null) return false;
+            switch (unitKey)
+            {
+                case "Peasants":  return r.Research_Conscription != 0;
+                case "Archers":   return r.Research_LongBow != 0;
+                case "Pikemen":   return r.Research_Pike != 0;
+                case "Swordsmen": return r.Research_Sword != 0;
+                case "Catapults": return r.Research_Catapult != 0;
+                default: return true;
             }
         }
 
