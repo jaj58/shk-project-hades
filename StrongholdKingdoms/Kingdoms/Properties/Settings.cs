@@ -82,5 +82,23 @@ namespace Kingdoms.Properties
       get => (bool) this[nameof (LicenseAlpha3Viewed)];
       set => this[nameof (LicenseAlpha3Viewed)] = (object) value;
     }
+
+    [UserScopedSetting]
+    [DebuggerNonUserCode]
+    [DefaultSettingValue("False")]
+    public bool ShowAdvancedLoginOptions
+    {
+      get => (bool) this[nameof (ShowAdvancedLoginOptions)];
+      set => this[nameof (ShowAdvancedLoginOptions)] = (object) value;
+    }
+
+    [UserScopedSetting]
+    [DebuggerNonUserCode]
+    [DefaultSettingValue("")]
+    public string LastLoadedAdvancedLogin
+    {
+      get => (string) this[nameof (LastLoadedAdvancedLogin)];
+      set => this[nameof (LastLoadedAdvancedLogin)] = (object) value;
+    }
   }
 }

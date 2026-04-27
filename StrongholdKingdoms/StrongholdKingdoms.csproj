@@ -100,6 +100,9 @@
     <Compile Include="Kingdoms\Bot\Modules\TradeModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\VillageBuilderModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\VillageSyncModule.cs" />
+    <Compile Include="Kingdoms\Bot\UI\AdvancedLoginForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Kingdoms\Bot\UI\BotControlForm.Designer.cs">
       <DependentUpon>BotControlForm.cs</DependentUpon>
     </Compile>

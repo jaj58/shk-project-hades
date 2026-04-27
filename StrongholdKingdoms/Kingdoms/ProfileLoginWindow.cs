@@ -106,6 +106,7 @@ namespace Kingdoms
     public CustomSelfDrawPanel.CSDImage btnLogin;
     public CustomSelfDrawPanel.CSDButton btnLoginFB;
     public CustomSelfDrawPanel.CSDLabel lblLoginError;
+    public CustomSelfDrawPanel.CSDLabel lblConnectionInfo;
     public CustomSelfDrawPanel LoginPanelControls_LoggedIn;
     public CustomSelfDrawPanel.CSDImage btnClientLogout;
     public CustomSelfDrawPanel.CSDImage btnShieldDesigner;
@@ -143,6 +144,8 @@ namespace Kingdoms
     public CustomSelfDrawPanel.CSDButton imgSHKRu = new CustomSelfDrawPanel.CSDButton();
     private static bool successfulAutoLogin = false;
     public static string AeriaToken = string.Empty;
+    /// <summary>Overrides the MAC address reported at login. Set by AdvancedLoginForm.</summary>
+    public static string OverrideMAC;
     private string FacebookToken = "";
     private bool delayedCreateUserOpen;
     private bool emailOptInPopup;
@@ -543,7 +546,29 @@ namespace Kingdoms
       this.lblEmailSteam.Width = this.pnlLogin.Width - 8;
       this.lblEmailSteam.Height = this.lblEmail.Height;
       this.txtPassword.PasswordChar = '*';
-      this.btnLogin.Position = new Point(4, this.txtPassword.Bottom + 4);
+
+      // ── Connection info label (MAC + IP) — opens AdvancedLoginForm on click ──
+      CustomSelfDrawPanel.CSDLabel connLabel = new CustomSelfDrawPanel.CSDLabel();
+      connLabel.Visible = true;
+      connLabel.Width   = 300;
+      connLabel.Height  = 60;
+      connLabel.Text    = GetConnectionInfo(GetMacAddress());
+      connLabel.Position = new Point(4, this.txtPassword.Bottom + 2);
+      this.lblConnectionInfo = connLabel;
+      this.lblConnectionInfo.setClickDelegate(
+          (CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate)(() =>
+              new Bot.UI.AdvancedLoginForm(this.txtEmail, this.txtPassword, this.lblConnectionInfo, this.GetMacAddress).Show()),
+          "ProfileLoginWindow_login");
+      try
+      {
+        if (Properties.Settings.Default.ShowAdvancedLoginOptions)
+          new Bot.UI.AdvancedLoginForm(this.txtEmail, this.txtPassword, this.lblConnectionInfo, this.GetMacAddress).Show();
+      }
+      catch { }
+      this.LoginPanelControls_LoggedOut.addControl((CustomSelfDrawPanel.CSDControl) this.lblConnectionInfo);
+      // ─────────────────────────────────────────────────────────────────────────
+
+      this.btnLogin.Position = new Point(4, this.lblConnectionInfo.Y + this.lblConnectionInfo.Height + 4);
       this.lblLoginError.Position = new Point(4, this.btnLogin.Y + this.btnLogin.Height);
       this.btnLogin.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.btnLogin_Click), "ProfileLoginWindow_login");
       this.btnLogin.setMouseOverDelegate(new CustomSelfDrawPanel.CSDControl.CSD_MouseOverDelegate(this.loginOver), new CustomSelfDrawPanel.CSDControl.CSD_MouseOverDelegate(this.loginOut));
@@ -2495,8 +2520,33 @@ label_64:
       }
     }
 
+    /// <summary>
+    /// Returns the connection info string shown on the login screen label.
+    /// Fetches the public IP (3-second timeout); falls back to "unknown" if offline.
+    /// </summary>
+    internal static string GetConnectionInfo(string macAddress)
+    {
+      return "PHBot:\nMAC: " + macAddress + "\nIP:  " + GetPublicIP() + "\nClick to configure";
+    }
+
+    private static string GetPublicIP()
+    {
+      try
+      {
+        HttpWebRequest req = (HttpWebRequest) WebRequest.Create("http://checkip.amazonaws.com/");
+        req.AutomaticDecompression = DecompressionMethods.GZip;
+        req.Timeout = 3000;
+        using (HttpWebResponse resp = (HttpWebResponse) req.GetResponse())
+        using (StreamReader reader = new StreamReader(resp.GetResponseStream()))
+          return reader.ReadToEnd().Trim();
+      }
+      catch { return "unknown"; }
+    }
+
     private string GetMacAddress()
     {
+      if (!string.IsNullOrEmpty(OverrideMAC))
+        return OverrideMAC;
       string macAddress = "";
       try
       {
