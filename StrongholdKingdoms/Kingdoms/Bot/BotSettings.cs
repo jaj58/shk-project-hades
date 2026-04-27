@@ -97,6 +97,7 @@ namespace Kingdoms.Bot
         public int AutoInterdictMonkCount = 1;
         public bool AutoRecruitMonks = false;
         public int MinArmySizeForInterdict = 100;
+        public bool ForceRefreshArmies = true;
         public List<RadarActionSettings> Actions = new List<RadarActionSettings>();
 
         public RadarActionSettings GetActionSettings(string actionKey)
@@ -601,6 +602,14 @@ namespace Kingdoms.Bot
     }
 
     [Serializable]
+    public class TargetQueueEntry
+    {
+        public int VillageId;
+        public string Label = "";      // player name or custom label for display
+        public bool Completed;
+    }
+
+    [Serializable]
     public class AutoBombSettings
     {
         public bool Enabled;
@@ -608,8 +617,11 @@ namespace Kingdoms.Bot
         public bool AutoCancelOnInterdict = true;
         public int StackDelaySeconds = 1;
         public bool FakeSendEnabled;
+        public bool TargetQueueEnabled;
         public List<BombAttackEntry> PendingAttacks = new List<BombAttackEntry>();
         public List<SavedArmyConfig> SavedConfigs = new List<SavedArmyConfig>();
+        public List<TargetQueueEntry> TargetQueue = new List<TargetQueueEntry>();
+        public int InterdictCount;
     }
 
     [Serializable]

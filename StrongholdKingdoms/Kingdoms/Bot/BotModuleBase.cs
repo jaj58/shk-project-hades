@@ -8,7 +8,17 @@ namespace Kingdoms.Bot
         private BotEngine _engine;
 
         public abstract string ModuleName { get; }
-        public bool Enabled { get; set; }
+        private bool _enabled;
+        public bool Enabled
+        {
+            get { return _enabled; }
+            set
+            {
+                if (_enabled && !value)
+                    OnDisable();
+                _enabled = value;
+            }
+        }
         public abstract TimeSpan Interval { get; }
 
         public DateTime LastRun
@@ -43,6 +53,13 @@ namespace Kingdoms.Bot
         protected virtual void OnInitialize() { }
         protected abstract void OnTick();
         protected virtual void OnShutdown() { }
+
+        /// <summary>
+        /// Called when Enabled transitions from true to false at runtime.
+        /// Override to stop any background work (threads, timers) that should
+        /// not continue running after the module is disabled.
+        /// </summary>
+        protected virtual void OnDisable() { }
 
         protected void LogDebug(string message)
         {
