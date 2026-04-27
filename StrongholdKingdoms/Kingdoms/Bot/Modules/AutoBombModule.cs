@@ -192,7 +192,25 @@ namespace Kingdoms.Bot.Modules
         {
             AutoBombSettings settings = Settings;
             if (settings != null)
+            {
                 CancelRemainingAttacks(settings);
+
+                // With fake send enabled, any attacks that were already sent need to be
+                // recalled — otherwise armies are left sitting at the target indefinitely.
+                if (settings.FakeSendEnabled)
+                {
+                    bool anySent = false;
+                    foreach (BombAttackEntry entry in settings.PendingAttacks)
+                    {
+                        if (entry.Sent) { anySent = true; break; }
+                    }
+                    if (anySent)
+                    {
+                        LogInfo("[CancelAll] Fake send enabled — recalling sent armies.");
+                        RecallAll();
+                    }
+                }
+            }
             StopThread();
             LogInfo("All attacks cancelled.");
         }
@@ -265,18 +283,18 @@ namespace Kingdoms.Bot.Modules
 
             while (true)
             {
-                // Refresh army data periodically, but NOT on every poll.
-                // retrieveArmies() clears the army array before repopulating it from the
-                // server callback, which causes armies to briefly vanish from the map
-                // (visible as flickering on the radar and main map).
-                // We refresh every ~15s — fast enough to detect returns well within any
-                // time-critical window, infrequent enough that the flicker is barely noticeable.
+                // Refresh army data periodically using an incremental fetch.
+                // getArmiesIfNewAttacks() only pulls new/changed armies since the last
+                // download (via highestDownloadedArmy), so the array is never wiped —
+                // armies stay visible on the map with no flickering.
+                // retrieveArmies() clears the whole array first and is what causes the
+                // visual disappear/reappear effect; we deliberately avoid it here.
                 if ((DateTime.Now - lastArmyRefresh).TotalSeconds >= ArmyRefreshIntervalSeconds)
                 {
                     try
                     {
                         if (GameEngine.Instance != null && GameEngine.Instance.World != null)
-                            GameEngine.Instance.World.retrieveArmies();
+                            GameEngine.Instance.World.getArmiesIfNewAttacks();
                     }
                     catch { }
                     lastArmyRefresh = DateTime.Now;
