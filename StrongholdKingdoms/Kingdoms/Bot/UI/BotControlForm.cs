@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 using CommonTypes;
 using Kingdoms.Bot.Modules;
@@ -101,6 +102,7 @@ namespace Kingdoms.Bot.UI
                 WireUpTradeTab();
                 WireUpBuilderTab();
                 WireUpAutoBombTab();
+                WireUpTargetQueueTab();
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -377,6 +379,7 @@ namespace Kingdoms.Bot.UI
             _rdInterdictMonkCountInput.ValueChanged += delegate { RdPushToSettings(); };
             _rdAutoRecruitMonksCheck.CheckedChanged += delegate { RdPushToSettings(); };
             _rdMinArmySizeInput.ValueChanged += delegate { RdPushToSettings(); };
+            _rdForceRefreshCheck.CheckedChanged += delegate { RdPushToSettings(); };
 
             _rdRefreshTimer = new Timer();
             _rdRefreshTimer.Interval = 2000;
@@ -397,6 +400,7 @@ namespace Kingdoms.Bot.UI
             s.AutoInterdictMonkCount = (int)_rdInterdictMonkCountInput.Value;
             s.AutoRecruitMonks = _rdAutoRecruitMonksCheck.Checked;
             s.MinArmySizeForInterdict = (int)_rdMinArmySizeInput.Value;
+            s.ForceRefreshArmies = _rdForceRefreshCheck.Checked;
 
             foreach (IBotModule m in BotEngine.Instance.Modules)
             {
@@ -423,6 +427,7 @@ namespace Kingdoms.Bot.UI
                 _rdAutoRecruitMonksCheck.Checked = s.AutoRecruitMonks;
                 _rdMinArmySizeInput.Value = Math.Max(_rdMinArmySizeInput.Minimum,
                     Math.Min(_rdMinArmySizeInput.Maximum, s.MinArmySizeForInterdict));
+                _rdForceRefreshCheck.Checked = s.ForceRefreshArmies;
 
                 foreach (ActionRow row in _rdActionRows)
                 {
@@ -448,6 +453,7 @@ namespace Kingdoms.Bot.UI
             s.AutoInterdictMonkCount = (int)_rdInterdictMonkCountInput.Value;
             s.AutoRecruitMonks = _rdAutoRecruitMonksCheck.Checked;
             s.MinArmySizeForInterdict = (int)_rdMinArmySizeInput.Value;
+            s.ForceRefreshArmies = _rdForceRefreshCheck.Checked;
 
             foreach (ActionRow row in _rdActionRows)
             {
@@ -2555,6 +2561,393 @@ namespace Kingdoms.Bot.UI
             _abRefreshTimer.Start();
         }
 
+        private void WireUpTargetQueueTab()
+        {
+            _abQueueAddIdBtn.Click += delegate { AbQueueAddId(); };
+            _abQueueLookupBtn.Click += delegate { AbQueueLookupPlayer(); };
+            _abQueueRemoveBtn.Click += delegate { AbQueueRemoveSelected(); };
+            _abQueueClearBtn.Click += delegate { AbQueueClear(); };
+            _abQueueSaveBtn.Click += delegate { AbQueueSaveToFile(); };
+            _abQueueLoadBtn.Click += delegate { AbQueueLoadFromFile(); };
+            _abQueueResetBtn.Click += delegate { AbQueueReset(); };
+            _abQueueAddSelectedVillageBtn.Click += delegate { AbQueueAddSelectedVillage(); };
+            _abQueueAddSelectedPlayerBtn.Click += delegate { AbQueueAddSelectedPlayer(); };
+        }
+
+        private void AbQueueAddId()
+        {
+            int vid = (int)_abQueueVillageIdInput.Value;
+            if (vid <= 0) return;
+
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            AutoBombSettings s = BotEngine.Instance.Settings.AutoBomb;
+
+            TargetQueueEntry entry = new TargetQueueEntry();
+            entry.VillageId = vid;
+
+            // Try to get village name for label
+            try
+            {
+                if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                {
+                    string name = GameEngine.Instance.World.getVillageName(vid);
+                    if (!string.IsNullOrEmpty(name))
+                        entry.Label = name;
+                }
+            }
+            catch { }
+
+            s.TargetQueue.Add(entry);
+            AbRefreshTargetQueue();
+            _abQueueVillageIdInput.Value = 0;
+        }
+
+        private void AbQueueLookupPlayer()
+        {
+            string playerName = _abQueuePlayerNameInput.Text.Trim();
+            if (string.IsNullOrEmpty(playerName))
+            {
+                BotLogger.Log("Auto Bomb", BotLogLevel.Warning, "Enter a player name first.");
+                return;
+            }
+
+            _abQueueLookupBtn.Enabled = false;
+            _abQueueLookupBtn.Text = "Looking up...";
+
+            System.Threading.Thread lookupThread = new System.Threading.Thread(delegate()
+            {
+                AutoBombModule module = null;
+                foreach (IBotModule m in BotEngine.Instance.Modules)
+                {
+                    if (m is AutoBombModule)
+                    {
+                        module = (AutoBombModule)m;
+                        break;
+                    }
+                }
+
+                List<int> villages = new List<int>();
+                if (module != null)
+                    villages = module.ResolvePlayerVillages(playerName);
+
+                this.BeginInvoke((MethodInvoker)delegate
+                {
+                    if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+                    {
+                        AutoBombSettings s = BotEngine.Instance.Settings.AutoBomb;
+                        int skippedCapitals = 0;
+                        foreach (int vid in villages)
+                        {
+                            // Skip capitals (counties, provinces, countries) — only add normal villages
+                            if (GameEngine.Instance != null && GameEngine.Instance.World != null &&
+                                GameEngine.Instance.World.isCapital(vid))
+                            {
+                                skippedCapitals++;
+                                continue;
+                            }
+                            TargetQueueEntry entry = new TargetQueueEntry();
+                            entry.VillageId = vid;
+                            entry.Label = playerName;
+                            s.TargetQueue.Add(entry);
+                        }
+                        AbRefreshTargetQueue();
+
+                        int added = villages.Count - skippedCapitals;
+                        if (added > 0)
+                        {
+                            string msg = "Added " + added + " villages for player '" + playerName + "'.";
+                            if (skippedCapitals > 0)
+                                msg += " (" + skippedCapitals + " capital(s) skipped)";
+                            BotLogger.Log("Auto Bomb", BotLogLevel.Info, msg);
+                        }
+                        else
+                        {
+                            BotLogger.Log("Auto Bomb", BotLogLevel.Warning,
+                                "No non-capital villages found for player '" + playerName + "'.");
+                        }
+                    }
+                    else
+                    {
+                        BotLogger.Log("Auto Bomb", BotLogLevel.Warning,
+                            "No villages found for player '" + playerName + "'.");
+                    }
+
+                    _abQueueLookupBtn.Enabled = true;
+                    _abQueueLookupBtn.Text = "Lookup Player";
+                });
+            });
+            lookupThread.IsBackground = true;
+            lookupThread.Name = "PlayerLookup";
+            lookupThread.Start();
+        }
+
+        private void AbQueueRemoveSelected()
+        {
+            if (_abQueueListBox.SelectedIndex < 0) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            AutoBombSettings s = BotEngine.Instance.Settings.AutoBomb;
+            int idx = _abQueueListBox.SelectedIndex;
+            if (idx < s.TargetQueue.Count)
+            {
+                s.TargetQueue.RemoveAt(idx);
+                AbRefreshTargetQueue();
+            }
+        }
+
+        private void AbQueueClear()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            BotEngine.Instance.Settings.AutoBomb.TargetQueue.Clear();
+            AbRefreshTargetQueue();
+        }
+
+        private void AbQueueReset()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            foreach (TargetQueueEntry qe in BotEngine.Instance.Settings.AutoBomb.TargetQueue)
+                qe.Completed = false;
+            AbRefreshTargetQueue();
+        }
+
+        private void AbQueueAddSelectedVillage()
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            int vid = GameEngine.Instance.World.LastClickedVillage;
+            if (vid <= 0)
+            {
+                BotLogger.Log("Auto Bomb", BotLogLevel.Warning, "Click on a village on the map first.");
+                return;
+            }
+
+            AutoBombSettings s = BotEngine.Instance.Settings.AutoBomb;
+            TargetQueueEntry entry = new TargetQueueEntry();
+            entry.VillageId = vid;
+
+            try
+            {
+                string name = GameEngine.Instance.World.getVillageName(vid);
+                if (!string.IsNullOrEmpty(name))
+                    entry.Label = name;
+            }
+            catch { }
+
+            s.TargetQueue.Add(entry);
+            AbRefreshTargetQueue();
+            BotLogger.Log("Auto Bomb", BotLogLevel.Info,
+                "Added village " + vid + " (" + entry.Label + ") to target queue.");
+        }
+
+        private void AbQueueAddSelectedPlayer()
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            int vid = GameEngine.Instance.World.LastClickedVillage;
+            if (vid <= 0)
+            {
+                BotLogger.Log("Auto Bomb", BotLogLevel.Warning, "Click on a village on the map first.");
+                return;
+            }
+
+            int userID = GameEngine.Instance.World.getVillageUserID(vid);
+            if (userID < 0)
+            {
+                BotLogger.Log("Auto Bomb", BotLogLevel.Warning, "Selected village has no owner.");
+                return;
+            }
+
+            // Try to get player name from cached user info
+            string playerName = null;
+            try
+            {
+                WorldMap.CachedUserInfo info = GameEngine.Instance.World.getStoredUserInfo(userID);
+                if (info != null && !string.IsNullOrEmpty(info.userName))
+                    playerName = info.userName;
+            }
+            catch { }
+
+            if (string.IsNullOrEmpty(playerName))
+            {
+                BotLogger.Log("Auto Bomb", BotLogLevel.Warning,
+                    "Could not resolve player name for village " + vid +
+                    ". Try hovering over the village first to cache the user info, or use the player name lookup instead.");
+                return;
+            }
+
+            // Use the lookup on a background thread
+            _abQueueAddSelectedPlayerBtn.Enabled = false;
+            _abQueueAddSelectedPlayerBtn.Text = "Looking up...";
+            string capturedName = playerName;
+
+            System.Threading.Thread lookupThread = new System.Threading.Thread(delegate()
+            {
+                AutoBombModule module = null;
+                foreach (IBotModule m in BotEngine.Instance.Modules)
+                {
+                    if (m is AutoBombModule)
+                    {
+                        module = (AutoBombModule)m;
+                        break;
+                    }
+                }
+
+                List<int> villages = new List<int>();
+                if (module != null)
+                    villages = module.ResolvePlayerVillages(capturedName);
+
+                this.BeginInvoke((MethodInvoker)delegate
+                {
+                    if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+                    {
+                        AutoBombSettings s = BotEngine.Instance.Settings.AutoBomb;
+                        int skippedCapitals = 0;
+                        foreach (int v in villages)
+                        {
+                            // Skip capitals (counties, provinces, countries) — only add normal villages
+                            if (GameEngine.Instance != null && GameEngine.Instance.World != null &&
+                                GameEngine.Instance.World.isCapital(v))
+                            {
+                                skippedCapitals++;
+                                continue;
+                            }
+                            TargetQueueEntry entry = new TargetQueueEntry();
+                            entry.VillageId = v;
+                            entry.Label = capturedName;
+                            s.TargetQueue.Add(entry);
+                        }
+                        AbRefreshTargetQueue();
+
+                        int added = villages.Count - skippedCapitals;
+                        if (added > 0)
+                        {
+                            string msg = "Added " + added + " villages for player '" + capturedName + "'.";
+                            if (skippedCapitals > 0)
+                                msg += " (" + skippedCapitals + " capital(s) skipped)";
+                            BotLogger.Log("Auto Bomb", BotLogLevel.Info, msg);
+                        }
+                        else
+                        {
+                            BotLogger.Log("Auto Bomb", BotLogLevel.Warning,
+                                "No non-capital villages found for player '" + capturedName + "'.");
+                        }
+                    }
+                    else
+                    {
+                        BotLogger.Log("Auto Bomb", BotLogLevel.Warning,
+                            "No villages found for player '" + capturedName + "'.");
+                    }
+
+                    _abQueueAddSelectedPlayerBtn.Enabled = true;
+                    _abQueueAddSelectedPlayerBtn.Text = "Add Selected Player to Queue";
+                });
+            });
+            lookupThread.IsBackground = true;
+            lookupThread.Name = "PlayerLookup";
+            lookupThread.Start();
+        }
+
+        private void AbQueueSaveToFile()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            AutoBombSettings s = BotEngine.Instance.Settings.AutoBomb;
+            if (s.TargetQueue.Count == 0) return;
+
+            SaveFileDialog dlg = new SaveFileDialog();
+            dlg.Filter = "Target List (*.txt)|*.txt|All Files (*.*)|*.*";
+            dlg.DefaultExt = "txt";
+            dlg.Title = "Save Target Queue";
+            if (dlg.ShowDialog() != DialogResult.OK) return;
+
+            try
+            {
+                using (StreamWriter w = new StreamWriter(dlg.FileName))
+                {
+                    w.WriteLine("# Auto Bomb Target Queue");
+                    foreach (TargetQueueEntry entry in s.TargetQueue)
+                        w.WriteLine(entry.VillageId + "," + entry.Label);
+                }
+                BotLogger.Log("Auto Bomb", BotLogLevel.Info,
+                    "Saved " + s.TargetQueue.Count + " targets to " + dlg.FileName);
+            }
+            catch (Exception ex)
+            {
+                BotLogger.Log("Auto Bomb", BotLogLevel.Error, "Save failed: " + ex.Message);
+            }
+        }
+
+        private void AbQueueLoadFromFile()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            OpenFileDialog dlg = new OpenFileDialog();
+            dlg.Filter = "Target List (*.txt)|*.txt|All Files (*.*)|*.*";
+            dlg.Title = "Load Target Queue";
+            if (dlg.ShowDialog() != DialogResult.OK) return;
+
+            try
+            {
+                AutoBombSettings s = BotEngine.Instance.Settings.AutoBomb;
+                int count = 0;
+                using (StreamReader r = new StreamReader(dlg.FileName))
+                {
+                    string line;
+                    while ((line = r.ReadLine()) != null)
+                    {
+                        line = line.Trim();
+                        if (line.Length == 0 || line.StartsWith("#")) continue;
+
+                        string[] parts = line.Split(new char[] { ',' }, 2);
+                        int vid;
+                        if (!int.TryParse(parts[0].Trim(), out vid) || vid <= 0) continue;
+
+                        TargetQueueEntry entry = new TargetQueueEntry();
+                        entry.VillageId = vid;
+                        if (parts.Length > 1)
+                            entry.Label = parts[1].Trim();
+                        s.TargetQueue.Add(entry);
+                        count++;
+                    }
+                }
+                AbRefreshTargetQueue();
+                BotLogger.Log("Auto Bomb", BotLogLevel.Info,
+                    "Loaded " + count + " targets from " + dlg.FileName);
+            }
+            catch (Exception ex)
+            {
+                BotLogger.Log("Auto Bomb", BotLogLevel.Error, "Load failed: " + ex.Message);
+            }
+        }
+
+        private void AbRefreshTargetQueue()
+        {
+            _abQueueListBox.Items.Clear();
+
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            AutoBombSettings s = BotEngine.Instance.Settings.AutoBomb;
+
+            int completed = 0;
+            int total = s.TargetQueue.Count;
+            for (int i = 0; i < total; i++)
+            {
+                TargetQueueEntry entry = s.TargetQueue[i];
+                string prefix = entry.Completed ? "[done] " : "[ " + (i + 1) + " ] ";
+                string label = entry.VillageId.ToString();
+                if (!string.IsNullOrEmpty(entry.Label))
+                    label += "  (" + entry.Label + ")";
+                _abQueueListBox.Items.Add(prefix + label);
+                if (entry.Completed) completed++;
+            }
+
+            string statusText = total > 0
+                ? completed + " / " + total + " targets completed"
+                : "No targets in queue";
+            statusText += "  |  Interdicts: " + s.InterdictCount;
+            _abQueueStatusLabel.Text = statusText;
+        }
+
         private void AbLoadFromSettings()
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
@@ -2570,6 +2963,8 @@ namespace Kingdoms.Bot.UI
                 Math.Min(_abStackDelayInput.Maximum, s.StackDelaySeconds));
 
             AbRefreshPendingList();
+            _abQueueEnabledCheck.Checked = s.TargetQueueEnabled;
+            AbRefreshTargetQueue();
         }
 
         private void AbWriteToSettings()
@@ -2583,6 +2978,7 @@ namespace Kingdoms.Bot.UI
             s.AutoCancelOnInterdict = _abAutoCancelCheck.Checked;
             s.FakeSendEnabled = _abFakeSendCheck.Checked;
             s.StackDelaySeconds = (int)_abStackDelayInput.Value;
+            s.TargetQueueEnabled = _abQueueEnabledCheck.Checked;
 
             foreach (IBotModule m in BotEngine.Instance.Modules)
             {
@@ -2752,6 +3148,7 @@ namespace Kingdoms.Bot.UI
 
         private void AbLaunch()
         {
+            AbSaveArmyConfigs();
             AbWriteToSettings();
 
             // Ensure bot engine is enabled so ticks fire
@@ -2856,6 +3253,34 @@ namespace Kingdoms.Bot.UI
             // Refresh pending row statuses
             foreach (PendingBombRow row in _abPendingRows)
                 row.RefreshStatus();
+
+            // Update queue status label (completed/interdict counts) from live settings
+            if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+            {
+                AutoBombSettings s = BotEngine.Instance.Settings.AutoBomb;
+                int completed = 0;
+                int total = s.TargetQueue.Count;
+                foreach (TargetQueueEntry qe in s.TargetQueue)
+                {
+                    if (qe.Completed) completed++;
+                }
+
+                string statusText = total > 0
+                    ? completed + " / " + total + " targets completed"
+                    : "No targets in queue";
+                statusText += "  |  Interdicts: " + s.InterdictCount;
+                _abQueueStatusLabel.Text = statusText;
+
+                // Refresh listbox items if completed count changed
+                // (check by comparing label text to avoid full rebuild every second)
+                int listCompleted = 0;
+                foreach (object item in _abQueueListBox.Items)
+                {
+                    if (item.ToString().StartsWith("[done]")) listCompleted++;
+                }
+                if (listCompleted != completed)
+                    AbRefreshTargetQueue();
+            }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)

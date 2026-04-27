@@ -23,6 +23,10 @@ namespace Kingdoms.Bot.Modules
         private Timer _fakeSendTimer;
         private volatile bool _fakeSendTriggered;
 
+        // Player village lookup
+        private ManualResetEvent _playerLookupEvent = new ManualResetEvent(false);
+        private GetOtherUserVillageIDList_ReturnType _playerLookupResult;
+
         public override string ModuleName
         {
             get { return "Auto Bomb"; }
@@ -59,6 +63,16 @@ namespace Kingdoms.Bot.Modules
             _interdictDetected = false;
         }
 
+        protected override void OnDisable()
+        {
+            // Signal the launch thread to stop at its next cancel check.
+            // Do NOT call StopThread() here — that blocks on Join() and prematurely
+            // disposes the fake-send timer, which would prevent armies being recalled.
+            // The thread handles its own cleanup; the timer, if running, will still
+            // fire and recall armies even after the thread exits.
+            _cancelEvent.Set();
+        }
+
         protected override void OnShutdown()
         {
             StopThread();
@@ -78,8 +92,12 @@ namespace Kingdoms.Bot.Modules
                 if (CheckForInterdict(settings.TargetVillageId))
                 {
                     _interdictDetected = true;
-                    LogWarning("Interdict detected on target! Cancelling remaining attacks and recalling sent armies.");
-                    CancelAll();
+                    settings.InterdictCount++;
+                    LogWarning("Interdict detected on target! (ID count: " + settings.InterdictCount + ") Cancelling remaining attacks and recalling sent armies.");
+                    // Signal the thread to stop sending, but don't kill it —
+                    // the thread will handle waiting for armies to return and advancing the queue.
+                    _cancelEvent.Set();
+                    CancelRemainingAttacks(settings);
                     RecallAll();
                 }
             }
@@ -92,9 +110,40 @@ namespace Kingdoms.Bot.Modules
         public void StartLaunch()
         {
             AutoBombSettings settings = Settings;
-            if (settings == null || settings.PendingAttacks.Count == 0)
+            if (settings == null)
             {
-                LogWarning("No attacks to launch.");
+                LogWarning("No settings available.");
+                return;
+            }
+
+            // If queue is enabled, auto-initialize from the first non-completed queue entry
+            if (settings.TargetQueueEnabled && settings.TargetQueue.Count > 0)
+            {
+                TargetQueueEntry firstTarget = null;
+                foreach (TargetQueueEntry qe in settings.TargetQueue)
+                {
+                    if (!qe.Completed)
+                    {
+                        firstTarget = qe;
+                        break;
+                    }
+                }
+
+                if (firstTarget == null)
+                {
+                    LogWarning("All targets in queue are already completed. Reset the queue first.");
+                    return;
+                }
+
+                LogInfo("[Queue] Starting from first uncompleted target: " + firstTarget.VillageId +
+                    (string.IsNullOrEmpty(firstTarget.Label) ? "" : " (" + firstTarget.Label + ")"));
+                settings.TargetVillageId = firstTarget.VillageId;
+                RebuildPendingAttacks(settings);
+            }
+
+            if (settings.PendingAttacks.Count == 0)
+            {
+                LogWarning("No attacks to launch. Make sure you have armies loaded with selected formations.");
                 return;
             }
 
@@ -176,6 +225,154 @@ namespace Kingdoms.Bot.Modules
             }
         }
 
+        /// <summary>
+        /// Polls the army array until every source village we might launch from has
+        /// no armies in transit (outbound OR returning). Returns false if cancelled.
+        ///
+        /// Filtering by homeVillageID (rather than targetVillageID) is critical:
+        /// we need to know our source villages' troops are all home before we can
+        /// RebuildPendingAttacks accurately. Filtering by current target alone
+        /// misses armies from prior queue targets still returning.
+        ///
+        /// Requires TWO consecutive clean polls to avoid false positives from:
+        ///   - retrieveArmies() async round-trip lag
+        ///   - Armies briefly absent from array during recall state-swap
+        ///   - RemoveArmy() culling finished entries mid-read
+        /// </summary>
+        private bool WaitForArmiesReturn(AutoBombSettings settings)
+        {
+            // Build set of source village IDs we care about. These are the
+            // villages the next target will launch from — their troops must be
+            // home before RebuildPendingAttacks reads troop counts.
+            HashSet<int> sourceVids = new HashSet<int>();
+            foreach (SavedArmyConfig cfg in settings.SavedConfigs)
+            {
+                if (cfg.Selected && !string.IsNullOrEmpty(cfg.FormationName))
+                    sourceVids.Add(cfg.SourceVillageId);
+            }
+
+            if (sourceVids.Count == 0)
+            {
+                LogDebug("[Thread] No source villages configured — skipping army-return wait.");
+                return true;
+            }
+
+            int consecutiveClean = 0;
+            int pollCount = 0;
+            const int RequiredCleanPolls = 2;
+            const int ArmyRefreshIntervalSeconds = 10;
+            DateTime lastArmyRefresh = DateTime.MinValue; // trigger immediate refresh on first iteration
+
+            while (true)
+            {
+                // Refresh army data periodically, but NOT on every poll.
+                // retrieveArmies() clears the army array before repopulating it from the
+                // server callback, which causes armies to briefly vanish from the map
+                // (visible as flickering on the radar and main map).
+                // We refresh every ~15s — fast enough to detect returns well within any
+                // time-critical window, infrequent enough that the flicker is barely noticeable.
+                if ((DateTime.Now - lastArmyRefresh).TotalSeconds >= ArmyRefreshIntervalSeconds)
+                {
+                    try
+                    {
+                        if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                            GameEngine.Instance.World.retrieveArmies();
+                    }
+                    catch { }
+                    lastArmyRefresh = DateTime.Now;
+                }
+
+                // 5-second wait keeps cancel/interdict response snappy even though
+                // army data only refreshes every 15 seconds.
+                if (_cancelEvent.WaitOne(5000))
+                {
+                    LogInfo("[Thread] Cancelled while waiting for armies to return.");
+                    return false;
+                }
+
+                try
+                {
+                    if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+                        continue;
+
+                    int stillOut = 0;
+                    int stillOutbound = 0;
+                    List<WorldMap.LocalArmyData> outboundArmies = new List<WorldMap.LocalArmyData>();
+
+                    foreach (WorldMap.LocalArmyData army in GameEngine.Instance.World.getArmyArray())
+                    {
+                        if (army == null) continue;
+                        if (army.dead) continue; // arrived / destroyed — don't count
+
+                        // Only care about armies from our configured source villages.
+                        // Manually-sent armies from other villages are irrelevant to
+                        // the queue's next launch.
+                        if (!sourceVids.Contains(army.homeVillageID)) continue;
+
+                        // Idle armies aren't kept in the array, so anything here
+                        // with a valid home that isn't dead is in transit.
+                        stillOut++;
+
+                        // lootType: -1 = outbound attack, >=0 = returning with loot/home.
+                        // Outbound armies can still be recalled (if < ~5 min travelled).
+                        bool isOutbound = (army.lootType < 0 &&
+                                           army.targetVillageID >= 0 &&
+                                           army.targetVillageID != army.homeVillageID);
+                        if (isOutbound)
+                        {
+                            stillOutbound++;
+                            outboundArmies.Add(army);
+                        }
+                    }
+
+                    pollCount++;
+
+                    if (stillOut == 0)
+                    {
+                        consecutiveClean++;
+                        if (consecutiveClean >= RequiredCleanPolls)
+                        {
+                            LogInfo("[Thread] All source villages' armies confirmed home (" +
+                                RequiredCleanPolls + " clean polls). Ready to advance.");
+                            return true;
+                        }
+                        LogDebug("[Thread] Poll #" + pollCount + ": no armies in transit — need " +
+                            (RequiredCleanPolls - consecutiveClean) + " more confirmation poll(s).");
+                        continue;
+                    }
+
+                    // Any in-transit army resets the confirmation counter.
+                    consecutiveClean = 0;
+
+                    LogDebug("[Thread] Poll #" + pollCount + ": " + stillOut + " army/armies still in transit (" +
+                        stillOutbound + " outbound, " + (stillOut - stillOutbound) + " returning).");
+
+                    // Retry recall on any still-outbound armies on every poll.
+                    // Armies become unrecallable after ~5 minutes so be aggressive.
+                    if (stillOutbound > 0)
+                    {
+                        LogWarning("[Thread] " + stillOutbound + " army/armies still outbound — retrying recall...");
+                        try
+                        {
+                            RemoteServices.Instance.set_CancelCastleAttack_UserCallBack(null);
+                            foreach (WorldMap.LocalArmyData army in outboundArmies)
+                            {
+                                RemoteServices.Instance.CancelCastleAttack(army.armyID);
+                            }
+                        }
+                        catch (Exception rex)
+                        {
+                            LogError("[Thread] Recall retry error: " + rex.Message);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogError("[Thread] Error checking armies: " + ex.Message);
+                }
+            }
+        }
+
         // =================================================================
         // Thread management
         // =================================================================
@@ -210,74 +407,152 @@ namespace Kingdoms.Bot.Modules
             {
                 LogInfo("[Thread] Launch thread started.");
 
-                // Sort attacks by scheduled send time (earliest first)
-                List<BombAttackEntry> attacks = new List<BombAttackEntry>(settings.PendingAttacks);
-                attacks.Sort(delegate(BombAttackEntry a, BombAttackEntry b)
+                while (true)
                 {
-                    return a.ScheduledSendTime.CompareTo(b.ScheduledSendTime);
-                });
-
-                foreach (BombAttackEntry entry in attacks)
-                {
-                    if (_cancelEvent.WaitOne(0))
+                    // Sort attacks by scheduled send time (earliest first)
+                    List<BombAttackEntry> attacks = new List<BombAttackEntry>(settings.PendingAttacks);
+                    attacks.Sort(delegate(BombAttackEntry a, BombAttackEntry b)
                     {
-                        LogInfo("[Thread] Cancelled.");
+                        return a.ScheduledSendTime.CompareTo(b.ScheduledSendTime);
+                    });
+
+                    bool cancelled = false;
+                    foreach (BombAttackEntry entry in attacks)
+                    {
+                        if (_cancelEvent.WaitOne(0))
+                        {
+                            LogInfo("[Thread] Cancelled.");
+                            cancelled = true;
+                            break;
+                        }
+
+                        if (entry.Cancelled || entry.Sent) continue;
+
+                        // Wait until PREPARE_AHEAD_SECONDS before the scheduled send time
+                        double prepareAheadSeconds = 8.0;
+                        DateTime prepareTime = entry.ScheduledSendTime.AddSeconds(-prepareAheadSeconds);
+                        TimeSpan waitForPrepare = prepareTime - DateTime.Now;
+                        if (waitForPrepare.TotalMilliseconds > 0)
+                        {
+                            LogInfo("[Thread] Stack " + entry.Stack + ": Waiting " +
+                                FormatTimeSpan(waitForPrepare) + " before preparing.");
+                            if (_cancelEvent.WaitOne((int)waitForPrepare.TotalMilliseconds))
+                            {
+                                LogInfo("[Thread] Cancelled during wait.");
+                                cancelled = true;
+                                break;
+                            }
+                        }
+
+                        if (_cancelEvent.WaitOne(0) || entry.Cancelled) { cancelled = true; break; }
+
+                        // Phase 1: PreAttackSetup + build CastleMap
+                        LogInfo("[Thread] Stack " + entry.Stack + ": Starting preparation.");
+                        entry.PreparationStarted = true;
+                        entry.Status = "Preparing...";
+
+                        bool prepOk = PrepareAttackOnThread(entry, settings);
+                        if (!prepOk)
+                        {
+                            LogError("[Thread] Stack " + entry.Stack + ": Preparation failed.");
+                            continue;
+                        }
+
+                        if (_cancelEvent.WaitOne(0) || entry.Cancelled) { cancelled = true; break; }
+
+                        // Phase 2: Wait until exact send time then fire
+                        TimeSpan waitForFire = entry.ScheduledSendTime - DateTime.Now;
+                        if (waitForFire.TotalMilliseconds > 0)
+                        {
+                            LogInfo("[Thread] Stack " + entry.Stack + ": Prepared. Waiting " +
+                                FormatTimeSpan(waitForFire) + " to fire.");
+                            if (_cancelEvent.WaitOne((int)waitForFire.TotalMilliseconds))
+                            {
+                                LogInfo("[Thread] Cancelled during fire wait.");
+                                cancelled = true;
+                                break;
+                            }
+                        }
+
+                        if (_cancelEvent.WaitOne(0) || entry.Cancelled) { cancelled = true; break; }
+
+                        // Fire!
+                        FirePreparedAttack(entry);
+
+                        // Small delay between attacks to avoid overwhelming the server
+                        if (_cancelEvent.WaitOne(500))
+                        {
+                            cancelled = true;
+                            break;
+                        }
+                    }
+
+                    LogInfo("[Thread] Target " + settings.TargetVillageId + " launch sequence finished.");
+
+                    bool autoRecalled = _interdictDetected || _fakeSendTriggered;
+
+                    // Manually cancelled (not by interdict or fake send) — stop entirely
+                    if (cancelled && !autoRecalled)
                         break;
-                    }
 
-                    if (entry.Cancelled || entry.Sent) continue;
+                    // Queue disabled — stop after this target.
+                    // (Any running fake-send timer will still fire on its own schedule
+                    // and recall the armies, even after the thread exits.)
+                    if (!settings.TargetQueueEnabled)
+                        break;
 
-                    // Wait until PREPARE_AHEAD_SECONDS before the scheduled send time
-                    double prepareAheadSeconds = 8.0;
-                    DateTime prepareTime = entry.ScheduledSendTime.AddSeconds(-prepareAheadSeconds);
-                    TimeSpan waitForPrepare = prepareTime - DateTime.Now;
-                    if (waitForPrepare.TotalMilliseconds > 0)
+                    // Count attacks that actually got sent this round.
+                    int sentCount = 0;
+                    foreach (BombAttackEntry sentEntry in settings.PendingAttacks)
+                        if (sentEntry.Sent) sentCount++;
+
+                    // Fake-send + queue: if all attacks sent successfully but the 4-minute
+                    // recall timer hasn't fired yet, wait for it. Without this we'd call
+                    // WaitForArmiesReturn next, which waits for armies to arrive at target
+                    // and return naturally — defeating the purpose of the fake send.
+                    if (!autoRecalled && sentCount > 0 && settings.FakeSendEnabled)
                     {
-                        LogInfo("[Thread] Stack " + entry.Stack + ": Waiting " +
-                            FormatTimeSpan(waitForPrepare) + " before preparing.");
-                        if (_cancelEvent.WaitOne((int)waitForPrepare.TotalMilliseconds))
+                        LogInfo("[Thread] All attacks sent. Fake send enabled — waiting for 4-minute recall timer to fire before advancing...");
+                        _cancelEvent.WaitOne(); // fake-send timer, interdict, or manual cancel will set this
+                        if (!_fakeSendTriggered && !_interdictDetected)
                         {
-                            LogInfo("[Thread] Cancelled during wait.");
+                            LogInfo("[Thread] Manually cancelled before fake-send timer fired.");
                             break;
                         }
+                        autoRecalled = true;
                     }
 
-                    if (_cancelEvent.WaitOne(0) || entry.Cancelled) break;
-
-                    // Phase 1: PreAttackSetup + build CastleMap
-                    LogInfo("[Thread] Stack " + entry.Stack + ": Starting preparation.");
-                    entry.PreparationStarted = true;
-                    entry.Status = "Preparing...";
-
-                    bool prepOk = PrepareAttackOnThread(entry, settings);
-                    if (!prepOk)
+                    // Wait for armies to come home before rebuilding PendingAttacks for
+                    // the next target (otherwise source villages would show 0 troops).
+                    if (sentCount > 0)
                     {
-                        LogError("[Thread] Stack " + entry.Stack + ": Preparation failed.");
-                        continue;
+                        // Reset _cancelEvent so WaitForArmiesReturn can block cleanly.
+                        // Do NOT reset _interdictDetected or _fakeSendTriggered here —
+                        // OnTick checks !_interdictDetected to decide whether to re-detect,
+                        // so clearing it now would cause OnTick to re-trigger on the same
+                        // still-interdicted target and kill the wait (see log: "Cancelled
+                        // while waiting for armies to return" right after interdict).
+                        // TryAdvanceTargetQueue resets both flags when the next target starts.
+                        _cancelEvent.Reset();
+                        DisposeFakeSendTimer();
+                        string waitReason = autoRecalled ? "recalled" : "sent";
+                        LogInfo("[Thread] Waiting for " + waitReason + " armies to return before advancing queue...");
+                        if (!WaitForArmiesReturn(settings))
+                            break; // manually cancelled during wait
                     }
-
-                    if (_cancelEvent.WaitOne(0) || entry.Cancelled) break;
-
-                    // Phase 2: Wait until exact send time then fire
-                    TimeSpan waitForFire = entry.ScheduledSendTime - DateTime.Now;
-                    if (waitForFire.TotalMilliseconds > 0)
+                    else
                     {
-                        LogInfo("[Thread] Stack " + entry.Stack + ": Prepared. Waiting " +
-                            FormatTimeSpan(waitForFire) + " to fire.");
-                        if (_cancelEvent.WaitOne((int)waitForFire.TotalMilliseconds))
-                        {
-                            LogInfo("[Thread] Cancelled during fire wait.");
-                            break;
-                        }
+                        // No armies were sent — no wait needed. Reset _cancelEvent so the
+                        // outer loop doesn't immediately break on the next iteration.
+                        // Leave _interdictDetected / _fakeSendTriggered for TryAdvanceTargetQueue
+                        // to clear, for the same OnTick re-trigger reason as above.
+                        LogInfo("[Thread] No armies were sent for this target — advancing immediately.");
+                        _cancelEvent.Reset();
+                        DisposeFakeSendTimer();
                     }
 
-                    if (_cancelEvent.WaitOne(0) || entry.Cancelled) break;
-
-                    // Fire!
-                    FirePreparedAttack(entry);
-
-                    // Small delay between attacks to avoid overwhelming the server
-                    if (_cancelEvent.WaitOne(500))
+                    // Try to advance to next target in queue
+                    if (!TryAdvanceTargetQueue(settings))
                         break;
                 }
 
@@ -362,7 +637,8 @@ namespace Kingdoms.Bot.Modules
                     if (settings.AutoCancelOnInterdict)
                     {
                         _interdictDetected = true;
-                        LogWarning("[Thread] Auto-cancelling remaining attacks and recalling sent armies due to interdict.");
+                        settings.InterdictCount++;
+                        LogWarning("[Thread] Auto-cancelling remaining attacks and recalling sent armies due to interdict. (ID count: " + settings.InterdictCount + ")");
                         CancelRemainingAttacks(settings);
                         RecallAll();
                         _cancelEvent.Set();
@@ -669,8 +945,13 @@ namespace Kingdoms.Bot.Modules
             if (_fakeSendTriggered) return;
             _fakeSendTriggered = true;
 
+            AutoBombSettings settings = Settings;
             LogWarning("[FakeSend] 4 minutes elapsed — cancelling remaining attacks and recalling all armies.");
-            CancelAll();
+            // Signal the thread to stop sending, but don't kill it —
+            // the thread will handle waiting for armies to return and advancing the queue.
+            _cancelEvent.Set();
+            if (settings != null)
+                CancelRemainingAttacks(settings);
             RecallAll();
         }
 
@@ -681,6 +962,349 @@ namespace Kingdoms.Bot.Modules
                 _fakeSendTimer.Dispose();
                 _fakeSendTimer = null;
             }
+        }
+
+        // =================================================================
+        // Target queue: auto-advance to next target
+        // =================================================================
+
+        private bool TryAdvanceTargetQueue(AutoBombSettings settings)
+        {
+            if (!settings.TargetQueueEnabled) return false;
+
+            // Mark current target as completed in the queue
+            foreach (TargetQueueEntry qe in settings.TargetQueue)
+            {
+                if (qe.VillageId == settings.TargetVillageId && !qe.Completed)
+                {
+                    qe.Completed = true;
+                    break;
+                }
+            }
+
+            // Find the next non-completed entry
+            TargetQueueEntry next = null;
+            foreach (TargetQueueEntry qe in settings.TargetQueue)
+            {
+                if (!qe.Completed)
+                {
+                    next = qe;
+                    break;
+                }
+            }
+
+            if (next == null)
+            {
+                LogInfo("[Queue] All targets in queue have been bombed. Queue complete.");
+                return false;
+            }
+
+            LogInfo("[Queue] Advancing to next target: " + next.VillageId +
+                (string.IsNullOrEmpty(next.Label) ? "" : " (" + next.Label + ")"));
+            settings.TargetVillageId = next.VillageId;
+
+            // Wait until all selected source villages have enough troops to send.
+            // After armies return, the village troop counts may not have refreshed yet.
+            if (!WaitForTroopsReady(settings))
+                return false; // manually cancelled during wait
+
+            // Rebuild pending attacks from saved army configs for the new target
+            RebuildPendingAttacks(settings);
+            if (settings.PendingAttacks.Count == 0)
+            {
+                LogWarning("[Queue] No attacks could be built for target " + next.VillageId + ". Skipping.");
+                next.Completed = true;
+                return TryAdvanceTargetQueue(settings); // try next
+            }
+
+            // Reset state for the new target
+            _interdictDetected = false;
+            _fakeSendTriggered = false;
+            DisposeFakeSendTimer();
+            CalculateSchedule(settings);
+
+            LogInfo("[Queue] " + settings.PendingAttacks.Count + " attacks scheduled for target " +
+                next.VillageId + ".");
+            return true;
+        }
+
+        /// <summary>
+        /// Waits until every selected source village has enough troops to satisfy
+        /// its configured formation. Village troop counts refresh asynchronously
+        /// on the server after armies return, so we retry with forced refreshes
+        /// for up to ~3 minutes.
+        ///
+        /// Returns false if cancelled during the wait. Otherwise returns true —
+        /// callers should still validate each config via RebuildPendingAttacks,
+        /// which skips any stacks whose formation requirements remain unmet after
+        /// the wait (so a single under-supplied village doesn't abort the target).
+        /// </summary>
+        private bool WaitForTroopsReady(AutoBombSettings settings)
+        {
+            int maxRetries = 18; // up to ~3 minutes (18 x 10 seconds)
+            bool forceRefreshSent = false;
+
+            // Pre-compute formation requirements once — these don't change mid-wait.
+            Dictionary<int, int[]> formationReqs = new Dictionary<int, int[]>();
+            foreach (SavedArmyConfig cfg in settings.SavedConfigs)
+            {
+                if (!cfg.Selected) continue;
+                if (string.IsNullOrEmpty(cfg.FormationName)) continue;
+                if (formationReqs.ContainsKey(cfg.SourceVillageId)) continue;
+
+                int[] req = GetTroopCountsFromFormation(cfg.FormationName);
+                // If we can't load the formation, fall back to "needs any troops"
+                if (req == null) req = new int[] { 1, 0, 0, 0, 0, 0 };
+                formationReqs[cfg.SourceVillageId] = req;
+            }
+
+            if (formationReqs.Count == 0)
+            {
+                LogDebug("[Queue] No selected source villages — skipping troop-ready wait.");
+                return true;
+            }
+
+            for (int attempt = 0; attempt < maxRetries; attempt++)
+            {
+                List<int> notReadyIds = new List<int>();
+                List<string> notReadyNames = new List<string>();
+
+                foreach (KeyValuePair<int, int[]> kvp in formationReqs)
+                {
+                    int villageId = kvp.Key;
+                    int[] req = kvp.Value;
+
+                    VillageMap village = null;
+                    try { village = GameEngine.Instance.getVillage(villageId); }
+                    catch { }
+                    if (village == null)
+                    {
+                        notReadyIds.Add(villageId);
+                        notReadyNames.Add(villageId.ToString() + " (not loaded)");
+                        continue;
+                    }
+
+                    int peasants = 0, archers = 0, pikemen = 0, swordsmen = 0, captains = 0;
+                    village.getVillageTroops(ref peasants, ref archers, ref pikemen, ref swordsmen, ref captains);
+                    int catapults = village.m_numCatapults;
+                    int[] have = { peasants, archers, pikemen, swordsmen, catapults, captains };
+
+                    bool enough = true;
+                    for (int i = 0; i < 6; i++)
+                    {
+                        if (have[i] < req[i]) { enough = false; break; }
+                    }
+
+                    if (!enough)
+                    {
+                        notReadyIds.Add(villageId);
+                        string name = "";
+                        try { name = GameEngine.Instance.World.getVillageName(villageId); }
+                        catch { name = villageId.ToString(); }
+                        notReadyNames.Add(name);
+                    }
+                }
+
+                if (notReadyIds.Count == 0)
+                {
+                    if (attempt > 0)
+                        LogInfo("[Queue] All source villages have enough troops for their formations. Proceeding.");
+                    return true;
+                }
+
+                if (attempt == 0)
+                {
+                    LogInfo("[Queue] Waiting for troops to match formation in " + notReadyNames.Count +
+                        " village(s): " + string.Join(", ", notReadyNames.ToArray()));
+                }
+                else
+                {
+                    LogDebug("[Queue] Attempt " + (attempt + 1) + ": Still waiting on " +
+                        notReadyNames.Count + " village(s): " +
+                        string.Join(", ", notReadyNames.ToArray()));
+                }
+
+                // After a few normal attempts, force a background refresh of stale villages
+                // using VillageBuildingChangeRates which re-downloads resources & troop counts.
+                if (attempt >= 2 && !forceRefreshSent)
+                {
+                    forceRefreshSent = true;
+                    LogInfo("[Queue] Force-refreshing " + notReadyIds.Count + " village(s) from server...");
+                    foreach (int villageId in notReadyIds)
+                    {
+                        try
+                        {
+                            VillageMap v = GameEngine.Instance.getVillage(villageId);
+                            if (v != null)
+                            {
+                                RemoteServices.Instance.set_VillageBuildingChangeRates_UserCallBack(
+                                    new RemoteServices.VillageBuildingChangeRates_UserCallBack(
+                                        v.villageBuildingChangeRatesCallback));
+                                RemoteServices.Instance.VillageBuildingChangeRates(villageId, -1, -1, -1, -1);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogDebug("[Queue] Failed to request refresh for village " + villageId + ": " + ex.Message);
+                        }
+                    }
+                }
+
+                // Periodically allow another round of force-refresh for still-stale villages
+                if (attempt >= 8 && attempt % 4 == 0)
+                    forceRefreshSent = false;
+
+                // Wait 10 seconds, checking for cancel
+                if (_cancelEvent.WaitOne(10000))
+                {
+                    LogInfo("[Queue] Cancelled while waiting for troops to refresh.");
+                    return false;
+                }
+            }
+
+            // Max retries exhausted — proceed with whatever we have. RebuildPendingAttacks
+            // will log and skip any stacks that still don't meet formation requirements.
+            LogWarning("[Queue] Proceeding after max retries. Stacks with insufficient troops will be skipped.");
+            return true;
+        }
+
+        private void RebuildPendingAttacks(AutoBombSettings settings)
+        {
+            settings.PendingAttacks.Clear();
+            int targetId = settings.TargetVillageId;
+            int skippedCount = 0;
+
+            foreach (SavedArmyConfig cfg in settings.SavedConfigs)
+            {
+                if (!cfg.Selected) continue;
+                if (string.IsNullOrEmpty(cfg.FormationName))
+                {
+                    LogWarning("[Queue] Stack " + cfg.Stack + " has no formation set — skipping.");
+                    skippedCount++;
+                    continue;
+                }
+
+                // Get current troop counts for this village
+                VillageMap village = null;
+                try { village = GameEngine.Instance.getVillage(cfg.SourceVillageId); }
+                catch { }
+                if (village == null)
+                {
+                    LogWarning("[Queue] Stack " + cfg.Stack + ": source village " +
+                        cfg.SourceVillageId + " not loaded — skipping.");
+                    skippedCount++;
+                    continue;
+                }
+
+                int peasants = 0, archers = 0, pikemen = 0, swordsmen = 0, captains = 0;
+                village.getVillageTroops(ref peasants, ref archers, ref pikemen, ref swordsmen, ref captains);
+                int catapults = village.m_numCatapults;
+
+                // Hard validation: does this village have enough troops for the
+                // saved formation? If not, skip this stack rather than building an
+                // attack that'll fail at launch time.
+                int[] req = GetTroopCountsFromFormation(cfg.FormationName);
+                if (req == null)
+                {
+                    LogWarning("[Queue] Stack " + cfg.Stack + ": formation '" +
+                        cfg.FormationName + "' could not be loaded — skipping.");
+                    skippedCount++;
+                    continue;
+                }
+
+                int[] have = { peasants, archers, pikemen, swordsmen, catapults, captains };
+                string[] names = { "Peasants", "Archers", "Pikemen", "Swordsmen", "Catapults", "Captains" };
+                List<string> shortages = new List<string>();
+                for (int i = 0; i < 6; i++)
+                {
+                    if (have[i] < req[i])
+                        shortages.Add(names[i] + ": have " + have[i] + " need " + req[i]);
+                }
+                if (shortages.Count > 0)
+                {
+                    string vname;
+                    try { vname = GameEngine.Instance.World.getVillageName(cfg.SourceVillageId); }
+                    catch { vname = cfg.SourceVillageId.ToString(); }
+                    LogWarning("[Queue] Stack " + cfg.Stack + " (" + vname +
+                        ") skipped — insufficient troops for '" + cfg.FormationName +
+                        "': " + string.Join(", ", shortages.ToArray()));
+                    skippedCount++;
+                    continue;
+                }
+
+                double baseTravelTime = CalculateBaseTravelTime(cfg.SourceVillageId, targetId, cfg.CaptainsOnly);
+                double travelTime = ApplyCardSpeed(baseTravelTime, cfg.CardType);
+
+                BombAttackEntry entry = new BombAttackEntry();
+                entry.SourceVillageId = cfg.SourceVillageId;
+                entry.TargetVillageId = targetId;
+                entry.TravelTimeSeconds = travelTime;
+                entry.AttackType = cfg.AttackType;
+                entry.FormationName = cfg.FormationName;
+                entry.Stack = cfg.Stack;
+                entry.NumPeasants = peasants;
+                entry.NumArchers = archers;
+                entry.NumPikemen = pikemen;
+                entry.NumSwordsmen = swordsmen;
+                entry.NumCatapults = catapults;
+                entry.NumCaptains = captains;
+                entry.CaptainsOnly = cfg.CaptainsOnly;
+                entry.CardType = cfg.CardType;
+                entry.Status = "Queued";
+                settings.PendingAttacks.Add(entry);
+            }
+
+            if (skippedCount > 0)
+            {
+                LogInfo("[Queue] Built " + settings.PendingAttacks.Count + " attack(s) for target " +
+                    targetId + " — " + skippedCount + " stack(s) skipped due to validation.");
+            }
+        }
+
+        // =================================================================
+        // Player village lookup
+        // =================================================================
+
+        public List<int> ResolvePlayerVillages(string playerName)
+        {
+            List<int> result = new List<int>();
+            if (string.IsNullOrEmpty(playerName)) return result;
+
+            _playerLookupResult = null;
+            _playerLookupEvent.Reset();
+
+            RemoteServices.Instance.set_GetOtherUserVillageIDList_UserCallBack(
+                new RemoteServices.GetOtherUserVillageIDList_UserCallBack(PlayerLookupCallback));
+            RemoteServices.Instance.GetOtherUserVillageIDList(playerName);
+
+            // Wait up to 15 seconds for server response
+            if (!_playerLookupEvent.WaitOne(15000))
+            {
+                LogWarning("[Queue] Player lookup timed out for '" + playerName + "'.");
+                return result;
+            }
+
+            GetOtherUserVillageIDList_ReturnType data = _playerLookupResult;
+            if (data == null || !data.Success)
+            {
+                LogWarning("[Queue] Player lookup failed for '" + playerName + "'.");
+                return result;
+            }
+
+            if (data.userVillageList != null)
+            {
+                foreach (int vid in data.userVillageList)
+                    result.Add(vid);
+            }
+
+            LogInfo("[Queue] Found " + result.Count + " villages for player '" + playerName + "'.");
+            return result;
+        }
+
+        private void PlayerLookupCallback(GetOtherUserVillageIDList_ReturnType returnData)
+        {
+            _playerLookupResult = returnData;
+            _playerLookupEvent.Set();
         }
 
         // =================================================================

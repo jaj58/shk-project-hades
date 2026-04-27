@@ -88,6 +88,7 @@ namespace Kingdoms.Bot.UI
             this._rdWebhookLabel = new System.Windows.Forms.Label();
             this._rdScanIntervalInput = new System.Windows.Forms.NumericUpDown();
             this._rdScanIntervalLabel = new System.Windows.Forms.Label();
+            this._rdForceRefreshCheck = new System.Windows.Forms.CheckBox();
             this._rdStatusLabel = new System.Windows.Forms.Label();
             this._rdEnabledCheck = new System.Windows.Forms.CheckBox();
             this._recruitingPage = new System.Windows.Forms.TabPage();
@@ -168,6 +169,22 @@ namespace Kingdoms.Bot.UI
             this._abClearQueueBtn = new System.Windows.Forms.Button();
             this._abPendingColHeader = new System.Windows.Forms.Panel();
             this._abPendingListPanel = new System.Windows.Forms.Panel();
+            this._bombTargetQueueTab = new System.Windows.Forms.TabPage();
+            this._abQueueSettingsPanel = new System.Windows.Forms.Panel();
+            this._abQueueEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._abQueueVillageIdInput = new System.Windows.Forms.NumericUpDown();
+            this._abQueueAddIdBtn = new System.Windows.Forms.Button();
+            this._abQueuePlayerNameInput = new System.Windows.Forms.TextBox();
+            this._abQueueLookupBtn = new System.Windows.Forms.Button();
+            this._abQueueRemoveBtn = new System.Windows.Forms.Button();
+            this._abQueueClearBtn = new System.Windows.Forms.Button();
+            this._abQueueSaveBtn = new System.Windows.Forms.Button();
+            this._abQueueLoadBtn = new System.Windows.Forms.Button();
+            this._abQueueResetBtn = new System.Windows.Forms.Button();
+            this._abQueueAddSelectedVillageBtn = new System.Windows.Forms.Button();
+            this._abQueueAddSelectedPlayerBtn = new System.Windows.Forms.Button();
+            this._abQueueStatusLabel = new System.Windows.Forms.Label();
+            this._abQueueListBox = new System.Windows.Forms.ListBox();
             this._bldSettingsPanel = new System.Windows.Forms.Panel();
             this._bldEnabledCheck = new System.Windows.Forms.CheckBox();
             this._bldStatusLabel = new System.Windows.Forms.Label();
@@ -263,8 +280,10 @@ namespace Kingdoms.Bot.UI
             this._bombPendingTab.SuspendLayout();
             this._abSettingsPanel.SuspendLayout();
             this._abPendingSettingsPanel.SuspendLayout();
+            this._abQueueSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._abTargetInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._abStackDelayInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._abQueueVillageIdInput)).BeginInit();
             this._bldSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._bldIntervalInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._bldDelayInput)).BeginInit();
@@ -900,6 +919,7 @@ namespace Kingdoms.Bot.UI
             this._rdSettingsPanel.Controls.Add(this._rdInterdictLabel);
             this._rdSettingsPanel.Controls.Add(this._rdWebhookInput);
             this._rdSettingsPanel.Controls.Add(this._rdWebhookLabel);
+            this._rdSettingsPanel.Controls.Add(this._rdForceRefreshCheck);
             this._rdSettingsPanel.Controls.Add(this._rdScanIntervalInput);
             this._rdSettingsPanel.Controls.Add(this._rdScanIntervalLabel);
             this._rdSettingsPanel.Controls.Add(this._rdStatusLabel);
@@ -1069,7 +1089,20 @@ namespace Kingdoms.Bot.UI
             this._rdScanIntervalLabel.Size = new System.Drawing.Size(93, 15);
             this._rdScanIntervalLabel.TabIndex = 2;
             this._rdScanIntervalLabel.Text = "Scan interval (s):";
-            // 
+            //
+            // _rdForceRefreshCheck
+            //
+            this._rdForceRefreshCheck.AutoSize = true;
+            this._rdForceRefreshCheck.Checked = true;
+            this._rdForceRefreshCheck.CheckState = System.Windows.Forms.CheckState.Checked;
+            this._rdForceRefreshCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._rdForceRefreshCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._rdForceRefreshCheck.Location = new System.Drawing.Point(450, 12);
+            this._rdForceRefreshCheck.Name = "_rdForceRefreshCheck";
+            this._rdForceRefreshCheck.Size = new System.Drawing.Size(190, 19);
+            this._rdForceRefreshCheck.TabIndex = 30;
+            this._rdForceRefreshCheck.Text = "Force refresh armies each scan";
+            //
             // _rdStatusLabel
             // 
             this._rdStatusLabel.AutoSize = true;
@@ -2039,6 +2072,7 @@ namespace Kingdoms.Bot.UI
             //
             this._bombSubTabs.Controls.Add(this._bombSetupTab);
             this._bombSubTabs.Controls.Add(this._bombPendingTab);
+            this._bombSubTabs.Controls.Add(this._bombTargetQueueTab);
             this._bombSubTabs.Dock = System.Windows.Forms.DockStyle.Fill;
             this._bombSubTabs.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._bombSubTabs.Location = new System.Drawing.Point(0, 0);
@@ -2070,6 +2104,205 @@ namespace Kingdoms.Bot.UI
             this._bombPendingTab.Size = new System.Drawing.Size(1134, 471);
             this._bombPendingTab.TabIndex = 1;
             this._bombPendingTab.Text = "Pending Attacks";
+            //
+            // _bombTargetQueueTab
+            //
+            this._bombTargetQueueTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._bombTargetQueueTab.Controls.Add(this._abQueueListBox);
+            this._bombTargetQueueTab.Controls.Add(this._abQueueSettingsPanel);
+            this._bombTargetQueueTab.Location = new System.Drawing.Point(4, 22);
+            this._bombTargetQueueTab.Name = "_bombTargetQueueTab";
+            this._bombTargetQueueTab.Size = new System.Drawing.Size(1134, 471);
+            this._bombTargetQueueTab.TabIndex = 2;
+            this._bombTargetQueueTab.Text = "Target Queue";
+            //
+            // _abQueueSettingsPanel
+            //
+            this._abQueueSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
+            this._abQueueSettingsPanel.Controls.Add(this._abQueueAddSelectedPlayerBtn);
+            this._abQueueSettingsPanel.Controls.Add(this._abQueueAddSelectedVillageBtn);
+            this._abQueueSettingsPanel.Controls.Add(this._abQueueResetBtn);
+            this._abQueueSettingsPanel.Controls.Add(this._abQueueLoadBtn);
+            this._abQueueSettingsPanel.Controls.Add(this._abQueueSaveBtn);
+            this._abQueueSettingsPanel.Controls.Add(this._abQueueClearBtn);
+            this._abQueueSettingsPanel.Controls.Add(this._abQueueRemoveBtn);
+            this._abQueueSettingsPanel.Controls.Add(this._abQueueLookupBtn);
+            this._abQueueSettingsPanel.Controls.Add(this._abQueuePlayerNameInput);
+            this._abQueueSettingsPanel.Controls.Add(this._abQueueAddIdBtn);
+            this._abQueueSettingsPanel.Controls.Add(this._abQueueVillageIdInput);
+            this._abQueueSettingsPanel.Controls.Add(this._abQueueStatusLabel);
+            this._abQueueSettingsPanel.Controls.Add(this._abQueueEnabledCheck);
+            this._abQueueSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._abQueueSettingsPanel.Location = new System.Drawing.Point(0, 0);
+            this._abQueueSettingsPanel.Name = "_abQueueSettingsPanel";
+            this._abQueueSettingsPanel.Padding = new System.Windows.Forms.Padding(12, 10, 12, 6);
+            this._abQueueSettingsPanel.Size = new System.Drawing.Size(1134, 104);
+            this._abQueueSettingsPanel.TabIndex = 0;
+            //
+            // _abQueueEnabledCheck
+            //
+            this._abQueueEnabledCheck.AutoSize = true;
+            this._abQueueEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abQueueEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this._abQueueEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abQueueEnabledCheck.Location = new System.Drawing.Point(12, 10);
+            this._abQueueEnabledCheck.Name = "_abQueueEnabledCheck";
+            this._abQueueEnabledCheck.Size = new System.Drawing.Size(200, 23);
+            this._abQueueEnabledCheck.TabIndex = 0;
+            this._abQueueEnabledCheck.Text = "Enable Auto-Advance Queue";
+            //
+            // _abQueueStatusLabel
+            //
+            this._abQueueStatusLabel.AutoSize = true;
+            this._abQueueStatusLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._abQueueStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(200)))), ((int)(((byte)(120)))));
+            this._abQueueStatusLabel.Location = new System.Drawing.Point(250, 12);
+            this._abQueueStatusLabel.Name = "_abQueueStatusLabel";
+            this._abQueueStatusLabel.Size = new System.Drawing.Size(100, 15);
+            this._abQueueStatusLabel.TabIndex = 1;
+            this._abQueueStatusLabel.Text = "";
+            //
+            // _abQueueVillageIdInput
+            //
+            this._abQueueVillageIdInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._abQueueVillageIdInput.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this._abQueueVillageIdInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abQueueVillageIdInput.Location = new System.Drawing.Point(12, 44);
+            this._abQueueVillageIdInput.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
+            this._abQueueVillageIdInput.Name = "_abQueueVillageIdInput";
+            this._abQueueVillageIdInput.Size = new System.Drawing.Size(80, 23);
+            this._abQueueVillageIdInput.TabIndex = 2;
+            //
+            // _abQueueAddIdBtn
+            //
+            this._abQueueAddIdBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abQueueAddIdBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abQueueAddIdBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abQueueAddIdBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abQueueAddIdBtn.Location = new System.Drawing.Point(96, 44);
+            this._abQueueAddIdBtn.Name = "_abQueueAddIdBtn";
+            this._abQueueAddIdBtn.Size = new System.Drawing.Size(55, 23);
+            this._abQueueAddIdBtn.TabIndex = 3;
+            this._abQueueAddIdBtn.Text = "Add ID";
+            //
+            // _abQueuePlayerNameInput
+            //
+            this._abQueuePlayerNameInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._abQueuePlayerNameInput.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this._abQueuePlayerNameInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abQueuePlayerNameInput.Location = new System.Drawing.Point(165, 44);
+            this._abQueuePlayerNameInput.Name = "_abQueuePlayerNameInput";
+            this._abQueuePlayerNameInput.Size = new System.Drawing.Size(140, 23);
+            this._abQueuePlayerNameInput.TabIndex = 4;
+            //
+            // _abQueueLookupBtn
+            //
+            this._abQueueLookupBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abQueueLookupBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abQueueLookupBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abQueueLookupBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abQueueLookupBtn.Location = new System.Drawing.Point(309, 44);
+            this._abQueueLookupBtn.Name = "_abQueueLookupBtn";
+            this._abQueueLookupBtn.Size = new System.Drawing.Size(95, 23);
+            this._abQueueLookupBtn.TabIndex = 5;
+            this._abQueueLookupBtn.Text = "Lookup Player";
+            //
+            // _abQueueRemoveBtn
+            //
+            this._abQueueRemoveBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abQueueRemoveBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abQueueRemoveBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abQueueRemoveBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abQueueRemoveBtn.Location = new System.Drawing.Point(420, 44);
+            this._abQueueRemoveBtn.Name = "_abQueueRemoveBtn";
+            this._abQueueRemoveBtn.Size = new System.Drawing.Size(65, 23);
+            this._abQueueRemoveBtn.TabIndex = 6;
+            this._abQueueRemoveBtn.Text = "Remove";
+            //
+            // _abQueueClearBtn
+            //
+            this._abQueueClearBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abQueueClearBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abQueueClearBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abQueueClearBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abQueueClearBtn.Location = new System.Drawing.Point(489, 44);
+            this._abQueueClearBtn.Name = "_abQueueClearBtn";
+            this._abQueueClearBtn.Size = new System.Drawing.Size(55, 23);
+            this._abQueueClearBtn.TabIndex = 7;
+            this._abQueueClearBtn.Text = "Clear";
+            //
+            // _abQueueSaveBtn
+            //
+            this._abQueueSaveBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abQueueSaveBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abQueueSaveBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abQueueSaveBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abQueueSaveBtn.Location = new System.Drawing.Point(560, 44);
+            this._abQueueSaveBtn.Name = "_abQueueSaveBtn";
+            this._abQueueSaveBtn.Size = new System.Drawing.Size(65, 23);
+            this._abQueueSaveBtn.TabIndex = 8;
+            this._abQueueSaveBtn.Text = "Save List";
+            //
+            // _abQueueLoadBtn
+            //
+            this._abQueueLoadBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abQueueLoadBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abQueueLoadBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abQueueLoadBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abQueueLoadBtn.Location = new System.Drawing.Point(629, 44);
+            this._abQueueLoadBtn.Name = "_abQueueLoadBtn";
+            this._abQueueLoadBtn.Size = new System.Drawing.Size(65, 23);
+            this._abQueueLoadBtn.TabIndex = 9;
+            this._abQueueLoadBtn.Text = "Load List";
+            //
+            // _abQueueResetBtn
+            //
+            this._abQueueResetBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abQueueResetBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abQueueResetBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abQueueResetBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abQueueResetBtn.Location = new System.Drawing.Point(698, 44);
+            this._abQueueResetBtn.Name = "_abQueueResetBtn";
+            this._abQueueResetBtn.Size = new System.Drawing.Size(55, 23);
+            this._abQueueResetBtn.TabIndex = 10;
+            this._abQueueResetBtn.Text = "Reset";
+            //
+            // _abQueueAddSelectedVillageBtn
+            //
+            this._abQueueAddSelectedVillageBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abQueueAddSelectedVillageBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abQueueAddSelectedVillageBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abQueueAddSelectedVillageBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abQueueAddSelectedVillageBtn.Location = new System.Drawing.Point(12, 72);
+            this._abQueueAddSelectedVillageBtn.Name = "_abQueueAddSelectedVillageBtn";
+            this._abQueueAddSelectedVillageBtn.Size = new System.Drawing.Size(175, 23);
+            this._abQueueAddSelectedVillageBtn.TabIndex = 11;
+            this._abQueueAddSelectedVillageBtn.Text = "Add Selected Village to Queue";
+            //
+            // _abQueueAddSelectedPlayerBtn
+            //
+            this._abQueueAddSelectedPlayerBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abQueueAddSelectedPlayerBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abQueueAddSelectedPlayerBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abQueueAddSelectedPlayerBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abQueueAddSelectedPlayerBtn.Location = new System.Drawing.Point(195, 72);
+            this._abQueueAddSelectedPlayerBtn.Name = "_abQueueAddSelectedPlayerBtn";
+            this._abQueueAddSelectedPlayerBtn.Size = new System.Drawing.Size(195, 23);
+            this._abQueueAddSelectedPlayerBtn.TabIndex = 12;
+            this._abQueueAddSelectedPlayerBtn.Text = "Add Selected Player to Queue";
+            //
+            // _abQueueListBox
+            //
+            this._abQueueListBox.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(32)))), ((int)(((byte)(40)))));
+            this._abQueueListBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this._abQueueListBox.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._abQueueListBox.Font = new System.Drawing.Font("Consolas", 9.5F);
+            this._abQueueListBox.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abQueueListBox.ItemHeight = 18;
+            this._abQueueListBox.Location = new System.Drawing.Point(0, 104);
+            this._abQueueListBox.Name = "_abQueueListBox";
+            this._abQueueListBox.Size = new System.Drawing.Size(1134, 367);
+            this._abQueueListBox.TabIndex = 1;
             //
             // _abSettingsPanel
             //
@@ -3010,11 +3243,15 @@ namespace Kingdoms.Bot.UI
             this._builderPage.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this._abTargetInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._abStackDelayInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._abQueueVillageIdInput)).EndInit();
             this._abSettingsPanel.ResumeLayout(false);
             this._abSettingsPanel.PerformLayout();
             this._abPendingSettingsPanel.ResumeLayout(false);
+            this._abQueueSettingsPanel.ResumeLayout(false);
+            this._abQueueSettingsPanel.PerformLayout();
             this._bombSetupTab.ResumeLayout(false);
             this._bombPendingTab.ResumeLayout(false);
+            this._bombTargetQueueTab.ResumeLayout(false);
             this._bombPage.ResumeLayout(false);
             this._logPanel.ResumeLayout(false);
             this.ResumeLayout(false);
@@ -3071,6 +3308,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Label _rdStatusLabel;
         private System.Windows.Forms.Label _rdScanIntervalLabel;
         private System.Windows.Forms.NumericUpDown _rdScanIntervalInput;
+        private System.Windows.Forms.CheckBox _rdForceRefreshCheck;
         private System.Windows.Forms.Label _rdWebhookLabel;
         private System.Windows.Forms.TextBox _rdWebhookInput;
         private System.Windows.Forms.Label _rdInterdictLabel;
@@ -3186,6 +3424,22 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Button _abClearQueueBtn;
         private System.Windows.Forms.Panel _abPendingColHeader;
         private System.Windows.Forms.Panel _abPendingListPanel;
+        private System.Windows.Forms.TabPage _bombTargetQueueTab;
+        private System.Windows.Forms.Panel _abQueueSettingsPanel;
+        private System.Windows.Forms.CheckBox _abQueueEnabledCheck;
+        private System.Windows.Forms.NumericUpDown _abQueueVillageIdInput;
+        private System.Windows.Forms.Button _abQueueAddIdBtn;
+        private System.Windows.Forms.TextBox _abQueuePlayerNameInput;
+        private System.Windows.Forms.Button _abQueueLookupBtn;
+        private System.Windows.Forms.Button _abQueueRemoveBtn;
+        private System.Windows.Forms.Button _abQueueClearBtn;
+        private System.Windows.Forms.Button _abQueueSaveBtn;
+        private System.Windows.Forms.Button _abQueueLoadBtn;
+        private System.Windows.Forms.Button _abQueueResetBtn;
+        private System.Windows.Forms.Button _abQueueAddSelectedVillageBtn;
+        private System.Windows.Forms.Button _abQueueAddSelectedPlayerBtn;
+        private System.Windows.Forms.Label _abQueueStatusLabel;
+        private System.Windows.Forms.ListBox _abQueueListBox;
         private System.Windows.Forms.TabControl _trSubTabs;
         private System.Windows.Forms.TabPage _trMarketsTab;
         private System.Windows.Forms.TabPage _trRoutesTab;

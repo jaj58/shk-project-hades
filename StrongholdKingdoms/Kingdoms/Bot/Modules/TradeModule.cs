@@ -151,15 +151,17 @@ namespace Kingdoms.Bot.Modules
             VillageMarketTradeInfo info = settings.GetVillageMarketInfo(villageId);
             if (info.MarketTargets.Count == 0) return true;
 
-            // Check if at least one market has fresh cache
+            // Require ALL markets to have fresh cache before trading.
+            // This ensures FindBestMarket can compare all candidates and pick
+            // the best price, rather than trading with partial data.
             foreach (int marketId in info.MarketTargets)
             {
                 StockExchangeCache cache;
-                if (_stockExchangeCache.TryGetValue(marketId, out cache) &&
-                    (DateTime.Now - cache.LastUpdated).TotalMinutes < PriceCacheValidMinutes)
-                    return true;
+                if (!_stockExchangeCache.TryGetValue(marketId, out cache) ||
+                    (DateTime.Now - cache.LastUpdated).TotalMinutes >= PriceCacheValidMinutes)
+                    return false;
             }
-            return false;
+            return true;
         }
 
         private void RequestPrices(int villageId, VillageMarketTradeInfo marketInfo, TradeSettings settings)
@@ -397,23 +399,30 @@ namespace Kingdoms.Bot.Modules
             LogDebug(villageName + ": Processing (markets=" + hasMarkets + ", routes=" + hasRoutes +
                 ", playerRoutes=" + hasPlayerRoutes + ", merchants=" + map.m_numTradersAtHome + ")");
 
+            // Only attempt ONE trade type per tick per village.
+            // sendResources() and stockExchangeTrade() share a 45-second cooldown
+            // (inMarketSend/lastMarketSend), so the second call would always fail.
+            // Also, m_numTradersAtHome isn't updated until the server callback returns,
+            // so the second call would read stale merchant counts.
+            bool dispatched = false;
+
             if (settings.PrioritiseMarkets)
             {
-                if (hasMarkets)
-                    TryMarketTrade(map, villageId, villageName, marketInfo, settings);
-                if (hasRoutes)
-                    TryRouteSend(map, villageId, villageName, villageRoutes, settings);
+                if (hasMarkets && !dispatched)
+                    dispatched = TryMarketTrade(map, villageId, villageName, marketInfo, settings);
+                if (hasRoutes && !dispatched)
+                    dispatched = TryRouteSend(map, villageId, villageName, villageRoutes, settings);
             }
             else
             {
-                if (hasRoutes)
-                    TryRouteSend(map, villageId, villageName, villageRoutes, settings);
-                if (hasMarkets)
-                    TryMarketTrade(map, villageId, villageName, marketInfo, settings);
+                if (hasRoutes && !dispatched)
+                    dispatched = TryRouteSend(map, villageId, villageName, villageRoutes, settings);
+                if (hasMarkets && !dispatched)
+                    dispatched = TryMarketTrade(map, villageId, villageName, marketInfo, settings);
             }
 
             // Player routes always processed last (they're one-off deliveries)
-            if (hasPlayerRoutes)
+            if (hasPlayerRoutes && !dispatched)
                 TryPlayerRouteSend(map, villageId, villageName, playerRoutes, settings);
         }
 
@@ -589,6 +598,11 @@ namespace Kingdoms.Bot.Modules
             int bestStock = selling ? int.MaxValue : int.MinValue;
             double bestDistSq = double.MaxValue;
             bool foundCachedMarket = false;
+            int cachedCount = 0;
+            int uncachedCount = 0;
+            int priceFilteredCount = 0;
+
+            string resourceName = TradeModuleConstants.GetResourceName(resourceId);
 
             foreach (int marketId in villageInfo.MarketTargets)
             {
@@ -598,13 +612,31 @@ namespace Kingdoms.Bot.Modules
 
                 if (hasFreshCache)
                 {
+                    cachedCount++;
                     int stockLevel = cache.GetLevel(resourceId);
+
+                    // Calculate actual price for logging
+                    int price = 0;
+                    try
+                    {
+                        price = TradingCalcs.calcSellCost(GameEngine.Instance.LocalWorldData, stockLevel, resourceId);
+                    }
+                    catch { }
 
                     // Check price control
                     if (!CheckPrice(controlPrice, !selling, stockLevel, resourceId))
+                    {
+                        priceFilteredCount++;
+                        LogDebug("  Market " + GetVillageName(marketId) + ": stock=" + stockLevel +
+                            " price=" + price + " â€” SKIPPED (price control " +
+                            (selling ? "min=" : "max=") + controlPrice + ")");
                         continue;
+                    }
 
                     double distSq = GameEngine.Instance.World.getSquareDistance(sourceVillageId, marketId);
+
+                    LogDebug("  Market " + GetVillageName(marketId) + ": stock=" + stockLevel +
+                        " price=" + price + " dist=" + (int)Math.Sqrt(distSq));
 
                     if (selling)
                     {
@@ -631,16 +663,31 @@ namespace Kingdoms.Bot.Modules
                         }
                     }
                 }
-                else if (!foundCachedMarket)
+                else
                 {
-                    // Fallback: no cache, just pick nearest
-                    double distSq = GameEngine.Instance.World.getSquareDistance(sourceVillageId, marketId);
-                    if (distSq < bestDistSq)
+                    uncachedCount++;
+                    if (!foundCachedMarket)
                     {
-                        bestDistSq = distSq;
-                        bestMarket = marketId;
+                        // Fallback: no cache, just pick nearest
+                        double distSq = GameEngine.Instance.World.getSquareDistance(sourceVillageId, marketId);
+                        if (distSq < bestDistSq)
+                        {
+                            bestDistSq = distSq;
+                            bestMarket = marketId;
+                        }
                     }
                 }
+            }
+
+            if (bestMarket > 0)
+            {
+                string mode = selling ? "SELL" : "BUY";
+                string chosen = foundCachedMarket
+                    ? "stock=" + bestStock + " (cached " + cachedCount + "/" + villageInfo.MarketTargets.Count +
+                      ", uncached " + uncachedCount + ", filtered " + priceFilteredCount + ")"
+                    : "NEAREST FALLBACK (no cached markets had valid prices)";
+                LogDebug("  " + mode + " " + resourceName + " -> Best: " +
+                    GetVillageName(bestMarket) + " " + chosen);
             }
 
             return bestMarket;
@@ -755,15 +802,22 @@ namespace Kingdoms.Bot.Modules
                         if (numMerchants <= 0) continue;
 
                         int amount = numMerchants * carryLevel;
-                        senderMap.sendResources(recipientId, resourceId, amount);
-
-                        LogInfo(senderName + " [Route '" + route.Name + "'] -> " +
-                                GetVillageName(recipientId) +
-                                ": " + amount + " " +
-                                TradeModuleConstants.GetResourceName(resourceId) +
-                                " (" + numMerchants + " merchants). " +
-                                (tradersAtHome - numMerchants) + " left.");
-                        return true; // Only ONE send per village per tick
+                        bool sent = senderMap.sendResources(recipientId, resourceId, amount);
+                        if (sent)
+                        {
+                            LogInfo(senderName + " [Route '" + route.Name + "'] -> " +
+                                    GetVillageName(recipientId) +
+                                    ": " + amount + " " +
+                                    TradeModuleConstants.GetResourceName(resourceId) +
+                                    " (" + numMerchants + " merchants). " +
+                                    (tradersAtHome - numMerchants) + " left.");
+                            return true; // Only ONE send per village per tick
+                        }
+                        else
+                        {
+                            LogDebug(senderName + " [Route]: Cooldown active, skipping.");
+                            return false;
+                        }
                     }
                 }
             }
@@ -815,7 +869,7 @@ namespace Kingdoms.Bot.Modules
                     int carryLevel = GetCarryLevel(resourceId);
                     if (canSend < carryLevel) continue;
 
-                    // Override min merchants — send even with 1 merchant to ensure all goods are sent
+                    // Override min merchants ï¿½ send even with 1 merchant to ensure all goods are sent
                     int numMerchants = Math.Min((int)(canSend / carryLevel), tradersAtHome);
                     numMerchants = Math.Min(numMerchants, route.MaxMerchantsPerTransaction);
                     numMerchants = Math.Min(numMerchants, settings.MerchantsExchangeLimit - movingTraders);
@@ -832,23 +886,31 @@ namespace Kingdoms.Bot.Modules
                         amount = numMerchants * carryLevel;
                     }
 
-                    senderMap.sendResources(route.TargetVillageId, resourceId, amount);
-                    resEntry.AmountSent += amount;
-
-                    string resourceName = TradeModuleConstants.GetResourceName(resourceId);
-                    LogInfo(senderName + " [Player Route '" + route.Name + "'] -> " +
-                            GetVillageName(route.TargetVillageId) +
-                            ": " + amount + " " + resourceName +
-                            " (" + resEntry.AmountSent + "/" + resEntry.TotalAmount + " sent). " +
-                            (tradersAtHome - numMerchants) + " merchants left.");
-
-                    if (route.IsComplete())
+                    bool sent = senderMap.sendResources(route.TargetVillageId, resourceId, amount);
+                    if (sent)
                     {
-                        route.Enabled = false;
-                        LogInfo("[Player Route '" + route.Name + "'] All resources delivered! Route auto-disabled.");
-                    }
+                        resEntry.AmountSent += amount;
 
-                    return true; // One send per village per tick
+                        string resourceName = TradeModuleConstants.GetResourceName(resourceId);
+                        LogInfo(senderName + " [Player Route '" + route.Name + "'] -> " +
+                                GetVillageName(route.TargetVillageId) +
+                                ": " + amount + " " + resourceName +
+                                " (" + resEntry.AmountSent + "/" + resEntry.TotalAmount + " sent). " +
+                                (tradersAtHome - numMerchants) + " merchants left.");
+
+                        if (route.IsComplete())
+                        {
+                            route.Enabled = false;
+                            LogInfo("[Player Route '" + route.Name + "'] All resources delivered! Route auto-disabled.");
+                        }
+
+                        return true; // One send per village per tick
+                    }
+                    else
+                    {
+                        LogDebug(senderName + " [Player Route]: Cooldown active, skipping.");
+                        return false;
+                    }
                 }
             }
 
