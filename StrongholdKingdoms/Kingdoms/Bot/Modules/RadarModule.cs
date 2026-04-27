@@ -421,14 +421,31 @@ namespace Kingdoms.Bot.Modules
                         pending.NumCatapults + pending.NumCaptains;
                     int minSize = pending.Settings.MinArmySizeForInterdict;
 
-                    if (totalArmySize >= minSize)
-                    {
-                        TryAutoInterdict(army.targetVillageID, pending.Settings);
-                    }
-                    else
+                    if (totalArmySize < minSize)
                     {
                         LogInfo("Auto-interdict skipped for army " + pending.ArmyID +
                             ": army size " + totalArmySize + " below minimum threshold of " + minSize + ".");
+                    }
+                    else if (pending.Settings.MinAttacksForInterdict > 0 &&
+                             !HasEnoughAttacksInWindow(army.targetVillageID,
+                                 pending.Settings.MinAttacksForInterdict,
+                                 pending.Settings.MinAttacksWindowSeconds))
+                    {
+                        LogInfo("Auto-interdict skipped for village " + army.targetVillageID +
+                            ": fewer than " + pending.Settings.MinAttacksForInterdict +
+                            " attacks land within " + pending.Settings.MinAttacksWindowSeconds + "s window.");
+                    }
+                    else if (pending.Settings.MaxLandTimeHours > 0 &&
+                             !HasAttackWithinMaxLandTime(army.targetVillageID,
+                                 pending.Settings.MaxLandTimeHours))
+                    {
+                        LogInfo("Auto-interdict skipped for village " + army.targetVillageID +
+                            ": all attacks land beyond max land time of " +
+                            pending.Settings.MaxLandTimeHours + "h.");
+                    }
+                    else
+                    {
+                        TryAutoInterdict(army.targetVillageID, pending.Settings);
                     }
                 }
             }
@@ -613,6 +630,56 @@ namespace Kingdoms.Bot.Modules
             }
 
             return ACTION_MONK;
+        }
+
+        // =================================================================
+        // Auto-interdict filter helpers
+        // =================================================================
+
+        private bool HasEnoughAttacksInWindow(int targetVillageId, int minCount, int windowSeconds)
+        {
+            SparseArray armyArray = GameEngine.Instance.World.getArmyArray();
+            if (armyArray == null) return false;
+
+            List<DateTime> arrivals = new List<DateTime>();
+            foreach (WorldMap.LocalArmyData a in armyArray)
+            {
+                if (a.targetVillageID != targetVillageId) continue;
+                if (GameEngine.Instance.World.isUserVillage(a.homeVillageID)) continue;
+                // Skip pure scout armies
+                if (a.numScouts > 0 && a.numPeasants == 0 && a.numArchers == 0 &&
+                    a.numPikemen == 0 && a.numSwordsmen == 0 && a.numCatapults == 0) continue;
+                arrivals.Add(a.serverEndTime);
+            }
+
+            if (arrivals.Count < minCount) return false;
+
+            arrivals.Sort();
+            TimeSpan window = TimeSpan.FromSeconds(windowSeconds);
+            for (int i = 0; i <= arrivals.Count - minCount; i++)
+            {
+                if (arrivals[i + minCount - 1] - arrivals[i] <= window)
+                    return true;
+            }
+            return false;
+        }
+
+        private bool HasAttackWithinMaxLandTime(int targetVillageId, int maxHours)
+        {
+            SparseArray armyArray = GameEngine.Instance.World.getArmyArray();
+            if (armyArray == null) return false;
+
+            DateTime cutoff = VillageMap.getCurrentServerTime().AddHours(maxHours);
+            foreach (WorldMap.LocalArmyData a in armyArray)
+            {
+                if (a.targetVillageID != targetVillageId) continue;
+                if (GameEngine.Instance.World.isUserVillage(a.homeVillageID)) continue;
+                if (a.numScouts > 0 && a.numPeasants == 0 && a.numArchers == 0 &&
+                    a.numPikemen == 0 && a.numSwordsmen == 0 && a.numCatapults == 0) continue;
+                if (a.serverEndTime <= cutoff)
+                    return true;
+            }
+            return false;
         }
 
         // =================================================================

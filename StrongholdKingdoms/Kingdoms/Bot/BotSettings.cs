@@ -97,6 +97,9 @@ namespace Kingdoms.Bot
         public int AutoInterdictMonkCount = 1;
         public bool AutoRecruitMonks = false;
         public int MinArmySizeForInterdict = 100;
+        public int MinAttacksForInterdict = 0;
+        public int MinAttacksWindowSeconds = 20;
+        public int MaxLandTimeHours = 0;
         public bool ForceRefreshArmies = true;
         public List<RadarActionSettings> Actions = new List<RadarActionSettings>();
 

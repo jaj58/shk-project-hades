@@ -379,6 +379,9 @@ namespace Kingdoms.Bot.UI
             _rdInterdictMonkCountInput.ValueChanged += delegate { RdPushToSettings(); };
             _rdAutoRecruitMonksCheck.CheckedChanged += delegate { RdPushToSettings(); };
             _rdMinArmySizeInput.ValueChanged += delegate { RdPushToSettings(); };
+            _rdMinAttacksInput.ValueChanged += delegate { RdPushToSettings(); };
+            _rdMinAttacksWindowInput.ValueChanged += delegate { RdPushToSettings(); };
+            _rdMaxLandTimeInput.ValueChanged += delegate { RdPushToSettings(); };
             _rdForceRefreshCheck.CheckedChanged += delegate { RdPushToSettings(); };
 
             _rdRefreshTimer = new Timer();
@@ -400,6 +403,9 @@ namespace Kingdoms.Bot.UI
             s.AutoInterdictMonkCount = (int)_rdInterdictMonkCountInput.Value;
             s.AutoRecruitMonks = _rdAutoRecruitMonksCheck.Checked;
             s.MinArmySizeForInterdict = (int)_rdMinArmySizeInput.Value;
+            s.MinAttacksForInterdict = (int)_rdMinAttacksInput.Value;
+            s.MinAttacksWindowSeconds = (int)_rdMinAttacksWindowInput.Value;
+            s.MaxLandTimeHours = (int)_rdMaxLandTimeInput.Value;
             s.ForceRefreshArmies = _rdForceRefreshCheck.Checked;
 
             foreach (IBotModule m in BotEngine.Instance.Modules)
@@ -427,6 +433,12 @@ namespace Kingdoms.Bot.UI
                 _rdAutoRecruitMonksCheck.Checked = s.AutoRecruitMonks;
                 _rdMinArmySizeInput.Value = Math.Max(_rdMinArmySizeInput.Minimum,
                     Math.Min(_rdMinArmySizeInput.Maximum, s.MinArmySizeForInterdict));
+                _rdMinAttacksInput.Value = Math.Max(_rdMinAttacksInput.Minimum,
+                    Math.Min(_rdMinAttacksInput.Maximum, s.MinAttacksForInterdict));
+                _rdMinAttacksWindowInput.Value = Math.Max(_rdMinAttacksWindowInput.Minimum,
+                    Math.Min(_rdMinAttacksWindowInput.Maximum, s.MinAttacksWindowSeconds));
+                _rdMaxLandTimeInput.Value = Math.Max(_rdMaxLandTimeInput.Minimum,
+                    Math.Min(_rdMaxLandTimeInput.Maximum, s.MaxLandTimeHours));
                 _rdForceRefreshCheck.Checked = s.ForceRefreshArmies;
 
                 foreach (ActionRow row in _rdActionRows)
@@ -453,6 +465,9 @@ namespace Kingdoms.Bot.UI
             s.AutoInterdictMonkCount = (int)_rdInterdictMonkCountInput.Value;
             s.AutoRecruitMonks = _rdAutoRecruitMonksCheck.Checked;
             s.MinArmySizeForInterdict = (int)_rdMinArmySizeInput.Value;
+            s.MinAttacksForInterdict = (int)_rdMinAttacksInput.Value;
+            s.MinAttacksWindowSeconds = (int)_rdMinAttacksWindowInput.Value;
+            s.MaxLandTimeHours = (int)_rdMaxLandTimeInput.Value;
             s.ForceRefreshArmies = _rdForceRefreshCheck.Checked;
 
             foreach (ActionRow row in _rdActionRows)
