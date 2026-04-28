@@ -108,7 +108,7 @@ namespace Kingdoms.Bot.Modules
         private Dictionary<long, int> _incomingAttackTargets = new Dictionary<long, int>();
         private Dictionary<int, DateTime> _villagesSentInterdict = new Dictionary<int, DateTime>();
         private bool _firstScan = true;
-        private bool _refreshPending; // true = we fired async refresh last tick, next tick should scan
+        private bool _refreshPending;
 
         // Pending army detail lookups � keyed by armyID
         private Dictionary<long, PendingArmyLookup> _pendingLookups = new Dictionary<long, PendingArmyLookup>();
@@ -150,8 +150,6 @@ namespace Kingdoms.Bot.Modules
                     forceRefresh = Engine.Settings.Radar.ForceRefreshArmies;
                 }
                 if (secs < 3) secs = 3;
-                // When force-refreshing, we alternate between refresh and scan ticks,
-                // so halve the interval to keep the effective scan rate the same.
                 if (forceRefresh)
                     return TimeSpan.FromSeconds(Math.Max(2, secs / 2));
                 return TimeSpan.FromSeconds(secs);
@@ -181,36 +179,29 @@ namespace Kingdoms.Bot.Modules
             if (settings == null) return;
 
             // Two-phase approach when ForceRefreshArmies is enabled:
-            // Phase 1 (refresh tick): Fire retrieveArmies() + getActivePeople() async requests.
-            //   The game's processData() on the main thread will process the callbacks
-            //   between this tick and the next.
-            // Phase 2 (scan tick): Arrays are now populated with fresh data — do the actual scan.
-            // The interval is halved so the effective scan rate stays the same as configured.
+            // Phase 1: call forceFullTick() to signal the game's main loop to fire a
+            //   FullTick on its next frame. This goes through the game's own serialisation
+            //   path (lastFullTickCall guard) so there is never more than one army request
+            //   in-flight at a time — eliminating the race condition that caused armies to
+            //   disappear when getArmiesIfNewAttacks() was called directly.
+            // Phase 2 (next tick): the FullTick response has arrived; scan with fresh data.
             if (settings.ForceRefreshArmies && !_refreshPending)
             {
-                // Phase 1: fire incremental async refresh, skip scanning this tick.
-                // getArmiesIfNewAttacks() fetches only new/changed armies since the last
-                // download (using highestDownloadedArmy) — unlike retrieveArmies() which
-                // clears the whole array and causes armies to visually disappear/reappear.
-                // getActivePeople() already uses lastPersonTime for delta updates.
                 try
                 {
-                    GameEngine.Instance.World.getArmiesIfNewAttacks();
-                    GameEngine.Instance.World.getActivePeople();
+                    GameEngine.Instance.forceFullTick();
                 }
                 catch (Exception ex)
                 {
                     LogDebug("Force refresh failed: " + ex.Message);
                 }
                 _refreshPending = true;
-                // Still process pending lookups so detail callbacks don't time out
                 ProcessPendingLookups(settings);
                 return;
             }
 
             _refreshPending = false;
 
-            // Phase 2 (or normal tick if force refresh disabled): scan with fresh data
             ProcessPendingLookups(settings);
             ScanArmies(settings);
             ScanPeople(settings);

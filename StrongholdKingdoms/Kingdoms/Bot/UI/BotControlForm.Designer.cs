@@ -1167,9 +1167,9 @@ namespace Kingdoms.Bot.UI
             this._rdWebhookLabel.Size = new System.Drawing.Size(128, 15);
             this._rdWebhookLabel.TabIndex = 4;
             this._rdWebhookLabel.Text = "Discord Webhook URL:";
-            // 
+            //
             // _rdForceRefreshCheck
-            // 
+            //
             this._rdForceRefreshCheck.AutoSize = true;
             this._rdForceRefreshCheck.Checked = true;
             this._rdForceRefreshCheck.CheckState = System.Windows.Forms.CheckState.Checked;
@@ -1180,7 +1180,7 @@ namespace Kingdoms.Bot.UI
             this._rdForceRefreshCheck.Size = new System.Drawing.Size(187, 19);
             this._rdForceRefreshCheck.TabIndex = 30;
             this._rdForceRefreshCheck.Text = "Force refresh armies each scan";
-            // 
+            //
             // _rdScanIntervalInput
             // 
             this._rdScanIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
@@ -3484,7 +3484,6 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Label _rdStatusLabel;
         private System.Windows.Forms.Label _rdScanIntervalLabel;
         private System.Windows.Forms.NumericUpDown _rdScanIntervalInput;
-        private System.Windows.Forms.CheckBox _rdForceRefreshCheck;
         private System.Windows.Forms.Label _rdWebhookLabel;
         private System.Windows.Forms.TextBox _rdWebhookInput;
         private System.Windows.Forms.Label _rdInterdictLabel;
@@ -3499,6 +3498,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Label _rdMinAttacksWindowUnitLabel;
         private System.Windows.Forms.NumericUpDown _rdMaxLandTimeInput;
         private System.Windows.Forms.Label _rdMaxLandTimeLabel;
+        private System.Windows.Forms.CheckBox _rdForceRefreshCheck;
         private System.Windows.Forms.Label _rdHintLabel;
         private System.Windows.Forms.Button _rdTestDiscordBtn;
         private System.Windows.Forms.Panel _rdSeparator;
