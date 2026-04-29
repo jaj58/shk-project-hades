@@ -108,7 +108,10 @@ namespace Kingdoms.Bot.Modules
         private Dictionary<long, int> _incomingAttackTargets = new Dictionary<long, int>();
         private Dictionary<int, DateTime> _villagesSentInterdict = new Dictionary<int, DateTime>();
         private bool _firstScan = true;
-        private bool _refreshPending;
+        private Dictionary<long, WorldMap.LocalArmyData> _trackedArmies = new Dictionary<long, WorldMap.LocalArmyData>();
+        private Dictionary<long, int> _armyMissingTicks = new Dictionary<long, int>();
+        private Dictionary<long, WorldMap.LocalPerson> _trackedPeople = new Dictionary<long, WorldMap.LocalPerson>();
+        private Dictionary<long, int> _personMissingTicks = new Dictionary<long, int>();
 
         // Pending army detail lookups � keyed by armyID
         private Dictionary<long, PendingArmyLookup> _pendingLookups = new Dictionary<long, PendingArmyLookup>();
@@ -143,15 +146,9 @@ namespace Kingdoms.Bot.Modules
             get
             {
                 int secs = 10;
-                bool forceRefresh = false;
                 if (Engine != null && Engine.Settings != null)
-                {
                     secs = Engine.Settings.Radar.ScanIntervalSeconds;
-                    forceRefresh = Engine.Settings.Radar.ForceRefreshArmies;
-                }
                 if (secs < 3) secs = 3;
-                if (forceRefresh)
-                    return TimeSpan.FromSeconds(Math.Max(2, secs / 2));
                 return TimeSpan.FromSeconds(secs);
             }
         }
@@ -163,8 +160,11 @@ namespace Kingdoms.Bot.Modules
             _incomingAttackTargets.Clear();
             _villagesSentInterdict.Clear();
             _pendingLookups.Clear();
+            _trackedArmies.Clear();
+            _armyMissingTicks.Clear();
+            _trackedPeople.Clear();
+            _personMissingTicks.Clear();
             _firstScan = true;
-            _refreshPending = false;
         }
 
         protected override void OnTick()
@@ -178,29 +178,14 @@ namespace Kingdoms.Bot.Modules
 
             if (settings == null) return;
 
-            // Two-phase approach when ForceRefreshArmies is enabled:
-            // Phase 1: call forceFullTick() to signal the game's main loop to fire a
-            //   FullTick on its next frame. This goes through the game's own serialisation
-            //   path (lastFullTickCall guard) so there is never more than one army request
-            //   in-flight at a time — eliminating the race condition that caused armies to
-            //   disappear when getArmiesIfNewAttacks() was called directly.
-            // Phase 2 (next tick): the FullTick response has arrived; scan with fresh data.
-            if (settings.ForceRefreshArmies && !_refreshPending)
-            {
-                try
-                {
-                    GameEngine.Instance.forceFullTick();
-                }
-                catch (Exception ex)
-                {
-                    LogDebug("Force refresh failed: " + ex.Message);
-                }
-                _refreshPending = true;
-                ProcessPendingLookups(settings);
-                return;
-            }
+            SyncTrackedArmies();
+            SyncTrackedPeople();
 
-            _refreshPending = false;
+            if (settings.ForceRefreshArmies)
+            {
+                try { GameEngine.Instance.World.getArmiesIfNewAttacks(); }
+                catch (Exception ex) { LogDebug("Force refresh failed: " + ex.Message); }
+            }
 
             ProcessPendingLookups(settings);
             ScanArmies(settings);
@@ -214,15 +199,112 @@ namespace Kingdoms.Bot.Modules
             }
         }
 
+        private void SyncTrackedArmies()
+        {
+            SparseArray gameArray = GameEngine.Instance.World.getArmyArray();
+            if (gameArray == null) return;
+
+            foreach (WorldMap.LocalArmyData army in gameArray)
+                _trackedArmies[army.armyID] = army;
+
+            DateTime serverNow = VillageMap.getCurrentServerTime();
+            List<long> toRemove = new List<long>();
+
+            foreach (KeyValuePair<long, WorldMap.LocalArmyData> kvp in _trackedArmies)
+            {
+                WorldMap.LocalArmyData army = kvp.Value;
+
+                if (army.serverEndTime <= serverNow.AddSeconds(-30))
+                {
+                    toRemove.Add(army.armyID);
+                    continue;
+                }
+
+                if (gameArray[army.armyID] == null)
+                {
+                    int misses = _armyMissingTicks.ContainsKey(army.armyID)
+                        ? _armyMissingTicks[army.armyID] : 0;
+
+                    if (misses >= 5)
+                    {
+                        // Gone for 5+ consecutive ticks — treat as recalled or landed early.
+                        toRemove.Add(army.armyID);
+                    }
+                    else
+                    {
+                        _armyMissingTicks[army.armyID] = misses + 1;
+                        try
+                        {
+                            army.updatePosition();
+                            GameEngine.Instance.World.SetArmy(army);
+                        }
+                        catch { }
+                    }
+                }
+                else
+                {
+                    _armyMissingTicks.Remove(army.armyID);
+                }
+            }
+
+            foreach (long id in toRemove)
+                _trackedArmies.Remove(id);
+        }
+
+        private void SyncTrackedPeople()
+        {
+            SparseArray gameArray = GameEngine.Instance.World.getPeopleArray();
+            if (gameArray == null) return;
+
+            foreach (WorldMap.LocalPerson person in gameArray)
+                _trackedPeople[person.personID] = person;
+
+            DateTime serverNow = VillageMap.getCurrentServerTime();
+            List<long> toRemove = new List<long>();
+
+            foreach (KeyValuePair<long, WorldMap.LocalPerson> kvp in _trackedPeople)
+            {
+                WorldMap.LocalPerson person = kvp.Value;
+
+                if (person.serverEndTime <= serverNow.AddSeconds(-30))
+                {
+                    toRemove.Add(person.personID);
+                    continue;
+                }
+
+                if (gameArray[person.personID] == null && !person.dying)
+                {
+                    int misses = _personMissingTicks.ContainsKey(person.personID)
+                        ? _personMissingTicks[person.personID] : 0;
+
+                    if (misses >= 3)
+                    {
+                        toRemove.Add(person.personID);
+                    }
+                    else
+                    {
+                        _personMissingTicks[person.personID] = misses + 1;
+                        try { gameArray[person.personID] = (object) person; }
+                        catch { }
+                    }
+                }
+                else
+                {
+                    _personMissingTicks.Remove(person.personID);
+                }
+            }
+
+            foreach (long id in toRemove)
+                _trackedPeople.Remove(id);
+        }
+
         private void ScanArmies(RadarSettings settings)
         {
-            SparseArray armyArray = GameEngine.Instance.World.getArmyArray();
-            if (armyArray == null) return;
-
             Dictionary<long, bool> currentIds = new Dictionary<long, bool>();
 
-            foreach (WorldMap.LocalArmyData army in armyArray)
+            foreach (KeyValuePair<long, WorldMap.LocalArmyData> kvp in _trackedArmies)
             {
+                WorldMap.LocalArmyData army = kvp.Value;
                 currentIds[army.armyID] = true;
 
                 if (_knownArmyIds.ContainsKey(army.armyID))
@@ -474,14 +556,12 @@ namespace Kingdoms.Bot.Modules
 
         private void ScanPeople(RadarSettings settings)
         {
-            SparseArray peopleArray = GameEngine.Instance.World.getPeopleArray();
-            if (peopleArray == null) return;
-
             Dictionary<long, bool> currentIds = new Dictionary<long, bool>();
 
-            foreach (WorldMap.LocalPerson person in peopleArray)
+            foreach (KeyValuePair<long, WorldMap.LocalPerson> kvp in _trackedPeople)
             {
-                long personId = person.person.personID;
+                WorldMap.LocalPerson person = kvp.Value;
+                long personId = person.personID;
                 currentIds[personId] = true;
 
                 if (_knownPersonIds.ContainsKey(personId))
@@ -629,11 +709,8 @@ namespace Kingdoms.Bot.Modules
 
         private bool HasEnoughAttacksInWindow(int targetVillageId, int minCount, int windowSeconds)
         {
-            SparseArray armyArray = GameEngine.Instance.World.getArmyArray();
-            if (armyArray == null) return false;
-
             List<DateTime> arrivals = new List<DateTime>();
-            foreach (WorldMap.LocalArmyData a in armyArray)
+            foreach (WorldMap.LocalArmyData a in _trackedArmies.Values)
             {
                 if (a.targetVillageID != targetVillageId) continue;
                 if (GameEngine.Instance.World.isUserVillage(a.homeVillageID)) continue;
@@ -657,11 +734,8 @@ namespace Kingdoms.Bot.Modules
 
         private bool HasAttackWithinMaxLandTime(int targetVillageId, int maxHours)
         {
-            SparseArray armyArray = GameEngine.Instance.World.getArmyArray();
-            if (armyArray == null) return false;
-
             DateTime cutoff = VillageMap.getCurrentServerTime().AddHours(maxHours);
-            foreach (WorldMap.LocalArmyData a in armyArray)
+            foreach (WorldMap.LocalArmyData a in _trackedArmies.Values)
             {
                 if (a.targetVillageID != targetVillageId) continue;
                 if (GameEngine.Instance.World.isUserVillage(a.homeVillageID)) continue;
@@ -1012,6 +1086,10 @@ namespace Kingdoms.Bot.Modules
             _incomingAttackTargets.Clear();
             _villagesSentInterdict.Clear();
             _pendingLookups.Clear();
+            _trackedArmies.Clear();
+            _armyMissingTicks.Clear();
+            _trackedPeople.Clear();
+            _personMissingTicks.Clear();
         }
 
         private void NotifyCastleRepairModule(int villageId)
