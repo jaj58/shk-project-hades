@@ -187,6 +187,8 @@ namespace Kingdoms
 
     public CastleMap Castle => this.castle;
 
+    public CastleMap GetCastleByVillageID(int villageID) => (CastleMap)this.castles[villageID];
+
     public CastleMap CastleAttackerSetup => this.castle_AttackerSetup;
 
     public CastleMap CastleBattle => this.castle_Battle;

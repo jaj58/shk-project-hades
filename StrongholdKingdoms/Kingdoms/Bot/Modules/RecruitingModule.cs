@@ -88,14 +88,27 @@ namespace Kingdoms.Bot.Modules
         public static int GetCurrentCount(VillageMap village, string unitKey)
         {
             if (village == null) return 0;
+            // For the 6 army types use CalcTotalTroopsArray() which correctly mirrors
+            // calcTotalTroops(): it counts at-home troops, deployed armies
+            // (travelFromVillageID == homeVillageID == this village), reinforcements sent
+            // out from this village, and castle-placed troops via Castles[villageId].
+            // The old GetDeployedCount/GetCastleCount helpers were buggy: wrong army
+            // filter (homeVillageID only), missed the reinforcement array, and used
+            // GameEngine.Instance.Castle (current view) instead of Castles[villageId].
             switch (unitKey)
             {
-                case "Peasants": return village.m_numPeasants + village.LocallyMade_Peasants;
-                case "Archers": return village.m_numArchers + village.LocallyMade_Archers;
-                case "Pikemen": return village.m_numPikemen + village.LocallyMade_Pikemen;
-                case "Swordsmen": return village.m_numSwordsmen + village.LocallyMade_Swordsmen;
-                case "Catapults": return village.m_numCatapults + village.LocallyMade_Catapults;
-                case "Captains": return village.m_numCaptains + village.LocallyMade_Captains;
+                case "Peasants":
+                    return village.CalcTotalTroopsArray()[0] + village.LocallyMade_Peasants;
+                case "Archers":
+                    return village.CalcTotalTroopsArray()[1] + village.LocallyMade_Archers;
+                case "Pikemen":
+                    return village.CalcTotalTroopsArray()[2] + village.LocallyMade_Pikemen;
+                case "Swordsmen":
+                    return village.CalcTotalTroopsArray()[3] + village.LocallyMade_Swordsmen;
+                case "Catapults":
+                    return village.CalcTotalTroopsArray()[4] + village.LocallyMade_Catapults;
+                case "Captains":
+                    return village.CalcTotalTroopsArray()[5] + village.LocallyMade_Captains;
                 case "Scouts": return village.m_numScouts + village.LocallyMade_Scouts;
                 case "Monks": return village.calcTotalMonksAtHome() + village.LocallyMadeMonks;
                 case "Traders": return village.calcTotalTradersAtHome() + village.LocallyMade_Traders;
@@ -153,6 +166,39 @@ namespace Kingdoms.Bot.Modules
         private List<int> _villageQueue = new List<int>();
         private DateTime _lastVillageAction = DateTime.MinValue;
 
+        // Time-stamped ledger of troops we've queued, persisted across cycle boundaries.
+        // Each village is visited only once per cycle, so a per-cycle dict is useless —
+        // the protection must survive into the NEXT cycle.  Records expire after
+        // RecruitGuardSeconds; by then the server will have confirmed and m_numArchers
+        // will be correct, so we can trust GetCurrentCount again.
+        private struct RecruitRecord { public int Amount; public DateTime RecordedAt; }
+        private Dictionary<int, Dictionary<string, RecruitRecord>> _recentlyRecruited =
+            new Dictionary<int, Dictionary<string, RecruitRecord>>();
+        private const int RecruitGuardSeconds = 90;
+
+        private int GetRecentlyRecruited(int villageId, string unitKey)
+        {
+            Dictionary<string, RecruitRecord> byUnit;
+            if (!_recentlyRecruited.TryGetValue(villageId, out byUnit)) return 0;
+            RecruitRecord rec;
+            if (!byUnit.TryGetValue(unitKey, out rec)) return 0;
+            if ((DateTime.Now - rec.RecordedAt).TotalSeconds > RecruitGuardSeconds) return 0;
+            return rec.Amount;
+        }
+
+        private void RecordRecruitment(int villageId, string unitKey, int amount)
+        {
+            Dictionary<string, RecruitRecord> byUnit;
+            if (!_recentlyRecruited.TryGetValue(villageId, out byUnit))
+            {
+                byUnit = new Dictionary<string, RecruitRecord>();
+                _recentlyRecruited[villageId] = byUnit;
+            }
+            RecruitRecord existing;
+            int total = byUnit.TryGetValue(unitKey, out existing) ? existing.Amount + amount : amount;
+            byUnit[unitKey] = new RecruitRecord { Amount = total, RecordedAt = DateTime.Now };
+        }
+
         // Vassal state
         private enum VassalState { Idle, WaitingForArmyInfo, Done }
         private VassalState _vassalState = VassalState.Idle;
@@ -187,6 +233,7 @@ namespace Kingdoms.Bot.Modules
         {
             _currentVillageIndex = 0;
             _villageQueue.Clear();
+            _recentlyRecruited.Clear();
         }
 
         protected override void OnTick()
@@ -311,11 +358,15 @@ namespace Kingdoms.Bot.Modules
             // on the next poll, so cross-tick depletion is handled naturally.
             VillageMap.ArmouryLevels armoury = new VillageMap.ArmouryLevels();
             village.getArmouryLevels(armoury);
-            int bowsAvail      = (int)armoury.bowsLevel;
-            int pikesAvail     = (int)armoury.pikesLevel;
-            int swordsAvail    = (int)armoury.swordsLevel;
-            int armourAvail    = (int)armoury.armourLevel;
-            int catapultsAvail = (int)armoury.catapultsLevel;
+            // Subtract locally-queued troops from armoury levels — the server doesn't
+            // decrement weapon stock until it confirms recruitment, so without this
+            // correction bowsAvail etc. stay high across ticks and trigger over-recruiting.
+            // Mirrors the same adjustment in the game's own barracks UI (VillageMap ~8705).
+            int bowsAvail      = Math.Max((int)armoury.bowsLevel      - village.LocallyMade_Archers,                                        0);
+            int pikesAvail     = Math.Max((int)armoury.pikesLevel     - village.LocallyMade_Pikemen,                                        0);
+            int swordsAvail    = Math.Max((int)armoury.swordsLevel    - village.LocallyMade_Swordsmen,                                      0);
+            int armourAvail    = Math.Max((int)armoury.armourLevel    - village.LocallyMade_Pikemen - village.LocallyMade_Swordsmen,         0);
+            int catapultsAvail = Math.Max((int)armoury.catapultsLevel - village.LocallyMade_Catapults,                                      0);
 
             List<UnitRecruitEntry> sorted = new List<UnitRecruitEntry>(villageSetting.Units);
             sorted.Sort(delegate(UnitRecruitEntry a, UnitRecruitEntry b)
@@ -328,7 +379,10 @@ namespace Kingdoms.Bot.Modules
                 if (entry.TargetCount <= 0) continue;
 
                 int current = GetCurrentCount(village, entry.UnitKey);
-                int needed  = entry.TargetCount - current;
+                // Add troops already queued this cycle in case m_numArchers was overwritten
+                // by a stale importResourcesAndStats call after LocallyMade_* was zeroed.
+                int guardQueued = GetRecentlyRecruited(villageId, entry.UnitKey);
+                int needed  = entry.TargetCount - current - guardQueued;
                 if (needed <= 0) continue;
 
                 // Monks/Traders/Scouts are people/special types: no research gate, no gold
@@ -413,8 +467,9 @@ namespace Kingdoms.Bot.Modules
                     try
                     {
                         village.makeTroops(GetTroopTypeId(entry.UnitKey), canRecruit, true);
+                        RecordRecruitment(villageId, entry.UnitKey, canRecruit);
                         LogInfo("Village " + villageId + ": recruiting " + canRecruit + " " + entry.UnitKey +
-                                " (have " + current + "/" + entry.TargetCount + ")");
+                                " (have " + current + "/" + entry.TargetCount + ", guard=" + guardQueued + ")");
                     }
                     catch (Exception ex)
                     {
@@ -440,21 +495,24 @@ namespace Kingdoms.Bot.Modules
                         {
                             int monkAmount = Math.Min(canRecruit, 4);
                             village.makePeople(1000 + monkAmount);
+                            RecordRecruitment(villageId, entry.UnitKey, monkAmount);
                             LogInfo("Village " + villageId + ": recruiting " + monkAmount + " " + entry.UnitKey +
-                                    " (have " + current + "/" + entry.TargetCount + ")");
+                                    " (have " + current + "/" + entry.TargetCount + ", guard=" + guardQueued + ")");
                         }
                         else if (entry.UnitKey == "Traders")
                         {
                             int traderAmount = Math.Min(canRecruit, 4);
                             village.makeTroops(-5, traderAmount, true);
+                            RecordRecruitment(villageId, entry.UnitKey, traderAmount);
                             LogInfo("Village " + villageId + ": recruiting " + traderAmount + " " + entry.UnitKey +
-                                    " (have " + current + "/" + entry.TargetCount + ")");
+                                    " (have " + current + "/" + entry.TargetCount + ", guard=" + guardQueued + ")");
                         }
                         else
                         {
                             village.makeTroops(GetTroopTypeId(entry.UnitKey), canRecruit, true);
+                            RecordRecruitment(villageId, entry.UnitKey, canRecruit);
                             LogInfo("Village " + villageId + ": recruiting " + canRecruit + " " + entry.UnitKey +
-                                    " (have " + current + "/" + entry.TargetCount + ")");
+                                    " (have " + current + "/" + entry.TargetCount + ", guard=" + guardQueued + ")");
                         }
                     }
                     catch (Exception ex)
@@ -947,6 +1005,7 @@ namespace Kingdoms.Bot.Modules
         {
             _villageQueue.Clear();
             _currentVillageIndex = 0;
+            _recentlyRecruited.Clear();
             _vassalQueue.Clear();
             _currentVassalIndex = 0;
             _vassalState = VassalState.Idle;

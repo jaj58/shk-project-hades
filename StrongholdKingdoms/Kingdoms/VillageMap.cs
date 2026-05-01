@@ -9273,6 +9273,62 @@ namespace Kingdoms
       return num;
     }
 
+    public int[] CalcTotalTroopsArray()
+    {
+      // For armies we use homeVillageID-only (broader than the game's dual filter) so that
+      // troops returning from an attack are included. Returning armies have homeVillageID=this
+      // but travelFromVillageID=target, so the dual filter misses them and m_numArchers hasn't
+      // been updated yet — they'd be invisible and trigger false deficits.
+      // Captains use the game's own countYourArmyCaptains (travelFromVillageID filter).
+      int[] result = new int[6]
+      {
+        this.m_numPeasants,
+        this.m_numArchers,
+        this.m_numPikemen,
+        this.m_numSwordsmen,
+        this.m_numCatapults,
+        this.m_numCaptains + GameEngine.Instance.World.countYourArmyCaptains(this.VillageID)
+      };
+      SparseArray armies = GameEngine.Instance.World.getArmyArray();
+      if (armies != null)
+      {
+        foreach (WorldMap.LocalArmyData army in armies)
+        {
+          if (army.homeVillageID != this.VillageID || army.dead) continue;
+          result[0] += army.numPeasants;
+          result[1] += army.numArchers;
+          result[2] += army.numPikemen;
+          result[3] += army.numSwordsmen;
+          result[4] += army.numCatapults;
+        }
+      }
+      SparseArray reinforcements = GameEngine.Instance.World.getReinforcementsArray();
+      if (reinforcements != null)
+      {
+        foreach (WorldMap.LocalArmyData reinf in reinforcements)
+        {
+          if (reinf.homeVillageID != this.VillageID) continue;
+          result[0] += reinf.numPeasants;
+          result[1] += reinf.numArchers;
+          result[2] += reinf.numPikemen;
+          result[3] += reinf.numSwordsmen;
+          result[4] += reinf.numCatapults;
+        }
+      }
+      CastleMap castle = GameEngine.Instance.GetCastleByVillageID(this.VillageID);
+      if (castle != null)
+      {
+        int cp = 0, ca = 0, cpk = 0, cs = 0, ccap = 0;
+        castle.countOwnPlacedTroopTypes(ref cp, ref ca, ref cpk, ref cs, ref ccap);
+        result[0] += cp;
+        result[1] += ca;
+        result[2] += cpk;
+        result[3] += cs;
+        result[5] += ccap;
+      }
+      return result;
+    }
+
     public int calcTotalScouts()
     {
       return this.m_numScouts + GameEngine.Instance.World.countYourArmyScouts(this.VillageID);
