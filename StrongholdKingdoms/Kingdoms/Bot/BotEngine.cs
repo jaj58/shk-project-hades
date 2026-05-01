@@ -42,6 +42,8 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.CardExpiryModule());
             RegisterModule(new Modules.VillageBuilderModule());
             RegisterModule(new Modules.AutoBombModule());
+            RegisterModule(new Modules.PopularityModule());
+            RegisterModule(new Modules.FreeCardCollectorModule());
 
             foreach (IBotModule module in _modules)
             {
@@ -84,11 +86,13 @@ namespace Kingdoms.Bot
                 else if (module is Modules.TradeModule)
                     module.Enabled = _settings.Trade.Enabled;
                 else if (module is Modules.CardExpiryModule)
-                    module.Enabled = true; // Always enabled — monitors cards for other modules
+                    module.Enabled = true; // Always enabled ï¿½ monitors cards for other modules
                 else if (module is Modules.VillageBuilderModule)
                     module.Enabled = _settings.VillageBuilder.Enabled;
                 else if (module is Modules.AutoBombModule)
                     module.Enabled = _settings.AutoBomb.Enabled;
+                else if (module is Modules.PopularityModule)
+                    module.Enabled = _settings.Popularity.Enabled;
             }
         }
 
@@ -114,6 +118,8 @@ namespace Kingdoms.Bot
                     _settings.VillageBuilder.Enabled = module.Enabled;
                 else if (module is Modules.AutoBombModule)
                     _settings.AutoBomb.Enabled = module.Enabled;
+                else if (module is Modules.PopularityModule)
+                    _settings.Popularity.Enabled = module.Enabled;
             }
 
             _settings.Save();

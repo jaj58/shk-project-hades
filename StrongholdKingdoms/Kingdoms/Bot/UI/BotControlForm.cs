@@ -61,6 +61,12 @@ namespace Kingdoms.Bot.UI
         private List<PendingBombRow> _abPendingRows = new List<PendingBombRow>();
         private Timer _abRefreshTimer;
 
+        // Misc tab — no runtime state needed (settings only)
+
+        // Popularity tab runtime state
+        private Timer _ppRefreshTimer;
+        private List<PopularityVillageRow> _ppVillageRows = new List<PopularityVillageRow>();
+
         private int _trSelectedRouteIndex = -1;
 
         // Vassals tab runtime state
@@ -103,6 +109,8 @@ namespace Kingdoms.Bot.UI
                 WireUpBuilderTab();
                 WireUpAutoBombTab();
                 WireUpTargetQueueTab();
+                WireUpMiscTab();
+                WireUpPopularityTab();
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -116,6 +124,8 @@ namespace Kingdoms.Bot.UI
                 TrLoadFromSettings();
                 BldLoadFromSettings();
                 AbLoadFromSettings();
+                MiscLoadFromSettings();
+                PpLoadFromSettings();
             }
         }
 
@@ -3298,6 +3308,170 @@ namespace Kingdoms.Bot.UI
             }
         }
 
+        // =====================================================================
+        // Misc tab
+        // =====================================================================
+
+        private void WireUpMiscTab()
+        {
+            _miscCollectFreeCardsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
+        }
+
+        private void MiscLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+            MiscSettings s = BotEngine.Instance.Settings.Misc;
+            _miscCollectFreeCardsCheck.Checked = s.CollectFreeCards;
+        }
+
+        private void MiscWriteToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+            MiscSettings s = BotEngine.Instance.Settings.Misc;
+            s.CollectFreeCards = _miscCollectFreeCardsCheck.Checked;
+        }
+
+        // =====================================================================
+        // Popularity tab
+        // =====================================================================
+
+        private void WireUpPopularityTab()
+        {
+            // Wire events to Designer-defined controls
+            _ppEnabledCheck.CheckedChanged += delegate { PpWriteToSettings(); };
+            _ppIntervalInput.ValueChanged += delegate { PpWriteToSettings(); };
+            _ppDelayInput.ValueChanged += delegate { PpWriteToSettings(); };
+            _ppRefreshBtn.Click += delegate { PpPopulateVillageList(); };
+            _ppRunNowBtn.Click += delegate { PpRunNow(); };
+
+            // Add column header labels dynamically
+            string[] colNames = { "Village", "Mode" };
+            int[] colXs = { 8, 220 };
+            for (int i = 0; i < colNames.Length; i++)
+            {
+                Label cl = new Label();
+                cl.Text = colNames[i];
+                cl.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+                cl.ForeColor = TextSec;
+                cl.AutoSize = true;
+                cl.Location = new Point(colXs[i], 4);
+                _ppColHeader.Controls.Add(cl);
+            }
+
+            _ppRefreshTimer = new Timer();
+            _ppRefreshTimer.Interval = 2000;
+            _ppRefreshTimer.Tick += delegate { PpUpdateStatusDisplay(); };
+            _ppRefreshTimer.Start();
+        }
+
+        private void PpLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            PopularitySettings s = BotEngine.Instance.Settings.Popularity;
+            _ppEnabledCheck.Checked = s.Enabled;
+            _ppIntervalInput.Value = Math.Max(_ppIntervalInput.Minimum,
+                Math.Min(_ppIntervalInput.Maximum, s.CycleIntervalSeconds));
+            _ppDelayInput.Value = Math.Max(_ppDelayInput.Minimum,
+                Math.Min(_ppDelayInput.Maximum, s.DelayBetweenVillagesMs));
+
+            PpPopulateVillageList();
+        }
+
+        private void PpWriteToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            PopularitySettings s = BotEngine.Instance.Settings.Popularity;
+            s.Enabled = _ppEnabledCheck.Checked;
+            s.CycleIntervalSeconds = (int)_ppIntervalInput.Value;
+            s.DelayBetweenVillagesMs = (int)_ppDelayInput.Value;
+
+            foreach (IBotModule module in BotEngine.Instance.Modules)
+            {
+                if (module is Modules.PopularityModule)
+                    module.Enabled = s.Enabled;
+            }
+
+            PpUpdateStatusDisplay();
+        }
+
+        private void PpPopulateVillageList()
+        {
+            _ppVillageListPanel.SuspendLayout();
+            _ppVillageListPanel.Controls.Clear();
+            _ppVillageRows.Clear();
+
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+            {
+                _ppVillageListPanel.ResumeLayout();
+                return;
+            }
+
+            List<WorldMap.UserVillageData> villages = GameEngine.Instance.World.getUserVillageList();
+            if (villages == null)
+            {
+                _ppVillageListPanel.ResumeLayout();
+                return;
+            }
+
+            PopularitySettings settings = (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+                ? BotEngine.Instance.Settings.Popularity
+                : null;
+
+            int y = 2;
+            foreach (WorldMap.UserVillageData uvd in villages)
+            {
+                VillagePopularitySettings vs = settings != null
+                    ? settings.GetVillageSettings(uvd.villageID)
+                    : new VillagePopularitySettings { VillageId = uvd.villageID };
+
+                PopularityVillageRow row = new PopularityVillageRow(uvd, vs);
+                row.Location = new Point(0, y);
+                row.Width = _ppVillageListPanel.ClientSize.Width;
+                row.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
+                row.ModeChanged += PpOnVillageModeChanged;
+                _ppVillageListPanel.Controls.Add(row);
+                _ppVillageRows.Add(row);
+                y += row.Height + 1;
+            }
+
+            _ppVillageListPanel.ResumeLayout();
+        }
+
+        private void PpOnVillageModeChanged(int villageId, PopularityMode mode)
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            PopularitySettings s = BotEngine.Instance.Settings.Popularity;
+            VillagePopularitySettings vs = s.GetVillageSettings(villageId);
+            vs.Mode = mode;
+        }
+
+        private void PpRunNow()
+        {
+            if (BotEngine.Instance == null) return;
+            foreach (IBotModule module in BotEngine.Instance.Modules)
+            {
+                Modules.PopularityModule pm = module as Modules.PopularityModule;
+                if (pm != null)
+                {
+                    pm.RunNow();
+                    break;
+                }
+            }
+        }
+
+        private void PpUpdateStatusDisplay()
+        {
+            bool enabled = _ppEnabledCheck.Checked;
+            _ppStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
+            _ppStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.UserClosing)
@@ -3308,6 +3482,48 @@ namespace Kingdoms.Bot.UI
             }
             BotLogger.OnLogAdded -= OnLogEntryAdded;
             base.OnFormClosing(e);
+        }
+    }
+
+    internal class PopularityVillageRow : Panel
+    {
+        public event Action<int, PopularityMode> ModeChanged;
+        private readonly int _villageId;
+
+        public PopularityVillageRow(WorldMap.UserVillageData uvd, VillagePopularitySettings vs)
+        {
+            _villageId = uvd.villageID;
+            Height = 28;
+            BackColor = Color.FromArgb(30, 30, 42);
+
+            Label nameLabel = new Label();
+            string vname = "";
+            try { vname = GameEngine.Instance.World.getVillageName(uvd.villageID); } catch { }
+            nameLabel.Text = (string.IsNullOrEmpty(vname) ? "Village" : vname) + " (" + uvd.villageID + ")";
+            nameLabel.ForeColor = Color.FromArgb(230, 230, 240);
+            nameLabel.AutoSize = false;
+            nameLabel.Width = 210;
+            nameLabel.Location = new Point(8, 6);
+            Controls.Add(nameLabel);
+
+            ComboBox modeCombo = new ComboBox();
+            modeCombo.DropDownStyle = ComboBoxStyle.DropDownList;
+            modeCombo.Items.Add("Disabled");
+            modeCombo.Items.Add("Max Popularity");
+            modeCombo.Items.Add("Max Gold");
+            modeCombo.Items.Add("Auto");
+            modeCombo.SelectedIndex = (int)vs.Mode;
+            modeCombo.Width = 130;
+            modeCombo.Location = new Point(220, 4);
+            modeCombo.BackColor = Color.FromArgb(40, 40, 55);
+            modeCombo.ForeColor = Color.FromArgb(230, 230, 240);
+            ComboBox capturedCombo = modeCombo;
+            capturedCombo.SelectedIndexChanged += delegate
+            {
+                if (ModeChanged != null)
+                    ModeChanged(_villageId, (PopularityMode)capturedCombo.SelectedIndex);
+            };
+            Controls.Add(modeCombo);
         }
     }
 }

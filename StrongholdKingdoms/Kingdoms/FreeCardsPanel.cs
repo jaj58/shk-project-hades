@@ -105,6 +105,83 @@ namespace Kingdoms
       base.Dispose(disposing);
     }
 
+    // Returns true if a free card is available to collect right now.
+    public static bool IsFreeCardAvailable()
+    {
+      try
+      {
+        if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+          return false;
+        FreeCardsData info = GameEngine.Instance.World.FreeCardInfo;
+        return info.timeUntilNextFreeCard().TotalSeconds <= 0.0
+            && info.VeteranStages[0]
+            && info.CurrentVeteranLevel > 0;
+      }
+      catch { return false; }
+    }
+
+    // Returns time until the next free card becomes available (TimeSpan.Zero if already available).
+    public static TimeSpan TimeUntilNextFreeCard()
+    {
+      try
+      {
+        if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+          return TimeSpan.MaxValue;
+        TimeSpan ts = GameEngine.Instance.World.FreeCardInfo.timeUntilNextFreeCard();
+        return ts.TotalSeconds <= 0 ? TimeSpan.Zero : ts;
+      }
+      catch { return TimeSpan.MaxValue; }
+    }
+
+    // Collects the free card directly (no UI panel required). Safe to call from the bot.
+    public static bool BotCollectFreeCard()
+    {
+      if (inRevealClick)
+      {
+        if ((DateTime.Now - lastRevealClick).TotalSeconds < 30.0)
+          return false;
+        inRevealClick = false;
+      }
+
+      try
+      {
+        if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+          return false;
+        FreeCardsData info = GameEngine.Instance.World.FreeCardInfo;
+        if (info.timeUntilNextFreeCard().TotalSeconds > 0.0 || !info.VeteranStages[0] || info.CurrentVeteranLevel <= 0)
+          return false;
+      }
+      catch { return false; }
+
+      System.Windows.Forms.Control callbackControl = null;
+      try { callbackControl = InterfaceMgr.Instance; } catch { }
+      if (callbackControl == null) return false;
+
+      inRevealClick = true;
+      lastRevealClick = DateTime.Now;
+      _lastInstance = null;
+
+      try
+      {
+        XmlRpcCardsProvider.CreateForEndpoint(
+          URLs.ProfileProtocol, URLs.ProfileServerAddressCards,
+          URLs.ProfileServerPort, URLs.ProfileCardPath)
+          .getFreeCard(
+            (ICardsRequest)new XmlRpcCardsRequest(RemoteServices.Instance.UserGuid.ToString().Replace("-", ""))
+            {
+              SessionGUID = RemoteServices.Instance.SessionGuid.ToString().Replace("-", "")
+            },
+            new CardsEndResponseDelegate(revealCardCallback),
+            callbackControl);
+        return true;
+      }
+      catch
+      {
+        inRevealClick = false;
+        return false;
+      }
+    }
+
     private void InitializeComponent()
     {
       this.components = (IContainer) new System.ComponentModel.Container();

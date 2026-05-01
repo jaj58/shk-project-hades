@@ -4462,6 +4462,27 @@ namespace Kingdoms
       return (woodNeeded <= 0 || (double) woodNeeded <= levels.woodLevel) && (stoneNeeded <= 0 || (double) stoneNeeded <= levels.stoneLevel) && (goldNeeded <= 0 || (double) goldNeeded <= num) && (flagsNeeded <= 0 || flagsNeeded <= this.m_numParishFlags);
     }
 
+    // Bot-safe placement validation — no sprite or UI state modified.
+    // Returns 0 if placement is valid, or an error code:
+    //   1 = terrain/overlap issue, 2 = building count limit exceeded.
+    // Affordability is checked separately via canAffordBuilding().
+    public int BotCheckPlacementTile(int buildingType, Point mapTile)
+    {
+      if (this.layout == null) return 1;
+      if (mapTile.X < 0 || mapTile.X >= this.layout.gridWidth ||
+          mapTile.Y < 0 || mapTile.Y >= this.layout.gridHeight)
+        return 1;
+
+      int[] buildingLayout = VillageBuildingsData.getBuildingLayout(VillageMap.s_villageBuildingData[buildingType].size);
+      if (VillageLayoutNew.checkBuildingAgainstLandscape(this.layout.mapData, buildingLayout, mapTile, buildingType, this.layout.gridWidth, this.layout.gridHeight) != ErrorCodes.ErrorCode.OK)
+        return 1;
+      if (VillageLayoutNew.checkBuildingAgainstOtherBuildings(this.layout.mapData, buildingLayout, mapTile, buildingType) != ErrorCodes.ErrorCode.OK)
+        return 1;
+      if (!this.genericBuildingValidation(mapTile, buildingType))
+        return 2;
+      return 0;
+    }
+
     public bool movePlacementBuildingToScreenPos(Point mousePos)
     {
       return this.movePlacementBuildingToTile(this.Camera.WorldSpaceToMapTile(this.Camera.ScreenToWorldSpace(mousePos)));
@@ -8234,6 +8255,44 @@ namespace Kingdoms
           popularity += (double) popEvent.eventEffect;
       }
       return popularity;
+    }
+
+    // Returns the highest rations level (3-6) the village can sustain from food production.
+    // Defaults to 3 (normal) if production can't cover any higher level.
+    public int GetAffordableRationsLevel()
+    {
+      // FoodRationsLevels: 0=0, 1=0.25, 2=0.5, 3=1.0, 4=2.0, 5=3.0, 6=4.0 (multipliers)
+      Decimal[] foodRationsLevels = new Decimal[] { 0M, 0.25M, 0.5M, 1M, 2M, 3M, 4M };
+      Decimal productionPerDay = (Decimal)this.getFoodProductionPerDay();
+      Decimal baseConsumption = (Decimal)this.m_totalPeople / ((Decimal)GameEngine.Instance.LocalWorldData.foodConsumptionRate / 24M);
+      int result = 3;
+      for (int i = 6; i >= 3; --i)
+      {
+        if (baseConsumption * foodRationsLevels[i] < productionPerDay)
+        {
+          result = i;
+          break;
+        }
+      }
+      return result;
+    }
+
+    // Returns the highest ale rations level (0-4) the village can sustain from ale production.
+    // Defaults to 0 (no ale) if production can't cover any positive level.
+    public int GetAffordableAleRationsLevel()
+    {
+      Decimal productionPerDay = (Decimal)this.getAleProductionPerDay();
+      Decimal baseConsumption = (Decimal)this.m_totalPeople / ((Decimal)GameEngine.Instance.LocalWorldData.aleConsumptionRate / 24M);
+      int result = 0;
+      for (int i = 4; i >= 1; --i)
+      {
+        if (baseConsumption * (Decimal)i < productionPerDay)
+        {
+          result = i;
+          break;
+        }
+      }
+      return result;
     }
 
     public int getHonourMultiplier()

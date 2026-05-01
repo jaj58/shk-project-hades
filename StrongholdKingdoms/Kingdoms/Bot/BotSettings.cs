@@ -18,6 +18,8 @@ namespace Kingdoms.Bot
         public TradeSettings Trade = new TradeSettings();
         public VillageBuilderSettings VillageBuilder = new VillageBuilderSettings();
         public AutoBombSettings AutoBomb = new AutoBombSettings();
+        public PopularitySettings Popularity = new PopularitySettings();
+        public MiscSettings Misc = new MiscSettings();
 
         private static string GetSettingsFilePath()
         {
@@ -688,5 +690,47 @@ namespace Kingdoms.Bot
                 default: return "Attack " + attackType;
             }
         }
+    }
+
+    public enum PopularityMode
+    {
+        Disabled = 0,
+        MaxPopularity = 1,
+        MaxGold = 2,
+        Auto = 3
+    }
+
+    [Serializable]
+    public class PopularitySettings
+    {
+        public bool Enabled = false;
+        public int CycleIntervalSeconds = 120;
+        public int DelayBetweenVillagesMs = 2000;
+        public List<VillagePopularitySettings> Villages = new List<VillagePopularitySettings>();
+
+        public VillagePopularitySettings GetVillageSettings(int villageId)
+        {
+            foreach (VillagePopularitySettings v in Villages)
+            {
+                if (v.VillageId == villageId) return v;
+            }
+            VillagePopularitySettings newV = new VillagePopularitySettings();
+            newV.VillageId = villageId;
+            Villages.Add(newV);
+            return newV;
+        }
+    }
+
+    [Serializable]
+    public class VillagePopularitySettings
+    {
+        public int VillageId;
+        public PopularityMode Mode = PopularityMode.Disabled;
+    }
+
+    [Serializable]
+    public class MiscSettings
+    {
+        public bool CollectFreeCards = false;
     }
 }

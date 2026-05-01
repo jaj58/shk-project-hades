@@ -23,6 +23,11 @@ namespace Kingdoms.Bot.UI
                     _rcRefreshTimer.Stop();
                     _rcRefreshTimer.Dispose();
                 }
+                if (_ppRefreshTimer != null)
+                {
+                    _ppRefreshTimer.Stop();
+                    _ppRefreshTimer.Dispose();
+                }
                 if (components != null)
                     components.Dispose();
             }
@@ -247,6 +252,22 @@ namespace Kingdoms.Bot.UI
             this._logBox = new System.Windows.Forms.RichTextBox();
             this._logHeader = new System.Windows.Forms.Label();
             this._trSettingsTab = new System.Windows.Forms.TabPage();
+            this._miscPage = new System.Windows.Forms.TabPage();
+            this._miscSettingsPanel = new System.Windows.Forms.Panel();
+            this._miscCollectFreeCardsCheck = new System.Windows.Forms.CheckBox();
+            this._popularityPage = new System.Windows.Forms.TabPage();
+            this._ppVillageListPanel = new System.Windows.Forms.Panel();
+            this._ppColHeader = new System.Windows.Forms.Panel();
+            this._ppSeparator = new System.Windows.Forms.Panel();
+            this._ppSettingsPanel = new System.Windows.Forms.Panel();
+            this._ppEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._ppStatusLabel = new System.Windows.Forms.Label();
+            this._ppIntervalLabel = new System.Windows.Forms.Label();
+            this._ppIntervalInput = new System.Windows.Forms.NumericUpDown();
+            this._ppDelayLabel = new System.Windows.Forms.Label();
+            this._ppDelayInput = new System.Windows.Forms.NumericUpDown();
+            this._ppRefreshBtn = new System.Windows.Forms.Button();
+            this._ppRunNowBtn = new System.Windows.Forms.Button();
             this._footerPanel.SuspendLayout();
             this._headerPanel.SuspendLayout();
             this._mainSplit.Panel1.SuspendLayout();
@@ -312,6 +333,12 @@ namespace Kingdoms.Bot.UI
             this._bombTargetQueueTab.SuspendLayout();
             this._abQueueSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._abQueueVillageIdInput)).BeginInit();
+            this._miscPage.SuspendLayout();
+            this._miscSettingsPanel.SuspendLayout();
+            this._popularityPage.SuspendLayout();
+            this._ppSettingsPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._ppDelayInput)).BeginInit();
             this._logPanel.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -489,6 +516,8 @@ namespace Kingdoms.Bot.UI
             this._tabControl.Controls.Add(this._tradePage);
             this._tabControl.Controls.Add(this._builderPage);
             this._tabControl.Controls.Add(this._bombPage);
+            this._tabControl.Controls.Add(this._popularityPage);
+            this._tabControl.Controls.Add(this._miscPage);
             this._tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this._tabControl.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._tabControl.Location = new System.Drawing.Point(0, 0);
@@ -3325,14 +3354,192 @@ namespace Kingdoms.Bot.UI
             this._logHeader.TabIndex = 0;
             this._logHeader.Text = "Log Output";
             this._logHeader.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            // 
+            //
             // _trSettingsTab
-            // 
+            //
             this._trSettingsTab.Location = new System.Drawing.Point(0, 0);
             this._trSettingsTab.Name = "_trSettingsTab";
             this._trSettingsTab.Size = new System.Drawing.Size(200, 100);
             this._trSettingsTab.TabIndex = 0;
-            // 
+            //
+            // _miscPage
+            //
+            this._miscPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._miscPage.Controls.Add(this._miscSettingsPanel);
+            this._miscPage.Location = new System.Drawing.Point(4, 24);
+            this._miscPage.Name = "_miscPage";
+            this._miscPage.Size = new System.Drawing.Size(1142, 497);
+            this._miscPage.TabIndex = 8;
+            this._miscPage.Text = "Misc";
+            //
+            // _miscSettingsPanel
+            //
+            this._miscSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._miscSettingsPanel.Controls.Add(this._miscCollectFreeCardsCheck);
+            this._miscSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._miscSettingsPanel.Location = new System.Drawing.Point(0, 0);
+            this._miscSettingsPanel.Name = "_miscSettingsPanel";
+            this._miscSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 16, 16, 16);
+            this._miscSettingsPanel.Size = new System.Drawing.Size(1142, 120);
+            this._miscSettingsPanel.TabIndex = 0;
+            //
+            // _miscCollectFreeCardsCheck
+            //
+            this._miscCollectFreeCardsCheck.AutoSize = true;
+            this._miscCollectFreeCardsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._miscCollectFreeCardsCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._miscCollectFreeCardsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscCollectFreeCardsCheck.Location = new System.Drawing.Point(16, 20);
+            this._miscCollectFreeCardsCheck.Name = "_miscCollectFreeCardsCheck";
+            this._miscCollectFreeCardsCheck.Size = new System.Drawing.Size(220, 23);
+            this._miscCollectFreeCardsCheck.TabIndex = 0;
+            this._miscCollectFreeCardsCheck.Text = "Collect free cards automatically";
+            //
+            // _popularityPage
+            //
+            this._popularityPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._popularityPage.Controls.Add(this._ppVillageListPanel);
+            this._popularityPage.Controls.Add(this._ppColHeader);
+            this._popularityPage.Controls.Add(this._ppSeparator);
+            this._popularityPage.Controls.Add(this._ppSettingsPanel);
+            this._popularityPage.Location = new System.Drawing.Point(4, 24);
+            this._popularityPage.Name = "_popularityPage";
+            this._popularityPage.Size = new System.Drawing.Size(1142, 497);
+            this._popularityPage.TabIndex = 7;
+            this._popularityPage.Text = "Popularity";
+            //
+            // _ppVillageListPanel
+            //
+            this._ppVillageListPanel.AutoScroll = true;
+            this._ppVillageListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._ppVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._ppVillageListPanel.Location = new System.Drawing.Point(0, 22);
+            this._ppVillageListPanel.Name = "_ppVillageListPanel";
+            this._ppVillageListPanel.Size = new System.Drawing.Size(1142, 384);
+            this._ppVillageListPanel.TabIndex = 2;
+            //
+            // _ppColHeader
+            //
+            this._ppColHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._ppColHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this._ppColHeader.Location = new System.Drawing.Point(0, 0);
+            this._ppColHeader.Name = "_ppColHeader";
+            this._ppColHeader.Size = new System.Drawing.Size(1142, 22);
+            this._ppColHeader.TabIndex = 1;
+            //
+            // _ppSeparator
+            //
+            this._ppSeparator.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(55)))), ((int)(((byte)(70)))));
+            this._ppSeparator.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this._ppSeparator.Location = new System.Drawing.Point(0, 406);
+            this._ppSeparator.Name = "_ppSeparator";
+            this._ppSeparator.Size = new System.Drawing.Size(1142, 1);
+            this._ppSeparator.TabIndex = 3;
+            //
+            // _ppSettingsPanel
+            //
+            this._ppSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._ppSettingsPanel.Controls.Add(this._ppRunNowBtn);
+            this._ppSettingsPanel.Controls.Add(this._ppRefreshBtn);
+            this._ppSettingsPanel.Controls.Add(this._ppDelayInput);
+            this._ppSettingsPanel.Controls.Add(this._ppDelayLabel);
+            this._ppSettingsPanel.Controls.Add(this._ppIntervalInput);
+            this._ppSettingsPanel.Controls.Add(this._ppIntervalLabel);
+            this._ppSettingsPanel.Controls.Add(this._ppStatusLabel);
+            this._ppSettingsPanel.Controls.Add(this._ppEnabledCheck);
+            this._ppSettingsPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this._ppSettingsPanel.Location = new System.Drawing.Point(0, 407);
+            this._ppSettingsPanel.Name = "_ppSettingsPanel";
+            this._ppSettingsPanel.Size = new System.Drawing.Size(1142, 90);
+            this._ppSettingsPanel.TabIndex = 0;
+            //
+            // _ppEnabledCheck
+            //
+            this._ppEnabledCheck.AutoSize = true;
+            this._ppEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._ppEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this._ppEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._ppEnabledCheck.Location = new System.Drawing.Point(16, 12);
+            this._ppEnabledCheck.Name = "_ppEnabledCheck";
+            this._ppEnabledCheck.Size = new System.Drawing.Size(155, 23);
+            this._ppEnabledCheck.TabIndex = 0;
+            this._ppEnabledCheck.Text = "Enable Popularity";
+            //
+            // _ppStatusLabel
+            //
+            this._ppStatusLabel.AutoSize = true;
+            this._ppStatusLabel.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._ppStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
+            this._ppStatusLabel.Location = new System.Drawing.Point(186, 16);
+            this._ppStatusLabel.Name = "_ppStatusLabel";
+            this._ppStatusLabel.Size = new System.Drawing.Size(60, 13);
+            this._ppStatusLabel.TabIndex = 1;
+            this._ppStatusLabel.Text = "DISABLED";
+            //
+            // _ppIntervalLabel
+            //
+            this._ppIntervalLabel.AutoSize = true;
+            this._ppIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._ppIntervalLabel.Location = new System.Drawing.Point(16, 44);
+            this._ppIntervalLabel.Name = "_ppIntervalLabel";
+            this._ppIntervalLabel.TabIndex = 2;
+            this._ppIntervalLabel.Text = "Interval (s):";
+            //
+            // _ppIntervalInput
+            //
+            this._ppIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._ppIntervalInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._ppIntervalInput.Location = new System.Drawing.Point(96, 41);
+            this._ppIntervalInput.Maximum = new decimal(new int[] { 3600, 0, 0, 0 });
+            this._ppIntervalInput.Minimum = new decimal(new int[] { 30, 0, 0, 0 });
+            this._ppIntervalInput.Name = "_ppIntervalInput";
+            this._ppIntervalInput.Size = new System.Drawing.Size(65, 22);
+            this._ppIntervalInput.TabIndex = 3;
+            this._ppIntervalInput.Value = new decimal(new int[] { 120, 0, 0, 0 });
+            //
+            // _ppDelayLabel
+            //
+            this._ppDelayLabel.AutoSize = true;
+            this._ppDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._ppDelayLabel.Location = new System.Drawing.Point(176, 44);
+            this._ppDelayLabel.Name = "_ppDelayLabel";
+            this._ppDelayLabel.TabIndex = 4;
+            this._ppDelayLabel.Text = "Delay (ms):";
+            //
+            // _ppDelayInput
+            //
+            this._ppDelayInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._ppDelayInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._ppDelayInput.Location = new System.Drawing.Point(256, 41);
+            this._ppDelayInput.Maximum = new decimal(new int[] { 30000, 0, 0, 0 });
+            this._ppDelayInput.Minimum = new decimal(new int[] { 500, 0, 0, 0 });
+            this._ppDelayInput.Name = "_ppDelayInput";
+            this._ppDelayInput.Size = new System.Drawing.Size(75, 22);
+            this._ppDelayInput.TabIndex = 5;
+            this._ppDelayInput.Value = new decimal(new int[] { 2000, 0, 0, 0 });
+            //
+            // _ppRefreshBtn
+            //
+            this._ppRefreshBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(50)))), ((int)(((byte)(70)))));
+            this._ppRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._ppRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._ppRefreshBtn.Location = new System.Drawing.Point(346, 39);
+            this._ppRefreshBtn.Name = "_ppRefreshBtn";
+            this._ppRefreshBtn.Size = new System.Drawing.Size(75, 26);
+            this._ppRefreshBtn.TabIndex = 6;
+            this._ppRefreshBtn.Text = "Refresh";
+            //
+            // _ppRunNowBtn
+            //
+            this._ppRunNowBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(80)))), ((int)(((byte)(50)))));
+            this._ppRunNowBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._ppRunNowBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._ppRunNowBtn.Location = new System.Drawing.Point(431, 39);
+            this._ppRunNowBtn.Name = "_ppRunNowBtn";
+            this._ppRunNowBtn.Size = new System.Drawing.Size(80, 26);
+            this._ppRunNowBtn.TabIndex = 7;
+            this._ppRunNowBtn.Text = "Run Now";
+            //
             // BotControlForm
             // 
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
@@ -3429,6 +3636,12 @@ namespace Kingdoms.Bot.UI
             this._abQueueSettingsPanel.ResumeLayout(false);
             this._abQueueSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._abQueueVillageIdInput)).EndInit();
+            this._miscPage.ResumeLayout(false);
+            this._miscSettingsPanel.ResumeLayout(false);
+            this._popularityPage.ResumeLayout(false);
+            this._ppSettingsPanel.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._ppDelayInput)).EndInit();
             this._logPanel.ResumeLayout(false);
             this.ResumeLayout(false);
 
@@ -3657,5 +3870,23 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Button _trAddRouteBtn;
         private System.Windows.Forms.Button _trDeleteRouteBtn;
         private System.Windows.Forms.Button _trRefreshRoutesBtn;
+        // Misc tab controls
+        private System.Windows.Forms.TabPage _miscPage;
+        private System.Windows.Forms.Panel _miscSettingsPanel;
+        private System.Windows.Forms.CheckBox _miscCollectFreeCardsCheck;
+        // Popularity tab controls
+        private System.Windows.Forms.TabPage _popularityPage;
+        private System.Windows.Forms.Panel _ppVillageListPanel;
+        private System.Windows.Forms.Panel _ppColHeader;
+        private System.Windows.Forms.Panel _ppSeparator;
+        private System.Windows.Forms.Panel _ppSettingsPanel;
+        private System.Windows.Forms.CheckBox _ppEnabledCheck;
+        private System.Windows.Forms.Label _ppStatusLabel;
+        private System.Windows.Forms.Label _ppIntervalLabel;
+        private System.Windows.Forms.NumericUpDown _ppIntervalInput;
+        private System.Windows.Forms.Label _ppDelayLabel;
+        private System.Windows.Forms.NumericUpDown _ppDelayInput;
+        private System.Windows.Forms.Button _ppRefreshBtn;
+        private System.Windows.Forms.Button _ppRunNowBtn;
     }
 }

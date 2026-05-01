@@ -80,6 +80,10 @@ namespace Kingdoms.Bot.Modules
             {
                 if (layout.Enabled && layout.Buildings.Count > 0)
                 {
+                    // Clear Placed flags each cycle so demolished buildings are re-evaluated
+                    foreach (BuildingEntry entry in layout.Buildings)
+                        entry.Placed = false;
+
                     if (!_villageQueue.Contains(layout.VillageId))
                         _villageQueue.Add(layout.VillageId);
                 }
@@ -150,6 +154,24 @@ namespace Kingdoms.Bot.Modules
                     continue;
                 }
 
+                // Validate tile — terrain, overlap, and building count limits
+                Point mapTile = new Point(entry.X, entry.Y);
+                int tileError = village.BotCheckPlacementTile(entry.BuildingType, mapTile);
+                if (tileError == 1)
+                {
+                    entry.Status = "Invalid tile (terrain/overlap)";
+                    LogDebug(villageName + ": " + GetBuildingName(entry.BuildingType) +
+                        " at (" + entry.X + "," + entry.Y + ") — terrain or overlap error, skipping.");
+                    continue;
+                }
+                if (tileError == 2)
+                {
+                    entry.Status = "Count limit reached";
+                    LogDebug(villageName + ": " + GetBuildingName(entry.BuildingType) + " — count limit reached.");
+                    entry.Placed = true; // no point retrying this cycle
+                    continue;
+                }
+
                 // Check if we can afford it
                 if (!village.canAffordBuilding(entry.BuildingType))
                 {
@@ -174,12 +196,12 @@ namespace Kingdoms.Bot.Modules
 
                 // Place the building
                 string buildingName = GetBuildingName(entry.BuildingType);
-                Point mapTile = new Point(entry.X, entry.Y);
 
                 try
                 {
                     RemoteServices.Instance.PlaceVillageBuilding(villageId, entry.BuildingType, mapTile);
 
+                    entry.Placed = true;
                     entry.Status = "Placed";
                     LogInfo(villageName + ": Placed " + buildingName + " at (" + entry.X + ", " + entry.Y + ").");
 
