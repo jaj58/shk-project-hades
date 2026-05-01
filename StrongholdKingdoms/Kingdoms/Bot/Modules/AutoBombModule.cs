@@ -1083,10 +1083,7 @@ namespace Kingdoms.Bot.Modules
                         continue;
                     }
 
-                    int peasants = 0, archers = 0, pikemen = 0, swordsmen = 0, captains = 0;
-                    village.getVillageTroops(ref peasants, ref archers, ref pikemen, ref swordsmen, ref captains);
-                    int catapults = village.m_numCatapults;
-                    int[] have = { peasants, archers, pikemen, swordsmen, catapults, captains };
+                    int[] have = village.CalcTotalTroopsArray();
 
                     bool enough = true;
                     for (int i = 0; i < 6; i++)
@@ -1195,13 +1192,10 @@ namespace Kingdoms.Bot.Modules
                     continue;
                 }
 
-                int peasants = 0, archers = 0, pikemen = 0, swordsmen = 0, captains = 0;
-                village.getVillageTroops(ref peasants, ref archers, ref pikemen, ref swordsmen, ref captains);
-                int catapults = village.m_numCatapults;
-
                 // Hard validation: does this village have enough troops for the
                 // saved formation? If not, skip this stack rather than building an
                 // attack that'll fail at launch time.
+                // CalcTotalTroopsArray includes field troops + castle garrison + in-transit.
                 int[] req = GetTroopCountsFromFormation(cfg.FormationName);
                 if (req == null)
                 {
@@ -1211,7 +1205,7 @@ namespace Kingdoms.Bot.Modules
                     continue;
                 }
 
-                int[] have = { peasants, archers, pikemen, swordsmen, catapults, captains };
+                int[] have = village.CalcTotalTroopsArray();
                 string[] names = { "Peasants", "Archers", "Pikemen", "Swordsmen", "Catapults", "Captains" };
                 List<string> shortages = new List<string>();
                 for (int i = 0; i < 6; i++)
@@ -1241,12 +1235,12 @@ namespace Kingdoms.Bot.Modules
                 entry.AttackType = cfg.AttackType;
                 entry.FormationName = cfg.FormationName;
                 entry.Stack = cfg.Stack;
-                entry.NumPeasants = peasants;
-                entry.NumArchers = archers;
-                entry.NumPikemen = pikemen;
-                entry.NumSwordsmen = swordsmen;
-                entry.NumCatapults = catapults;
-                entry.NumCaptains = captains;
+                entry.NumPeasants = have[0];
+                entry.NumArchers = have[1];
+                entry.NumPikemen = have[2];
+                entry.NumSwordsmen = have[3];
+                entry.NumCatapults = have[4];
+                entry.NumCaptains = have[5];
                 entry.CaptainsOnly = cfg.CaptainsOnly;
                 entry.CardType = cfg.CardType;
                 entry.Status = "Queued";

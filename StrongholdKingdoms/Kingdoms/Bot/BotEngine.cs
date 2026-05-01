@@ -86,7 +86,9 @@ namespace Kingdoms.Bot
                 else if (module is Modules.TradeModule)
                     module.Enabled = _settings.Trade.Enabled;
                 else if (module is Modules.CardExpiryModule)
-                    module.Enabled = true; // Always enabled � monitors cards for other modules
+                    module.Enabled = true; // Always enabled — monitors cards for other modules
+                else if (module is Modules.FreeCardCollectorModule)
+                    module.Enabled = true; // Always enabled — on/off controlled by Misc.CollectFreeCards
                 else if (module is Modules.VillageBuilderModule)
                     module.Enabled = _settings.VillageBuilder.Enabled;
                 else if (module is Modules.AutoBombModule)

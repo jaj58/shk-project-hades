@@ -154,7 +154,12 @@ namespace Kingdoms
       catch { return false; }
 
       System.Windows.Forms.Control callbackControl = null;
-      try { callbackControl = InterfaceMgr.Instance; } catch { }
+      try
+      {
+        if (System.Windows.Forms.Application.OpenForms.Count > 0)
+          callbackControl = System.Windows.Forms.Application.OpenForms[0];
+      }
+      catch { }
       if (callbackControl == null) return false;
 
       inRevealClick = true;

@@ -3426,6 +3426,9 @@ namespace Kingdoms.Bot.UI
             int y = 2;
             foreach (WorldMap.UserVillageData uvd in villages)
             {
+                if (GameEngine.Instance.World.isCapital(uvd.villageID))
+                    continue;
+
                 VillagePopularitySettings vs = settings != null
                     ? settings.GetVillageSettings(uvd.villageID)
                     : new VillagePopularitySettings { VillageId = uvd.villageID };
