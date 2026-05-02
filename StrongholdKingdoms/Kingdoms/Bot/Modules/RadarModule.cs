@@ -790,6 +790,14 @@ namespace Kingdoms.Bot.Modules
             VillageData vData = GameEngine.Instance.World.getVillageData(targetVillage);
             bool isAI = IsAISource(army.travelFromVillageID);
 
+            // Reinforcements MUST be checked first — before capital checks — so that
+            // friendly/liege lord troops heading for a capital are not misclassified
+            // as "Attack (Parish/County/etc.)".
+            // Also check army.reinforcements (server boolean) in addition to attackType 13,
+            // because liege lord armies can carry reinforcements=true with a different attackType.
+            if (army.attackType == 13 || army.reinforcements)
+                return ACTION_REINFORCEMENT;
+
             // Capital-level attacks take priority
             if (vData != null)
             {
@@ -812,14 +820,15 @@ namespace Kingdoms.Bot.Modules
             //if (army.attackType == 9)
             //    return isAI ? ACTION_AI_FORAGING : ACTION_FORAGING;
 
-            // Reinforcements
-            if (army.attackType == 13)
-                return ACTION_REINFORCEMENT;
-
             // Granular attack types
             switch (army.attackType)
             {
                 case ATTACK_TYPE_CAPTURE:
+                    // Capture requires at least one captain. Zero captains means the
+                    // game sent friendly/liege lord troops as a capture packet — treat
+                    // as a reinforcement so the user can filter via the Monitor toggle.
+                    if (army.numCaptains == 0)
+                        return ACTION_REINFORCEMENT;
                     return isAI ? ACTION_AI_CAPTURE : ACTION_CAPTURE;
                 case ATTACK_TYPE_PILLAGE_STOCKPILE:
                     return isAI ? ACTION_AI_PILLAGE_STOCKPILE : ACTION_PILLAGE_STOCKPILE;
@@ -840,6 +849,9 @@ namespace Kingdoms.Bot.Modules
                 case ATTACK_TYPE_GOLD_RAID:
                     return isAI ? ACTION_AI_GOLD_RAID : ACTION_GOLD_RAID;
                 default:
+                    // Unknown attack type with no captains — treat as reinforcement
+                    if (army.numCaptains == 0)
+                        return ACTION_REINFORCEMENT;
                     return isAI ? ACTION_AI_CAPTURE : ACTION_CAPTURE;
             }
         }
