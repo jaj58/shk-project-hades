@@ -6,7 +6,7 @@ namespace Kingdoms.Bot
 {
     public static class DiscordNotifier
     {
-        public static void SendWebhook(string webhookUrl, string title, string message, int color)
+        public static void SendWebhook(string webhookUrl, string title, string message, int color, string mention = null)
         {
             if (string.IsNullOrEmpty(webhookUrl))
                 return;
@@ -20,7 +20,13 @@ namespace Kingdoms.Bot
                 string escapedMessage = EscapeJson(message);
                 string timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
 
-                string json = "{\"embeds\":[{" +
+                // "content" is plain text above the embed — the only field Discord
+                // resolves mentions in. Put the tag here so it fires a real ping.
+                string contentField = string.IsNullOrEmpty(mention)
+                    ? ""
+                    : "\"content\":\"" + EscapeJson(mention) + "\",";
+
+                string json = "{" + contentField + "\"embeds\":[{" +
                     "\"title\":\"" + escapedTitle + "\"," +
                     "\"description\":\"" + escapedMessage + "\"," +
                     "\"color\":" + color + "," +
@@ -41,11 +47,11 @@ namespace Kingdoms.Bot
             }
         }
 
-        public static void SendAsync(string webhookUrl, string title, string message, int color)
+        public static void SendAsync(string webhookUrl, string title, string message, int color, string mention = null)
         {
             System.Threading.ThreadPool.QueueUserWorkItem(delegate
             {
-                SendWebhook(webhookUrl, title, message, color);
+                SendWebhook(webhookUrl, title, message, color, mention);
             });
         }
 

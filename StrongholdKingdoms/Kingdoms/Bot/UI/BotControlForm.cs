@@ -29,6 +29,27 @@ namespace Kingdoms.Bot.UI
         private List<ActionRow> _rdActionRows = new List<ActionRow>();
         private bool _rdLoading;
 
+        // Group Radar runtime state (controls created programmatically)
+        private List<GroupActionRow> _grpActionRows = new List<GroupActionRow>();
+        private bool _grpLoading;
+        private int _grpSelectedMemberIndex = -1;
+        private CheckBox _grpEnabledCheck;
+        private TextBox _grpWebhookInput;
+        private TextBox _grpMentionTagInput;
+        private Button _grpTestWebhookBtn;
+        private TextBox _grpPlayerNameInput;
+        private Button _grpAddMemberBtn;
+        private Button _grpRefreshAllBtn;
+        private ListBox _grpMemberList;
+        private Button _grpRemoveMemberBtn;
+        private Label _grpMemberNameLabel;
+        private TextBox _grpMemberTagInput;
+        private Label _grpMemberTagLabel;
+        private Label _grpMemberVillagesLabel;
+        private Button _grpRefreshVillagesBtn;
+        private Panel _grpActionListPanel;
+        private Panel _grpColHeader;
+
         // Recruiting runtime state
         private Timer _rcRefreshTimer;
         private List<RecruitVillagePanel> _rcVillagePanels = 	new List<RecruitVillagePanel>();
@@ -118,6 +139,8 @@ namespace Kingdoms.Bot.UI
                 VsLoadFromSettings();
                 RdLoadFromSettings();
                 RdBuildActionRows();
+                GrpLoadFromSettings();
+                GrpBuildActionRows();
                 RcLoadFromSettings();
                 CrLoadFromSettings();
                 VaLoadFromSettings();
@@ -378,14 +401,17 @@ namespace Kingdoms.Bot.UI
                     BotLogger.Log("Radar", BotLogLevel.Warning, "No webhook URL set.");
                     return;
                 }
+                string mention = _rdMentionTagInput.Text.Trim();
                 DiscordNotifier.SendAsync(url, "\u2705 Webhook Test",
-                    "Project Hades Radar is connected!", 5025616);
+                    "Project Hades Radar is connected!", 5025616,
+                    string.IsNullOrEmpty(mention) ? null : mention);
                 BotLogger.Log("Radar", BotLogLevel.Info, "Test webhook sent.");
             };
 
             _rdEnabledCheck.CheckedChanged += delegate { RdPushToSettings(); };
             _rdScanIntervalInput.ValueChanged += delegate { RdPushToSettings(); };
             _rdWebhookInput.TextChanged += delegate { RdPushToSettings(); };
+            _rdMentionTagInput.TextChanged += delegate { RdPushToSettings(); };
             _rdInterdictMonkCountInput.ValueChanged += delegate { RdPushToSettings(); };
             _rdAutoRecruitMonksCheck.CheckedChanged += delegate { RdPushToSettings(); };
             _rdMinArmySizeInput.ValueChanged += delegate { RdPushToSettings(); };
@@ -398,6 +424,8 @@ namespace Kingdoms.Bot.UI
             _rdRefreshTimer.Interval = 2000;
             _rdRefreshTimer.Tick += delegate { RdUpdateStatusDisplay(); };
             _rdRefreshTimer.Start();
+
+            BuildInnerRadarTabs();
         }
 
         private void RdPushToSettings()
@@ -410,6 +438,7 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _rdEnabledCheck.Checked;
             s.ScanIntervalSeconds = (int)_rdScanIntervalInput.Value;
             s.DiscordWebhookUrl = _rdWebhookInput.Text.Trim();
+            s.DiscordMentionTag = _rdMentionTagInput.Text.Trim();
             s.AutoInterdictMonkCount = (int)_rdInterdictMonkCountInput.Value;
             s.AutoRecruitMonks = _rdAutoRecruitMonksCheck.Checked;
             s.MinArmySizeForInterdict = (int)_rdMinArmySizeInput.Value;
@@ -438,6 +467,7 @@ namespace Kingdoms.Bot.UI
                 _rdScanIntervalInput.Value = Math.Max(_rdScanIntervalInput.Minimum,
                     Math.Min(_rdScanIntervalInput.Maximum, s.ScanIntervalSeconds));
                 _rdWebhookInput.Text = s.DiscordWebhookUrl ?? "";
+                _rdMentionTagInput.Text = s.DiscordMentionTag ?? "";
                 _rdInterdictMonkCountInput.Value = Math.Max(_rdInterdictMonkCountInput.Minimum,
                     Math.Min(_rdInterdictMonkCountInput.Maximum, s.AutoInterdictMonkCount));
                 _rdAutoRecruitMonksCheck.Checked = s.AutoRecruitMonks;
@@ -472,6 +502,7 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _rdEnabledCheck.Checked;
             s.ScanIntervalSeconds = (int)_rdScanIntervalInput.Value;
             s.DiscordWebhookUrl = _rdWebhookInput.Text.Trim();
+            s.DiscordMentionTag = _rdMentionTagInput.Text.Trim();
             s.AutoInterdictMonkCount = (int)_rdInterdictMonkCountInput.Value;
             s.AutoRecruitMonks = _rdAutoRecruitMonksCheck.Checked;
             s.MinArmySizeForInterdict = (int)_rdMinArmySizeInput.Value;
@@ -524,6 +555,562 @@ namespace Kingdoms.Bot.UI
 
             _rdActionListPanel.ResumeLayout(false);
             _rdActionListPanel.PerformLayout();
+        }
+
+        // =====================================================================
+        // Radar – inner tab (Radar / Group sub-tabs)
+        // =====================================================================
+
+        private void BuildInnerRadarTabs()
+        {
+            // Create inner TabControl that fills the radar page
+            TabControl innerTab = new TabControl();
+            innerTab.Dock = DockStyle.Fill;
+            innerTab.Font = new Font("Segoe UI", 9f);
+
+            // ---- Radar sub-tab (house existing controls) ----
+            TabPage radarSub = new TabPage("Radar");
+            radarSub.BackColor = _radarPage.BackColor;
+
+            // Reparent existing controls into the Radar sub-tab
+            // (assigning to a new Controls collection removes from old parent automatically)
+            radarSub.Controls.Add(_rdActionListPanel);
+            radarSub.Controls.Add(_rdColHeader);
+            radarSub.Controls.Add(_rdSeparator);
+            radarSub.Controls.Add(_rdSettingsPanel);
+
+            // ---- Group sub-tab ----
+            TabPage groupPage = new TabPage("Group");
+            groupPage.BackColor = _radarPage.BackColor;
+            BuildGroupTabContent(groupPage);
+
+            innerTab.TabPages.Add(radarSub);
+            innerTab.TabPages.Add(groupPage);
+
+            _radarPage.Controls.Clear();
+            _radarPage.Controls.Add(innerTab);
+        }
+
+        private void BuildGroupTabContent(TabPage page)
+        {
+            Color bgDark   = Color.FromArgb(24, 24, 32);
+            Color bgMed    = Color.FromArgb(40, 42, 54);
+            Color bgLight  = Color.FromArgb(50, 52, 64);
+            Color textPri  = Color.FromArgb(230, 230, 240);
+            Color textSec  = Color.FromArgb(160, 165, 180);
+            Font  fNorm    = new Font("Segoe UI", 9f);
+            Font  fSmall   = new Font("Segoe UI", 8.5f);
+            Font  fBold    = new Font("Segoe UI", 9f, FontStyle.Bold);
+
+            // ---- Settings panel (top) ----
+            Panel settingsPanel = new Panel();
+            settingsPanel.Dock = DockStyle.Top;
+            settingsPanel.BackColor = bgMed;
+            settingsPanel.Padding = new Padding(16, 10, 16, 8);
+            settingsPanel.Height = 80;
+
+            _grpEnabledCheck = new CheckBox();
+            _grpEnabledCheck.Text = "Enable Group Radar";
+            _grpEnabledCheck.Font = fBold;
+            _grpEnabledCheck.ForeColor = textPri;
+            _grpEnabledCheck.Location = new Point(16, 12);
+            _grpEnabledCheck.AutoSize = true;
+
+            Label webhookLabel = new Label();
+            webhookLabel.Text = "Group Webhook URL:";
+            webhookLabel.Font = fSmall;
+            webhookLabel.ForeColor = textSec;
+            webhookLabel.Location = new Point(16, 44);
+            webhookLabel.AutoSize = true;
+
+            _grpWebhookInput = new TextBox();
+            _grpWebhookInput.Location = new Point(150, 41);
+            _grpWebhookInput.Size = new Size(460, 23);
+            _grpWebhookInput.BackColor = bgLight;
+            _grpWebhookInput.ForeColor = textPri;
+            _grpWebhookInput.BorderStyle = BorderStyle.FixedSingle;
+            _grpWebhookInput.Font = fNorm;
+
+            _grpTestWebhookBtn = new Button();
+            _grpTestWebhookBtn.Text = "Test";
+            _grpTestWebhookBtn.Location = new Point(618, 40);
+            _grpTestWebhookBtn.Size = new Size(60, 24);
+            _grpTestWebhookBtn.BackColor = Color.FromArgb(60, 63, 80);
+            _grpTestWebhookBtn.ForeColor = textPri;
+            _grpTestWebhookBtn.FlatStyle = FlatStyle.Flat;
+            _grpTestWebhookBtn.Font = fSmall;
+
+            Label mentionLabel = new Label();
+            mentionLabel.Text = "Default Mention:";
+            mentionLabel.Font = fSmall;
+            mentionLabel.ForeColor = textSec;
+            mentionLabel.Location = new Point(690, 44);
+            mentionLabel.AutoSize = true;
+
+            _grpMentionTagInput = new TextBox();
+            _grpMentionTagInput.Location = new Point(800, 41);
+            _grpMentionTagInput.Size = new Size(180, 23);
+            _grpMentionTagInput.BackColor = bgLight;
+            _grpMentionTagInput.ForeColor = textPri;
+            _grpMentionTagInput.BorderStyle = BorderStyle.FixedSingle;
+            _grpMentionTagInput.Font = fNorm;
+
+            settingsPanel.Controls.AddRange(new Control[] {
+                _grpEnabledCheck, webhookLabel, _grpWebhookInput,
+                _grpTestWebhookBtn, mentionLabel, _grpMentionTagInput
+            });
+
+            // ---- Separator ----
+            Panel sep = new Panel();
+            sep.Dock = DockStyle.Top;
+            sep.BackColor = Color.FromArgb(55, 58, 72);
+            sep.Height = 1;
+
+            // ---- Left member panel ----
+            Panel memberPanel = new Panel();
+            memberPanel.Dock = DockStyle.Left;
+            memberPanel.Width = 290;
+            memberPanel.BackColor = Color.FromArgb(30, 32, 42);
+            memberPanel.Padding = new Padding(10, 8, 10, 8);
+
+            Label addLabel = new Label();
+            addLabel.Text = "Add Player:";
+            addLabel.Font = fSmall;
+            addLabel.ForeColor = textSec;
+            addLabel.Location = new Point(10, 10);
+            addLabel.AutoSize = true;
+
+            _grpPlayerNameInput = new TextBox();
+            _grpPlayerNameInput.Location = new Point(10, 28);
+            _grpPlayerNameInput.Size = new Size(160, 23);
+            _grpPlayerNameInput.BackColor = bgLight;
+            _grpPlayerNameInput.ForeColor = textPri;
+            _grpPlayerNameInput.BorderStyle = BorderStyle.FixedSingle;
+            _grpPlayerNameInput.Font = fNorm;
+
+            _grpAddMemberBtn = new Button();
+            _grpAddMemberBtn.Text = "Add";
+            _grpAddMemberBtn.Location = new Point(175, 27);
+            _grpAddMemberBtn.Size = new Size(50, 25);
+            _grpAddMemberBtn.BackColor = Color.FromArgb(60, 63, 80);
+            _grpAddMemberBtn.ForeColor = textPri;
+            _grpAddMemberBtn.FlatStyle = FlatStyle.Flat;
+            _grpAddMemberBtn.Font = fSmall;
+
+            _grpRefreshAllBtn = new Button();
+            _grpRefreshAllBtn.Text = "Refresh All";
+            _grpRefreshAllBtn.Location = new Point(230, 27);
+            _grpRefreshAllBtn.Size = new Size(50, 25);
+            _grpRefreshAllBtn.BackColor = Color.FromArgb(60, 63, 80);
+            _grpRefreshAllBtn.ForeColor = textPri;
+            _grpRefreshAllBtn.FlatStyle = FlatStyle.Flat;
+            _grpRefreshAllBtn.Font = new Font("Segoe UI", 7.5f);
+
+            Label membersLabel = new Label();
+            membersLabel.Text = "Members:";
+            membersLabel.Font = fSmall;
+            membersLabel.ForeColor = textSec;
+            membersLabel.Location = new Point(10, 60);
+            membersLabel.AutoSize = true;
+
+            _grpMemberList = new ListBox();
+            _grpMemberList.Location = new Point(10, 78);
+            _grpMemberList.Size = new Size(270, 160);
+            _grpMemberList.BackColor = bgLight;
+            _grpMemberList.ForeColor = textPri;
+            _grpMemberList.BorderStyle = BorderStyle.FixedSingle;
+            _grpMemberList.Font = fNorm;
+
+            _grpRemoveMemberBtn = new Button();
+            _grpRemoveMemberBtn.Text = "Remove Selected";
+            _grpRemoveMemberBtn.Location = new Point(10, 245);
+            _grpRemoveMemberBtn.Size = new Size(130, 25);
+            _grpRemoveMemberBtn.BackColor = Color.FromArgb(80, 40, 40);
+            _grpRemoveMemberBtn.ForeColor = textPri;
+            _grpRemoveMemberBtn.FlatStyle = FlatStyle.Flat;
+            _grpRemoveMemberBtn.Font = fSmall;
+
+            // Selected member detail area
+            _grpMemberNameLabel = new Label();
+            _grpMemberNameLabel.Text = "No member selected";
+            _grpMemberNameLabel.Font = fBold;
+            _grpMemberNameLabel.ForeColor = textPri;
+            _grpMemberNameLabel.Location = new Point(10, 280);
+            _grpMemberNameLabel.Size = new Size(270, 20);
+
+            _grpMemberTagLabel = new Label();
+            _grpMemberTagLabel.Text = "Discord Tag:";
+            _grpMemberTagLabel.Font = fSmall;
+            _grpMemberTagLabel.ForeColor = textSec;
+            _grpMemberTagLabel.Location = new Point(10, 308);
+            _grpMemberTagLabel.AutoSize = true;
+
+            _grpMemberTagInput = new TextBox();
+            _grpMemberTagInput.Location = new Point(10, 325);
+            _grpMemberTagInput.Size = new Size(200, 23);
+            _grpMemberTagInput.BackColor = bgLight;
+            _grpMemberTagInput.ForeColor = textPri;
+            _grpMemberTagInput.BorderStyle = BorderStyle.FixedSingle;
+            _grpMemberTagInput.Font = fNorm;
+
+            _grpMemberVillagesLabel = new Label();
+            _grpMemberVillagesLabel.Text = "Villages: none";
+            _grpMemberVillagesLabel.Font = fSmall;
+            _grpMemberVillagesLabel.ForeColor = textSec;
+            _grpMemberVillagesLabel.Location = new Point(10, 358);
+            _grpMemberVillagesLabel.Size = new Size(270, 35);
+
+            _grpRefreshVillagesBtn = new Button();
+            _grpRefreshVillagesBtn.Text = "Refresh Villages";
+            _grpRefreshVillagesBtn.Location = new Point(10, 398);
+            _grpRefreshVillagesBtn.Size = new Size(120, 25);
+            _grpRefreshVillagesBtn.BackColor = Color.FromArgb(60, 63, 80);
+            _grpRefreshVillagesBtn.ForeColor = textPri;
+            _grpRefreshVillagesBtn.FlatStyle = FlatStyle.Flat;
+            _grpRefreshVillagesBtn.Font = fSmall;
+
+            memberPanel.Controls.AddRange(new Control[] {
+                addLabel, _grpPlayerNameInput, _grpAddMemberBtn, _grpRefreshAllBtn,
+                membersLabel, _grpMemberList, _grpRemoveMemberBtn,
+                _grpMemberNameLabel, _grpMemberTagLabel, _grpMemberTagInput,
+                _grpMemberVillagesLabel, _grpRefreshVillagesBtn
+            });
+
+            // ---- Column header for action rows ----
+            _grpColHeader = new Panel();
+            _grpColHeader.Dock = DockStyle.Top;
+            _grpColHeader.BackColor = Color.FromArgb(30, 32, 40);
+            _grpColHeader.Height = 24;
+
+            Label colAction = new Label();
+            colAction.Text = "Action Type";
+            colAction.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            colAction.ForeColor = textSec;
+            colAction.Location = new Point(16, 2);
+            colAction.Size = new Size(180, 20);
+
+            Label colMonitor = new Label();
+            colMonitor.Text = "Monitor";
+            colMonitor.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            colMonitor.ForeColor = textSec;
+            colMonitor.Location = new Point(200, 2);
+            colMonitor.Size = new Size(60, 20);
+
+            Label colDiscord = new Label();
+            colDiscord.Text = "Discord\r\nNotify";
+            colDiscord.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            colDiscord.ForeColor = textSec;
+            colDiscord.Location = new Point(270, 2);
+            colDiscord.Size = new Size(60, 20);
+
+            _grpColHeader.Controls.AddRange(new Control[] { colAction, colMonitor, colDiscord });
+
+            // ---- Action list panel (fills remaining space) ----
+            _grpActionListPanel = new Panel();
+            _grpActionListPanel.Dock = DockStyle.Fill;
+            _grpActionListPanel.BackColor = bgDark;
+            _grpActionListPanel.AutoScroll = true;
+
+            // ---- Right content area (fills to the right of member panel) ----
+            Panel rightPanel = new Panel();
+            rightPanel.Dock = DockStyle.Fill;
+            rightPanel.BackColor = bgDark;
+            rightPanel.Controls.Add(_grpActionListPanel);
+            rightPanel.Controls.Add(_grpColHeader);
+
+            // Assemble: member panel on left, right panel fills rest
+            page.Controls.Add(rightPanel);
+            page.Controls.Add(memberPanel);
+            page.Controls.Add(sep);
+            page.Controls.Add(settingsPanel);
+
+            WireUpGroupTab();
+        }
+
+        private void WireUpGroupTab()
+        {
+            _grpEnabledCheck.CheckedChanged += delegate { GrpPushToSettings(); };
+            _grpWebhookInput.TextChanged += delegate { GrpPushToSettings(); };
+            _grpMentionTagInput.TextChanged += delegate { GrpPushToSettings(); };
+
+            _grpTestWebhookBtn.Click += delegate
+            {
+                string url = _grpWebhookInput.Text.Trim();
+                if (string.IsNullOrEmpty(url)) { BotLogger.Log("Group Radar", BotLogLevel.Warning, "No webhook URL set."); return; }
+                string mention = _grpMentionTagInput.Text.Trim();
+                DiscordNotifier.SendAsync(url, "✅ Group Webhook Test",
+                    "Project Hades Group Radar is connected!", 5025616,
+                    string.IsNullOrEmpty(mention) ? null : mention);
+                BotLogger.Log("Group Radar", BotLogLevel.Info, "Test webhook sent.");
+            };
+
+            _grpAddMemberBtn.Click += delegate { GrpAddMember(); };
+            _grpRemoveMemberBtn.Click += delegate { GrpRemoveMember(); };
+            _grpRefreshAllBtn.Click += delegate { GrpRefreshAll(); };
+            _grpRefreshVillagesBtn.Click += delegate { GrpRefreshSelectedMemberVillages(); };
+
+            _grpMemberList.SelectedIndexChanged += delegate { GrpOnMemberSelected(); };
+
+            _grpMemberTagInput.TextChanged += delegate
+            {
+                if (_grpLoading) return;
+                GroupRadarMember m = GrpGetSelectedMember();
+                if (m != null)
+                {
+                    m.DiscordTag = _grpMemberTagInput.Text.Trim();
+                    GrpSaveToSettings();
+                }
+            };
+        }
+
+        private void GrpLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            if (_grpEnabledCheck == null) return;
+
+            _grpLoading = true;
+            try
+            {
+                GroupRadarSettings s = BotEngine.Instance.Settings.Radar.GroupRadar;
+                _grpEnabledCheck.Checked = s.Enabled;
+                _grpWebhookInput.Text = s.DiscordWebhookUrl ?? "";
+                _grpMentionTagInput.Text = s.DiscordMentionTag ?? "";
+                GrpPopulateMemberList();
+            }
+            finally
+            {
+                _grpLoading = false;
+            }
+        }
+
+        private void GrpPopulateMemberList()
+        {
+            if (_grpMemberList == null) return;
+            _grpMemberList.Items.Clear();
+            GroupRadarSettings s = BotEngine.Instance?.Settings?.Radar?.GroupRadar;
+            if (s == null) return;
+            foreach (GroupRadarMember m in s.Members)
+                _grpMemberList.Items.Add((m.Enabled ? "[✓] " : "[ ] ") + m.PlayerName);
+
+            // Restore selection
+            if (_grpSelectedMemberIndex >= 0 && _grpSelectedMemberIndex < _grpMemberList.Items.Count)
+                _grpMemberList.SelectedIndex = _grpSelectedMemberIndex;
+            else
+                GrpShowMemberDetail(null);
+        }
+
+        private void GrpOnMemberSelected()
+        {
+            _grpSelectedMemberIndex = _grpMemberList.SelectedIndex;
+            GrpShowMemberDetail(GrpGetSelectedMember());
+        }
+
+        private void GrpShowMemberDetail(GroupRadarMember m)
+        {
+            _grpLoading = true;
+            try
+            {
+                if (m == null)
+                {
+                    _grpMemberNameLabel.Text = "No member selected";
+                    _grpMemberTagInput.Text = "";
+                    _grpMemberTagInput.Enabled = false;
+                    _grpMemberVillagesLabel.Text = "Villages: none";
+                    _grpRefreshVillagesBtn.Enabled = false;
+                    _grpRemoveMemberBtn.Enabled = false;
+                }
+                else
+                {
+                    _grpMemberNameLabel.Text = m.PlayerName;
+                    _grpMemberTagInput.Text = m.DiscordTag ?? "";
+                    _grpMemberTagInput.Enabled = true;
+                    int count = m.VillageIds != null ? m.VillageIds.Count : 0;
+                    _grpMemberVillagesLabel.Text = "Villages: " + count + " found";
+                    _grpRefreshVillagesBtn.Enabled = true;
+                    _grpRemoveMemberBtn.Enabled = true;
+                }
+            }
+            finally
+            {
+                _grpLoading = false;
+            }
+        }
+
+        private GroupRadarMember GrpGetSelectedMember()
+        {
+            if (_grpSelectedMemberIndex < 0) return null;
+            GroupRadarSettings s = BotEngine.Instance?.Settings?.Radar?.GroupRadar;
+            if (s == null || _grpSelectedMemberIndex >= s.Members.Count) return null;
+            return s.Members[_grpSelectedMemberIndex];
+        }
+
+        private void GrpPushToSettings()
+        {
+            if (_grpLoading) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            GroupRadarSettings s = BotEngine.Instance.Settings.Radar.GroupRadar;
+            s.Enabled = _grpEnabledCheck.Checked;
+            s.DiscordWebhookUrl = _grpWebhookInput.Text.Trim();
+            s.DiscordMentionTag = _grpMentionTagInput.Text.Trim();
+        }
+
+        private void GrpSaveToSettings()
+        {
+            BotEngine.Instance?.Settings?.Save();
+        }
+
+        private void GrpBuildActionRows()
+        {
+            if (_grpActionListPanel == null) return;
+            _grpActionListPanel.SuspendLayout();
+            foreach (GroupActionRow row in _grpActionRows)
+            {
+                _grpActionListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
+            _grpActionRows.Clear();
+
+            GroupRadarSettings settings = BotEngine.Instance?.Settings?.Radar?.GroupRadar;
+
+            string[] keys = RadarModule.AllActionKeys;
+            for (int i = keys.Length - 1; i >= 0; i--)
+            {
+                string label = RadarModule.GetActionLabel(keys[i]);
+                RadarActionSettings actionSettings = settings != null
+                    ? settings.GetActionSettings(keys[i])
+                    : new RadarActionSettings();
+
+                GroupActionRow row = new GroupActionRow(keys[i], label, actionSettings, (keys.Length - 1 - i) % 2 != 0);
+                row.Dock = DockStyle.Top;
+                _grpActionListPanel.Controls.Add(row);
+                _grpActionRows.Add(row);
+            }
+
+            _grpActionListPanel.ResumeLayout(false);
+            _grpActionListPanel.PerformLayout();
+        }
+
+        private void GrpAddMember()
+        {
+            string name = _grpPlayerNameInput.Text.Trim();
+            if (string.IsNullOrEmpty(name)) return;
+
+            GroupRadarSettings s = BotEngine.Instance?.Settings?.Radar?.GroupRadar;
+            if (s == null) return;
+
+            // Check duplicate
+            foreach (GroupRadarMember existing in s.Members)
+            {
+                if (string.Equals(existing.PlayerName, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    BotLogger.Log("Group Radar", BotLogLevel.Warning, "'" + name + "' is already in the list.");
+                    return;
+                }
+            }
+
+            _grpAddMemberBtn.Enabled = false;
+            _grpAddMemberBtn.Text = "...";
+            _grpPlayerNameInput.Enabled = false;
+
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate
+            {
+                List<int> villages = ResolveGroupPlayerVillages(name);
+                if (this.IsDisposed) return;
+                this.BeginInvoke(new Action(delegate
+                {
+                    GroupRadarMember m = new GroupRadarMember();
+                    m.PlayerName = name;
+                    m.VillageIds = villages;
+                    s.Members.Add(m);
+                    GrpSaveToSettings();
+                    _grpPlayerNameInput.Text = "";
+                    _grpPlayerNameInput.Enabled = true;
+                    _grpAddMemberBtn.Enabled = true;
+                    _grpAddMemberBtn.Text = "Add";
+                    GrpPopulateMemberList();
+                    BotLogger.Log("Group Radar", BotLogLevel.Info,
+                        "Added '" + name + "' with " + villages.Count + " villages.");
+                }));
+            });
+        }
+
+        private void GrpRemoveMember()
+        {
+            GroupRadarMember m = GrpGetSelectedMember();
+            if (m == null) return;
+            GroupRadarSettings s = BotEngine.Instance?.Settings?.Radar?.GroupRadar;
+            if (s == null) return;
+            s.Members.Remove(m);
+            _grpSelectedMemberIndex = -1;
+            GrpSaveToSettings();
+            GrpPopulateMemberList();
+        }
+
+        private void GrpRefreshSelectedMemberVillages()
+        {
+            GroupRadarMember m = GrpGetSelectedMember();
+            if (m == null) return;
+
+            _grpRefreshVillagesBtn.Enabled = false;
+            _grpRefreshVillagesBtn.Text = "...";
+            string name = m.PlayerName;
+
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate
+            {
+                List<int> villages = ResolveGroupPlayerVillages(name);
+                if (this.IsDisposed) return;
+                this.BeginInvoke(new Action(delegate
+                {
+                    m.VillageIds = villages;
+                    GrpSaveToSettings();
+                    _grpRefreshVillagesBtn.Enabled = true;
+                    _grpRefreshVillagesBtn.Text = "Refresh Villages";
+                    GrpShowMemberDetail(m);
+                    BotLogger.Log("Group Radar", BotLogLevel.Info,
+                        "Refreshed '" + name + "': " + villages.Count + " villages.");
+                }));
+            });
+        }
+
+        private void GrpRefreshAll()
+        {
+            GroupRadarSettings s = BotEngine.Instance?.Settings?.Radar?.GroupRadar;
+            if (s == null || s.Members.Count == 0) return;
+
+            _grpRefreshAllBtn.Enabled = false;
+            _grpRefreshAllBtn.Text = "...";
+
+            List<GroupRadarMember> members = new List<GroupRadarMember>(s.Members);
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate
+            {
+                foreach (GroupRadarMember m in members)
+                {
+                    List<int> villages = ResolveGroupPlayerVillages(m.PlayerName);
+                    m.VillageIds = villages;
+                }
+                if (this.IsDisposed) return;
+                this.BeginInvoke(new Action(delegate
+                {
+                    GrpSaveToSettings();
+                    _grpRefreshAllBtn.Enabled = true;
+                    _grpRefreshAllBtn.Text = "Refresh All";
+                    GrpPopulateMemberList();
+                    BotLogger.Log("Group Radar", BotLogLevel.Info, "Refreshed all group members.");
+                }));
+            });
+        }
+
+        private List<int> ResolveGroupPlayerVillages(string playerName)
+        {
+            // Route through the RadarModule which has the server lookup method
+            if (BotEngine.Instance == null) return new List<int>();
+            foreach (IBotModule module in BotEngine.Instance.Modules)
+            {
+                RadarModule rm = module as RadarModule;
+                if (rm != null)
+                    return rm.ResolvePlayerVillages(playerName);
+            }
+            return new List<int>();
         }
 
         private void RdUpdateStatusDisplay()

@@ -4,6 +4,73 @@ using Kingdoms.Bot.Modules;
 
 namespace Kingdoms.Bot.UI
 {
+    // Action row for the Group Radar tab — only Monitor + Discord Notify columns
+    internal class GroupActionRow : Panel
+    {
+        private static readonly Color BgEven = Color.FromArgb(30, 32, 40);
+        private static readonly Color BgOdd  = Color.FromArgb(36, 38, 48);
+        private static readonly Color TextPrimary = Color.FromArgb(230, 230, 240);
+        private static readonly Font LabelFont = new Font("Segoe UI", 9f);
+
+        private string _actionKey;
+        private RadarActionSettings _boundSettings;
+        private CheckBox _monitorCheck;
+        private CheckBox _discordNotifyCheck;
+
+        public string ActionKey { get { return _actionKey; } }
+
+        public GroupActionRow(string actionKey, string label, RadarActionSettings settings, bool alternate)
+        {
+            _actionKey = actionKey;
+            _boundSettings = settings;
+            this.Height = 28;
+            this.BackColor = alternate ? BgOdd : BgEven;
+
+            this.SuspendLayout();
+
+            Label nameLabel = new Label();
+            nameLabel.Text = label;
+            nameLabel.Font = LabelFont;
+            nameLabel.ForeColor = TextPrimary;
+            nameLabel.AutoSize = true;
+            nameLabel.Location = new Point(16, 5);
+
+            _monitorCheck = MakeCheck(210, settings.Monitor);
+            _discordNotifyCheck = MakeCheck(280, settings.DiscordNotify);
+
+            this.Controls.AddRange(new Control[] { nameLabel, _monitorCheck, _discordNotifyCheck });
+            this.ResumeLayout(false);
+
+            _monitorCheck.CheckedChanged += delegate { PushToSettings(); };
+            _discordNotifyCheck.CheckedChanged += delegate { PushToSettings(); };
+        }
+
+        private void PushToSettings()
+        {
+            if (_boundSettings == null) return;
+            _boundSettings.Monitor = _monitorCheck.Checked;
+            _boundSettings.DiscordNotify = _discordNotifyCheck.Checked;
+        }
+
+        public void SetValues(RadarActionSettings settings)
+        {
+            _boundSettings = settings;
+            _monitorCheck.Checked = settings.Monitor;
+            _discordNotifyCheck.Checked = settings.DiscordNotify;
+        }
+
+        private static CheckBox MakeCheck(int x, bool isChecked)
+        {
+            CheckBox cb = new CheckBox();
+            cb.Checked = isChecked;
+            cb.AutoSize = true;
+            cb.Location = new Point(x, 5);
+            cb.FlatStyle = FlatStyle.Flat;
+            cb.ForeColor = TextPrimary;
+            return cb;
+        }
+    }
+
     internal class ActionRow : Panel
     {
         private static readonly Color BgEven = Color.FromArgb(30, 32, 40);

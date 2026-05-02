@@ -98,6 +98,8 @@ namespace Kingdoms.Bot.UI
             this._rdInterdictLabel = new System.Windows.Forms.Label();
             this._rdWebhookInput = new System.Windows.Forms.TextBox();
             this._rdWebhookLabel = new System.Windows.Forms.Label();
+            this._rdMentionTagInput = new System.Windows.Forms.TextBox();
+            this._rdMentionTagLabel = new System.Windows.Forms.Label();
             this._rdForceRefreshCheck = new System.Windows.Forms.CheckBox();
             this._rdScanIntervalInput = new System.Windows.Forms.NumericUpDown();
             this._rdScanIntervalLabel = new System.Windows.Forms.Label();
@@ -968,6 +970,8 @@ namespace Kingdoms.Bot.UI
             this._rdSettingsPanel.Controls.Add(this._rdInterdictLabel);
             this._rdSettingsPanel.Controls.Add(this._rdWebhookInput);
             this._rdSettingsPanel.Controls.Add(this._rdWebhookLabel);
+            this._rdSettingsPanel.Controls.Add(this._rdMentionTagInput);
+            this._rdSettingsPanel.Controls.Add(this._rdMentionTagLabel);
             this._rdSettingsPanel.Controls.Add(this._rdForceRefreshCheck);
             this._rdSettingsPanel.Controls.Add(this._rdScanIntervalInput);
             this._rdSettingsPanel.Controls.Add(this._rdScanIntervalLabel);
@@ -1196,6 +1200,27 @@ namespace Kingdoms.Bot.UI
             this._rdWebhookLabel.Size = new System.Drawing.Size(128, 15);
             this._rdWebhookLabel.TabIndex = 4;
             this._rdWebhookLabel.Text = "Discord Webhook URL:";
+            //
+            // _rdMentionTagLabel
+            //
+            this._rdMentionTagLabel.AutoSize = true;
+            this._rdMentionTagLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._rdMentionTagLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._rdMentionTagLabel.Location = new System.Drawing.Point(785, 38);
+            this._rdMentionTagLabel.Name = "_rdMentionTagLabel";
+            this._rdMentionTagLabel.TabIndex = 30;
+            this._rdMentionTagLabel.Text = "Discord Tag:";
+            //
+            // _rdMentionTagInput
+            //
+            this._rdMentionTagInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._rdMentionTagInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._rdMentionTagInput.Font = new System.Drawing.Font("Consolas", 8.5F);
+            this._rdMentionTagInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._rdMentionTagInput.Location = new System.Drawing.Point(870, 37);
+            this._rdMentionTagInput.Name = "_rdMentionTagInput";
+            this._rdMentionTagInput.Size = new System.Drawing.Size(220, 21);
+            this._rdMentionTagInput.TabIndex = 31;
             //
             // _rdForceRefreshCheck
             //
@@ -3699,6 +3724,8 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _rdScanIntervalInput;
         private System.Windows.Forms.Label _rdWebhookLabel;
         private System.Windows.Forms.TextBox _rdWebhookInput;
+        private System.Windows.Forms.Label _rdMentionTagLabel;
+        private System.Windows.Forms.TextBox _rdMentionTagInput;
         private System.Windows.Forms.Label _rdInterdictLabel;
         private System.Windows.Forms.NumericUpDown _rdInterdictMonkCountInput;
         private System.Windows.Forms.CheckBox _rdAutoRecruitMonksCheck;

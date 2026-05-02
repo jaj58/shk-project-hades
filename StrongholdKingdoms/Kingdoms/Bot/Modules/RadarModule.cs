@@ -116,12 +116,17 @@ namespace Kingdoms.Bot.Modules
         // Pending army detail lookups � keyed by armyID
         private Dictionary<long, PendingArmyLookup> _pendingLookups = new Dictionary<long, PendingArmyLookup>();
 
+        // Group member player village lookup
+        private System.Threading.ManualResetEvent _groupLookupEvent = new System.Threading.ManualResetEvent(false);
+        private GetOtherUserVillageIDList_ReturnType _groupLookupResult;
+
         private class PendingArmyLookup
         {
             public long ArmyID;
             public WorldMap.LocalArmyData Army;
             public string ActionKey;
             public RadarSettings Settings;
+            public GroupRadarMember GroupMember;  // null = user-village path
             public DateTime RequestTime;
             public bool Completed;
             public bool Notified;
@@ -301,6 +306,7 @@ namespace Kingdoms.Bot.Modules
         private void ScanArmies(RadarSettings settings)
         {
             Dictionary<long, bool> currentIds = new Dictionary<long, bool>();
+            GroupRadarSettings groupSettings = settings.GroupRadar;
 
             foreach (KeyValuePair<long, WorldMap.LocalArmyData> kvp in _trackedArmies)
             {
@@ -315,8 +321,16 @@ namespace Kingdoms.Bot.Modules
                 if (_firstScan)
                     continue;
 
-                if (!IsTargetingUser(army.targetVillageID))
-                    continue;
+                // Determine whether this targets the user or a monitored group member
+                bool targetingUser = IsTargetingUser(army.targetVillageID);
+                GroupRadarMember groupMember = null;
+
+                if (!targetingUser)
+                {
+                    if (groupSettings == null || !groupSettings.Enabled) continue;
+                    groupMember = FindGroupMember(army.targetVillageID, groupSettings);
+                    if (groupMember == null || !groupMember.Enabled) continue;
+                }
 
                 if (army.lootType >= 0)
                     continue;
@@ -324,12 +338,18 @@ namespace Kingdoms.Bot.Modules
                 string actionKey = ClassifyArmy(army);
                 if (actionKey == null) continue;
 
-                // Track incoming attacks for repair-on-attack (any offensive action)
-                if (actionKey != ACTION_SCOUT && actionKey != ACTION_FORAGING && actionKey != ACTION_REINFORCEMENT
-                    && actionKey != ACTION_AI_SCOUT && actionKey != ACTION_AI_FORAGING)
+                // Track incoming attacks for repair-on-attack (user village path only)
+                if (groupMember == null &&
+                    actionKey != ACTION_SCOUT && actionKey != ACTION_FORAGING && actionKey != ACTION_REINFORCEMENT &&
+                    actionKey != ACTION_AI_SCOUT && actionKey != ACTION_AI_FORAGING)
+                {
                     _incomingAttackTargets[army.armyID] = army.targetVillageID;
+                }
 
-                RadarActionSettings actionSettings = settings.GetActionSettings(actionKey);
+                RadarActionSettings actionSettings = groupMember != null
+                    ? groupSettings.GetActionSettings(actionKey)
+                    : settings.GetActionSettings(actionKey);
+
                 if (!actionSettings.Monitor) continue;
 
                 // Queue a detail lookup � notifications fire inside the callback for speed
@@ -340,6 +360,7 @@ namespace Kingdoms.Bot.Modules
                     pending.Army = army;
                     pending.ActionKey = actionKey;
                     pending.Settings = settings;
+                    pending.GroupMember = groupMember;
                     pending.RequestTime = DateTime.Now;
                     pending.Completed = false;
                     pending.Notified = false;
@@ -437,6 +458,13 @@ namespace Kingdoms.Bot.Modules
             if (pending.Notified) return;
             pending.Notified = true;
 
+            // Delegate to group path if this is a group-member village lookup
+            if (pending.GroupMember != null)
+            {
+                FireGroupNotification(pending);
+                return;
+            }
+
             try
             {
                 WorldMap.LocalArmyData army = pending.Army;
@@ -485,7 +513,8 @@ namespace Kingdoms.Bot.Modules
 
                 if (actionSettings.DiscordNotify && !string.IsNullOrEmpty(pending.Settings.DiscordWebhookUrl))
                     DiscordNotifier.SendAsync(pending.Settings.DiscordWebhookUrl,
-                        "\u26A0 " + actionLabel + " Incoming!", message, 16736352);
+                        "\u26A0 " + actionLabel + " Incoming!", message, 16736352,
+                        string.IsNullOrEmpty(pending.Settings.DiscordMentionTag) ? null : pending.Settings.DiscordMentionTag);
 
                 if (actionSettings.AutoInterdict)
                 {
@@ -525,6 +554,115 @@ namespace Kingdoms.Bot.Modules
             catch (Exception ex)
             {
                 LogError("FireNotification error for armyID " + pending.ArmyID + ": " + ex.Message);
+            }
+        }
+
+        // Notification for an army targeting a group member's village
+        private void FireGroupNotification(PendingArmyLookup pending)
+        {
+            try
+            {
+                GroupRadarSettings groupSettings = pending.Settings.GroupRadar;
+                GroupRadarMember member = pending.GroupMember;
+                WorldMap.LocalArmyData army = pending.Army;
+                RadarActionSettings actionSettings = groupSettings.GetActionSettings(pending.ActionKey);
+
+                string sourceName = GetVillageName(army.travelFromVillageID);
+                string targetName = GetVillageName(army.targetVillageID);
+                string timeLeft = GetTimeLeft(army.serverEndTime);
+                string actionLabel = GetActionLabel(pending.ActionKey);
+
+                string message = "[Friend] " + member.PlayerName + "\n" +
+                    actionLabel + " detected!\n" +
+                    "From: " + sourceName + " [" + army.travelFromVillageID + "]\n" +
+                    "To: " + targetName + " [" + army.targetVillageID + "]\n" +
+                    "ETA: " + timeLeft + "\n" +
+                    "P:" + pending.NumPeasants +
+                    " , Arch:" + pending.NumArchers +
+                    " , Pike:" + pending.NumPikemen +
+                    " , Swords:" + pending.NumSwordsmen +
+                    " , Cats:" + pending.NumCatapults +
+                    " , Caps:" + pending.NumCaptains;
+
+                if (pending.ActionKey == ACTION_PILLAGE_STOCKPILE ||
+                    pending.ActionKey == ACTION_PILLAGE_GRANARY ||
+                    pending.ActionKey == ACTION_PILLAGE_BANQUET ||
+                    pending.ActionKey == ACTION_PILLAGE_ALE ||
+                    pending.ActionKey == ACTION_PILLAGE_ARMOURY ||
+                    pending.ActionKey == ACTION_GOLD_RAID ||
+                    pending.ActionKey == ACTION_AI_PILLAGE_STOCKPILE ||
+                    pending.ActionKey == ACTION_AI_PILLAGE_GRANARY ||
+                    pending.ActionKey == ACTION_AI_PILLAGE_BANQUET ||
+                    pending.ActionKey == ACTION_AI_PILLAGE_ALE ||
+                    pending.ActionKey == ACTION_AI_PILLAGE_ARMOURY ||
+                    pending.ActionKey == ACTION_AI_GOLD_RAID)
+                {
+                    message += "\nPillage: " + pending.PillagePercent + "%";
+                }
+
+                LogWarning("[Group] " + message.Replace("\n", " | "));
+
+                if (actionSettings.DiscordNotify && !string.IsNullOrEmpty(groupSettings.DiscordWebhookUrl))
+                {
+                    string mention = !string.IsNullOrEmpty(member.DiscordTag)
+                        ? member.DiscordTag
+                        : (!string.IsNullOrEmpty(groupSettings.DiscordMentionTag) ? groupSettings.DiscordMentionTag : null);
+                    DiscordNotifier.SendAsync(groupSettings.DiscordWebhookUrl,
+                        "⚠ " + actionLabel + " Incoming!", message, 16736352, mention);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("FireGroupNotification error for armyID " + pending.ArmyID + ": " + ex.Message);
+            }
+        }
+
+        // Finds a group member who owns the given village ID
+        private GroupRadarMember FindGroupMember(int villageId, GroupRadarSettings groupSettings)
+        {
+            if (groupSettings == null || groupSettings.Members == null) return null;
+            foreach (GroupRadarMember m in groupSettings.Members)
+            {
+                if (m.VillageIds == null) continue;
+                foreach (int vid in m.VillageIds)
+                    if (vid == villageId) return m;
+            }
+            return null;
+        }
+
+        // Notification for a monk/scout/captain targeting a group member's village
+        private void FireGroupPersonNotification(WorldMap.LocalPerson person, int targetVillage,
+            string actionKey, GroupRadarMember member, GroupRadarSettings groupSettings)
+        {
+            try
+            {
+                string sourceName = GetVillageName(person.person.homeVillageID);
+                string targetName = GetVillageName(targetVillage);
+                string actionLabel = GetActionLabel(actionKey);
+
+                string message = "[Friend] " + member.PlayerName + "\n" +
+                    actionLabel + " detected!\n" +
+                    "From: " + sourceName + " [" + person.person.homeVillageID + "]\n" +
+                    "To: " + targetName + " [" + targetVillage + "]";
+
+                LogWarning("[Group] " + message.Replace("\n", " | "));
+
+                if (!string.IsNullOrEmpty(groupSettings.DiscordWebhookUrl))
+                {
+                    RadarActionSettings actionSettings = groupSettings.GetActionSettings(actionKey);
+                    if (actionSettings.DiscordNotify)
+                    {
+                        string mention = !string.IsNullOrEmpty(member.DiscordTag)
+                            ? member.DiscordTag
+                            : (!string.IsNullOrEmpty(groupSettings.DiscordMentionTag) ? groupSettings.DiscordMentionTag : null);
+                        DiscordNotifier.SendAsync(groupSettings.DiscordWebhookUrl,
+                            "⚠ " + actionLabel + " Incoming!", message, 15105570, mention);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("FireGroupPersonNotification error: " + ex.Message);
             }
         }
 
@@ -573,14 +711,33 @@ namespace Kingdoms.Bot.Modules
                     continue;
 
                 int targetVillage = person.person.targetVillageID;
-                if (!IsTargetingUser(targetVillage))
-                    continue;
+                bool targetingUser = IsTargetingUser(targetVillage);
+                GroupRadarMember groupMember = null;
+
+                if (!targetingUser)
+                {
+                    GroupRadarSettings groupSettings = settings.GroupRadar;
+                    if (groupSettings == null || !groupSettings.Enabled) continue;
+                    groupMember = FindGroupMember(targetVillage, groupSettings);
+                    if (groupMember == null || !groupMember.Enabled) continue;
+                }
 
                 string actionKey = ClassifyPerson(person, targetVillage);
                 if (actionKey == null) continue;
 
-                RadarActionSettings actionSettings = settings.GetActionSettings(actionKey);
-                if (!actionSettings.Monitor) continue;
+                if (groupMember != null)
+                {
+                    // Group member path \u2014 fire immediately, no system notify, no auto-interdict
+                    GroupRadarSettings groupSettings = settings.GroupRadar;
+                    RadarActionSettings actionSettings = groupSettings.GetActionSettings(actionKey);
+                    if (!actionSettings.Monitor) continue;
+                    FireGroupPersonNotification(person, targetVillage, actionKey, groupMember, groupSettings);
+                    continue;
+                }
+
+                // User village path (existing logic)
+                RadarActionSettings userActionSettings = settings.GetActionSettings(actionKey);
+                if (!userActionSettings.Monitor) continue;
 
                 string sourceName = GetVillageName(person.person.homeVillageID);
                 string targetName = GetVillageName(targetVillage);
@@ -592,14 +749,15 @@ namespace Kingdoms.Bot.Modules
 
                 LogWarning(message.Replace("\n", " | "));
 
-                if (actionSettings.SystemNotify)
+                if (userActionSettings.SystemNotify)
                     ShowSystemNotification(actionLabel, message);
 
-                if (actionSettings.DiscordNotify && !string.IsNullOrEmpty(settings.DiscordWebhookUrl))
+                if (userActionSettings.DiscordNotify && !string.IsNullOrEmpty(settings.DiscordWebhookUrl))
                     DiscordNotifier.SendAsync(settings.DiscordWebhookUrl,
-                        "\u26A0 " + actionLabel + " Incoming!", message, 15105570);
+                        "\u26A0 " + actionLabel + " Incoming!", message, 15105570,
+                        string.IsNullOrEmpty(settings.DiscordMentionTag) ? null : settings.DiscordMentionTag);
 
-                if (actionSettings.AutoInterdict)
+                if (userActionSettings.AutoInterdict)
                     TryAutoInterdict(targetVillage, settings);
             }
 
@@ -1077,6 +1235,51 @@ namespace Kingdoms.Bot.Modules
                 case ACTION_AI_FORAGING: return "AI Foraging";
                 default: return actionKey;
             }
+        }
+
+        // =================================================================
+        // Group member player village lookup
+        // =================================================================
+
+        public List<int> ResolvePlayerVillages(string playerName)
+        {
+            List<int> result = new List<int>();
+            if (string.IsNullOrEmpty(playerName)) return result;
+
+            _groupLookupResult = null;
+            _groupLookupEvent.Reset();
+
+            RemoteServices.Instance.set_GetOtherUserVillageIDList_UserCallBack(
+                new RemoteServices.GetOtherUserVillageIDList_UserCallBack(GroupPlayerLookupCallback));
+            RemoteServices.Instance.GetOtherUserVillageIDList(playerName);
+
+            if (!_groupLookupEvent.WaitOne(15000))
+            {
+                LogWarning("[Group] Player lookup timed out for '" + playerName + "'.");
+                return result;
+            }
+
+            GetOtherUserVillageIDList_ReturnType data = _groupLookupResult;
+            if (data == null || !data.Success)
+            {
+                LogWarning("[Group] Player lookup failed for '" + playerName + "'.");
+                return result;
+            }
+
+            if (data.userVillageList != null)
+            {
+                foreach (int vid in data.userVillageList)
+                    result.Add(vid);
+            }
+
+            LogInfo("[Group] Found " + result.Count + " villages for '" + playerName + "'.");
+            return result;
+        }
+
+        private void GroupPlayerLookupCallback(GetOtherUserVillageIDList_ReturnType returnData)
+        {
+            _groupLookupResult = returnData;
+            _groupLookupEvent.Set();
         }
 
         protected override void OnShutdown()

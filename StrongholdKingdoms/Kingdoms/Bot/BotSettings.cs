@@ -96,6 +96,8 @@ namespace Kingdoms.Bot
         public bool Enabled = true;
         public int ScanIntervalSeconds = 10;
         public string DiscordWebhookUrl = "";
+        public string DiscordMentionTag = "";
+        public GroupRadarSettings GroupRadar = new GroupRadarSettings();
         public int AutoInterdictMonkCount = 1;
         public bool AutoRecruitMonks = false;
         public int MinArmySizeForInterdict = 100;
@@ -126,6 +128,35 @@ namespace Kingdoms.Bot
         public bool SystemNotify = true;
         public bool DiscordNotify = false;
         public bool AutoInterdict = false;
+    }
+
+    [Serializable]
+    public class GroupRadarMember
+    {
+        public string PlayerName = "";
+        public string DiscordTag = "";      // per-member @mention, e.g. <@123456789>
+        public bool Enabled = true;
+        public List<int> VillageIds = new List<int>();
+    }
+
+    [Serializable]
+    public class GroupRadarSettings
+    {
+        public bool Enabled = false;
+        public string DiscordWebhookUrl = "";
+        public string DiscordMentionTag = "";   // group-level fallback mention
+        public List<GroupRadarMember> Members = new List<GroupRadarMember>();
+        public List<RadarActionSettings> Actions = new List<RadarActionSettings>();
+
+        public RadarActionSettings GetActionSettings(string actionKey)
+        {
+            foreach (RadarActionSettings a in Actions)
+                if (a.ActionKey == actionKey) return a;
+            RadarActionSettings newAction = new RadarActionSettings();
+            newAction.ActionKey = actionKey;
+            Actions.Add(newAction);
+            return newAction;
+        }
     }
 
     [Serializable]
