@@ -42,6 +42,7 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.CardExpiryModule());
             RegisterModule(new Modules.VillageBuilderModule());
             RegisterModule(new Modules.AutoBombModule());
+            RegisterModule(new Modules.AutoBombMultiModule());
             RegisterModule(new Modules.PopularityModule());
             RegisterModule(new Modules.FreeCardCollectorModule());
 
@@ -93,6 +94,8 @@ namespace Kingdoms.Bot
                     module.Enabled = _settings.VillageBuilder.Enabled;
                 else if (module is Modules.AutoBombModule)
                     module.Enabled = _settings.AutoBomb.Enabled;
+                else if (module is Modules.AutoBombMultiModule)
+                    module.Enabled = _settings.AutoBombMulti.Enabled;
                 else if (module is Modules.PopularityModule)
                     module.Enabled = _settings.Popularity.Enabled;
             }

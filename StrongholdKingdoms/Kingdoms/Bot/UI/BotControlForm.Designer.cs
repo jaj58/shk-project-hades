@@ -250,26 +250,68 @@ namespace Kingdoms.Bot.UI
             this._abQueueVillageIdInput = new System.Windows.Forms.NumericUpDown();
             this._abQueueStatusLabel = new System.Windows.Forms.Label();
             this._abQueueEnabledCheck = new System.Windows.Forms.CheckBox();
-            this._logPanel = new System.Windows.Forms.Panel();
-            this._logBox = new System.Windows.Forms.RichTextBox();
-            this._logHeader = new System.Windows.Forms.Label();
-            this._trSettingsTab = new System.Windows.Forms.TabPage();
-            this._miscPage = new System.Windows.Forms.TabPage();
-            this._miscSettingsPanel = new System.Windows.Forms.Panel();
-            this._miscCollectFreeCardsCheck = new System.Windows.Forms.CheckBox();
+            this._bombMultiPage = new System.Windows.Forms.TabPage();
+            this._abmSubTabs = new System.Windows.Forms.TabControl();
+            this._abmPlayersTab = new System.Windows.Forms.TabPage();
+            this._abmPendingTab = new System.Windows.Forms.TabPage();
+            this._abmQueueTab = new System.Windows.Forms.TabPage();
+            this._abmConnPanel = new System.Windows.Forms.Panel();
+            this._abmCtrlPanel = new System.Windows.Forms.Panel();
+            this._abmVillageListPanel = new System.Windows.Forms.Panel();
+            this._abmVillageColHeader = new System.Windows.Forms.Panel();
+            this._abmPendingListPanel = new System.Windows.Forms.Panel();
+            this._abmPendingColHeader = new System.Windows.Forms.Panel();
+            this._abmQueueListBox = new System.Windows.Forms.ListBox();
+            this._abmQueueSettingsPanel = new System.Windows.Forms.Panel();
+            this._abmApiUrlBox = new System.Windows.Forms.TextBox();
+            this._abmSessionKeyBox = new System.Windows.Forms.TextBox();
+            this._abmConnectBtn = new System.Windows.Forms.Button();
+            this._abmDisconnectBtn = new System.Windows.Forms.Button();
+            this._abmConnStatusLabel = new System.Windows.Forms.Label();
+            this._abmTargetVidBox = new System.Windows.Forms.TextBox();
+            this._abmStackDelayInput = new System.Windows.Forms.NumericUpDown();
+            this._abmFakeSendCheck = new System.Windows.Forms.CheckBox();
+            this._abmAutoInterdictCheck = new System.Windows.Forms.CheckBox();
+            this._abmPushConfigBtn = new System.Windows.Forms.Button();
+            this._abmPrepareBtn = new System.Windows.Forms.Button();
+            this._abmLaunchBtn = new System.Windows.Forms.Button();
+            this._abmCancelBtn = new System.Windows.Forms.Button();
+            this._abmResetBtn = new System.Windows.Forms.Button();
+            this._abmTakeCoordBtn = new System.Windows.Forms.Button();
+            this._abmCoordStatusLabel = new System.Windows.Forms.Label();
+            this._abmQueueEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._abmQueueVidInput = new System.Windows.Forms.NumericUpDown();
+            this._abmQueueAddIdBtn = new System.Windows.Forms.Button();
+            this._abmQueuePlayerNameBox = new System.Windows.Forms.TextBox();
+            this._abmQueueLookupBtn = new System.Windows.Forms.Button();
+            this._abmQueueAddSelectedVillageBtn = new System.Windows.Forms.Button();
+            this._abmQueueAddSelectedPlayerBtn = new System.Windows.Forms.Button();
+            this._abmQueueRemoveBtn = new System.Windows.Forms.Button();
+            this._abmQueueClearBtn = new System.Windows.Forms.Button();
+            this._abmQueueSaveBtn = new System.Windows.Forms.Button();
+            this._abmQueueLoadBtn = new System.Windows.Forms.Button();
+            this._abmQueueResetBtn = new System.Windows.Forms.Button();
+            this._abmQueueStatusLabel = new System.Windows.Forms.Label();
             this._popularityPage = new System.Windows.Forms.TabPage();
             this._ppVillageListPanel = new System.Windows.Forms.Panel();
             this._ppColHeader = new System.Windows.Forms.Panel();
             this._ppSeparator = new System.Windows.Forms.Panel();
             this._ppSettingsPanel = new System.Windows.Forms.Panel();
-            this._ppEnabledCheck = new System.Windows.Forms.CheckBox();
-            this._ppStatusLabel = new System.Windows.Forms.Label();
-            this._ppIntervalLabel = new System.Windows.Forms.Label();
-            this._ppIntervalInput = new System.Windows.Forms.NumericUpDown();
-            this._ppDelayLabel = new System.Windows.Forms.Label();
-            this._ppDelayInput = new System.Windows.Forms.NumericUpDown();
-            this._ppRefreshBtn = new System.Windows.Forms.Button();
             this._ppRunNowBtn = new System.Windows.Forms.Button();
+            this._ppRefreshBtn = new System.Windows.Forms.Button();
+            this._ppDelayInput = new System.Windows.Forms.NumericUpDown();
+            this._ppDelayLabel = new System.Windows.Forms.Label();
+            this._ppIntervalInput = new System.Windows.Forms.NumericUpDown();
+            this._ppIntervalLabel = new System.Windows.Forms.Label();
+            this._ppStatusLabel = new System.Windows.Forms.Label();
+            this._ppEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._miscPage = new System.Windows.Forms.TabPage();
+            this._miscSettingsPanel = new System.Windows.Forms.Panel();
+            this._miscCollectFreeCardsCheck = new System.Windows.Forms.CheckBox();
+            this._logPanel = new System.Windows.Forms.Panel();
+            this._logBox = new System.Windows.Forms.RichTextBox();
+            this._logHeader = new System.Windows.Forms.Label();
+            this._trSettingsTab = new System.Windows.Forms.TabPage();
             this._footerPanel.SuspendLayout();
             this._headerPanel.SuspendLayout();
             this._mainSplit.Panel1.SuspendLayout();
@@ -335,12 +377,22 @@ namespace Kingdoms.Bot.UI
             this._bombTargetQueueTab.SuspendLayout();
             this._abQueueSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._abQueueVillageIdInput)).BeginInit();
-            this._miscPage.SuspendLayout();
-            this._miscSettingsPanel.SuspendLayout();
+            this._bombMultiPage.SuspendLayout();
+            this._abmSubTabs.SuspendLayout();
+            this._abmPlayersTab.SuspendLayout();
+            this._abmPendingTab.SuspendLayout();
+            this._abmQueueTab.SuspendLayout();
+            this._abmConnPanel.SuspendLayout();
+            this._abmCtrlPanel.SuspendLayout();
+            this._abmQueueSettingsPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._abmStackDelayInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._abmQueueVidInput)).BeginInit();
             this._popularityPage.SuspendLayout();
             this._ppSettingsPanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._ppDelayInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).BeginInit();
+            this._miscPage.SuspendLayout();
+            this._miscSettingsPanel.SuspendLayout();
             this._logPanel.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -518,6 +570,7 @@ namespace Kingdoms.Bot.UI
             this._tabControl.Controls.Add(this._tradePage);
             this._tabControl.Controls.Add(this._builderPage);
             this._tabControl.Controls.Add(this._bombPage);
+            this._tabControl.Controls.Add(this._bombMultiPage);
             this._tabControl.Controls.Add(this._popularityPage);
             this._tabControl.Controls.Add(this._miscPage);
             this._tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -1200,19 +1253,9 @@ namespace Kingdoms.Bot.UI
             this._rdWebhookLabel.Size = new System.Drawing.Size(128, 15);
             this._rdWebhookLabel.TabIndex = 4;
             this._rdWebhookLabel.Text = "Discord Webhook URL:";
-            //
-            // _rdMentionTagLabel
-            //
-            this._rdMentionTagLabel.AutoSize = true;
-            this._rdMentionTagLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
-            this._rdMentionTagLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdMentionTagLabel.Location = new System.Drawing.Point(785, 38);
-            this._rdMentionTagLabel.Name = "_rdMentionTagLabel";
-            this._rdMentionTagLabel.TabIndex = 30;
-            this._rdMentionTagLabel.Text = "Discord Tag:";
-            //
+            // 
             // _rdMentionTagInput
-            //
+            // 
             this._rdMentionTagInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._rdMentionTagInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMentionTagInput.Font = new System.Drawing.Font("Consolas", 8.5F);
@@ -1221,9 +1264,20 @@ namespace Kingdoms.Bot.UI
             this._rdMentionTagInput.Name = "_rdMentionTagInput";
             this._rdMentionTagInput.Size = new System.Drawing.Size(220, 21);
             this._rdMentionTagInput.TabIndex = 31;
-            //
+            // 
+            // _rdMentionTagLabel
+            // 
+            this._rdMentionTagLabel.AutoSize = true;
+            this._rdMentionTagLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._rdMentionTagLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._rdMentionTagLabel.Location = new System.Drawing.Point(785, 38);
+            this._rdMentionTagLabel.Name = "_rdMentionTagLabel";
+            this._rdMentionTagLabel.Size = new System.Drawing.Size(71, 15);
+            this._rdMentionTagLabel.TabIndex = 30;
+            this._rdMentionTagLabel.Text = "Discord Tag:";
+            // 
             // _rdForceRefreshCheck
-            //
+            // 
             this._rdForceRefreshCheck.AutoSize = true;
             this._rdForceRefreshCheck.Checked = true;
             this._rdForceRefreshCheck.CheckState = System.Windows.Forms.CheckState.Checked;
@@ -1234,7 +1288,7 @@ namespace Kingdoms.Bot.UI
             this._rdForceRefreshCheck.Size = new System.Drawing.Size(187, 19);
             this._rdForceRefreshCheck.TabIndex = 30;
             this._rdForceRefreshCheck.Text = "Force refresh armies each scan";
-            //
+            // 
             // _rdScanIntervalInput
             // 
             this._rdScanIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
@@ -3339,6 +3393,752 @@ namespace Kingdoms.Bot.UI
             this._abQueueEnabledCheck.Size = new System.Drawing.Size(216, 23);
             this._abQueueEnabledCheck.TabIndex = 0;
             this._abQueueEnabledCheck.Text = "Enable Auto-Advance Queue";
+            //
+            // _bombMultiPage
+            //
+            this._bombMultiPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._bombMultiPage.Controls.Add(this._abmSubTabs);
+            this._bombMultiPage.Controls.Add(this._abmConnPanel);
+            this._bombMultiPage.Location = new System.Drawing.Point(4, 24);
+            this._bombMultiPage.Name = "_bombMultiPage";
+            this._bombMultiPage.Size = new System.Drawing.Size(1142, 497);
+            this._bombMultiPage.TabIndex = 7;
+            this._bombMultiPage.Text = "Auto Bomb Multi";
+            //
+            // _abmConnPanel
+            //
+            this._abmConnPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(20)))), ((int)(((byte)(22)))), ((int)(((byte)(30)))));
+            this._abmConnPanel.Controls.Add(this._abmConnStatusLabel);
+            this._abmConnPanel.Controls.Add(this._abmDisconnectBtn);
+            this._abmConnPanel.Controls.Add(this._abmConnectBtn);
+            this._abmConnPanel.Controls.Add(this._abmSessionKeyBox);
+            this._abmConnPanel.Controls.Add(this._abmApiUrlBox);
+            this._abmConnPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._abmConnPanel.Location = new System.Drawing.Point(0, 0);
+            this._abmConnPanel.Name = "_abmConnPanel";
+            this._abmConnPanel.Size = new System.Drawing.Size(1142, 30);
+            this._abmConnPanel.TabIndex = 1;
+            //
+            // _abmApiUrlBox
+            //
+            this._abmApiUrlBox.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._abmApiUrlBox.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._abmApiUrlBox.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._abmApiUrlBox.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmApiUrlBox.Location = new System.Drawing.Point(60, 4);
+            this._abmApiUrlBox.Name = "_abmApiUrlBox";
+            this._abmApiUrlBox.Size = new System.Drawing.Size(260, 20);
+            this._abmApiUrlBox.TabIndex = 0;
+            //
+            // _abmSessionKeyBox
+            //
+            this._abmSessionKeyBox.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._abmSessionKeyBox.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._abmSessionKeyBox.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._abmSessionKeyBox.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmSessionKeyBox.Location = new System.Drawing.Point(360, 4);
+            this._abmSessionKeyBox.Name = "_abmSessionKeyBox";
+            this._abmSessionKeyBox.PasswordChar = '●';
+            this._abmSessionKeyBox.Size = new System.Drawing.Size(100, 20);
+            this._abmSessionKeyBox.TabIndex = 1;
+            //
+            // _abmConnectBtn
+            //
+            this._abmConnectBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(100)))), ((int)(((byte)(60)))));
+            this._abmConnectBtn.FlatAppearance.BorderSize = 0;
+            this._abmConnectBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmConnectBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._abmConnectBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmConnectBtn.Location = new System.Drawing.Point(464, 3);
+            this._abmConnectBtn.Name = "_abmConnectBtn";
+            this._abmConnectBtn.Size = new System.Drawing.Size(70, 22);
+            this._abmConnectBtn.TabIndex = 2;
+            this._abmConnectBtn.Text = "Connect";
+            this._abmConnectBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmDisconnectBtn
+            //
+            this._abmDisconnectBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
+            this._abmDisconnectBtn.FlatAppearance.BorderSize = 0;
+            this._abmDisconnectBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmDisconnectBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._abmDisconnectBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmDisconnectBtn.Location = new System.Drawing.Point(538, 3);
+            this._abmDisconnectBtn.Name = "_abmDisconnectBtn";
+            this._abmDisconnectBtn.Size = new System.Drawing.Size(84, 22);
+            this._abmDisconnectBtn.TabIndex = 3;
+            this._abmDisconnectBtn.Text = "Disconnect";
+            this._abmDisconnectBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmConnStatusLabel
+            //
+            this._abmConnStatusLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold);
+            this._abmConnStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._abmConnStatusLabel.Location = new System.Drawing.Point(626, 7);
+            this._abmConnStatusLabel.Name = "_abmConnStatusLabel";
+            this._abmConnStatusLabel.Size = new System.Drawing.Size(450, 16);
+            this._abmConnStatusLabel.TabIndex = 4;
+            this._abmConnStatusLabel.Text = "Not connected";
+            //
+            // _abmSubTabs
+            //
+            this._abmSubTabs.Controls.Add(this._abmPlayersTab);
+            this._abmSubTabs.Controls.Add(this._abmPendingTab);
+            this._abmSubTabs.Controls.Add(this._abmQueueTab);
+            this._abmSubTabs.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._abmSubTabs.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._abmSubTabs.Location = new System.Drawing.Point(0, 30);
+            this._abmSubTabs.Name = "_abmSubTabs";
+            this._abmSubTabs.SelectedIndex = 0;
+            this._abmSubTabs.Size = new System.Drawing.Size(1142, 467);
+            this._abmSubTabs.TabIndex = 0;
+            //
+            // _abmPlayersTab
+            //
+            this._abmPlayersTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._abmPlayersTab.Controls.Add(this._abmVillageListPanel);
+            this._abmPlayersTab.Controls.Add(this._abmVillageColHeader);
+            this._abmPlayersTab.Controls.Add(this._abmCtrlPanel);
+            this._abmPlayersTab.Location = new System.Drawing.Point(4, 22);
+            this._abmPlayersTab.Name = "_abmPlayersTab";
+            this._abmPlayersTab.Size = new System.Drawing.Size(1134, 441);
+            this._abmPlayersTab.TabIndex = 0;
+            this._abmPlayersTab.Text = "Players & Villages";
+            //
+            // _abmCtrlPanel
+            //
+            this._abmCtrlPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(20)))), ((int)(((byte)(22)))), ((int)(((byte)(30)))));
+            this._abmCtrlPanel.Controls.Add(this._abmCoordStatusLabel);
+            this._abmCtrlPanel.Controls.Add(this._abmTakeCoordBtn);
+            this._abmCtrlPanel.Controls.Add(this._abmResetBtn);
+            this._abmCtrlPanel.Controls.Add(this._abmCancelBtn);
+            this._abmCtrlPanel.Controls.Add(this._abmLaunchBtn);
+            this._abmCtrlPanel.Controls.Add(this._abmPrepareBtn);
+            this._abmCtrlPanel.Controls.Add(this._abmPushConfigBtn);
+            this._abmCtrlPanel.Controls.Add(this._abmAutoInterdictCheck);
+            this._abmCtrlPanel.Controls.Add(this._abmFakeSendCheck);
+            this._abmCtrlPanel.Controls.Add(this._abmStackDelayInput);
+            this._abmCtrlPanel.Controls.Add(this._abmTargetVidBox);
+            this._abmCtrlPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._abmCtrlPanel.Location = new System.Drawing.Point(0, 0);
+            this._abmCtrlPanel.Name = "_abmCtrlPanel";
+            this._abmCtrlPanel.Size = new System.Drawing.Size(1134, 32);
+            this._abmCtrlPanel.TabIndex = 2;
+            //
+            // _abmTargetVidBox
+            //
+            this._abmTargetVidBox.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._abmTargetVidBox.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._abmTargetVidBox.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._abmTargetVidBox.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmTargetVidBox.Location = new System.Drawing.Point(84, 5);
+            this._abmTargetVidBox.Name = "_abmTargetVidBox";
+            this._abmTargetVidBox.Size = new System.Drawing.Size(80, 20);
+            this._abmTargetVidBox.TabIndex = 0;
+            //
+            // _abmStackDelayInput
+            //
+            this._abmStackDelayInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._abmStackDelayInput.Font = new System.Drawing.Font("Segoe UI", 7F);
+            this._abmStackDelayInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmStackDelayInput.Location = new System.Drawing.Point(244, 5);
+            this._abmStackDelayInput.Maximum = new decimal(new int[] { 30, 0, 0, 0 });
+            this._abmStackDelayInput.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
+            this._abmStackDelayInput.Name = "_abmStackDelayInput";
+            this._abmStackDelayInput.Size = new System.Drawing.Size(44, 20);
+            this._abmStackDelayInput.TabIndex = 1;
+            this._abmStackDelayInput.Value = new decimal(new int[] { 1, 0, 0, 0 });
+            //
+            // _abmFakeSendCheck
+            //
+            this._abmFakeSendCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmFakeSendCheck.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._abmFakeSendCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmFakeSendCheck.Location = new System.Drawing.Point(292, 7);
+            this._abmFakeSendCheck.Name = "_abmFakeSendCheck";
+            this._abmFakeSendCheck.Size = new System.Drawing.Size(80, 18);
+            this._abmFakeSendCheck.TabIndex = 2;
+            this._abmFakeSendCheck.Text = "Fake Send";
+            //
+            // _abmAutoInterdictCheck
+            //
+            this._abmAutoInterdictCheck.Checked = true;
+            this._abmAutoInterdictCheck.CheckState = System.Windows.Forms.CheckState.Checked;
+            this._abmAutoInterdictCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmAutoInterdictCheck.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._abmAutoInterdictCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmAutoInterdictCheck.Location = new System.Drawing.Point(376, 7);
+            this._abmAutoInterdictCheck.Name = "_abmAutoInterdictCheck";
+            this._abmAutoInterdictCheck.Size = new System.Drawing.Size(140, 18);
+            this._abmAutoInterdictCheck.TabIndex = 3;
+            this._abmAutoInterdictCheck.Text = "Auto Cancel Interdict";
+            //
+            // _abmPushConfigBtn
+            //
+            this._abmPushConfigBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(80)))), ((int)(((byte)(120)))));
+            this._abmPushConfigBtn.FlatAppearance.BorderSize = 0;
+            this._abmPushConfigBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmPushConfigBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._abmPushConfigBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmPushConfigBtn.Location = new System.Drawing.Point(520, 4);
+            this._abmPushConfigBtn.Name = "_abmPushConfigBtn";
+            this._abmPushConfigBtn.Size = new System.Drawing.Size(86, 22);
+            this._abmPushConfigBtn.TabIndex = 4;
+            this._abmPushConfigBtn.Text = "Push Config";
+            this._abmPushConfigBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmPrepareBtn
+            //
+            this._abmPrepareBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(90)))), ((int)(((byte)(140)))));
+            this._abmPrepareBtn.FlatAppearance.BorderSize = 0;
+            this._abmPrepareBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmPrepareBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._abmPrepareBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmPrepareBtn.Location = new System.Drawing.Point(610, 4);
+            this._abmPrepareBtn.Name = "_abmPrepareBtn";
+            this._abmPrepareBtn.Size = new System.Drawing.Size(70, 22);
+            this._abmPrepareBtn.TabIndex = 5;
+            this._abmPrepareBtn.Text = "Prepare";
+            this._abmPrepareBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmLaunchBtn
+            //
+            this._abmLaunchBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(120)))), ((int)(((byte)(60)))));
+            this._abmLaunchBtn.FlatAppearance.BorderSize = 0;
+            this._abmLaunchBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmLaunchBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._abmLaunchBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmLaunchBtn.Location = new System.Drawing.Point(684, 4);
+            this._abmLaunchBtn.Name = "_abmLaunchBtn";
+            this._abmLaunchBtn.Size = new System.Drawing.Size(66, 22);
+            this._abmLaunchBtn.TabIndex = 6;
+            this._abmLaunchBtn.Text = "Launch";
+            this._abmLaunchBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmCancelBtn
+            //
+            this._abmCancelBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(140)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
+            this._abmCancelBtn.FlatAppearance.BorderSize = 0;
+            this._abmCancelBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmCancelBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._abmCancelBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmCancelBtn.Location = new System.Drawing.Point(754, 4);
+            this._abmCancelBtn.Name = "_abmCancelBtn";
+            this._abmCancelBtn.Size = new System.Drawing.Size(60, 22);
+            this._abmCancelBtn.TabIndex = 7;
+            this._abmCancelBtn.Text = "Cancel";
+            this._abmCancelBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmResetBtn
+            //
+            this._abmResetBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(60)))), ((int)(((byte)(20)))));
+            this._abmResetBtn.FlatAppearance.BorderSize = 0;
+            this._abmResetBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmResetBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._abmResetBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmResetBtn.Location = new System.Drawing.Point(818, 4);
+            this._abmResetBtn.Name = "_abmResetBtn";
+            this._abmResetBtn.Size = new System.Drawing.Size(96, 22);
+            this._abmResetBtn.TabIndex = 8;
+            this._abmResetBtn.Text = "Reset Session";
+            this._abmResetBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmTakeCoordBtn
+            //
+            this._abmTakeCoordBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(50)))), ((int)(((byte)(110)))));
+            this._abmTakeCoordBtn.FlatAppearance.BorderSize = 0;
+            this._abmTakeCoordBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmTakeCoordBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._abmTakeCoordBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmTakeCoordBtn.Location = new System.Drawing.Point(918, 4);
+            this._abmTakeCoordBtn.Name = "_abmTakeCoordBtn";
+            this._abmTakeCoordBtn.Size = new System.Drawing.Size(118, 22);
+            this._abmTakeCoordBtn.TabIndex = 9;
+            this._abmTakeCoordBtn.Text = "Take Coordinator";
+            this._abmTakeCoordBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmCoordStatusLabel
+            //
+            this._abmCoordStatusLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold);
+            this._abmCoordStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._abmCoordStatusLabel.Location = new System.Drawing.Point(1040, 8);
+            this._abmCoordStatusLabel.Name = "_abmCoordStatusLabel";
+            this._abmCoordStatusLabel.Size = new System.Drawing.Size(86, 16);
+            this._abmCoordStatusLabel.TabIndex = 10;
+            this._abmCoordStatusLabel.Text = "Session: idle";
+            //
+            // _abmVillageColHeader
+            //
+            this._abmVillageColHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(18)))), ((int)(((byte)(20)))), ((int)(((byte)(28)))));
+            this._abmVillageColHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this._abmVillageColHeader.Location = new System.Drawing.Point(0, 32);
+            this._abmVillageColHeader.Name = "_abmVillageColHeader";
+            this._abmVillageColHeader.Size = new System.Drawing.Size(1134, 18);
+            this._abmVillageColHeader.TabIndex = 1;
+            //
+            // _abmVillageListPanel
+            //
+            this._abmVillageListPanel.AutoScroll = true;
+            this._abmVillageListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._abmVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._abmVillageListPanel.Location = new System.Drawing.Point(0, 50);
+            this._abmVillageListPanel.Name = "_abmVillageListPanel";
+            this._abmVillageListPanel.Size = new System.Drawing.Size(1134, 391);
+            this._abmVillageListPanel.TabIndex = 0;
+            //
+            // _abmPendingTab
+            //
+            this._abmPendingTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._abmPendingTab.Controls.Add(this._abmPendingListPanel);
+            this._abmPendingTab.Controls.Add(this._abmPendingColHeader);
+            this._abmPendingTab.Location = new System.Drawing.Point(4, 22);
+            this._abmPendingTab.Name = "_abmPendingTab";
+            this._abmPendingTab.Size = new System.Drawing.Size(1134, 441);
+            this._abmPendingTab.TabIndex = 1;
+            this._abmPendingTab.Text = "Pending Attacks";
+            //
+            // _abmPendingColHeader
+            //
+            this._abmPendingColHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(18)))), ((int)(((byte)(20)))), ((int)(((byte)(28)))));
+            this._abmPendingColHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this._abmPendingColHeader.Location = new System.Drawing.Point(0, 0);
+            this._abmPendingColHeader.Name = "_abmPendingColHeader";
+            this._abmPendingColHeader.Size = new System.Drawing.Size(1134, 18);
+            this._abmPendingColHeader.TabIndex = 1;
+            //
+            // _abmPendingListPanel
+            //
+            this._abmPendingListPanel.AutoScroll = true;
+            this._abmPendingListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._abmPendingListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._abmPendingListPanel.Location = new System.Drawing.Point(0, 18);
+            this._abmPendingListPanel.Name = "_abmPendingListPanel";
+            this._abmPendingListPanel.Size = new System.Drawing.Size(1134, 423);
+            this._abmPendingListPanel.TabIndex = 0;
+            //
+            // _abmQueueTab
+            //
+            this._abmQueueTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._abmQueueTab.Controls.Add(this._abmQueueListBox);
+            this._abmQueueTab.Controls.Add(this._abmQueueSettingsPanel);
+            this._abmQueueTab.Location = new System.Drawing.Point(4, 22);
+            this._abmQueueTab.Name = "_abmQueueTab";
+            this._abmQueueTab.Size = new System.Drawing.Size(1134, 441);
+            this._abmQueueTab.TabIndex = 2;
+            this._abmQueueTab.Text = "Target Queue";
+            //
+            // _abmQueueSettingsPanel
+            //
+            this._abmQueueSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueueStatusLabel);
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueueResetBtn);
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueueLoadBtn);
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueueSaveBtn);
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueueClearBtn);
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueueRemoveBtn);
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueueAddSelectedPlayerBtn);
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueueAddSelectedVillageBtn);
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueueLookupBtn);
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueuePlayerNameBox);
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueueAddIdBtn);
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueueVidInput);
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueueEnabledCheck);
+            this._abmQueueSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._abmQueueSettingsPanel.Location = new System.Drawing.Point(0, 0);
+            this._abmQueueSettingsPanel.Name = "_abmQueueSettingsPanel";
+            this._abmQueueSettingsPanel.Padding = new System.Windows.Forms.Padding(12, 10, 12, 6);
+            this._abmQueueSettingsPanel.Size = new System.Drawing.Size(1134, 104);
+            this._abmQueueSettingsPanel.TabIndex = 1;
+            //
+            // _abmQueueEnabledCheck
+            //
+            this._abmQueueEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmQueueEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abmQueueEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueueEnabledCheck.Location = new System.Drawing.Point(12, 10);
+            this._abmQueueEnabledCheck.Name = "_abmQueueEnabledCheck";
+            this._abmQueueEnabledCheck.Size = new System.Drawing.Size(110, 20);
+            this._abmQueueEnabledCheck.TabIndex = 0;
+            this._abmQueueEnabledCheck.Text = "Queue Enabled";
+            //
+            // _abmQueueVidInput
+            //
+            this._abmQueueVidInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._abmQueueVidInput.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abmQueueVidInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueueVidInput.Location = new System.Drawing.Point(130, 10);
+            this._abmQueueVidInput.Maximum = new decimal(new int[] { 2147483647, 0, 0, 0 });
+            this._abmQueueVidInput.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
+            this._abmQueueVidInput.Name = "_abmQueueVidInput";
+            this._abmQueueVidInput.Size = new System.Drawing.Size(100, 22);
+            this._abmQueueVidInput.TabIndex = 1;
+            //
+            // _abmQueueAddIdBtn
+            //
+            this._abmQueueAddIdBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abmQueueAddIdBtn.FlatAppearance.BorderSize = 0;
+            this._abmQueueAddIdBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmQueueAddIdBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abmQueueAddIdBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueueAddIdBtn.Location = new System.Drawing.Point(234, 10);
+            this._abmQueueAddIdBtn.Name = "_abmQueueAddIdBtn";
+            this._abmQueueAddIdBtn.Size = new System.Drawing.Size(80, 22);
+            this._abmQueueAddIdBtn.TabIndex = 2;
+            this._abmQueueAddIdBtn.Text = "Add by ID";
+            this._abmQueueAddIdBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmQueuePlayerNameBox
+            //
+            this._abmQueuePlayerNameBox.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._abmQueuePlayerNameBox.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._abmQueuePlayerNameBox.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abmQueuePlayerNameBox.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueuePlayerNameBox.Location = new System.Drawing.Point(318, 10);
+            this._abmQueuePlayerNameBox.Name = "_abmQueuePlayerNameBox";
+            this._abmQueuePlayerNameBox.Size = new System.Drawing.Size(160, 22);
+            this._abmQueuePlayerNameBox.TabIndex = 3;
+            //
+            // _abmQueueLookupBtn
+            //
+            this._abmQueueLookupBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abmQueueLookupBtn.FlatAppearance.BorderSize = 0;
+            this._abmQueueLookupBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmQueueLookupBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abmQueueLookupBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueueLookupBtn.Location = new System.Drawing.Point(482, 10);
+            this._abmQueueLookupBtn.Name = "_abmQueueLookupBtn";
+            this._abmQueueLookupBtn.Size = new System.Drawing.Size(100, 22);
+            this._abmQueueLookupBtn.TabIndex = 4;
+            this._abmQueueLookupBtn.Text = "Lookup Player";
+            this._abmQueueLookupBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmQueueStatusLabel
+            //
+            this._abmQueueStatusLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._abmQueueStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._abmQueueStatusLabel.Location = new System.Drawing.Point(586, 13);
+            this._abmQueueStatusLabel.Name = "_abmQueueStatusLabel";
+            this._abmQueueStatusLabel.Size = new System.Drawing.Size(300, 16);
+            this._abmQueueStatusLabel.TabIndex = 5;
+            this._abmQueueStatusLabel.Text = "No targets in queue";
+            //
+            // _abmQueueAddSelectedVillageBtn
+            //
+            this._abmQueueAddSelectedVillageBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abmQueueAddSelectedVillageBtn.FlatAppearance.BorderSize = 0;
+            this._abmQueueAddSelectedVillageBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmQueueAddSelectedVillageBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abmQueueAddSelectedVillageBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueueAddSelectedVillageBtn.Location = new System.Drawing.Point(12, 44);
+            this._abmQueueAddSelectedVillageBtn.Name = "_abmQueueAddSelectedVillageBtn";
+            this._abmQueueAddSelectedVillageBtn.Size = new System.Drawing.Size(160, 22);
+            this._abmQueueAddSelectedVillageBtn.TabIndex = 6;
+            this._abmQueueAddSelectedVillageBtn.Text = "Add Selected Village";
+            this._abmQueueAddSelectedVillageBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmQueueAddSelectedPlayerBtn
+            //
+            this._abmQueueAddSelectedPlayerBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abmQueueAddSelectedPlayerBtn.FlatAppearance.BorderSize = 0;
+            this._abmQueueAddSelectedPlayerBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmQueueAddSelectedPlayerBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abmQueueAddSelectedPlayerBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueueAddSelectedPlayerBtn.Location = new System.Drawing.Point(176, 44);
+            this._abmQueueAddSelectedPlayerBtn.Name = "_abmQueueAddSelectedPlayerBtn";
+            this._abmQueueAddSelectedPlayerBtn.Size = new System.Drawing.Size(158, 22);
+            this._abmQueueAddSelectedPlayerBtn.TabIndex = 7;
+            this._abmQueueAddSelectedPlayerBtn.Text = "Add Selected Player";
+            this._abmQueueAddSelectedPlayerBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmQueueRemoveBtn
+            //
+            this._abmQueueRemoveBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abmQueueRemoveBtn.FlatAppearance.BorderSize = 0;
+            this._abmQueueRemoveBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmQueueRemoveBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abmQueueRemoveBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueueRemoveBtn.Location = new System.Drawing.Point(338, 44);
+            this._abmQueueRemoveBtn.Name = "_abmQueueRemoveBtn";
+            this._abmQueueRemoveBtn.Size = new System.Drawing.Size(72, 22);
+            this._abmQueueRemoveBtn.TabIndex = 8;
+            this._abmQueueRemoveBtn.Text = "Remove";
+            this._abmQueueRemoveBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmQueueClearBtn
+            //
+            this._abmQueueClearBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
+            this._abmQueueClearBtn.FlatAppearance.BorderSize = 0;
+            this._abmQueueClearBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmQueueClearBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abmQueueClearBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueueClearBtn.Location = new System.Drawing.Point(414, 44);
+            this._abmQueueClearBtn.Name = "_abmQueueClearBtn";
+            this._abmQueueClearBtn.Size = new System.Drawing.Size(60, 22);
+            this._abmQueueClearBtn.TabIndex = 9;
+            this._abmQueueClearBtn.Text = "Clear";
+            this._abmQueueClearBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmQueueSaveBtn
+            //
+            this._abmQueueSaveBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abmQueueSaveBtn.FlatAppearance.BorderSize = 0;
+            this._abmQueueSaveBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmQueueSaveBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abmQueueSaveBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueueSaveBtn.Location = new System.Drawing.Point(478, 44);
+            this._abmQueueSaveBtn.Name = "_abmQueueSaveBtn";
+            this._abmQueueSaveBtn.Size = new System.Drawing.Size(56, 22);
+            this._abmQueueSaveBtn.TabIndex = 10;
+            this._abmQueueSaveBtn.Text = "Save";
+            this._abmQueueSaveBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmQueueLoadBtn
+            //
+            this._abmQueueLoadBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._abmQueueLoadBtn.FlatAppearance.BorderSize = 0;
+            this._abmQueueLoadBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmQueueLoadBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abmQueueLoadBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueueLoadBtn.Location = new System.Drawing.Point(538, 44);
+            this._abmQueueLoadBtn.Name = "_abmQueueLoadBtn";
+            this._abmQueueLoadBtn.Size = new System.Drawing.Size(56, 22);
+            this._abmQueueLoadBtn.TabIndex = 11;
+            this._abmQueueLoadBtn.Text = "Load";
+            this._abmQueueLoadBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmQueueResetBtn
+            //
+            this._abmQueueResetBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(60)))), ((int)(((byte)(20)))));
+            this._abmQueueResetBtn.FlatAppearance.BorderSize = 0;
+            this._abmQueueResetBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmQueueResetBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abmQueueResetBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueueResetBtn.Location = new System.Drawing.Point(598, 44);
+            this._abmQueueResetBtn.Name = "_abmQueueResetBtn";
+            this._abmQueueResetBtn.Size = new System.Drawing.Size(86, 22);
+            this._abmQueueResetBtn.TabIndex = 12;
+            this._abmQueueResetBtn.Text = "Reset Done";
+            this._abmQueueResetBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmQueueListBox
+            //
+            this._abmQueueListBox.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(32)))), ((int)(((byte)(40)))));
+            this._abmQueueListBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this._abmQueueListBox.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._abmQueueListBox.Font = new System.Drawing.Font("Consolas", 9.5F);
+            this._abmQueueListBox.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueueListBox.FormattingEnabled = true;
+            this._abmQueueListBox.ItemHeight = 15;
+            this._abmQueueListBox.Location = new System.Drawing.Point(0, 104);
+            this._abmQueueListBox.Name = "_abmQueueListBox";
+            this._abmQueueListBox.Size = new System.Drawing.Size(1134, 337);
+            this._abmQueueListBox.TabIndex = 0;
+            // 
+            // _popularityPage
+            // 
+            this._popularityPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._popularityPage.Controls.Add(this._ppVillageListPanel);
+            this._popularityPage.Controls.Add(this._ppColHeader);
+            this._popularityPage.Controls.Add(this._ppSeparator);
+            this._popularityPage.Controls.Add(this._ppSettingsPanel);
+            this._popularityPage.Location = new System.Drawing.Point(4, 24);
+            this._popularityPage.Name = "_popularityPage";
+            this._popularityPage.Size = new System.Drawing.Size(1142, 497);
+            this._popularityPage.TabIndex = 7;
+            this._popularityPage.Text = "Popularity";
+            // 
+            // _ppVillageListPanel
+            // 
+            this._ppVillageListPanel.AutoScroll = true;
+            this._ppVillageListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._ppVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._ppVillageListPanel.Location = new System.Drawing.Point(0, 22);
+            this._ppVillageListPanel.Name = "_ppVillageListPanel";
+            this._ppVillageListPanel.Size = new System.Drawing.Size(1142, 384);
+            this._ppVillageListPanel.TabIndex = 2;
+            // 
+            // _ppColHeader
+            // 
+            this._ppColHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._ppColHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this._ppColHeader.Location = new System.Drawing.Point(0, 0);
+            this._ppColHeader.Name = "_ppColHeader";
+            this._ppColHeader.Size = new System.Drawing.Size(1142, 22);
+            this._ppColHeader.TabIndex = 1;
+            // 
+            // _ppSeparator
+            // 
+            this._ppSeparator.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(55)))), ((int)(((byte)(70)))));
+            this._ppSeparator.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this._ppSeparator.Location = new System.Drawing.Point(0, 406);
+            this._ppSeparator.Name = "_ppSeparator";
+            this._ppSeparator.Size = new System.Drawing.Size(1142, 1);
+            this._ppSeparator.TabIndex = 3;
+            // 
+            // _ppSettingsPanel
+            // 
+            this._ppSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._ppSettingsPanel.Controls.Add(this._ppRunNowBtn);
+            this._ppSettingsPanel.Controls.Add(this._ppRefreshBtn);
+            this._ppSettingsPanel.Controls.Add(this._ppDelayInput);
+            this._ppSettingsPanel.Controls.Add(this._ppDelayLabel);
+            this._ppSettingsPanel.Controls.Add(this._ppIntervalInput);
+            this._ppSettingsPanel.Controls.Add(this._ppIntervalLabel);
+            this._ppSettingsPanel.Controls.Add(this._ppStatusLabel);
+            this._ppSettingsPanel.Controls.Add(this._ppEnabledCheck);
+            this._ppSettingsPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this._ppSettingsPanel.Location = new System.Drawing.Point(0, 407);
+            this._ppSettingsPanel.Name = "_ppSettingsPanel";
+            this._ppSettingsPanel.Size = new System.Drawing.Size(1142, 90);
+            this._ppSettingsPanel.TabIndex = 0;
+            // 
+            // _ppRunNowBtn
+            // 
+            this._ppRunNowBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(80)))), ((int)(((byte)(50)))));
+            this._ppRunNowBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._ppRunNowBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._ppRunNowBtn.Location = new System.Drawing.Point(431, 39);
+            this._ppRunNowBtn.Name = "_ppRunNowBtn";
+            this._ppRunNowBtn.Size = new System.Drawing.Size(80, 26);
+            this._ppRunNowBtn.TabIndex = 7;
+            this._ppRunNowBtn.Text = "Run Now";
+            this._ppRunNowBtn.UseVisualStyleBackColor = false;
+            // 
+            // _ppRefreshBtn
+            // 
+            this._ppRefreshBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(50)))), ((int)(((byte)(70)))));
+            this._ppRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._ppRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._ppRefreshBtn.Location = new System.Drawing.Point(346, 39);
+            this._ppRefreshBtn.Name = "_ppRefreshBtn";
+            this._ppRefreshBtn.Size = new System.Drawing.Size(75, 26);
+            this._ppRefreshBtn.TabIndex = 6;
+            this._ppRefreshBtn.Text = "Refresh";
+            this._ppRefreshBtn.UseVisualStyleBackColor = false;
+            // 
+            // _ppDelayInput
+            // 
+            this._ppDelayInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._ppDelayInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._ppDelayInput.Location = new System.Drawing.Point(256, 41);
+            this._ppDelayInput.Maximum = new decimal(new int[] {
+            30000,
+            0,
+            0,
+            0});
+            this._ppDelayInput.Minimum = new decimal(new int[] {
+            500,
+            0,
+            0,
+            0});
+            this._ppDelayInput.Name = "_ppDelayInput";
+            this._ppDelayInput.Size = new System.Drawing.Size(75, 23);
+            this._ppDelayInput.TabIndex = 5;
+            this._ppDelayInput.Value = new decimal(new int[] {
+            2000,
+            0,
+            0,
+            0});
+            // 
+            // _ppDelayLabel
+            // 
+            this._ppDelayLabel.AutoSize = true;
+            this._ppDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._ppDelayLabel.Location = new System.Drawing.Point(176, 44);
+            this._ppDelayLabel.Name = "_ppDelayLabel";
+            this._ppDelayLabel.Size = new System.Drawing.Size(68, 15);
+            this._ppDelayLabel.TabIndex = 4;
+            this._ppDelayLabel.Text = "Delay (ms):";
+            // 
+            // _ppIntervalInput
+            // 
+            this._ppIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._ppIntervalInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._ppIntervalInput.Location = new System.Drawing.Point(96, 41);
+            this._ppIntervalInput.Maximum = new decimal(new int[] {
+            3600,
+            0,
+            0,
+            0});
+            this._ppIntervalInput.Minimum = new decimal(new int[] {
+            30,
+            0,
+            0,
+            0});
+            this._ppIntervalInput.Name = "_ppIntervalInput";
+            this._ppIntervalInput.Size = new System.Drawing.Size(65, 23);
+            this._ppIntervalInput.TabIndex = 3;
+            this._ppIntervalInput.Value = new decimal(new int[] {
+            120,
+            0,
+            0,
+            0});
+            // 
+            // _ppIntervalLabel
+            // 
+            this._ppIntervalLabel.AutoSize = true;
+            this._ppIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._ppIntervalLabel.Location = new System.Drawing.Point(16, 44);
+            this._ppIntervalLabel.Name = "_ppIntervalLabel";
+            this._ppIntervalLabel.Size = new System.Drawing.Size(70, 15);
+            this._ppIntervalLabel.TabIndex = 2;
+            this._ppIntervalLabel.Text = "Interval (s):";
+            // 
+            // _ppStatusLabel
+            // 
+            this._ppStatusLabel.AutoSize = true;
+            this._ppStatusLabel.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._ppStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
+            this._ppStatusLabel.Location = new System.Drawing.Point(186, 16);
+            this._ppStatusLabel.Name = "_ppStatusLabel";
+            this._ppStatusLabel.Size = new System.Drawing.Size(59, 13);
+            this._ppStatusLabel.TabIndex = 1;
+            this._ppStatusLabel.Text = "DISABLED";
+            // 
+            // _ppEnabledCheck
+            // 
+            this._ppEnabledCheck.AutoSize = true;
+            this._ppEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._ppEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this._ppEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._ppEnabledCheck.Location = new System.Drawing.Point(16, 12);
+            this._ppEnabledCheck.Name = "_ppEnabledCheck";
+            this._ppEnabledCheck.Size = new System.Drawing.Size(143, 23);
+            this._ppEnabledCheck.TabIndex = 0;
+            this._ppEnabledCheck.Text = "Enable Popularity";
+            // 
+            // _miscPage
+            // 
+            this._miscPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._miscPage.Controls.Add(this._miscSettingsPanel);
+            this._miscPage.Location = new System.Drawing.Point(4, 24);
+            this._miscPage.Name = "_miscPage";
+            this._miscPage.Size = new System.Drawing.Size(1142, 497);
+            this._miscPage.TabIndex = 8;
+            this._miscPage.Text = "Misc";
+            // 
+            // _miscSettingsPanel
+            // 
+            this._miscSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._miscSettingsPanel.Controls.Add(this._miscCollectFreeCardsCheck);
+            this._miscSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._miscSettingsPanel.Location = new System.Drawing.Point(0, 0);
+            this._miscSettingsPanel.Name = "_miscSettingsPanel";
+            this._miscSettingsPanel.Padding = new System.Windows.Forms.Padding(16);
+            this._miscSettingsPanel.Size = new System.Drawing.Size(1142, 120);
+            this._miscSettingsPanel.TabIndex = 0;
+            // 
+            // _miscCollectFreeCardsCheck
+            // 
+            this._miscCollectFreeCardsCheck.AutoSize = true;
+            this._miscCollectFreeCardsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._miscCollectFreeCardsCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._miscCollectFreeCardsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscCollectFreeCardsCheck.Location = new System.Drawing.Point(16, 20);
+            this._miscCollectFreeCardsCheck.Name = "_miscCollectFreeCardsCheck";
+            this._miscCollectFreeCardsCheck.Size = new System.Drawing.Size(214, 23);
+            this._miscCollectFreeCardsCheck.TabIndex = 0;
+            this._miscCollectFreeCardsCheck.Text = "Collect free cards automatically";
             // 
             // _logPanel
             // 
@@ -3379,192 +4179,14 @@ namespace Kingdoms.Bot.UI
             this._logHeader.TabIndex = 0;
             this._logHeader.Text = "Log Output";
             this._logHeader.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            //
+            // 
             // _trSettingsTab
-            //
+            // 
             this._trSettingsTab.Location = new System.Drawing.Point(0, 0);
             this._trSettingsTab.Name = "_trSettingsTab";
             this._trSettingsTab.Size = new System.Drawing.Size(200, 100);
             this._trSettingsTab.TabIndex = 0;
-            //
-            // _miscPage
-            //
-            this._miscPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
-            this._miscPage.Controls.Add(this._miscSettingsPanel);
-            this._miscPage.Location = new System.Drawing.Point(4, 24);
-            this._miscPage.Name = "_miscPage";
-            this._miscPage.Size = new System.Drawing.Size(1142, 497);
-            this._miscPage.TabIndex = 8;
-            this._miscPage.Text = "Misc";
-            //
-            // _miscSettingsPanel
-            //
-            this._miscSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
-            this._miscSettingsPanel.Controls.Add(this._miscCollectFreeCardsCheck);
-            this._miscSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
-            this._miscSettingsPanel.Location = new System.Drawing.Point(0, 0);
-            this._miscSettingsPanel.Name = "_miscSettingsPanel";
-            this._miscSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 16, 16, 16);
-            this._miscSettingsPanel.Size = new System.Drawing.Size(1142, 120);
-            this._miscSettingsPanel.TabIndex = 0;
-            //
-            // _miscCollectFreeCardsCheck
-            //
-            this._miscCollectFreeCardsCheck.AutoSize = true;
-            this._miscCollectFreeCardsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._miscCollectFreeCardsCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this._miscCollectFreeCardsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._miscCollectFreeCardsCheck.Location = new System.Drawing.Point(16, 20);
-            this._miscCollectFreeCardsCheck.Name = "_miscCollectFreeCardsCheck";
-            this._miscCollectFreeCardsCheck.Size = new System.Drawing.Size(220, 23);
-            this._miscCollectFreeCardsCheck.TabIndex = 0;
-            this._miscCollectFreeCardsCheck.Text = "Collect free cards automatically";
-            //
-            // _popularityPage
-            //
-            this._popularityPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
-            this._popularityPage.Controls.Add(this._ppVillageListPanel);
-            this._popularityPage.Controls.Add(this._ppColHeader);
-            this._popularityPage.Controls.Add(this._ppSeparator);
-            this._popularityPage.Controls.Add(this._ppSettingsPanel);
-            this._popularityPage.Location = new System.Drawing.Point(4, 24);
-            this._popularityPage.Name = "_popularityPage";
-            this._popularityPage.Size = new System.Drawing.Size(1142, 497);
-            this._popularityPage.TabIndex = 7;
-            this._popularityPage.Text = "Popularity";
-            //
-            // _ppVillageListPanel
-            //
-            this._ppVillageListPanel.AutoScroll = true;
-            this._ppVillageListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
-            this._ppVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._ppVillageListPanel.Location = new System.Drawing.Point(0, 22);
-            this._ppVillageListPanel.Name = "_ppVillageListPanel";
-            this._ppVillageListPanel.Size = new System.Drawing.Size(1142, 384);
-            this._ppVillageListPanel.TabIndex = 2;
-            //
-            // _ppColHeader
-            //
-            this._ppColHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
-            this._ppColHeader.Dock = System.Windows.Forms.DockStyle.Top;
-            this._ppColHeader.Location = new System.Drawing.Point(0, 0);
-            this._ppColHeader.Name = "_ppColHeader";
-            this._ppColHeader.Size = new System.Drawing.Size(1142, 22);
-            this._ppColHeader.TabIndex = 1;
-            //
-            // _ppSeparator
-            //
-            this._ppSeparator.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(55)))), ((int)(((byte)(70)))));
-            this._ppSeparator.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this._ppSeparator.Location = new System.Drawing.Point(0, 406);
-            this._ppSeparator.Name = "_ppSeparator";
-            this._ppSeparator.Size = new System.Drawing.Size(1142, 1);
-            this._ppSeparator.TabIndex = 3;
-            //
-            // _ppSettingsPanel
-            //
-            this._ppSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
-            this._ppSettingsPanel.Controls.Add(this._ppRunNowBtn);
-            this._ppSettingsPanel.Controls.Add(this._ppRefreshBtn);
-            this._ppSettingsPanel.Controls.Add(this._ppDelayInput);
-            this._ppSettingsPanel.Controls.Add(this._ppDelayLabel);
-            this._ppSettingsPanel.Controls.Add(this._ppIntervalInput);
-            this._ppSettingsPanel.Controls.Add(this._ppIntervalLabel);
-            this._ppSettingsPanel.Controls.Add(this._ppStatusLabel);
-            this._ppSettingsPanel.Controls.Add(this._ppEnabledCheck);
-            this._ppSettingsPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this._ppSettingsPanel.Location = new System.Drawing.Point(0, 407);
-            this._ppSettingsPanel.Name = "_ppSettingsPanel";
-            this._ppSettingsPanel.Size = new System.Drawing.Size(1142, 90);
-            this._ppSettingsPanel.TabIndex = 0;
-            //
-            // _ppEnabledCheck
-            //
-            this._ppEnabledCheck.AutoSize = true;
-            this._ppEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._ppEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this._ppEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._ppEnabledCheck.Location = new System.Drawing.Point(16, 12);
-            this._ppEnabledCheck.Name = "_ppEnabledCheck";
-            this._ppEnabledCheck.Size = new System.Drawing.Size(155, 23);
-            this._ppEnabledCheck.TabIndex = 0;
-            this._ppEnabledCheck.Text = "Enable Popularity";
-            //
-            // _ppStatusLabel
-            //
-            this._ppStatusLabel.AutoSize = true;
-            this._ppStatusLabel.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
-            this._ppStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
-            this._ppStatusLabel.Location = new System.Drawing.Point(186, 16);
-            this._ppStatusLabel.Name = "_ppStatusLabel";
-            this._ppStatusLabel.Size = new System.Drawing.Size(60, 13);
-            this._ppStatusLabel.TabIndex = 1;
-            this._ppStatusLabel.Text = "DISABLED";
-            //
-            // _ppIntervalLabel
-            //
-            this._ppIntervalLabel.AutoSize = true;
-            this._ppIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._ppIntervalLabel.Location = new System.Drawing.Point(16, 44);
-            this._ppIntervalLabel.Name = "_ppIntervalLabel";
-            this._ppIntervalLabel.TabIndex = 2;
-            this._ppIntervalLabel.Text = "Interval (s):";
-            //
-            // _ppIntervalInput
-            //
-            this._ppIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
-            this._ppIntervalInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._ppIntervalInput.Location = new System.Drawing.Point(96, 41);
-            this._ppIntervalInput.Maximum = new decimal(new int[] { 3600, 0, 0, 0 });
-            this._ppIntervalInput.Minimum = new decimal(new int[] { 30, 0, 0, 0 });
-            this._ppIntervalInput.Name = "_ppIntervalInput";
-            this._ppIntervalInput.Size = new System.Drawing.Size(65, 22);
-            this._ppIntervalInput.TabIndex = 3;
-            this._ppIntervalInput.Value = new decimal(new int[] { 120, 0, 0, 0 });
-            //
-            // _ppDelayLabel
-            //
-            this._ppDelayLabel.AutoSize = true;
-            this._ppDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._ppDelayLabel.Location = new System.Drawing.Point(176, 44);
-            this._ppDelayLabel.Name = "_ppDelayLabel";
-            this._ppDelayLabel.TabIndex = 4;
-            this._ppDelayLabel.Text = "Delay (ms):";
-            //
-            // _ppDelayInput
-            //
-            this._ppDelayInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
-            this._ppDelayInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._ppDelayInput.Location = new System.Drawing.Point(256, 41);
-            this._ppDelayInput.Maximum = new decimal(new int[] { 30000, 0, 0, 0 });
-            this._ppDelayInput.Minimum = new decimal(new int[] { 500, 0, 0, 0 });
-            this._ppDelayInput.Name = "_ppDelayInput";
-            this._ppDelayInput.Size = new System.Drawing.Size(75, 22);
-            this._ppDelayInput.TabIndex = 5;
-            this._ppDelayInput.Value = new decimal(new int[] { 2000, 0, 0, 0 });
-            //
-            // _ppRefreshBtn
-            //
-            this._ppRefreshBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(50)))), ((int)(((byte)(70)))));
-            this._ppRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._ppRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._ppRefreshBtn.Location = new System.Drawing.Point(346, 39);
-            this._ppRefreshBtn.Name = "_ppRefreshBtn";
-            this._ppRefreshBtn.Size = new System.Drawing.Size(75, 26);
-            this._ppRefreshBtn.TabIndex = 6;
-            this._ppRefreshBtn.Text = "Refresh";
-            //
-            // _ppRunNowBtn
-            //
-            this._ppRunNowBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(80)))), ((int)(((byte)(50)))));
-            this._ppRunNowBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._ppRunNowBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._ppRunNowBtn.Location = new System.Drawing.Point(431, 39);
-            this._ppRunNowBtn.Name = "_ppRunNowBtn";
-            this._ppRunNowBtn.Size = new System.Drawing.Size(80, 26);
-            this._ppRunNowBtn.TabIndex = 7;
-            this._ppRunNowBtn.Text = "Run Now";
-            //
+            // 
             // BotControlForm
             // 
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
@@ -3661,12 +4283,25 @@ namespace Kingdoms.Bot.UI
             this._abQueueSettingsPanel.ResumeLayout(false);
             this._abQueueSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._abQueueVillageIdInput)).EndInit();
-            this._miscPage.ResumeLayout(false);
-            this._miscSettingsPanel.ResumeLayout(false);
+            this._bombMultiPage.ResumeLayout(false);
+            this._abmSubTabs.ResumeLayout(false);
+            this._abmPlayersTab.ResumeLayout(false);
+            this._abmPendingTab.ResumeLayout(false);
+            this._abmQueueTab.ResumeLayout(false);
+            this._abmConnPanel.ResumeLayout(false);
+            this._abmCtrlPanel.ResumeLayout(false);
+            this._abmQueueSettingsPanel.ResumeLayout(false);
+            this._abmQueueSettingsPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._abmStackDelayInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._abmQueueVidInput)).EndInit();
             this._popularityPage.ResumeLayout(false);
             this._ppSettingsPanel.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).EndInit();
+            this._ppSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._ppDelayInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).EndInit();
+            this._miscPage.ResumeLayout(false);
+            this._miscSettingsPanel.ResumeLayout(false);
+            this._miscSettingsPanel.PerformLayout();
             this._logPanel.ResumeLayout(false);
             this.ResumeLayout(false);
 
@@ -3824,6 +4459,48 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.TabControl _bombSubTabs;
         private System.Windows.Forms.TabPage _bombSetupTab;
         private System.Windows.Forms.TabPage _bombPendingTab;
+        private System.Windows.Forms.TabPage _bombMultiPage;
+        private System.Windows.Forms.TabControl _abmSubTabs;
+        private System.Windows.Forms.TabPage _abmPlayersTab;
+        private System.Windows.Forms.TabPage _abmPendingTab;
+        private System.Windows.Forms.TabPage _abmQueueTab;
+        private System.Windows.Forms.Panel _abmConnPanel;
+        private System.Windows.Forms.Panel _abmCtrlPanel;
+        private System.Windows.Forms.Panel _abmVillageListPanel;
+        private System.Windows.Forms.Panel _abmVillageColHeader;
+        private System.Windows.Forms.Panel _abmPendingListPanel;
+        private System.Windows.Forms.Panel _abmPendingColHeader;
+        private System.Windows.Forms.ListBox _abmQueueListBox;
+        private System.Windows.Forms.Panel _abmQueueSettingsPanel;
+        private System.Windows.Forms.TextBox _abmApiUrlBox;
+        private System.Windows.Forms.TextBox _abmSessionKeyBox;
+        private System.Windows.Forms.Button _abmConnectBtn;
+        private System.Windows.Forms.Button _abmDisconnectBtn;
+        private System.Windows.Forms.Label _abmConnStatusLabel;
+        private System.Windows.Forms.TextBox _abmTargetVidBox;
+        private System.Windows.Forms.NumericUpDown _abmStackDelayInput;
+        private System.Windows.Forms.CheckBox _abmFakeSendCheck;
+        private System.Windows.Forms.CheckBox _abmAutoInterdictCheck;
+        private System.Windows.Forms.Button _abmPushConfigBtn;
+        private System.Windows.Forms.Button _abmPrepareBtn;
+        private System.Windows.Forms.Button _abmLaunchBtn;
+        private System.Windows.Forms.Button _abmCancelBtn;
+        private System.Windows.Forms.Button _abmResetBtn;
+        private System.Windows.Forms.Button _abmTakeCoordBtn;
+        private System.Windows.Forms.Label _abmCoordStatusLabel;
+        private System.Windows.Forms.CheckBox _abmQueueEnabledCheck;
+        private System.Windows.Forms.NumericUpDown _abmQueueVidInput;
+        private System.Windows.Forms.Button _abmQueueAddIdBtn;
+        private System.Windows.Forms.TextBox _abmQueuePlayerNameBox;
+        private System.Windows.Forms.Button _abmQueueLookupBtn;
+        private System.Windows.Forms.Button _abmQueueAddSelectedVillageBtn;
+        private System.Windows.Forms.Button _abmQueueAddSelectedPlayerBtn;
+        private System.Windows.Forms.Button _abmQueueRemoveBtn;
+        private System.Windows.Forms.Button _abmQueueClearBtn;
+        private System.Windows.Forms.Button _abmQueueSaveBtn;
+        private System.Windows.Forms.Button _abmQueueLoadBtn;
+        private System.Windows.Forms.Button _abmQueueResetBtn;
+        private System.Windows.Forms.Label _abmQueueStatusLabel;
         private System.Windows.Forms.Panel _abSettingsPanel;
         private System.Windows.Forms.CheckBox _abEnabledCheck;
         private System.Windows.Forms.Label _abStatusLabel;

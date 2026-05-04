@@ -82,6 +82,12 @@ namespace Kingdoms.Bot.UI
         private List<PendingBombRow> _abPendingRows = new List<PendingBombRow>();
         private Timer _abRefreshTimer;
 
+        // Auto Bomb Multi tab
+        private List<MultiBombVillageRow> _abmVillageRows = new List<MultiBombVillageRow>();
+        private List<MultiPendingRow> _abmPendingRows = new List<MultiPendingRow>();
+        private Timer _abmRefreshTimer;
+        private bool _abmLastIsCoordinator = false;
+
         // Misc tab — no runtime state needed (settings only)
 
         // Popularity tab runtime state
@@ -130,6 +136,7 @@ namespace Kingdoms.Bot.UI
                 WireUpBuilderTab();
                 WireUpAutoBombTab();
                 WireUpTargetQueueTab();
+                WireUpAutoBombMultiTab();
                 WireUpMiscTab();
                 WireUpPopularityTab();
                 SubscribeToLog();
@@ -147,6 +154,7 @@ namespace Kingdoms.Bot.UI
                 TrLoadFromSettings();
                 BldLoadFromSettings();
                 AbLoadFromSettings();
+                AbmLoadFromSettings();
                 MiscLoadFromSettings();
                 PpLoadFromSettings();
             }
@@ -2003,6 +2011,11 @@ namespace Kingdoms.Bot.UI
                 AbWriteToSettings();
                 tabName = "Auto Bomb";
             }
+            else if (_tabControl.SelectedTab == _bombMultiPage)
+            {
+                AbmWriteToSettings();
+                tabName = "Auto Bomb Multi";
+            }
 
             BotEngine.Instance.SaveSettings();
             BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings saved.");
@@ -2050,6 +2063,11 @@ namespace Kingdoms.Bot.UI
             {
                 AbLoadFromSettings();
                 tabName = "Auto Bomb";
+            }
+            else if (_tabControl.SelectedTab == _bombMultiPage)
+            {
+                AbmLoadFromSettings();
+                tabName = "Auto Bomb Multi";
             }
 
             RefreshStatus();
@@ -3184,6 +3202,788 @@ namespace Kingdoms.Bot.UI
             _abQueueResetBtn.Click += delegate { AbQueueReset(); };
             _abQueueAddSelectedVillageBtn.Click += delegate { AbQueueAddSelectedVillage(); };
             _abQueueAddSelectedPlayerBtn.Click += delegate { AbQueueAddSelectedPlayer(); };
+        }
+
+        private void WireUpAutoBombMultiTab()
+        {
+            // ── Connection panel labels (dynamic — not in designer) ────────────
+            Label apiLbl = new Label();
+            apiLbl.Text = "API URL:";
+            apiLbl.Font = new Font("Segoe UI", 7.5f);
+            apiLbl.ForeColor = TextSec;
+            apiLbl.AutoSize = true;
+            apiLbl.Location = new Point(6, 10);
+            _abmConnPanel.Controls.Add(apiLbl);
+
+            Label keyLbl = new Label();
+            keyLbl.Text = "Key:";
+            keyLbl.Font = new Font("Segoe UI", 7.5f);
+            keyLbl.ForeColor = TextSec;
+            keyLbl.AutoSize = true;
+            keyLbl.Location = new Point(328, 10);
+            _abmConnPanel.Controls.Add(keyLbl);
+
+            // ── Coordinator panel labels ──────────────────────────────────────
+            Label tgtLbl = new Label();
+            tgtLbl.Text = "Target VID:";
+            tgtLbl.Font = new Font("Segoe UI", 7.5f);
+            tgtLbl.ForeColor = TextSec;
+            tgtLbl.AutoSize = true;
+            tgtLbl.Location = new Point(6, 11);
+            _abmCtrlPanel.Controls.Add(tgtLbl);
+
+            Label sdLbl = new Label();
+            sdLbl.Text = "Stack Delay:";
+            sdLbl.Font = new Font("Segoe UI", 7.5f);
+            sdLbl.ForeColor = TextSec;
+            sdLbl.AutoSize = true;
+            sdLbl.Location = new Point(168, 11);
+            _abmCtrlPanel.Controls.Add(sdLbl);
+
+            // ── Village column headers ────────────────────────────────────────
+            string[] vCols = { "", "Village", "Travel", "Card", "Cap?", "Formation", "P", "Arch", "Pike", "Sw", "Cat", "Cap", "Stack", "Type", "Status" };
+            int[]    vColX = { 4, 26, 202, 282, 350, 370, 554, 588, 622, 656, 690, 722, 754, 798, 874 };
+            for (int i = 0; i < vCols.Length; i++)
+            {
+                Label cl = new Label();
+                cl.Text = vCols[i];
+                cl.Font = new Font("Segoe UI", 6.5f, FontStyle.Bold);
+                cl.ForeColor = TextSec;
+                cl.AutoSize = true;
+                cl.Location = new Point(vColX[i], 2);
+                _abmVillageColHeader.Controls.Add(cl);
+            }
+
+            // ── Pending column headers ────────────────────────────────────────
+            string[] pCols = { "Stack", "Player", "Village", "Target", "Travel", "Send Time", "Arrival", "Formation", "Type", "Status" };
+            int[]    pColX = { 6, 38, 152, 276, 340, 422, 494, 566, 650, 722 };
+            for (int i = 0; i < pCols.Length; i++)
+            {
+                Label cl = new Label();
+                cl.Text = pCols[i];
+                cl.Font = new Font("Segoe UI", 6.5f, FontStyle.Bold);
+                cl.ForeColor = TextSec;
+                cl.AutoSize = true;
+                cl.Location = new Point(pColX[i], 2);
+                _abmPendingColHeader.Controls.Add(cl);
+            }
+
+            // ── Event wiring ──────────────────────────────────────────────────
+            _abmConnectBtn.Click               += delegate { AbmDoConnect(); };
+            _abmDisconnectBtn.Click            += delegate { AbmDoDisconnect(); };
+            _abmPushConfigBtn.Click            += delegate { AbmDoPushConfig(); };
+            _abmPrepareBtn.Click               += delegate { AbmDoPrepare(); };
+            _abmLaunchBtn.Click                += delegate { AbmDoLaunch(); };
+            _abmCancelBtn.Click                += delegate { AbmDoCancel(); };
+            _abmResetBtn.Click                 += delegate { AbmDoReset(); };
+            _abmTakeCoordBtn.Click             += delegate { AbmDoTakeCoordinator(); };
+            _abmQueueEnabledCheck.CheckedChanged += delegate
+            {
+                AutoBombMultiSettings s = AbmSettings;
+                if (s != null && _abmQueueEnabledCheck.Enabled)
+                    s.TargetQueueEnabled = _abmQueueEnabledCheck.Checked;
+            };
+            _abmQueueAddIdBtn.Click             += delegate { AbmQueueAddId(); };
+            _abmQueueLookupBtn.Click            += delegate { AbmQueueLookupPlayer(); };
+            _abmQueueAddSelectedVillageBtn.Click += delegate { AbmQueueAddSelectedVillage(); };
+            _abmQueueAddSelectedPlayerBtn.Click  += delegate { AbmQueueAddSelectedPlayer(); };
+            _abmQueueRemoveBtn.Click            += delegate { AbmQueueRemove(); };
+            _abmQueueClearBtn.Click             += delegate { AbmQueueClear(); };
+            _abmQueueSaveBtn.Click              += delegate { AbmQueueSave(); };
+            _abmQueueLoadBtn.Click              += delegate { AbmQueueLoad(); };
+            _abmQueueResetBtn.Click             += delegate { AbmQueueReset(); };
+
+            // ── Refresh timer ─────────────────────────────────────────────────
+            _abmRefreshTimer = new Timer();
+            _abmRefreshTimer.Interval = 1500;
+            _abmRefreshTimer.Tick += delegate { AbmRefreshDisplay(); };
+            _abmRefreshTimer.Start();
+        }
+
+        // ── Multi-bomb load/save ──────────────────────────────────────────────
+
+        private void AbmLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            AutoBombMultiSettings s = BotEngine.Instance.Settings.AutoBombMulti;
+
+            _abmApiUrlBox.Text       = s.ApiUrl ?? "";
+            _abmSessionKeyBox.Text   = s.SessionKey ?? "";
+            _abmAutoInterdictCheck.Checked = s.AutoCancelOnInterdict;
+            _abmFakeSendCheck.Checked      = s.FakeSendEnabled;
+            _abmStackDelayInput.Value = Math.Max(_abmStackDelayInput.Minimum,
+                Math.Min(_abmStackDelayInput.Maximum, s.StackDelaySeconds));
+            _abmQueueEnabledCheck.Checked = s.TargetQueueEnabled;
+            AbmRefreshQueueList(s);
+        }
+
+        private void AbmWriteToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            AutoBombMultiSettings s = BotEngine.Instance.Settings.AutoBombMulti;
+
+            s.ApiUrl               = _abmApiUrlBox.Text.Trim();
+            s.SessionKey           = _abmSessionKeyBox.Text;
+            s.AutoCancelOnInterdict = _abmAutoInterdictCheck.Checked;
+            s.FakeSendEnabled      = _abmFakeSendCheck.Checked;
+            s.StackDelaySeconds    = (int)_abmStackDelayInput.Value;
+            s.TargetQueueEnabled   = _abmQueueEnabledCheck.Checked;
+        }
+
+        // ── Multi-bomb per-village setup persistence ─────────────────────────
+
+        private string AbmSetupFilePath()
+        {
+            string key = _abmSessionKeyBox.Text.Trim();
+            if (string.IsNullOrEmpty(key)) key = "default";
+            // Sanitise: keep alphanumerics and a few safe chars
+            var sb = new System.Text.StringBuilder();
+            foreach (char c in key)
+                if (char.IsLetterOrDigit(c) || c == '_' || c == '-') sb.Append(c);
+                else sb.Append('_');
+            string safe = sb.Length > 0 ? sb.ToString() : "default";
+            string dir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "SHKBot");
+            System.IO.Directory.CreateDirectory(dir);
+            return System.IO.Path.Combine(dir, "abm_setup_" + safe + ".txt");
+        }
+
+        private void AbmSaveSetup()
+        {
+            if (_abmVillageRows.Count == 0) return;
+            try
+            {
+                var lines = new System.Text.StringBuilder();
+                lines.AppendLine("# ABM Setup " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                foreach (MultiBombVillageRow row in _abmVillageRows)
+                {
+                    // villageId|formation|cardIndex|useCaptains|stack|attackTypeIndex
+                    int attackTypeIndex = 0;
+                    int at = row.SelectedAttackType;
+                    if (at == 9) attackTypeIndex = 1;
+                    else if (at == 1) attackTypeIndex = 2;
+
+                    lines.AppendLine(string.Join("|", new string[]
+                    {
+                        row.SourceVillageId.ToString(),
+                        row.SelectedFormation,
+                        row.SelectedCardType.ToString(),
+                        row.UseCaptains ? "1" : "0",
+                        row.StackOrder.ToString(),
+                        attackTypeIndex.ToString()
+                    }));
+                }
+                System.IO.File.WriteAllText(AbmSetupFilePath(), lines.ToString(),
+                    System.Text.Encoding.UTF8);
+            }
+            catch { }
+        }
+
+        private void AbmLoadSetup()
+        {
+            if (_abmVillageRows.Count == 0) return;
+            string path = AbmSetupFilePath();
+            if (!System.IO.File.Exists(path)) return;
+            try
+            {
+                // Build lookup: villageId → config line parts
+                var map = new Dictionary<int, string[]>();
+                foreach (string raw in System.IO.File.ReadAllLines(path, System.Text.Encoding.UTF8))
+                {
+                    string line = raw.Trim();
+                    if (line.StartsWith("#") || string.IsNullOrEmpty(line)) continue;
+                    string[] parts = line.Split('|');
+                    if (parts.Length < 6) continue;
+                    int vid;
+                    if (int.TryParse(parts[0], out vid))
+                        map[vid] = parts;
+                }
+
+                foreach (MultiBombVillageRow row in _abmVillageRows)
+                {
+                    string[] p;
+                    if (!map.TryGetValue(row.SourceVillageId, out p)) continue;
+                    string formation = p[1];
+                    int cardIndex, stack, attackTypeIndex;
+                    bool useCaptains;
+                    int.TryParse(p[2], out cardIndex);
+                    useCaptains = p[3] == "1";
+                    int.TryParse(p[4], out stack);
+                    int.TryParse(p[5], out attackTypeIndex);
+                    row.ApplyConfig(formation, cardIndex, useCaptains, stack, attackTypeIndex);
+                }
+            }
+            catch { }
+        }
+
+        // ── Multi-bomb settings/module accessors ──────────────────────────────
+
+        private AutoBombMultiSettings AbmSettings
+        {
+            get
+            {
+                if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+                    return BotEngine.Instance.Settings.AutoBombMulti;
+                return null;
+            }
+        }
+
+        private AutoBombMultiModule AbmModule
+        {
+            get
+            {
+                if (BotEngine.Instance == null) return null;
+                foreach (IBotModule m in BotEngine.Instance.Modules)
+                {
+                    AutoBombMultiModule mm = m as AutoBombMultiModule;
+                    if (mm != null) return mm;
+                }
+                return null;
+            }
+        }
+
+        // ── Multi-bomb actions ────────────────────────────────────────────────
+
+        private void AbmDoConnect()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null) return;
+            s.ApiUrl     = _abmApiUrlBox.Text.Trim();
+            s.SessionKey = _abmSessionKeyBox.Text;
+            s.AutoCancelOnInterdict = _abmAutoInterdictCheck.Checked;
+            s.StackDelaySeconds = (int)_abmStackDelayInput.Value;
+            s.FakeSendEnabled = _abmFakeSendCheck.Checked;
+
+            AutoBombMultiModule mod = AbmModule;
+            if (mod != null)
+            {
+                mod.Enabled = true;
+                BotEngine.Instance.Settings.Save();
+            }
+        }
+
+        private void AbmDoDisconnect()
+        {
+            AutoBombMultiModule mod = AbmModule;
+            if (mod != null) mod.Enabled = false;
+        }
+
+        private void AbmDoPushConfig()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null || !s.IsCoordinator) return;
+
+            int targetVid;
+            if (!int.TryParse(_abmTargetVidBox.Text.Trim(), out targetVid) || targetVid <= 0)
+            {
+                MessageBox.Show("Enter a valid target village ID.", "Auto Bomb Multi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var attacks = new List<MultiAttackConfigEntry>();
+            foreach (MultiBombVillageRow row in _abmVillageRows)
+            {
+                if (!row.Selected) continue;
+
+                // Always recalculate travel time fresh from game world using the current
+                // target VID — the stored row value may be 0 if the village was registered
+                // before a target was set.
+                double baseTravel = AutoBombModule.CalculateBaseTravelTime(
+                    row.SourceVillageId, targetVid, row.UseCaptains);
+                double effectiveTravel = AutoBombModule.ApplyCardSpeed(baseTravel, row.SelectedCardType);
+
+                attacks.Add(new MultiAttackConfigEntry
+                {
+                    SourcePlayerName  = row.OwnerPlayerName,
+                    SourceVillageId   = row.SourceVillageId,
+                    FormationName     = row.SelectedFormation == "None" ? "" : row.SelectedFormation,
+                    Stack             = row.StackOrder,
+                    CardType          = row.SelectedCardType,
+                    CaptainsOnly      = row.UseCaptains,
+                    AttackType        = row.SelectedAttackType,
+                    TravelTimeSeconds = effectiveTravel,
+                    Selected          = true,
+                });
+            }
+
+            AutoBombMultiModule mod = AbmModule;
+            if (mod != null)
+            {
+                mod.PushAttackConfig(targetVid, attacks);
+
+                // Update TargetVillageId locally so heartbeat re-sends correct travel times
+                AutoBombMultiSettings s2 = AbmSettings;
+                if (s2 != null) s2.TargetVillageId = targetVid;
+
+                // Update travel time labels in-place — don't rebuild rows (would lose UI selections)
+                foreach (MultiBombVillageRow row in _abmVillageRows)
+                {
+                    double baseTravel = AutoBombModule.CalculateBaseTravelTime(
+                        row.SourceVillageId, targetVid, false);
+                    row.UpdateTravelTime(baseTravel);
+                }
+
+                AbmSaveSetup();
+            }
+        }
+
+        private void AbmDoPrepare()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null || !s.IsCoordinator)
+            {
+                MessageBox.Show("Only the coordinator can trigger preparation.", "Auto Bomb Multi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            if (s.TargetVillageId <= 0)
+            {
+                MessageBox.Show("Push the attack config first to set a target.", "Auto Bomb Multi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            AutoBombMultiModule mod = AbmModule;
+            if (mod != null) mod.TriggerPrepare();
+        }
+
+        private void AbmDoLaunch()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null || !s.IsCoordinator)
+            {
+                MessageBox.Show("Only the coordinator can start the timer.", "Auto Bomb Multi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            if (s.TargetVillageId <= 0)
+            {
+                MessageBox.Show("Push the attack config first to set a target.", "Auto Bomb Multi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            AutoBombMultiModule mod = AbmModule;
+            if (mod != null) mod.StartTimer();
+        }
+
+        private void AbmDoCancel()
+        {
+            AutoBombMultiModule mod = AbmModule;
+            if (mod != null) mod.CancelAll();
+        }
+
+        private void AbmDoReset()
+        {
+            if (MessageBox.Show("Reset the session? This will clear all connected players and attack configs.",
+                "Auto Bomb Multi", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
+            AutoBombMultiModule mod = AbmModule;
+            if (mod != null) mod.ResetSession();
+        }
+
+        private void AbmDoTakeCoordinator()
+        {
+            AutoBombMultiModule mod = AbmModule;
+            if (mod != null) mod.TakeCoordinator();
+        }
+
+        // ── Multi-bomb queue actions ──────────────────────────────────────────
+
+        private void AbmQueueAddId()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null) return;
+            int vid = (int)_abmQueueVidInput.Value;
+            if (vid <= 0) return;
+
+            TargetQueueEntry entry = new TargetQueueEntry();
+            entry.VillageId = vid;
+            try
+            {
+                if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                {
+                    string name = GameEngine.Instance.World.getVillageName(vid);
+                    if (!string.IsNullOrEmpty(name)) entry.Label = name;
+                }
+            }
+            catch { }
+
+            s.TargetQueue.Add(entry);
+            AbmRefreshQueueList(s);
+            _abmQueueVidInput.Value = 0;
+        }
+
+        private void AbmQueueLookupPlayer()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null) return;
+            string playerName = _abmQueuePlayerNameBox.Text.Trim();
+            if (string.IsNullOrEmpty(playerName)) return;
+
+            _abmQueueLookupBtn.Enabled = false;
+            _abmQueueLookupBtn.Text = "Looking up...";
+
+            System.Threading.Thread t = new System.Threading.Thread(delegate()
+            {
+                AutoBombModule abMod = null;
+                if (BotEngine.Instance != null)
+                    foreach (IBotModule m in BotEngine.Instance.Modules)
+                        if (m is AutoBombModule) { abMod = (AutoBombModule)m; break; }
+
+                List<int> villages = abMod != null
+                    ? abMod.ResolvePlayerVillages(playerName)
+                    : new List<int>();
+
+                this.BeginInvoke((MethodInvoker)delegate
+                {
+                    AutoBombMultiSettings s2 = AbmSettings;
+                    if (s2 != null)
+                    {
+                        foreach (int vid in villages)
+                        {
+                            if (GameEngine.Instance != null && GameEngine.Instance.World != null
+                                && GameEngine.Instance.World.isCapital(vid)) continue;
+                            TargetQueueEntry e = new TargetQueueEntry();
+                            e.VillageId = vid;
+                            e.Label = playerName;
+                            s2.TargetQueue.Add(e);
+                        }
+                        AbmRefreshQueueList(s2);
+                    }
+                    _abmQueueLookupBtn.Enabled = true;
+                    _abmQueueLookupBtn.Text = "Lookup Player";
+                });
+            });
+            t.IsBackground = true;
+            t.Name = "AbmQueueLookup";
+            t.Start();
+        }
+
+        private void AbmQueueAddSelectedVillage()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null || GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+            int vid = GameEngine.Instance.World.LastClickedVillage;
+            if (vid <= 0) return;
+            TargetQueueEntry entry = new TargetQueueEntry();
+            entry.VillageId = vid;
+            try
+            {
+                string name = GameEngine.Instance.World.getVillageName(vid);
+                if (!string.IsNullOrEmpty(name)) entry.Label = name;
+            }
+            catch { }
+            s.TargetQueue.Add(entry);
+            AbmRefreshQueueList(s);
+        }
+
+        private void AbmQueueAddSelectedPlayer()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null || GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+            int vid = GameEngine.Instance.World.LastClickedVillage;
+            if (vid <= 0) return;
+            int userId = GameEngine.Instance.World.getVillageUserID(vid);
+            if (userId < 0) return;
+
+            string playerName = null;
+            try
+            {
+                WorldMap.CachedUserInfo info = GameEngine.Instance.World.getStoredUserInfo(userId);
+                if (info != null && !string.IsNullOrEmpty(info.userName))
+                    playerName = info.userName;
+            }
+            catch { }
+
+            if (string.IsNullOrEmpty(playerName)) return;
+            _abmQueuePlayerNameBox.Text = playerName;
+            AbmQueueLookupPlayer();
+        }
+
+        private void AbmQueueRemove()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null || _abmQueueListBox.SelectedIndex < 0) return;
+            int idx = _abmQueueListBox.SelectedIndex;
+            if (idx < s.TargetQueue.Count)
+            {
+                s.TargetQueue.RemoveAt(idx);
+                AbmRefreshQueueList(s);
+            }
+        }
+
+        private void AbmQueueClear()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null) return;
+            s.TargetQueue.Clear();
+            AbmRefreshQueueList(s);
+        }
+
+        private void AbmQueueSave()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null || s.TargetQueue.Count == 0) return;
+
+            SaveFileDialog dlg = new SaveFileDialog();
+            dlg.Filter = "Target List (*.txt)|*.txt|All Files (*.*)|*.*";
+            dlg.DefaultExt = "txt";
+            dlg.Title = "Save Target Queue";
+            if (dlg.ShowDialog() != DialogResult.OK) return;
+
+            try
+            {
+                using (StreamWriter w = new StreamWriter(dlg.FileName))
+                {
+                    w.WriteLine("# Auto Bomb Multi Target Queue");
+                    foreach (TargetQueueEntry e in s.TargetQueue)
+                        w.WriteLine(e.VillageId + "," + e.Label);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Save failed: " + ex.Message, "Auto Bomb Multi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void AbmQueueLoad()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null) return;
+
+            OpenFileDialog dlg = new OpenFileDialog();
+            dlg.Filter = "Target List (*.txt)|*.txt|All Files (*.*)|*.*";
+            dlg.Title = "Load Target Queue";
+            if (dlg.ShowDialog() != DialogResult.OK) return;
+
+            try
+            {
+                using (StreamReader r = new StreamReader(dlg.FileName))
+                {
+                    string line;
+                    while ((line = r.ReadLine()) != null)
+                    {
+                        line = line.Trim();
+                        if (line.Length == 0 || line.StartsWith("#")) continue;
+                        string[] parts = line.Split(new char[] { ',' }, 2);
+                        int vid;
+                        if (!int.TryParse(parts[0].Trim(), out vid) || vid <= 0) continue;
+                        TargetQueueEntry e = new TargetQueueEntry();
+                        e.VillageId = vid;
+                        if (parts.Length > 1) e.Label = parts[1].Trim();
+                        s.TargetQueue.Add(e);
+                    }
+                }
+                AbmRefreshQueueList(s);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Load failed: " + ex.Message, "Auto Bomb Multi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void AbmQueueReset()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null) return;
+            foreach (TargetQueueEntry e in s.TargetQueue) e.Completed = false;
+            AbmRefreshQueueList(s);
+        }
+
+        private void AbmRefreshQueueList(AutoBombMultiSettings s)
+        {
+            _abmQueueListBox.Items.Clear();
+            if (s == null) return;
+            int completed = 0;
+            for (int i = 0; i < s.TargetQueue.Count; i++)
+            {
+                TargetQueueEntry e = s.TargetQueue[i];
+                string prefix = e.Completed ? "[done] " : "[ " + (i + 1) + " ] ";
+                string label = e.VillageId.ToString();
+                if (!string.IsNullOrEmpty(e.Label)) label += "  (" + e.Label + ")";
+                _abmQueueListBox.Items.Add(prefix + label);
+                if (e.Completed) completed++;
+            }
+            string status = s.TargetQueue.Count > 0
+                ? completed + " / " + s.TargetQueue.Count + " targets completed"
+                : "No targets in queue";
+            status += "  |  Interdicts: " + s.InterdictCount;
+            _abmQueueStatusLabel.Text = status;
+        }
+
+        // ── Multi-bomb refresh ────────────────────────────────────────────────
+
+        private void AbmRefreshDisplay()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null) return;
+
+            string stateText = s.SessionState ?? "idle";
+            string coordText = "";
+            foreach (MultiPlayerInfo pi in s.ConnectedPlayers)
+                if (pi.IsCoordinator) { coordText = pi.PlayerName; break; }
+
+            bool isCoord = s.IsCoordinator;
+            string statusStr = "Session: " + stateText;
+            if (!string.IsNullOrEmpty(coordText)) statusStr += " | Coordinator: " + coordText;
+            statusStr += " | Players: " + s.ConnectedPlayers.Count;
+            if (s.InterdictDetected) statusStr += " | ⚠ INTERDICT";
+
+            bool modEnabled = AbmModule != null && AbmModule.Enabled;
+            _abmConnStatusLabel.Text = statusStr;
+            _abmConnStatusLabel.ForeColor = modEnabled
+                ? (s.InterdictDetected ? Color.OrangeRed : AccentCol)
+                : TextSec;
+
+            bool coordControls = isCoord && modEnabled;
+            _abmTargetVidBox.Enabled        = coordControls;
+            _abmStackDelayInput.Enabled     = coordControls;
+            _abmFakeSendCheck.Enabled       = coordControls;
+            _abmAutoInterdictCheck.Enabled  = coordControls;
+            _abmPushConfigBtn.Enabled       = coordControls;
+            _abmPrepareBtn.Enabled          = coordControls;
+            _abmLaunchBtn.Enabled           = coordControls && (stateText == "configured" || stateText == "prepared" || stateText == "preparing");
+            _abmCancelBtn.Enabled           = modEnabled;
+            _abmResetBtn.Enabled            = coordControls;
+            _abmTakeCoordBtn.Enabled        = modEnabled && !isCoord;
+
+            bool queueCoord = coordControls;
+            _abmQueueAddIdBtn.Enabled              = queueCoord;
+            _abmQueueLookupBtn.Enabled             = queueCoord;
+            _abmQueueAddSelectedVillageBtn.Enabled = queueCoord;
+            _abmQueueAddSelectedPlayerBtn.Enabled  = queueCoord;
+            _abmQueueRemoveBtn.Enabled             = queueCoord;
+            _abmQueueClearBtn.Enabled              = queueCoord;
+            _abmQueueSaveBtn.Enabled               = true;
+            _abmQueueLoadBtn.Enabled               = queueCoord;
+            _abmQueueResetBtn.Enabled              = queueCoord;
+            _abmQueueEnabledCheck.Enabled          = queueCoord;
+            if (_abmQueueEnabledCheck.Enabled) _abmQueueEnabledCheck.Checked = s.TargetQueueEnabled;
+
+            if (s.TargetVillageId > 0 && string.IsNullOrEmpty(_abmTargetVidBox.Text))
+                _abmTargetVidBox.Text = s.TargetVillageId.ToString();
+
+            _abmCoordStatusLabel.Text = "Session: " + stateText + (isCoord ? " [Coord]" : " [Player]");
+
+            AbmRefreshVillageRows(s, isCoord);
+            AbmRefreshPendingRows(s);
+            AbmRefreshQueueList(s);
+        }
+
+        private void AbmRefreshVillageRows(AutoBombMultiSettings settings, bool isCoordinator)
+        {
+            int totalVillages = 0;
+            foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
+                totalVillages += pi.Villages.Count;
+
+            bool coordChanged = (isCoordinator != _abmLastIsCoordinator);
+            _abmLastIsCoordinator = isCoordinator;
+
+            if (totalVillages != _abmVillageRows.Count || coordChanged)
+                AbmRebuildVillageRows(settings, isCoordinator);
+            else
+            {
+                foreach (MultiBombVillageRow row in _abmVillageRows)
+                    foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
+                        foreach (MultiVillageInfo vi in pi.Villages)
+                            if (vi.VillageId == row.SourceVillageId)
+                                row.SetStatus(vi.AttackStatus);
+            }
+        }
+
+        private void AbmRebuildVillageRows(AutoBombMultiSettings settings, bool isCoordinator)
+        {
+            _abmVillageRows.Clear();
+            _abmVillageListPanel.Controls.Clear();
+
+            List<string> formationNames = AutoBombModule.GetFormationNames();
+            int y = 0, idx = 0;
+
+            string localPlayerName = AutoBombMultiModule.GetLocalPlayerName();
+
+            foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
+            {
+                Label playerHeader = new Label();
+                playerHeader.BackColor = Color.FromArgb(20, 30, 50);
+                playerHeader.ForeColor = pi.IsCoordinator
+                    ? Color.FromArgb(100, 200, 255)
+                    : Color.FromArgb(180, 200, 230);
+                playerHeader.Font = new Font("Segoe UI", 7.5f, FontStyle.Bold);
+                playerHeader.Text = "  " + pi.PlayerName + (pi.IsCoordinator ? " [Coordinator]" : "");
+                playerHeader.Location = new Point(0, y);
+                playerHeader.Size = new Size(1100, 18);
+                _abmVillageListPanel.Controls.Add(playerHeader);
+                y += 18;
+
+                bool isLocal = (pi.PlayerName == localPlayerName);
+
+                foreach (MultiVillageInfo vi in pi.Villages)
+                {
+                    var row = new MultiBombVillageRow(
+                        pi.PlayerName, vi.VillageId, vi.VillageName,
+                        vi.TravelTimeArmy, vi.TravelTimeCaptain,
+                        vi.NumPeasants, vi.NumArchers, vi.NumPikemen,
+                        vi.NumSwordsmen, vi.NumCatapults, vi.NumCaptains,
+                        formationNames, isLocal, idx, isCoordinator);
+
+                    row.Location = new Point(0, y);
+                    row.Width = _abmVillageListPanel.Width > 0 ? _abmVillageListPanel.Width : 1100;
+                    row.SetStatus(vi.AttackStatus);
+                    _abmVillageListPanel.Controls.Add(row);
+                    _abmVillageRows.Add(row);
+                    y += 24;
+                    idx++;
+                }
+            }
+
+            _abmVillageListPanel.AutoScrollMinSize = new Size(0, y);
+
+            // Restore per-village formation/card/stack/type from last saved setup
+            AbmLoadSetup();
+        }
+
+        private void AbmRefreshPendingRows(AutoBombMultiSettings settings)
+        {
+            int expected = 0;
+            foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
+                foreach (MultiVillageInfo vi in pi.Villages)
+                    if (!string.IsNullOrEmpty(vi.AttackStatus)) expected++;
+
+            if (expected != _abmPendingRows.Count)
+                AbmRebuildPendingRows(settings);
+        }
+
+        private void AbmRebuildPendingRows(AutoBombMultiSettings settings)
+        {
+            _abmPendingRows.Clear();
+            _abmPendingListPanel.Controls.Clear();
+            int y = 0, idx = 0;
+
+            foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
+            {
+                foreach (MultiVillageInfo vi in pi.Villages)
+                {
+                    if (string.IsNullOrEmpty(vi.AttackStatus)) continue;
+
+                    var row = new MultiPendingRow(
+                        pi.PlayerName, vi.VillageId, vi.VillageName,
+                        settings.TargetVillageId,
+                        vi.TravelTimeArmy, DateTime.MaxValue, DateTime.MaxValue,
+                        vi.FormationName, vi.AttackType, vi.Stack,
+                        vi.AttackStatus, idx);
+
+                    row.Location = new Point(0, y);
+                    row.Width = _abmPendingListPanel.Width > 0 ? _abmPendingListPanel.Width : 1100;
+                    _abmPendingListPanel.Controls.Add(row);
+                    _abmPendingRows.Add(row);
+                    y += 22;
+                    idx++;
+                }
+            }
+            _abmPendingListPanel.AutoScrollMinSize = new Size(0, y);
         }
 
         private void AbQueueAddId()

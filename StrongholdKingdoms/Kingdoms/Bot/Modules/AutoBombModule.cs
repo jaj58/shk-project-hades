@@ -1366,7 +1366,7 @@ namespace Kingdoms.Bot.Modules
         // Formation loading
         // =================================================================
 
-        private static CastleMapPreset FindCloudPreset(string formationName)
+        public static CastleMapPreset FindCloudPreset(string formationName)
         {
             try
             {
@@ -1623,7 +1623,7 @@ namespace Kingdoms.Bot.Modules
         // Interdict detection
         // =================================================================
 
-        private bool CheckForInterdict(int targetVillageId)
+        public static bool CheckForInterdict(int targetVillageId)
         {
             try
             {
@@ -1634,6 +1634,28 @@ namespace Kingdoms.Bot.Modules
             }
             catch { }
             return false;
+        }
+
+        public static void GetVillageTroops(int villageId,
+            out int peasants, out int archers, out int pikemen,
+            out int swordsmen, out int catapults, out int captains)
+        {
+            peasants = archers = pikemen = swordsmen = catapults = captains = 0;
+            try
+            {
+                if (GameEngine.Instance == null) return;
+                VillageMap village = GameEngine.Instance.getVillage(villageId);
+                if (village == null) return;
+                int[] troops = village.CalcTotalTroopsArray();
+                if (troops == null || troops.Length < 6) return;
+                peasants  = troops[0];
+                archers   = troops[1];
+                pikemen   = troops[2];
+                swordsmen = troops[3];
+                catapults = troops[4];
+                captains  = troops[5];
+            }
+            catch { }
         }
 
         // =================================================================

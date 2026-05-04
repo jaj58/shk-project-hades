@@ -93,6 +93,7 @@
     <Compile Include="Kingdoms\Bot\DiscordNotifier.cs" />
     <Compile Include="Kingdoms\Bot\IBotModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\AutoBombMultiModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\CardExpiryModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\CastleRepairModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\FreeCardCollectorModule.cs" />
@@ -132,6 +133,11 @@
     <Compile Include="Kingdoms\Bot\UI\AutoBombTab.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Kingdoms\Bot\UI\AutoBombMultiRows.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\AutoBombMultiTab.cs" />
+    <Compile Include="Kingdoms\Bot\UI\AutoBombMultiTab.Designer.cs" />
     <Compile Include="Kingdoms\Bot\UI\VillageBuilderTab.cs">
       <SubType>Component</SubType>
     </Compile>

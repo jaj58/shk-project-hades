@@ -18,6 +18,7 @@ namespace Kingdoms.Bot
         public TradeSettings Trade = new TradeSettings();
         public VillageBuilderSettings VillageBuilder = new VillageBuilderSettings();
         public AutoBombSettings AutoBomb = new AutoBombSettings();
+        public AutoBombMultiSettings AutoBombMulti = new AutoBombMultiSettings();
         public PopularitySettings Popularity = new PopularitySettings();
         public MiscSettings Misc = new MiscSettings();
 
@@ -721,6 +722,81 @@ namespace Kingdoms.Bot
                 default: return "Attack " + attackType;
             }
         }
+    }
+
+    // =========================================================================
+    // Auto Bomb Multi Settings
+    // =========================================================================
+
+    [Serializable]
+    public class MultiVillageInfo
+    {
+        public int VillageId;
+        public string VillageName = "";
+        public int NumPeasants;
+        public int NumArchers;
+        public int NumPikemen;
+        public int NumSwordsmen;
+        public int NumCatapults;
+        public int NumCaptains;
+        public double TravelTimeArmy;
+        public double TravelTimeCaptain;
+        // Attack assignment set by coordinator (stored in API, mirrored here for display)
+        [System.Xml.Serialization.XmlIgnore]
+        public string FormationName = "";
+        [System.Xml.Serialization.XmlIgnore]
+        public int Stack = 1;
+        [System.Xml.Serialization.XmlIgnore]
+        public int CardType;
+        [System.Xml.Serialization.XmlIgnore]
+        public bool CaptainsOnly;
+        [System.Xml.Serialization.XmlIgnore]
+        public int AttackType = 11;
+        [System.Xml.Serialization.XmlIgnore]
+        public bool Selected = true;
+        [System.Xml.Serialization.XmlIgnore]
+        public string AttackStatus = ""; // queued/preparing/prepared/sent/cancelled/failed
+    }
+
+    [Serializable]
+    public class MultiPlayerInfo
+    {
+        public string PlayerName = "";
+        [System.Xml.Serialization.XmlIgnore]
+        public bool IsCoordinator;
+        [System.Xml.Serialization.XmlIgnore]
+        public bool Ready;
+        [System.Xml.Serialization.XmlIgnore]
+        public List<MultiVillageInfo> Villages = new List<MultiVillageInfo>();
+    }
+
+    [Serializable]
+    public class AutoBombMultiSettings
+    {
+        public bool Enabled;
+        public string ApiUrl = "";
+        public string SessionKey = "";
+        public bool AutoCancelOnInterdict = true;
+        public int StackDelaySeconds = 1;
+        public bool FakeSendEnabled;
+        public bool TargetQueueEnabled;
+        public List<TargetQueueEntry> TargetQueue = new List<TargetQueueEntry>();
+
+        // Runtime state — not persisted
+        [System.Xml.Serialization.XmlIgnore]
+        public int TargetVillageId;
+        [System.Xml.Serialization.XmlIgnore]
+        public List<MultiPlayerInfo> ConnectedPlayers = new List<MultiPlayerInfo>();
+        [System.Xml.Serialization.XmlIgnore]
+        public string SessionState = "idle";
+        [System.Xml.Serialization.XmlIgnore]
+        public bool IsCoordinator;
+        [System.Xml.Serialization.XmlIgnore]
+        public bool InterdictDetected;
+        [System.Xml.Serialization.XmlIgnore]
+        public int InterdictCount;
+        [System.Xml.Serialization.XmlIgnore]
+        public double ServerClockOffsetSeconds;
     }
 
     public enum PopularityMode
