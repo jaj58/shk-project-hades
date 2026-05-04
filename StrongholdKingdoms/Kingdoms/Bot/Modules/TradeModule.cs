@@ -791,7 +791,7 @@ namespace Kingdoms.Bot.Modules
                         double needed = route.SendMaximum - recipientLevel;
                         if (needed > canSend) needed = canSend;
 
-                        int carryLevel = GetCarryLevel(resourceId);
+                        int carryLevel = GetBaseCarryLevel(resourceId);
                         int minLoad = carryLevel * settings.MerchantsPerTrade;
                         if (needed < minLoad) continue;
 
@@ -866,7 +866,7 @@ namespace Kingdoms.Bot.Modules
                     int remaining = resEntry.Remaining;
                     if (canSend > remaining) canSend = remaining;
 
-                    int carryLevel = GetCarryLevel(resourceId);
+                    int carryLevel = GetBaseCarryLevel(resourceId);
                     if (canSend < carryLevel) continue;
 
                     // Override min merchants � send even with 1 merchant to ensure all goods are sent
@@ -1110,6 +1110,18 @@ namespace Kingdoms.Bot.Modules
                 return CardTypes.adjustTraderCarryLevels(
                     GameEngine.Instance.cardsManager.UserCardData,
                     GameEngine.Instance.LocalWorldData.traderCarryingLevels[resourceId]);
+            }
+            catch
+            {
+                return 1;
+            }
+        }
+
+        private static int GetBaseCarryLevel(int resourceId)
+        {
+            try
+            {
+                return GameEngine.Instance.LocalWorldData.traderCarryingLevels[resourceId];
             }
             catch
             {
