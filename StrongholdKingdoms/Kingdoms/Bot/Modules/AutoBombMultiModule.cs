@@ -685,7 +685,7 @@ namespace Kingdoms.Bot.Modules
                 if (attempt == MaxLaunchAttempts)
                 {
                     LogError("Launch aborted — still missing send times after " + (MaxLaunchAttempts - 1) +
-                        " retries: " + string.Join(", ", missingTime));
+                        " retries: " + string.Join(", ", missingTime.ConvertAll(v => v.ToString()).ToArray()));
                     try { PostAction(settings, "cancel_attacks", new Dictionary<string, object>
                         { ["player_name"] = GetLocalPlayerName(), ["reason"] = "missing_send_times" }); }
                     catch { }
@@ -693,7 +693,7 @@ namespace Kingdoms.Bot.Modules
                 }
 
                 LogWarning("Attempt " + attempt + "/" + MaxLaunchAttempts +
-                    ": missing send times for village(s) " + string.Join(", ", missingTime) +
+                    ": missing send times for village(s) " + string.Join(", ", missingTime.ConvertAll(v => v.ToString()).ToArray()) +
                     " — retrying in 60s...");
                 System.Threading.Thread.Sleep(60000);
 
@@ -1307,7 +1307,7 @@ namespace Kingdoms.Bot.Modules
                     {
                         LogError("[Queue] Launch aborted for target " + newTargetVid +
                             " — still missing send times after " + (MaxQueueAttempts - 1) +
-                            " retries: " + string.Join(", ", missingTime));
+                            " retries: " + string.Join(", ", missingTime.ConvertAll(v => v.ToString()).ToArray()));
                         try { PostAction(settings, "cancel_attacks", new Dictionary<string, object>
                             { ["player_name"] = GetLocalPlayerName(), ["reason"] = "missing_send_times" }); }
                         catch { }
@@ -1315,7 +1315,7 @@ namespace Kingdoms.Bot.Modules
                     }
 
                     LogWarning("[Queue] Attempt " + attempt + "/" + MaxQueueAttempts +
-                        ": missing send times for village(s) " + string.Join(", ", missingTime) +
+                        ": missing send times for village(s) " + string.Join(", ", missingTime.ConvertAll(v => v.ToString()).ToArray()) +
                         " — retrying in 60s...");
                     if (_cancelLaunchEvent.WaitOne(60000)) return null;
 
