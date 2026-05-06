@@ -35,8 +35,14 @@ namespace Kingdoms.Bot.Modules
 
         // Last known session state to detect transitions
         private string _lastSessionState = "";
+        private string _lastProcessedLaunchId = "";
         private bool _pollStarted;
-        private DateTime _launchThreadFinishedAt = DateTime.MinValue;
+
+        // Army-return monitoring for target queue advancement.
+        // Non-coordinators monitor their own armies after launch and report via the poll thread.
+        private volatile bool _monitoringArmyReturn;
+        private volatile bool _armyReturnReported;
+        private HashSet<int> _sentSourceVillages = new HashSet<int>();
 
         public override string ModuleName { get { return "Auto Bomb Multi"; } }
         public override TimeSpan Interval { get { return TimeSpan.FromMilliseconds(500); } }
@@ -310,6 +316,29 @@ namespace Kingdoms.Bot.Modules
             if (resp == null) return;
 
             ApplyStateFromResponse(settings, resp);
+
+            // Non-coordinator army return reporting.
+            // The coordinator handles its own reporting inside WaitForArmiesReturnMulti.
+            // Non-coordinators report here so the coordinator's wait can unblock.
+            if (_monitoringArmyReturn && !_armyReturnReported && !settings.IsCoordinator)
+            {
+                HashSet<int> vids = _sentSourceVillages;
+                if (CheckLocalArmiesHome(vids))
+                {
+                    _armyReturnReported = true;
+                    _monitoringArmyReturn = false;
+                    LogInfo("[Queue] Local armies returned — reporting to API.");
+                    try
+                    {
+                        PostAction(settings, "report_armies_status", new Dictionary<string, object>
+                        {
+                            ["player_name"] = GetLocalPlayerName(),
+                            ["status"]      = "returned",
+                        });
+                    }
+                    catch (Exception ex) { LogError("[Queue] report_armies_status failed: " + ex.Message); }
+                }
+            }
         }
 
         private void ApplyStateFromResponse(AutoBombMultiSettings settings, Dictionary<string, object> resp)
@@ -420,10 +449,12 @@ namespace Kingdoms.Bot.Modules
             }
             else if (newState == "launching" && !_launching)
             {
-                // Re-trigger only for genuine reconnect (not a rapid restart after thread exit).
-                // 60s cooldown prevents the poll loop from spinning up a new thread every 200ms
-                // when the launch thread exits before all attacks are marked sent.
-                if ((DateTime.Now - _launchThreadFinishedAt).TotalSeconds > 60)
+                // Re-trigger only when the server has started a genuinely new launch
+                // (coordinator called start_timer again). The launch_id changes each time
+                // start_timer is called, so if it matches what we already processed we
+                // know our thread finished its batch and we should not spawn a duplicate.
+                string launchId = GetStr(stateData, "launch_id", "");
+                if (launchId != _lastProcessedLaunchId)
                     OnSessionLaunching(settings, stateData);
             }
         }
@@ -542,6 +573,8 @@ namespace Kingdoms.Bot.Modules
         {
             if (_launching) return;
 
+            _lastProcessedLaunchId = GetStr(stateData, "launch_id", "");
+
             string myName = GetLocalPlayerName();
 
             // Build BombAttackEntry list for this player's villages only
@@ -639,11 +672,71 @@ namespace Kingdoms.Bot.Modules
                 return;
             }
 
-            int noTimeCnt = 0;
-            foreach (var e in myEntries) if (e.ScheduledSendTime == DateTime.MaxValue) noTimeCnt++;
-            if (noTimeCnt > 0)
-                LogWarning(noTimeCnt + " attack(s) have no scheduled send time — they will be skipped. " +
-                    "Ensure the PHP file is up to date and all attacks were pushed with correct travel times.");
+            // Every attack MUST have a scheduled send time — partial launch wastes the whole bomb.
+            // Up to 3 total attempts (initial + 2 retries), waiting 60s between each.
+            const int MaxLaunchAttempts = 3;
+            for (int attempt = 1; attempt <= MaxLaunchAttempts; attempt++)
+            {
+                var missingTime = new List<int>();
+                foreach (var e in myEntries)
+                    if (e.ScheduledSendTime == DateTime.MaxValue) missingTime.Add(e.SourceVillageId);
+                if (missingTime.Count == 0) break;
+
+                if (attempt == MaxLaunchAttempts)
+                {
+                    LogError("Launch aborted — still missing send times after " + (MaxLaunchAttempts - 1) +
+                        " retries: " + string.Join(", ", missingTime));
+                    try { PostAction(settings, "cancel_attacks", new Dictionary<string, object>
+                        { ["player_name"] = GetLocalPlayerName(), ["reason"] = "missing_send_times" }); }
+                    catch { }
+                    return;
+                }
+
+                LogWarning("Attempt " + attempt + "/" + MaxLaunchAttempts +
+                    ": missing send times for village(s) " + string.Join(", ", missingTime) +
+                    " — retrying in 60s...");
+                System.Threading.Thread.Sleep(60000);
+
+                if (settings.IsCoordinator)
+                {
+                    try { PostAction(settings, "start_timer", new Dictionary<string, object>
+                    {
+                        ["player_name"]              = GetLocalPlayerName(),
+                        ["stack_delay_seconds"]      = settings.StackDelaySeconds,
+                        ["fake_send"]                = settings.FakeSendEnabled,
+                        ["auto_cancel_on_interdict"] = settings.AutoCancelOnInterdict,
+                    }); } catch { }
+                }
+
+                try
+                {
+                    var retryResp = PostAction(settings, "get_status", new Dictionary<string, object>
+                        { ["player_name"] = GetLocalPlayerName() });
+                    object sdObj2; if (retryResp != null) retryResp.TryGetValue("state_data", out sdObj2); else sdObj2 = null;
+                    var sd2 = sdObj2 as Dictionary<string, object>;
+                    if (sd2 != null)
+                    {
+                        object stObj2; sd2.TryGetValue("scheduled_send_times", out stObj2);
+                        var st2 = stObj2 as Dictionary<string, object>;
+                        if (st2 != null)
+                        {
+                            foreach (var e in myEntries)
+                            {
+                                if (e.ScheduledSendTime != DateTime.MaxValue) continue;
+                                object sv; if (!st2.TryGetValue(e.SourceVillageId.ToString(), out sv) || sv == null) continue;
+                                DateTime utc2;
+                                if (DateTime.TryParse(sv.ToString(), null,
+                                    System.Globalization.DateTimeStyles.RoundtripKind, out utc2))
+                                {
+                                    e.ScheduledSendTime    = utc2.ToLocalTime().AddSeconds(-settings.ServerClockOffsetSeconds);
+                                    e.EstimatedArrivalTime = e.ScheduledSendTime.AddSeconds(e.TravelTimeSeconds);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex) { LogError("Retry get_status failed: " + ex.Message); }
+            }
 
             lock (_attacksLock) { _myAttacks = myEntries; }
 
@@ -666,6 +759,14 @@ namespace Kingdoms.Bot.Modules
         private void OnSessionCancelled(AutoBombMultiSettings settings)
         {
             if (!_launching) return;
+
+            // If the local interdict or fake-send recall was already detected, the
+            // launch thread is already managing queue advancement — do not set
+            // _cancelLaunchEvent again or it will abort the army-return wait.
+            // Other players (non-coordinator) won't have _interdictDetected set locally
+            // so they will still cancel and recall normally.
+            if (_interdictDetected || _fakeSendTriggered) return;
+
             LogWarning("Session cancelled by API — stopping launch.");
             _cancelLaunchEvent.Set();
             CancelRemainingLocalAttacks();
@@ -681,87 +782,140 @@ namespace Kingdoms.Bot.Modules
             public List<BombAttackEntry> Attacks;
         }
 
+        private static readonly Comparison<BombAttackEntry> SendTimeComparer = (a, b) => {
+            if (a.ScheduledSendTime == DateTime.MaxValue && b.ScheduledSendTime == DateTime.MaxValue)
+                return a.Stack.CompareTo(b.Stack);
+            if (a.ScheduledSendTime == DateTime.MaxValue) return 1;
+            if (b.ScheduledSendTime == DateTime.MaxValue) return -1;
+            return a.ScheduledSendTime.CompareTo(b.ScheduledSendTime);
+        };
+
         private void LaunchThreadProc(object obj)
         {
-            var ctx = (LaunchContext)obj;
+            var ctx      = (LaunchContext)obj;
             var settings = ctx.Settings;
             var attacks  = ctx.Attacks;
 
-            // Sort by scheduled send time ascending (earliest first) so each attack is
-            // prepared and fired in sequence. Attacks without a scheduled time go last,
-            // ordered by stack. This replaces the old two-phase (prepare-all then fire-all)
-            // approach, which couldn't handle 1s stack delays where prepare takes ~10s.
-            attacks.Sort((a, b) => {
-                if (a.ScheduledSendTime == DateTime.MaxValue && b.ScheduledSendTime == DateTime.MaxValue)
-                    return a.Stack.CompareTo(b.Stack);
-                if (a.ScheduledSendTime == DateTime.MaxValue) return 1;
-                if (b.ScheduledSendTime == DateTime.MaxValue) return -1;
-                return a.ScheduledSendTime.CompareTo(b.ScheduledSendTime);
-            });
-
             try
             {
-                LogInfo("[Thread] Launching " + attacks.Count + " attack(s).");
+                bool cancelled = false;
 
-                foreach (var entry in attacks)
+                while (!cancelled)
                 {
-                    if (_cancelLaunchEvent.WaitOne(0)) break;
+                    // Sort: earliest send time first; no-time attacks go last by stack.
+                    attacks.Sort(SendTimeComparer);
 
-                    // Skip attacks that weren't assigned a send time by the server
-                    // (e.g. because the PHP is outdated or travel time was 0 at push time).
-                    if (entry.ScheduledSendTime == DateTime.MaxValue)
-                    {
-                        LogWarning("[Thread] Village " + entry.SourceVillageId +
-                            " has no scheduled send time — skipping.");
-                        PostAttackEvent(settings, "attack_failed_prepare", entry.SourceVillageId,
-                            "no scheduled time");
-                        continue;
-                    }
+                    LogInfo("[Thread] Firing batch: " + attacks.Count + " attack(s) for target " +
+                        _currentTargetVillageId + ".");
 
-                    // Wait until 8s before scheduled send time, then prepare
-                    if (entry.ScheduledSendTime != DateTime.MaxValue)
+                    // ── Fire all attacks in this batch ─────────────────────────
+                    foreach (var entry in attacks)
                     {
-                        TimeSpan waitTime = entry.ScheduledSendTime - DateTime.Now - TimeSpan.FromSeconds(8);
-                        if (waitTime > TimeSpan.Zero)
+                        if (_cancelLaunchEvent.WaitOne(0)) { cancelled = true; break; }
+
+                        if (entry.ScheduledSendTime == DateTime.MaxValue)
+                        {
+                            LogWarning("[Thread] Village " + entry.SourceVillageId +
+                                " has no scheduled send time — skipping.");
+                            PostAttackEvent(settings, "attack_failed_prepare", entry.SourceVillageId,
+                                "no scheduled time");
+                            continue;
+                        }
+
+                        // Wait until 8s before send time, then prepare
+                        TimeSpan waitBefore = entry.ScheduledSendTime - DateTime.Now - TimeSpan.FromSeconds(8);
+                        if (waitBefore > TimeSpan.Zero)
                         {
                             LogInfo("[Thread] Stack " + entry.Stack + ": waiting " +
-                                (int)waitTime.TotalSeconds + "s before prepare.");
-                            if (_cancelLaunchEvent.WaitOne((int)waitTime.TotalMilliseconds)) break;
+                                (int)waitBefore.TotalSeconds + "s before prepare.");
+                            if (_cancelLaunchEvent.WaitOne((int)waitBefore.TotalMilliseconds))
+                                { cancelled = true; break; }
                         }
-                    }
 
-                    if (_cancelLaunchEvent.WaitOne(0)) break;
+                        if (_cancelLaunchEvent.WaitOne(0)) { cancelled = true; break; }
 
-                    entry.Status = "Preparing...";
-                    bool ok = PrepareAttackOnThread(entry, settings);
-                    if (!ok)
-                    {
-                        PostAttackEvent(settings, "attack_failed_prepare", entry.SourceVillageId,
-                            entry.Status);
-                        continue;
-                    }
-                    PostAttackEvent(settings, "attack_prepared", entry.SourceVillageId);
-
-                    // Wait until scheduled send time
-                    if (entry.ScheduledSendTime != DateTime.MaxValue)
-                    {
-                        TimeSpan waitTime = entry.ScheduledSendTime - DateTime.Now;
-                        if (waitTime > TimeSpan.Zero)
+                        entry.Status = "Preparing...";
+                        bool ok = PrepareAttackOnThread(entry, settings);
+                        if (!ok)
                         {
-                            if (_cancelLaunchEvent.WaitOne((int)waitTime.TotalMilliseconds)) break;
+                            PostAttackEvent(settings, "attack_failed_prepare", entry.SourceVillageId,
+                                entry.Status);
+                            continue;
                         }
+                        PostAttackEvent(settings, "attack_prepared", entry.SourceVillageId);
+
+                        // Wait until the exact send time
+                        TimeSpan waitFire = entry.ScheduledSendTime - DateTime.Now;
+                        if (waitFire > TimeSpan.Zero)
+                        {
+                            if (_cancelLaunchEvent.WaitOne((int)waitFire.TotalMilliseconds))
+                                { cancelled = true; break; }
+                        }
+
+                        if (_cancelLaunchEvent.WaitOne(0)) { cancelled = true; break; }
+
+                        FirePreparedAttack(entry);
+                        if (entry.Sent)
+                            PostAttackEvent(settings, "attack_sent", entry.SourceVillageId);
+                        else
+                            PostAttackEvent(settings, "attack_failed", entry.SourceVillageId, entry.Status);
+
+                        _cancelLaunchEvent.WaitOne(500); // brief anti-spam gap
                     }
 
-                    if (_cancelLaunchEvent.WaitOne(0)) break;
+                    // Distinguish manual cancel from an automatic recall (interdict / fake-send).
+                    // On interdict/fake-send armies have been recalled and we should still
+                    // wait for them to return and advance the queue. On a manual cancel we stop.
+                    bool autoRecalled = _interdictDetected || _fakeSendTriggered;
+                    if (cancelled && !autoRecalled) break;
 
-                    FirePreparedAttack(entry);
-                    if (entry.Sent)
-                        PostAttackEvent(settings, "attack_sent", entry.SourceVillageId);
+                    // ── Queue advancement (coordinator only) ───────────────────
+                    if (!settings.TargetQueueEnabled || !settings.IsCoordinator)
+                        break;
+
+                    // Count sent armies so we know whether to wait for them to return
+                    int sentCount = 0;
+                    foreach (var e in attacks) if (e.Sent) sentCount++;
+
+                    // Fake-send + queue: wait for the recall timer before trying to
+                    // advance — otherwise WaitForArmiesReturn sees the armies still
+                    // outbound and we'd never clear them.
+                    if (settings.FakeSendEnabled && sentCount > 0 && !_fakeSendTriggered)
+                    {
+                        LogInfo("[Queue] Waiting for fake-send recall timer before advancing...");
+                        _cancelLaunchEvent.WaitOne(); // timer, interdict, or manual cancel sets this
+                        if (!_fakeSendTriggered && !_interdictDetected)
+                        {
+                            LogInfo("[Queue] Manually cancelled before fake-send timer. Stopping.");
+                            break;
+                        }
+                        autoRecalled = true;
+                    }
+
+                    if (sentCount > 0)
+                    {
+                        // Reset so WaitForArmiesReturnMulti can block cleanly.
+                        // Keep _interdictDetected intact — OnTick checks !_interdictDetected
+                        // to avoid re-triggering on the same still-interdicted target.
+                        _cancelLaunchEvent.Reset();
+                        DisposeFakeSendTimer();
+                        if (!WaitForArmiesReturnMulti(settings, attacks)) break;
+                    }
                     else
-                        PostAttackEvent(settings, "attack_failed", entry.SourceVillageId, entry.Status);
+                    {
+                        _cancelLaunchEvent.Reset();
+                        DisposeFakeSendTimer();
+                    }
 
-                    // Brief anti-spam delay between consecutive fires
-                    _cancelLaunchEvent.WaitOne(500);
+                    // Advance to the next queue entry
+                    var nextAttacks = TryAdvanceMultiQueue(settings);
+                    if (nextAttacks == null || nextAttacks.Count == 0) break;
+
+                    attacks = nextAttacks;
+                    lock (_attacksLock) { _myAttacks = nextAttacks; }
+                    _interdictDetected = false;
+                    _fakeSendTriggered = false;
+                    cancelled = false; // allow next iteration to fire
                 }
             }
             catch (Exception ex)
@@ -771,8 +925,468 @@ namespace Kingdoms.Bot.Modules
             finally
             {
                 _launching = false;
-                _launchThreadFinishedAt = DateTime.Now;
+
+                // Non-coordinators: enable poll-thread army monitoring so they report
+                // back to the API when their armies return (unblocks coordinator's queue wait).
+                if (!settings.IsCoordinator && settings.TargetQueueEnabled)
+                {
+                    var sent = new HashSet<int>();
+                    lock (_attacksLock)
+                    {
+                        foreach (var e in _myAttacks)
+                            if (e.Sent) sent.Add(e.SourceVillageId);
+                    }
+                    if (sent.Count > 0)
+                    {
+                        _sentSourceVillages  = sent;
+                        _monitoringArmyReturn = true;
+                        _armyReturnReported   = false;
+                        LogInfo("[Thread] Monitoring " + sent.Count +
+                            " village(s) for army return — will report when home.");
+                    }
+                }
+
                 LogInfo("[Thread] Launch thread exiting.");
+            }
+        }
+
+        // ── Queue advancement helpers ─────────────────────────────────────────
+
+        // Returns true when all players with tracked attacks have reported armies home.
+        // The coordinator both monitors its own armies (and reports) AND polls the API for
+        // all players. Non-coordinators report independently via DoPoll.
+        private bool WaitForArmiesReturnMulti(AutoBombMultiSettings settings,
+            List<BombAttackEntry> sentAttacks)
+        {
+            // Build the set of source villages this player sent from
+            var mySourceVids = new HashSet<int>();
+            foreach (var e in sentAttacks)
+                if (e.Sent) mySourceVids.Add(e.SourceVillageId);
+
+            // If we sent nothing, report immediately so we don't block the coordinator
+            bool ownReported = mySourceVids.Count == 0;
+            if (ownReported)
+            {
+                try { PostAction(settings, "report_armies_status", new Dictionary<string, object>
+                    { ["player_name"] = GetLocalPlayerName(), ["status"] = "returned" }); }
+                catch { }
+            }
+
+            // Time floor: armies cannot be home before they've traveled back the distance they covered.
+            // ScheduledSendTime ≈ actual send time. Time in flight at recall = Now - sendTime.
+            // After recall the army needs the same duration to return.
+            DateTime floorReturnTime = DateTime.MinValue;
+            foreach (var e in sentAttacks)
+            {
+                if (!e.Sent || e.ScheduledSendTime == DateTime.MaxValue) continue;
+                TimeSpan inFlight = DateTime.Now - e.ScheduledSendTime;
+                if (inFlight < TimeSpan.Zero) inFlight = TimeSpan.Zero;
+                DateTime estReturn = DateTime.Now.Add(inFlight).AddSeconds(15); // 15s margin
+                if (estReturn > floorReturnTime) floorReturnTime = estReturn;
+            }
+            if (floorReturnTime == DateTime.MinValue) floorReturnTime = DateTime.Now;
+            LogInfo("[Queue] Army return floor: " + floorReturnTime.ToString("HH:mm:ss"));
+
+            LogInfo("[Queue] Waiting for all players' armies to return home...");
+
+            int pollCount = 0;
+            int consecutiveClean = 0;
+            const int RequiredCleanPolls = 2;
+
+            while (true)
+            {
+                if (_cancelLaunchEvent.WaitOne(5000))
+                {
+                    LogInfo("[Queue] Cancelled while waiting for armies.");
+                    return false;
+                }
+                pollCount++;
+
+                // ── Check and report own armies ────────────────────────────────
+                if (!ownReported)
+                {
+                    if (DateTime.Now >= floorReturnTime && CheckLocalArmiesHome(mySourceVids))
+                    {
+                        if (++consecutiveClean >= RequiredCleanPolls)
+                        {
+                            ownReported = true;
+                            LogInfo("[Queue] Coordinator's armies home — reporting.");
+                            try { PostAction(settings, "report_armies_status",
+                                new Dictionary<string, object>
+                                {
+                                    ["player_name"] = GetLocalPlayerName(),
+                                    ["status"]      = "returned",
+                                }); }
+                            catch (Exception ex)
+                            {
+                                LogError("[Queue] report_armies_status failed: " + ex.Message);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        consecutiveClean = 0;
+                        // Retry recall on any still-outbound armies (interdict/fake-send path)
+                        try
+                        {
+                            var outbound = new List<WorldMap.LocalArmyData>();
+                            if (GameEngine.Instance?.World != null)
+                            {
+                                foreach (WorldMap.LocalArmyData army in
+                                    GameEngine.Instance.World.getArmyArray())
+                                {
+                                    if (army == null || army.dead) continue;
+                                    if (!mySourceVids.Contains(army.homeVillageID)) continue;
+                                    if (army.lootType < 0 && army.targetVillageID >= 0 &&
+                                        army.targetVillageID != army.homeVillageID)
+                                        outbound.Add(army);
+                                }
+                            }
+                            if (outbound.Count > 0)
+                            {
+                                RemoteServices.Instance.set_CancelCastleAttack_UserCallBack(null);
+                                foreach (var army in outbound)
+                                    RemoteServices.Instance.CancelCastleAttack(army.armyID);
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                // ── Poll API for all-players status ────────────────────────────
+                try
+                {
+                    var resp = PostAction(settings, "get_status", new Dictionary<string, object>
+                        { ["player_name"] = GetLocalPlayerName() });
+                    if (resp == null) continue;
+
+                    object stateDataObj;
+                    resp.TryGetValue("state_data", out stateDataObj);
+                    var stateData = stateDataObj as Dictionary<string, object>;
+                    if (stateData == null) continue;
+
+                    object armyStatusObj;
+                    stateData.TryGetValue("armies_return_status", out armyStatusObj);
+                    var armyStatus = armyStatusObj as Dictionary<string, object>;
+
+                    if (armyStatus == null || armyStatus.Count == 0)
+                    {
+                        LogInfo("[Queue] No army-return tracking in state — proceeding.");
+                        return true;
+                    }
+
+                    int waiting = 0;
+                    foreach (var kv in armyStatus)
+                        if (kv.Value.ToString() != "returned") waiting++;
+
+                    if (waiting == 0)
+                    {
+                        LogInfo("[Queue] All players' armies returned. Advancing queue.");
+                        return true;
+                    }
+
+                    if (pollCount % 4 == 0)
+                        LogInfo("[Queue] " + waiting + " player(s) still waiting for armies...");
+                }
+                catch (Exception ex) { LogError("[Queue] WaitForArmiesReturnMulti poll error: " + ex.Message); }
+            }
+        }
+
+        private bool CheckLocalArmiesHome(HashSet<int> sourceVids)
+        {
+            if (sourceVids == null || sourceVids.Count == 0) return true;
+            try
+            {
+                if (GameEngine.Instance == null || GameEngine.Instance.World == null) return false;
+                foreach (WorldMap.LocalArmyData army in GameEngine.Instance.World.getArmyArray())
+                {
+                    if (army == null || army.dead) continue;
+                    if (sourceVids.Contains(army.homeVillageID)) return false;
+                }
+                return true;
+            }
+            catch { return false; }
+        }
+
+        private List<BombAttackEntry> TryAdvanceMultiQueue(AutoBombMultiSettings settings)
+        {
+            // Mark current target done
+            foreach (TargetQueueEntry qe in settings.TargetQueue)
+            {
+                if (qe.VillageId == _currentTargetVillageId && !qe.Completed)
+                {
+                    qe.Completed = true;
+                    LogInfo("[Queue] Target " + qe.VillageId + " marked complete.");
+                    break;
+                }
+            }
+
+            // Find next uncompleted entry
+            TargetQueueEntry next = null;
+            foreach (TargetQueueEntry qe in settings.TargetQueue)
+                if (!qe.Completed) { next = qe; break; }
+
+            if (next == null)
+            {
+                LogInfo("[Queue] All targets in queue completed.");
+                return null;
+            }
+
+            int newTargetVid = next.VillageId;
+            LogInfo("[Queue] Advancing to next target: " + newTargetVid +
+                (string.IsNullOrEmpty(next.Label) ? "" : " (" + next.Label + ")"));
+
+            settings.TargetVillageId = newTargetVid;
+            _currentTargetVillageId  = newTargetVid;
+
+            try
+            {
+                // Fetch current attack config (preserves formation/stack/card assignments)
+                var resp = PostAction(settings, "get_status", new Dictionary<string, object>
+                    { ["player_name"] = GetLocalPlayerName() });
+                if (resp == null) { LogError("[Queue] get_status returned null."); return null; }
+
+                object stateDataObj;
+                if (!resp.TryGetValue("state_data", out stateDataObj))
+                    { LogError("[Queue] No state_data."); return null; }
+                var stateData = stateDataObj as Dictionary<string, object>;
+                if (stateData == null) return null;
+
+                object attacksObj;
+                if (!stateData.TryGetValue("attacks", out attacksObj) ||
+                    !(attacksObj is System.Collections.ArrayList))
+                    { LogError("[Queue] No attacks array in state."); return null; }
+
+                // Rebuild attack list with recalculated travel times for the new target
+                var newAttackList = new List<Dictionary<string, object>>();
+                foreach (var item in (System.Collections.ArrayList)attacksObj)
+                {
+                    var ad = item as Dictionary<string, object>;
+                    if (ad == null) continue;
+                    int srcVid = GetInt(ad, "source_village_id");
+                    bool captainsOnly = GetBool(ad, "captains_only");
+                    double newTravel = AutoBombModule.CalculateBaseTravelTime(
+                        srcVid, newTargetVid, captainsOnly);
+                    newAttackList.Add(new Dictionary<string, object>
+                    {
+                        ["source_player"]       = GetStr(ad, "source_player", ""),
+                        ["source_village_id"]   = srcVid,
+                        ["formation"]           = GetStr(ad, "formation", ""),
+                        ["stack"]               = GetInt(ad, "stack", 1),
+                        ["card_type"]           = GetInt(ad, "card_type"),
+                        ["captains_only"]       = captainsOnly,
+                        ["attack_type"]         = GetInt(ad, "attack_type", 11),
+                        ["travel_time_seconds"] = newTravel,
+                        ["selected"]            = GetBool(ad, "selected", true),
+                    });
+                }
+
+                // Push updated config to API
+                PostAction(settings, "set_attack_config", new Dictionary<string, object>
+                {
+                    ["player_name"]       = GetLocalPlayerName(),
+                    ["target_village_id"] = newTargetVid,
+                    ["attacks"]           = newAttackList,
+                });
+                LogInfo("[Queue] Config pushed for target " + newTargetVid + ".");
+
+                // Give non-coordinator clients time to poll and see the new config
+                // before the timer fires. Poll interval is 2000ms so 6s = ~3 polls.
+                if (_cancelLaunchEvent.WaitOne(6000)) return null;
+
+                // Start the timer — sets state → launching with new send times + new launch_id
+                PostAction(settings, "start_timer", new Dictionary<string, object>
+                {
+                    ["player_name"]              = GetLocalPlayerName(),
+                    ["stack_delay_seconds"]      = settings.StackDelaySeconds,
+                    ["fake_send"]                = settings.FakeSendEnabled,
+                    ["auto_cancel_on_interdict"] = settings.AutoCancelOnInterdict,
+                });
+                LogInfo("[Queue] Timer started for target " + newTargetVid + ".");
+
+                // Fetch resulting state (contains new scheduled_send_times and launch_id)
+                resp = PostAction(settings, "get_status", new Dictionary<string, object>
+                    { ["player_name"] = GetLocalPlayerName() });
+                if (resp == null) { LogError("[Queue] get_status (post-timer) returned null."); return null; }
+
+                if (!resp.TryGetValue("state_data", out stateDataObj)) return null;
+                stateData = stateDataObj as Dictionary<string, object>;
+                if (stateData == null) return null;
+
+                // Record the new launch_id and update clock offset — but do NOT call
+                // ApplyStateFromResponse here (we're already on the launch thread and
+                // _launching == true; calling it would try to start another thread).
+                object serverTimeObj;
+                if (resp.TryGetValue("server_time", out serverTimeObj) && serverTimeObj != null)
+                {
+                    DateTime serverTime;
+                    if (DateTime.TryParse(serverTimeObj.ToString(), null,
+                        System.Globalization.DateTimeStyles.RoundtripKind, out serverTime))
+                        settings.ServerClockOffsetSeconds = (DateTime.UtcNow - serverTime).TotalSeconds;
+                }
+                _lastProcessedLaunchId = GetStr(stateData, "launch_id", "");
+                _lastSessionState = "launching"; // suppress poll re-trigger for this batch
+
+                // Parse scheduled send times
+                var sendTimes = new Dictionary<int, string>();
+                object sendTimesObj;
+                if (stateData.TryGetValue("scheduled_send_times", out sendTimesObj) && sendTimesObj != null)
+                {
+                    var st = sendTimesObj as Dictionary<string, object>;
+                    if (st != null)
+                        foreach (var kv in st)
+                        {
+                            int vid; if (int.TryParse(kv.Key, out vid)) sendTimes[vid] = kv.Value.ToString();
+                        }
+                }
+                LogInfo("[Queue] " + sendTimes.Count + " send time(s) received for target " + newTargetVid + ".");
+
+                // Build this player's new BombAttackEntry list
+                string myName = GetLocalPlayerName();
+                var newEntries = new List<BombAttackEntry>();
+
+                object newAttacksObj;
+                stateData.TryGetValue("attacks", out newAttacksObj);
+                var attacksList = newAttacksObj as System.Collections.ArrayList;
+                if (attacksList == null) return null;
+
+                foreach (var item in attacksList)
+                {
+                    var ad = item as Dictionary<string, object>;
+                    if (ad == null) continue;
+                    if (GetStr(ad, "source_player", "") != myName) continue;
+                    if (!GetBool(ad, "selected", true)) continue;
+
+                    int srcVid = GetInt(ad, "source_village_id");
+                    DateTime scheduledSend = DateTime.MaxValue;
+                    string sendTimeStr;
+                    if (sendTimes.TryGetValue(srcVid, out sendTimeStr))
+                    {
+                        DateTime utcSend;
+                        if (DateTime.TryParse(sendTimeStr, null,
+                            System.Globalization.DateTimeStyles.RoundtripKind, out utcSend))
+                            scheduledSend = utcSend.ToLocalTime()
+                                .AddSeconds(-settings.ServerClockOffsetSeconds);
+                    }
+
+                    double travel = GetDouble(ad, "travel_time_seconds");
+                    newEntries.Add(new BombAttackEntry
+                    {
+                        SourceVillageId      = srcVid,
+                        TargetVillageId      = newTargetVid,
+                        AttackType           = GetInt(ad, "attack_type", 11),
+                        FormationName        = GetStr(ad, "formation", ""),
+                        Stack                = GetInt(ad, "stack", 1),
+                        TravelTimeSeconds    = travel,
+                        CardType             = GetInt(ad, "card_type"),
+                        CaptainsOnly         = GetBool(ad, "captains_only"),
+                        Status               = "Queued",
+                        ScheduledSendTime    = scheduledSend,
+                        EstimatedArrivalTime = scheduledSend == DateTime.MaxValue
+                            ? DateTime.MaxValue : scheduledSend.AddSeconds(travel),
+                    });
+                }
+
+                if (newEntries.Count == 0)
+                {
+                    LogWarning("[Queue] No attacks for this player on target " + newTargetVid + " — skipping.");
+                    return null;
+                }
+
+                // Every attack must have a send time — partial launch wastes the whole bomb.
+                // Up to 3 total attempts (initial + 2 retries), waiting 60s between each.
+                const int MaxQueueAttempts = 3;
+                for (int attempt = 1; attempt <= MaxQueueAttempts; attempt++)
+                {
+                    var missingTime = new List<int>();
+                    foreach (var e in newEntries)
+                        if (e.ScheduledSendTime == DateTime.MaxValue) missingTime.Add(e.SourceVillageId);
+                    if (missingTime.Count == 0) break;
+
+                    if (attempt == MaxQueueAttempts)
+                    {
+                        LogError("[Queue] Launch aborted for target " + newTargetVid +
+                            " — still missing send times after " + (MaxQueueAttempts - 1) +
+                            " retries: " + string.Join(", ", missingTime));
+                        try { PostAction(settings, "cancel_attacks", new Dictionary<string, object>
+                            { ["player_name"] = GetLocalPlayerName(), ["reason"] = "missing_send_times" }); }
+                        catch { }
+                        return null;
+                    }
+
+                    LogWarning("[Queue] Attempt " + attempt + "/" + MaxQueueAttempts +
+                        ": missing send times for village(s) " + string.Join(", ", missingTime) +
+                        " — retrying in 60s...");
+                    if (_cancelLaunchEvent.WaitOne(60000)) return null;
+
+                    // Re-call start_timer and re-fetch
+                    PostAction(settings, "start_timer", new Dictionary<string, object>
+                    {
+                        ["player_name"]              = GetLocalPlayerName(),
+                        ["stack_delay_seconds"]      = settings.StackDelaySeconds,
+                        ["fake_send"]                = settings.FakeSendEnabled,
+                        ["auto_cancel_on_interdict"] = settings.AutoCancelOnInterdict,
+                    });
+
+                    resp = PostAction(settings, "get_status", new Dictionary<string, object>
+                        { ["player_name"] = GetLocalPlayerName() });
+                    if (resp == null) { LogError("[Queue] Retry get_status null."); return null; }
+                    if (!resp.TryGetValue("state_data", out stateDataObj)) return null;
+                    stateData = stateDataObj as Dictionary<string, object>;
+                    if (stateData == null) return null;
+
+                    _lastProcessedLaunchId = GetStr(stateData, "launch_id", "");
+                    _lastSessionState      = "launching";
+
+                    sendTimes = new Dictionary<int, string>();
+                    object stObj2; stateData.TryGetValue("scheduled_send_times", out stObj2);
+                    var st2 = stObj2 as Dictionary<string, object>;
+                    if (st2 != null)
+                        foreach (var kv2 in st2)
+                        { int v2; if (int.TryParse(kv2.Key, out v2)) sendTimes[v2] = kv2.Value.ToString(); }
+
+                    newEntries = new List<BombAttackEntry>();
+                    object attacksObj2; stateData.TryGetValue("attacks", out attacksObj2);
+                    var al2 = attacksObj2 as System.Collections.ArrayList;
+                    if (al2 != null)
+                    {
+                        foreach (var item2 in al2)
+                        {
+                            var ad2 = item2 as Dictionary<string, object>;
+                            if (ad2 == null) continue;
+                            if (GetStr(ad2, "source_player", "") != myName) continue;
+                            if (!GetBool(ad2, "selected", true)) continue;
+                            int vid2 = GetInt(ad2, "source_village_id");
+                            DateTime ss2 = DateTime.MaxValue;
+                            string stStr2; if (sendTimes.TryGetValue(vid2, out stStr2))
+                            { DateTime u2; if (DateTime.TryParse(stStr2, null, System.Globalization.DateTimeStyles.RoundtripKind, out u2))
+                                ss2 = u2.ToLocalTime().AddSeconds(-settings.ServerClockOffsetSeconds); }
+                            double tr2 = GetDouble(ad2, "travel_time_seconds");
+                            newEntries.Add(new BombAttackEntry
+                            {
+                                SourceVillageId      = vid2,  TargetVillageId = newTargetVid,
+                                AttackType           = GetInt(ad2, "attack_type", 11),
+                                FormationName        = GetStr(ad2, "formation", ""),
+                                Stack                = GetInt(ad2, "stack", 1),
+                                TravelTimeSeconds    = tr2,   CardType = GetInt(ad2, "card_type"),
+                                CaptainsOnly         = GetBool(ad2, "captains_only"),
+                                Status               = "Queued",
+                                ScheduledSendTime    = ss2,
+                                EstimatedArrivalTime = ss2 == DateTime.MaxValue ? DateTime.MaxValue : ss2.AddSeconds(tr2),
+                            });
+                        }
+                    }
+
+                    LogInfo("[Queue] Retry " + attempt + " complete — " + sendTimes.Count +
+                        " send time(s) for target " + newTargetVid + ".");
+                }
+
+                return newEntries;
+            }
+            catch (Exception ex)
+            {
+                LogError("[Queue] TryAdvanceMultiQueue failed: " + ex.Message);
+                return null;
             }
         }
 

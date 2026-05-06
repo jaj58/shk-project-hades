@@ -73,6 +73,7 @@ switch ($action) {
     case 'attack_sent':          handle_attack_event($state, $req, 'sent');        break;
     case 'attack_failed':        handle_attack_failed($state, $req, false);        break;
     case 'attack_failed_prepare':handle_attack_failed($state, $req, true);         break;
+    case 'report_armies_status': handle_report_armies_status($state, $req);        break;
     case 'queue_target':         handle_queue_target($state, $req);       break;
     case 'player_disconnect':    handle_player_disconnect($state, $req);  break;
     case 'reset_session':        handle_reset_session($state, $req);      break;
@@ -113,6 +114,8 @@ function make_empty_state() {
         'attacks'            => [],
         'timer_settings'     => [],
         'scheduled_send_times' => [],
+        'launch_id'          => '',
+        'armies_return_status' => [],
         'target_queue'       => [],
         'interdict_detected' => false,
         'last_updated'       => gmdate('Y-m-d\TH:i:s\Z'),
@@ -122,10 +125,13 @@ function make_empty_state() {
 function expire_players(&$state) {
     $now = time();
     $active = [];
+    $expired_names = [];
     foreach ($state['players'] as $p) {
         $last = isset($p['last_seen']) ? strtotime($p['last_seen']) : 0;
         if (($now - $last) <= HEARTBEAT_TTL) {
             $active[] = $p;
+        } else {
+            $expired_names[] = $p['name'];
         }
     }
     if (count($active) !== count($state['players'])) {
@@ -136,6 +142,13 @@ function expire_players(&$state) {
             if ($p['name'] === $state['coordinator']) { $found = true; break; }
         }
         if (!$found) $state['coordinator'] = '';
+        // Treat disconnected players as having returned — they can't report back
+        foreach ($expired_names as $name) {
+            if (isset($state['armies_return_status'][$name]) &&
+                $state['armies_return_status'][$name] === 'waiting') {
+                $state['armies_return_status'][$name] = 'returned';
+            }
+        }
     }
 }
 
@@ -253,9 +266,9 @@ function handle_start_timer(&$state, $req) {
 
     // Calculate scheduled send times server-side.
     // All attacks must arrive at the same base time; each stack adds stack_delay.
-    // Buffer must be large enough for all attacks to be prepared sequentially
-    // before the first send time. Each PreAttackSetup call takes up to ~10s, plus
-    // the 8s pre-prepare window the client needs. So: N*10 + 8 + 10s margin.
+    // Buffer only needs to cover: poll lag (~2s) + 8s pre-prepare window + ~5s prepare call.
+    // The launch thread prepares each attack just-in-time, so only the first attack's
+    // prepare time matters for the buffer — subsequent attacks are handled in sequence.
     $now_ts = time();
     $max_travel = 0;
     $num_selected = 0;
@@ -265,7 +278,7 @@ function handle_start_timer(&$state, $req) {
         $num_selected++;
     }
 
-    $arrival_buffer = max(30, $num_selected * 10 + 18);
+    $arrival_buffer = 15;
     $base_arrival_ts = $now_ts + $max_travel + $arrival_buffer;
 
     $send_times = [];
@@ -278,11 +291,20 @@ function handle_start_timer(&$state, $req) {
 
     $state['scheduled_send_times'] = $send_times;
     $state['state']                = 'launching';
+    $state['launch_id']            = uniqid('abm', true);
     $state['interdict_detected']   = false;
 
-    // Reset all attack statuses (preserve sent ones across a re-launch)
+    // Initialise army-return tracking for every player who has ≥1 selected attack.
+    // Disconnected/no-attack players are not tracked so the coordinator isn't blocked.
+    $tracked = [];
+    foreach ($state['attacks'] as $a) {
+        if ($a['selected']) $tracked[$a['source_player']] = 'waiting';
+    }
+    $state['armies_return_status'] = $tracked;
+
+    // Reset all selected attack statuses for the new launch
     foreach ($state['attacks'] as &$a) {
-        if ($a['selected'] && $a['status'] !== 'sent') $a['status'] = 'queued';
+        if ($a['selected']) $a['status'] = 'queued';
     }
 
     save_and_respond($state, ['state_data' => $state]);
@@ -429,5 +451,14 @@ function handle_reset_session(&$state, $req) {
     $name = require_field($req, 'player_name');
     require_coordinator($state, $name);
     $state = make_empty_state();
+    save_and_respond($state, ['state_data' => $state]);
+}
+
+function handle_report_armies_status(&$state, $req) {
+    $name   = require_field($req, 'player_name');
+    $status = require_field($req, 'status'); // 'waiting' or 'returned'
+    if (isset($state['armies_return_status'][$name])) {
+        $state['armies_return_status'][$name] = $status;
+    }
     save_and_respond($state, ['state_data' => $state]);
 }

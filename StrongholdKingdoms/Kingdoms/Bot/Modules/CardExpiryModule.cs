@@ -32,7 +32,9 @@ namespace Kingdoms.Bot.Modules
 
         protected override void OnInitialize()
         {
-            _tradeCardsInPlay = false;
+            // Seed from persisted state so expiry is detected even after a game restart
+            _tradeCardsInPlay = Engine != null && Engine.Settings != null
+                && Engine.Settings.Trade.TradeCardsWereActive;
             _nextCheckTime = DateTime.MinValue;
         }
 
@@ -116,6 +118,7 @@ namespace Kingdoms.Bot.Modules
 
             bool tradeCardsExpired = _tradeCardsInPlay && !tradeActive;
             _tradeCardsInPlay = tradeActive;
+            Engine.Settings.Trade.TradeCardsWereActive = tradeActive;
 
             // Schedule next check
             if (tradeActive)
@@ -125,7 +128,7 @@ namespace Kingdoms.Bot.Modules
             }
             else
             {
-                // No cards in play — check again in 3 hours (nothing to monitor)
+                // No cards in play ï¿½ check again in 3 hours (nothing to monitor)
                 _nextCheckTime = serverTime.AddHours(3);
             }
 
