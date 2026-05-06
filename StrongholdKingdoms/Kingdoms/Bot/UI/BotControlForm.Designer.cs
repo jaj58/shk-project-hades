@@ -308,6 +308,14 @@ namespace Kingdoms.Bot.UI
             this._miscPage = new System.Windows.Forms.TabPage();
             this._miscSettingsPanel = new System.Windows.Forms.Panel();
             this._miscCollectFreeCardsCheck = new System.Windows.Forms.CheckBox();
+            this._miscSaleHeaderLabel = new System.Windows.Forms.Label();
+            this._miscSalePctLabel = new System.Windows.Forms.Label();
+            this._miscSalePctValue = new System.Windows.Forms.Label();
+            this._miscSaleStartLabel = new System.Windows.Forms.Label();
+            this._miscSaleStartValue = new System.Windows.Forms.Label();
+            this._miscSaleEndLabel = new System.Windows.Forms.Label();
+            this._miscSaleEndValue = new System.Windows.Forms.Label();
+            this._miscSaleRefreshBtn = new System.Windows.Forms.Button();
             this._logPanel = new System.Windows.Forms.Panel();
             this._logBox = new System.Windows.Forms.RichTextBox();
             this._logHeader = new System.Windows.Forms.Label();
@@ -4120,12 +4128,20 @@ namespace Kingdoms.Bot.UI
             // _miscSettingsPanel
             // 
             this._miscSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._miscSettingsPanel.Controls.Add(this._miscSaleRefreshBtn);
+            this._miscSettingsPanel.Controls.Add(this._miscSaleEndValue);
+            this._miscSettingsPanel.Controls.Add(this._miscSaleEndLabel);
+            this._miscSettingsPanel.Controls.Add(this._miscSaleStartValue);
+            this._miscSettingsPanel.Controls.Add(this._miscSaleStartLabel);
+            this._miscSettingsPanel.Controls.Add(this._miscSalePctValue);
+            this._miscSettingsPanel.Controls.Add(this._miscSalePctLabel);
+            this._miscSettingsPanel.Controls.Add(this._miscSaleHeaderLabel);
             this._miscSettingsPanel.Controls.Add(this._miscCollectFreeCardsCheck);
             this._miscSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._miscSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._miscSettingsPanel.Name = "_miscSettingsPanel";
             this._miscSettingsPanel.Padding = new System.Windows.Forms.Padding(16);
-            this._miscSettingsPanel.Size = new System.Drawing.Size(1142, 120);
+            this._miscSettingsPanel.Size = new System.Drawing.Size(1142, 200);
             this._miscSettingsPanel.TabIndex = 0;
             // 
             // _miscCollectFreeCardsCheck
@@ -4139,7 +4155,82 @@ namespace Kingdoms.Bot.UI
             this._miscCollectFreeCardsCheck.Size = new System.Drawing.Size(214, 23);
             this._miscCollectFreeCardsCheck.TabIndex = 0;
             this._miscCollectFreeCardsCheck.Text = "Collect free cards automatically";
-            // 
+            //
+            // _miscSaleHeaderLabel
+            //
+            this._miscSaleHeaderLabel.AutoSize = true;
+            this._miscSaleHeaderLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._miscSaleHeaderLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._miscSaleHeaderLabel.Location = new System.Drawing.Point(16, 58);
+            this._miscSaleHeaderLabel.Name = "_miscSaleHeaderLabel";
+            this._miscSaleHeaderLabel.Text = "Sale Info";
+            //
+            // _miscSalePctLabel
+            //
+            this._miscSalePctLabel.AutoSize = true;
+            this._miscSalePctLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this._miscSalePctLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._miscSalePctLabel.Location = new System.Drawing.Point(16, 80);
+            this._miscSalePctLabel.Name = "_miscSalePctLabel";
+            this._miscSalePctLabel.Text = "Sale %:";
+            //
+            // _miscSalePctValue
+            //
+            this._miscSalePctValue.AutoSize = true;
+            this._miscSalePctValue.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this._miscSalePctValue.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscSalePctValue.Location = new System.Drawing.Point(90, 80);
+            this._miscSalePctValue.Name = "_miscSalePctValue";
+            this._miscSalePctValue.Text = "—";
+            //
+            // _miscSaleStartLabel
+            //
+            this._miscSaleStartLabel.AutoSize = true;
+            this._miscSaleStartLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this._miscSaleStartLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._miscSaleStartLabel.Location = new System.Drawing.Point(16, 102);
+            this._miscSaleStartLabel.Name = "_miscSaleStartLabel";
+            this._miscSaleStartLabel.Text = "Start:";
+            //
+            // _miscSaleStartValue
+            //
+            this._miscSaleStartValue.AutoSize = true;
+            this._miscSaleStartValue.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this._miscSaleStartValue.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscSaleStartValue.Location = new System.Drawing.Point(90, 102);
+            this._miscSaleStartValue.Name = "_miscSaleStartValue";
+            this._miscSaleStartValue.Text = "—";
+            //
+            // _miscSaleEndLabel
+            //
+            this._miscSaleEndLabel.AutoSize = true;
+            this._miscSaleEndLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this._miscSaleEndLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._miscSaleEndLabel.Location = new System.Drawing.Point(16, 124);
+            this._miscSaleEndLabel.Name = "_miscSaleEndLabel";
+            this._miscSaleEndLabel.Text = "End:";
+            //
+            // _miscSaleEndValue
+            //
+            this._miscSaleEndValue.AutoSize = true;
+            this._miscSaleEndValue.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this._miscSaleEndValue.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscSaleEndValue.Location = new System.Drawing.Point(90, 124);
+            this._miscSaleEndValue.Name = "_miscSaleEndValue";
+            this._miscSaleEndValue.Text = "—";
+            //
+            // _miscSaleRefreshBtn
+            //
+            this._miscSaleRefreshBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(60)))), ((int)(((byte)(63)))), ((int)(((byte)(80)))));
+            this._miscSaleRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._miscSaleRefreshBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._miscSaleRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscSaleRefreshBtn.Location = new System.Drawing.Point(200, 77);
+            this._miscSaleRefreshBtn.Name = "_miscSaleRefreshBtn";
+            this._miscSaleRefreshBtn.Size = new System.Drawing.Size(70, 24);
+            this._miscSaleRefreshBtn.TabIndex = 1;
+            this._miscSaleRefreshBtn.Text = "Refresh";
+            //
             // _logPanel
             // 
             this._logPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
@@ -4578,6 +4669,14 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.TabPage _miscPage;
         private System.Windows.Forms.Panel _miscSettingsPanel;
         private System.Windows.Forms.CheckBox _miscCollectFreeCardsCheck;
+        private System.Windows.Forms.Label _miscSaleHeaderLabel;
+        private System.Windows.Forms.Label _miscSalePctLabel;
+        private System.Windows.Forms.Label _miscSalePctValue;
+        private System.Windows.Forms.Label _miscSaleStartLabel;
+        private System.Windows.Forms.Label _miscSaleStartValue;
+        private System.Windows.Forms.Label _miscSaleEndLabel;
+        private System.Windows.Forms.Label _miscSaleEndValue;
+        private System.Windows.Forms.Button _miscSaleRefreshBtn;
         // Popularity tab controls
         private System.Windows.Forms.TabPage _popularityPage;
         private System.Windows.Forms.Panel _ppVillageListPanel;
