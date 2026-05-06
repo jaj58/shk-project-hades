@@ -49,6 +49,7 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="System.Management" />
     <Reference Include="CommonTypes">
       <HintPath>lib\CommonTypes.dll</HintPath>
     </Reference>
@@ -506,7 +507,11 @@
     <Compile Include="Kingdoms\BuyCardsPanel.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Kingdoms\HwidHelper.cs" />
     <Compile Include="Kingdoms\InstallerUpdater.cs" />
+    <Compile Include="Kingdoms\LicensePromptForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Kingdoms\ContestHistoryPanel.cs">
       <SubType>UserControl</SubType>
     </Compile>

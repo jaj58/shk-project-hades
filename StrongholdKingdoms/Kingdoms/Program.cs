@@ -12,8 +12,12 @@ using Stronghold.AuthClient;
 using Stronghold.ShieldClient;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Net;
+using System.Net.Cache;
 using System.Runtime.InteropServices;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Channels;
@@ -28,6 +32,10 @@ namespace Kingdoms
   internal static class Program
   {
     public static int CurrentInstallerBuild = 116;
+
+    // ---- Bot update/license constants ----------------------------------------
+    // TODO: replace with your real domain before deploying
+    private const string LicenseApiUrl = "https://projecthades.co.uk/api/updater_api.php";
     public static int steam_SessionTicketUserID = 0;
     public static byte[] steam_SessionTicket = (byte[]) null;
     public static bool steamActive = false;
@@ -305,6 +313,12 @@ namespace Kingdoms
           Application.ThreadException += new ThreadExceptionEventHandler(Program.CurrentDomain_ThreadException);
           Application.EnableVisualStyles();
           Application.SetCompatibleTextRenderingDefault(false);
+
+          // --- Hades Bot: license verification + update check ---
+          if (!VerifyLicense()) return;
+          CheckForBotUpdate();
+          // ------------------------------------------------------
+
           Program.communityLangs = SKLocalization.scanForLanguages(GameEngine.getLangsPath());
           Program.installedLangCode = lang;
           Program.mySettings = MySettings.load();
@@ -1087,5 +1101,199 @@ namespace Kingdoms
       public uint periodMin;
       public uint periodMax;
     }
+
+    // =========================================================================
+    // Hades Bot — License verification & update check
+    // =========================================================================
+
+    /// <summary>
+    /// Verifies the stored license key against the server on every launch.
+    /// Shows a prompt on first run. Returns false if the client should not start.
+    /// </summary>
+    private static bool VerifyLicense()
+    {
+      try
+      {
+        Bot.BotSettings settings = Bot.BotSettings.Load();
+        string licenseKey = settings != null ? settings.LicenseKey : string.Empty;
+
+        // First run — prompt for key
+        if (string.IsNullOrEmpty(licenseKey))
+        {
+          using (LicensePromptForm form = new LicensePromptForm())
+          {
+            if (form.ShowDialog() != DialogResult.OK || string.IsNullOrEmpty(form.EnteredKey))
+            {
+              MessageBox.Show(
+                "A valid license key is required to use Hades Bot.",
+                "License Required", MessageBoxButtons.OK, MessageBoxIcon.Error);
+              return false;
+            }
+            licenseKey = form.EnteredKey;
+          }
+        }
+
+        // Call verify_client on a background thread with 8s timeout
+        string hwid     = HwidHelper.GetHwid();
+        string postData = "action=verify_client"
+                        + "&key="  + Uri.EscapeDataString(licenseKey)
+                        + "&hwid=" + Uri.EscapeDataString(hwid);
+
+        string json = null;
+        Thread t = new Thread(() =>
+        {
+          try
+          {
+            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+            using (WebClient wc = new WebClient())
+            {
+              wc.CachePolicy = new RequestCachePolicy(RequestCacheLevel.NoCacheNoStore);
+              wc.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
+              json = wc.UploadString(LicenseApiUrl, postData);
+            }
+          }
+          catch { }
+        });
+        t.IsBackground = true;
+        t.Start();
+        t.Join(8000);
+
+        if (json == null)
+        {
+          MessageBox.Show(
+            "Unable to connect to the license server.\n\n" +
+            "Please check your internet connection. The server may be temporarily unavailable.\n\n" +
+            "You cannot use Hades Bot while the license server is unreachable.",
+            "License Server Unreachable", MessageBoxButtons.OK, MessageBoxIcon.Error);
+          return false;
+        }
+
+        string allowed = ExtractJsonValue(json, "allowed");
+        if (allowed != "true")
+        {
+          string msg = ExtractJsonValue(json, "message") ?? "License verification failed.";
+          MessageBox.Show("Access denied: " + msg,
+            "License Invalid", MessageBoxButtons.OK, MessageBoxIcon.Error);
+          return false;
+        }
+
+        // Persist the key if it was freshly entered
+        if (settings != null && string.IsNullOrEmpty(settings.LicenseKey))
+        {
+          settings.LicenseKey = licenseKey;
+          settings.Save();
+        }
+
+        // Stash the version returned by verify_client for the update check
+        Program._verifiedServerVersion = ExtractJsonValue(json, "version") ?? string.Empty;
+        return true;
+      }
+      catch (Exception ex)
+      {
+        MessageBox.Show(
+          "An unexpected error occurred while verifying your license:\n" + ex.Message +
+          "\n\nPlease check your internet connection and try again.",
+          "License Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        return false;
+      }
+    }
+
+    // Holds the version string returned by verify_client so CheckForBotUpdate
+    // doesn't need a second server round-trip.
+    private static string _verifiedServerVersion = string.Empty;
+
+    /// <summary>
+    /// Checks if a newer client version is available (using the version already
+    /// returned by VerifyLicense). If so, prompts the user to update.
+    /// Non-fatal — any failure silently continues.
+    /// </summary>
+    private static void CheckForBotUpdate()
+    {
+      try
+      {
+        string serverVersion = _verifiedServerVersion;
+        if (string.IsNullOrEmpty(serverVersion)) return;
+
+        string localVersion = GetLocalVersion();
+        if (!IsNewerVersion(serverVersion, localVersion)) return;
+
+        DialogResult result = MessageBox.Show(
+          "A new version of Hades Bot is available (v" + serverVersion + ").\n" +
+          "Your version: v" + localVersion + "\n\n" +
+          "Update now? (The bot will close and reopen after updating.)",
+          "Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+
+        if (result != DialogResult.Yes) return;
+
+        // Find HadesUpdater.exe next to this exe
+        string currentExe  = System.Reflection.Assembly.GetExecutingAssembly().Location;
+        string updaterPath = Path.Combine(Path.GetDirectoryName(currentExe), "HadesUpdater.exe");
+
+        if (!File.Exists(updaterPath))
+        {
+          MessageBox.Show(
+            "HadesUpdater.exe was not found in the bot directory.\n" +
+            "Please download the updater and place it in the same folder as this exe.",
+            "Updater Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+          return;
+        }
+
+        // Launch updater with relaunch arg, then exit
+        Process.Start(updaterPath, "--relaunch \"" + currentExe + "\"");
+        Application.Exit();
+      }
+      catch { /* update check failure is non-fatal */ }
+    }
+
+    private static string GetLocalVersion()
+    {
+      try
+      {
+        Version v = new Version(Application.ProductVersion);
+        return v.Major + "." + v.Minor + "." + v.Build;
+      }
+      catch { return "0.0.0"; }
+    }
+
+    private static bool IsNewerVersion(string server, string local)
+    {
+      try { return new Version(server) > new Version(local); }
+      catch { return false; }
+    }
+
+    /// <summary>
+    /// Minimal JSON string-value extractor — avoids any JSON library dependency on .NET 3.5.
+    /// Handles simple flat string fields produced by updater_api.php.
+    /// </summary>
+    private static string ExtractJsonValue(string json, string key)
+    {
+      if (json == null) return null;
+      string pattern = "\"" + key + "\":";
+      int idx = json.IndexOf(pattern);
+      if (idx < 0) return null;
+      idx += pattern.Length;
+
+      // Skip whitespace
+      while (idx < json.Length && json[idx] == ' ') idx++;
+
+      if (idx >= json.Length) return null;
+
+      if (json[idx] == '"')
+      {
+        // String value
+        idx++;
+        int end = json.IndexOf('"', idx);
+        return end < 0 ? null : json.Substring(idx, end - idx);
+      }
+      else
+      {
+        // Boolean / number — read until , or }
+        int end = idx;
+        while (end < json.Length && json[end] != ',' && json[end] != '}') end++;
+        return json.Substring(idx, end - idx).Trim();
+      }
+    }
+
+    // =========================================================================
   }
 }

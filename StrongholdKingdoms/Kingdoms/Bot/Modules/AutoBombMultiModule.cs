@@ -1802,6 +1802,7 @@ namespace Kingdoms.Bot.Modules
             string json = SimpleJson.Serialize(payload);
             byte[] bytes = Encoding.UTF8.GetBytes(json);
 
+            System.Net.ServicePointManager.SecurityProtocol = (System.Net.SecurityProtocolType)3072; // TLS 1.2
             var request = (HttpWebRequest)WebRequest.Create(settings.ApiUrl);
             request.Method      = "POST";
             request.ContentType = "application/json";

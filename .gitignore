@@ -132,3 +132,12 @@ $RECYCLE.BIN/
 
 _NCrunch*
 /StrongholdKingdoms/.vs
+
+# Hades Bot — sensitive server config (never commit)
+api/db_config.php
+api/deploy_config.php
+admin/admin_config.php
+
+# Release ZIPs
+/downloads/
+/builds/

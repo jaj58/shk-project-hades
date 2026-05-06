@@ -4,6 +4,8 @@ VisualStudioVersion = 17.14.37111.16 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrongholdKingdoms", "StrongholdKingdoms.csproj", "{2CBA277C-6687-46FA-A848-89ABAB7D8FF1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HadesUpdater", "..\HadesUpdater\HadesUpdater.csproj", "{009EB9DF-3EA4-4B2B-9F7F-8B77CC6759B1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,6 +16,10 @@ Global
 		{2CBA277C-6687-46FA-A848-89ABAB7D8FF1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2CBA277C-6687-46FA-A848-89ABAB7D8FF1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2CBA277C-6687-46FA-A848-89ABAB7D8FF1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{009EB9DF-3EA4-4B2B-9F7F-8B77CC6759B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{009EB9DF-3EA4-4B2B-9F7F-8B77CC6759B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{009EB9DF-3EA4-4B2B-9F7F-8B77CC6759B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{009EB9DF-3EA4-4B2B-9F7F-8B77CC6759B1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

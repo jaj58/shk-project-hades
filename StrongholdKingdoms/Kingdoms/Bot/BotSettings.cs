@@ -9,6 +9,9 @@ namespace Kingdoms.Bot
     [Serializable]
     public class BotSettings
     {
+        /// <summary>License key used to authenticate this install with the update server.</summary>
+        public string LicenseKey = string.Empty;
+
         [System.Xml.Serialization.XmlIgnore]
         public bool BotEnabled;
         public VillageSyncSettings VillageSync = new VillageSyncSettings();

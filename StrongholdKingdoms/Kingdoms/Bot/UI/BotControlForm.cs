@@ -125,6 +125,9 @@ namespace Kingdoms.Bot.UI
         {
             InitializeComponent();
 
+            var v = new Version(Application.ProductVersion);
+            _versionLabel.Text = $"v{v.Major}.{v.Minor}.{v.Build}";
+
             if (!IsDesignTime)
             {
                 WireUpVillageSyncTab();
