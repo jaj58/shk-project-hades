@@ -50,6 +50,7 @@ namespace Kingdoms.Bot.UI
         private Panel _grpActionListPanel;
         private Panel _grpColHeader;
 
+
         // Recruiting runtime state
         private Timer _rcRefreshTimer;
         private List<RecruitVillagePanel> _rcVillagePanels = 	new List<RecruitVillagePanel>();
@@ -4705,6 +4706,8 @@ namespace Kingdoms.Bot.UI
         private void WireUpMiscTab()
         {
             _miscCollectFreeCardsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
+            _miscSaleRefreshBtn.Click += delegate { MiscRefreshSaleInfo(); };
+            MiscRefreshSaleInfo();
         }
 
         private void MiscLoadFromSettings()
@@ -4721,6 +4724,22 @@ namespace Kingdoms.Bot.UI
                 return;
             MiscSettings s = BotEngine.Instance.Settings.Misc;
             s.CollectFreeCards = _miscCollectFreeCardsCheck.Checked;
+        }
+
+        private void MiscRefreshSaleInfo()
+        {
+            var world = GameEngine.Instance?.World;
+            if (world == null)
+            {
+                _miscSalePctValue.Text = "N/A";
+                _miscSaleStartValue.Text = "N/A (not logged in)";
+                _miscSaleEndValue.Text = "N/A (not logged in)";
+                return;
+            }
+            var epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            _miscSalePctValue.Text = world.salePercentage + "%";
+            _miscSaleStartValue.Text = epoch.AddSeconds(world.saleStartTime).ToLocalTime().ToString();
+            _miscSaleEndValue.Text = epoch.AddSeconds(world.saleEndTime).ToLocalTime().ToString();
         }
 
         // =====================================================================
