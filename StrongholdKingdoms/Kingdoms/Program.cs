@@ -1238,9 +1238,10 @@ namespace Kingdoms
           return;
         }
 
-        // Launch updater with relaunch arg, then exit
+        // Launch updater with relaunch arg, then exit immediately.
+        // Application.Exit() won't work here as the message loop hasn't started yet.
         Process.Start(updaterPath, "--relaunch \"" + currentExe + "\"");
-        Application.Exit();
+        Environment.Exit(0);
       }
       catch { /* update check failure is non-fatal */ }
     }

@@ -28,10 +28,20 @@ namespace Kingdoms.Bot.Modules
         private Timer _fakeSendTimer;
         private volatile bool _fakeSendTriggered;
 
+        // Set when a prepare failure (non-interdict) aborts a batch so the launch
+        // thread can still recall + advance the queue rather than stopping entirely.
+        private volatile bool _prepareErrorCancel;
+
         // Current set of attacks this client is responsible for
         private readonly object _attacksLock = new object();
         private List<BombAttackEntry> _myAttacks = new List<BombAttackEntry>();
         private int _currentTargetVillageId;
+
+        // Locally cached copy of the full attack config (all players), set when the
+        // coordinator pushes config or advances the queue. Used by TryAdvanceMultiQueue
+        // so we never rely on re-fetching from the API (which can return corrupt data
+        // after an interdict cancel resets the attacks array server-side).
+        private List<Dictionary<string, object>> _cachedAttackConfig = null;
 
         // Last known session state to detect transitions
         private string _lastSessionState = "";
@@ -128,7 +138,9 @@ namespace Kingdoms.Bot.Modules
             AutoBombMultiSettings settings = Settings;
             if (settings == null) return;
 
-            if (settings.AutoCancelOnInterdict && !_interdictDetected)
+            // Once any auto-recall has triggered (armies recalled and returning home),
+            // interdict on the old target is irrelevant — don't abort the queue-advance wait.
+            if (settings.AutoCancelOnInterdict && !_interdictDetected && !_fakeSendTriggered && !_prepareErrorCancel)
             {
                 if (AutoBombModule.CheckForInterdict(_currentTargetVillageId))
                 {
@@ -189,6 +201,9 @@ namespace Kingdoms.Bot.Modules
 
             try
             {
+                // Cache locally so queue advances can rebuild without re-fetching from API
+                _cachedAttackConfig = new List<Dictionary<string, object>>(attackList);
+
                 PostAction(settings, "set_attack_config", new Dictionary<string, object>
                 {
                     ["player_name"]       = GetLocalPlayerName(),
@@ -760,12 +775,12 @@ namespace Kingdoms.Bot.Modules
         {
             if (!_launching) return;
 
-            // If the local interdict or fake-send recall was already detected, the
-            // launch thread is already managing queue advancement — do not set
-            // _cancelLaunchEvent again or it will abort the army-return wait.
-            // Other players (non-coordinator) won't have _interdictDetected set locally
+            // If the local interdict, fake-send, or prepare-error recall was already
+            // detected, the launch thread is already managing queue advancement —
+            // do not set _cancelLaunchEvent again or it will abort the army-return wait.
+            // Other players (non-coordinator) won't have these flags set locally
             // so they will still cancel and recall normally.
-            if (_interdictDetected || _fakeSendTriggered) return;
+            if (_interdictDetected || _fakeSendTriggered || _prepareErrorCancel) return;
 
             LogWarning("Session cancelled by API — stopping launch.");
             _cancelLaunchEvent.Set();
@@ -840,7 +855,27 @@ namespace Kingdoms.Bot.Modules
                         {
                             PostAttackEvent(settings, "attack_failed_prepare", entry.SourceVillageId,
                                 entry.Status);
-                            continue;
+                            // Interdict manages its own cancel flow via _interdictDetected.
+                            // Any other prepare failure is treated as fatal: cancel the whole
+                            // batch, recall any already-sent armies, and advance the queue.
+                            if (!_interdictDetected)
+                            {
+                                LogError("[Thread] Village " + entry.SourceVillageId +
+                                    " prepare failed (" + entry.Status +
+                                    ") — cancelling batch and recalling armies.");
+                                _prepareErrorCancel = true;
+                                _cancelLaunchEvent.Set();
+                                CancelRemainingLocalAttacks();
+                                bool anySentNow = false;
+                                lock (_attacksLock)
+                                    { foreach (var ex in _myAttacks) if (ex.Sent) { anySentNow = true; break; } }
+                                if (anySentNow) RecallAll(settings);
+                                try { PostAction(settings, "cancel_attacks", new Dictionary<string, object>
+                                    { ["player_name"] = GetLocalPlayerName(), ["reason"] = "prepare_failed" }); }
+                                catch { }
+                                cancelled = true;
+                            }
+                            break;
                         }
                         PostAttackEvent(settings, "attack_prepared", entry.SourceVillageId);
 
@@ -863,10 +898,10 @@ namespace Kingdoms.Bot.Modules
                         _cancelLaunchEvent.WaitOne(500); // brief anti-spam gap
                     }
 
-                    // Distinguish manual cancel from an automatic recall (interdict / fake-send).
-                    // On interdict/fake-send armies have been recalled and we should still
-                    // wait for them to return and advance the queue. On a manual cancel we stop.
-                    bool autoRecalled = _interdictDetected || _fakeSendTriggered;
+                    // Distinguish manual cancel from an automatic recall (interdict / fake-send /
+                    // prepare-error). On any auto-recall armies have been recalled and we should
+                    // still wait for them to return and advance the queue. Manual cancel stops.
+                    bool autoRecalled = _interdictDetected || _fakeSendTriggered || _prepareErrorCancel;
                     if (cancelled && !autoRecalled) break;
 
                     // ── Queue advancement (coordinator only) ───────────────────
@@ -884,7 +919,7 @@ namespace Kingdoms.Bot.Modules
                     {
                         LogInfo("[Queue] Waiting for fake-send recall timer before advancing...");
                         _cancelLaunchEvent.WaitOne(); // timer, interdict, or manual cancel sets this
-                        if (!_fakeSendTriggered && !_interdictDetected)
+                        if (!_fakeSendTriggered && !_interdictDetected && !_prepareErrorCancel)
                         {
                             LogInfo("[Queue] Manually cancelled before fake-send timer. Stopping.");
                             break;
@@ -915,6 +950,7 @@ namespace Kingdoms.Bot.Modules
                     lock (_attacksLock) { _myAttacks = nextAttacks; }
                     _interdictDetected = false;
                     _fakeSendTriggered = false;
+                    _prepareErrorCancel = false;
                     cancelled = false; // allow next iteration to fire
                 }
             }
@@ -1141,45 +1177,82 @@ namespace Kingdoms.Bot.Modules
 
             try
             {
-                // Fetch current attack config (preserves formation/stack/card assignments)
-                var resp = PostAction(settings, "get_status", new Dictionary<string, object>
-                    { ["player_name"] = GetLocalPlayerName() });
-                if (resp == null) { LogError("[Queue] get_status returned null."); return null; }
-
-                object stateDataObj;
-                if (!resp.TryGetValue("state_data", out stateDataObj))
-                    { LogError("[Queue] No state_data."); return null; }
-                var stateData = stateDataObj as Dictionary<string, object>;
-                if (stateData == null) return null;
-
-                object attacksObj;
-                if (!stateData.TryGetValue("attacks", out attacksObj) ||
-                    !(attacksObj is System.Collections.ArrayList))
-                    { LogError("[Queue] No attacks array in state."); return null; }
-
-                // Rebuild attack list with recalculated travel times for the new target
-                var newAttackList = new List<Dictionary<string, object>>();
-                foreach (var item in (System.Collections.ArrayList)attacksObj)
+                // Use the locally cached attack config rather than re-fetching from the API.
+                // After an interdict cancel the PHP state can corrupt the attacks[] array
+                // (sent villages get dropped or replaced with duplicates of the first entry).
+                // The cache was set when PushAttackConfig was last called from the UI, and
+                // is refreshed each time we advance the queue, so it's always up to date.
+                List<Dictionary<string, object>> sourceAttacks;
+                if (_cachedAttackConfig != null && _cachedAttackConfig.Count > 0)
                 {
-                    var ad = item as Dictionary<string, object>;
-                    if (ad == null) continue;
+                    sourceAttacks = _cachedAttackConfig;
+                    LogInfo("[Queue] Rebuilding from cached config (" + sourceAttacks.Count + " attack(s)).");
+                }
+                else
+                {
+                    // No cache yet — fall back to API fetch with deduplication.
+                    LogInfo("[Queue] No local cache — fetching attack config from API.");
+                    var resp0 = PostAction(settings, "get_status", new Dictionary<string, object>
+                        { ["player_name"] = GetLocalPlayerName() });
+                    if (resp0 == null) { LogError("[Queue] get_status (config) returned null."); return null; }
+                    object sd0Obj; resp0.TryGetValue("state_data", out sd0Obj);
+                    var sd0 = sd0Obj as Dictionary<string, object>;
+                    if (sd0 == null) { LogError("[Queue] No state_data in config fetch."); return null; }
+                    object ao0; sd0.TryGetValue("attacks", out ao0);
+                    var aal0 = ao0 as System.Collections.ArrayList;
+                    if (aal0 == null) { LogError("[Queue] No attacks array in state."); return null; }
+                    sourceAttacks = new List<Dictionary<string, object>>();
+                    var seenFb = new HashSet<int>();
+                    foreach (var item0 in aal0)
+                    {
+                        var ad0 = item0 as Dictionary<string, object>;
+                        if (ad0 == null) continue;
+                        int v0 = GetInt(ad0, "source_village_id");
+                        if (v0 <= 0 || !seenFb.Add(v0)) continue;
+                        sourceAttacks.Add(ad0);
+                    }
+                }
+
+                // Rebuild attack list with recalculated travel times for the new target.
+                // Card speed must be applied so the API schedules arrival at the correct time.
+                // Deduplicate village IDs as a safety net even when using the cache.
+                var newAttackList = new List<Dictionary<string, object>>();
+                var seenVids = new HashSet<int>();
+                foreach (var ad in sourceAttacks)
+                {
                     int srcVid = GetInt(ad, "source_village_id");
+                    if (srcVid <= 0 || !seenVids.Add(srcVid))
+                    {
+                        if (srcVid > 0) LogWarning("[Queue] Skipping duplicate source_village_id " + srcVid + ".");
+                        continue;
+                    }
                     bool captainsOnly = GetBool(ad, "captains_only");
-                    double newTravel = AutoBombModule.CalculateBaseTravelTime(
-                        srcVid, newTargetVid, captainsOnly);
+                    int cardType = GetInt(ad, "card_type");
+                    double newTravel = AutoBombModule.ApplyCardSpeed(
+                        AutoBombModule.CalculateBaseTravelTime(srcVid, newTargetVid, captainsOnly),
+                        cardType);
                     newAttackList.Add(new Dictionary<string, object>
                     {
                         ["source_player"]       = GetStr(ad, "source_player", ""),
                         ["source_village_id"]   = srcVid,
                         ["formation"]           = GetStr(ad, "formation", ""),
                         ["stack"]               = GetInt(ad, "stack", 1),
-                        ["card_type"]           = GetInt(ad, "card_type"),
+                        ["card_type"]           = cardType,
                         ["captains_only"]       = captainsOnly,
                         ["attack_type"]         = GetInt(ad, "attack_type", 11),
                         ["travel_time_seconds"] = newTravel,
                         ["selected"]            = GetBool(ad, "selected", true),
                     });
                 }
+
+                // Update cache so the next queue advance also has correct data
+                _cachedAttackConfig = new List<Dictionary<string, object>>(newAttackList);
+
+                // Log recalculated travel times for verification
+                foreach (var atk in newAttackList)
+                    LogInfo("[Queue] Travel recalc: village=" + GetInt(atk, "source_village_id") +
+                        " travel=" + (int)GetDouble(atk, "travel_time_seconds") +
+                        "s card=" + GetInt(atk, "card_type"));
 
                 // Push updated config to API
                 PostAction(settings, "set_attack_config", new Dictionary<string, object>
@@ -1205,12 +1278,13 @@ namespace Kingdoms.Bot.Modules
                 LogInfo("[Queue] Timer started for target " + newTargetVid + ".");
 
                 // Fetch resulting state (contains new scheduled_send_times and launch_id)
-                resp = PostAction(settings, "get_status", new Dictionary<string, object>
+                Dictionary<string, object> resp = PostAction(settings, "get_status", new Dictionary<string, object>
                     { ["player_name"] = GetLocalPlayerName() });
                 if (resp == null) { LogError("[Queue] get_status (post-timer) returned null."); return null; }
 
+                object stateDataObj;
                 if (!resp.TryGetValue("state_data", out stateDataObj)) return null;
-                stateData = stateDataObj as Dictionary<string, object>;
+                Dictionary<string, object> stateData = stateDataObj as Dictionary<string, object>;
                 if (stateData == null) return null;
 
                 // Record the new launch_id and update clock offset — but do NOT call
@@ -1240,6 +1314,8 @@ namespace Kingdoms.Bot.Modules
                         }
                 }
                 LogInfo("[Queue] " + sendTimes.Count + " send time(s) received for target " + newTargetVid + ".");
+                foreach (var kv in sendTimes)
+                    LogInfo("[Queue]   Village " + kv.Key + " → send at " + kv.Value);
 
                 // Build this player's new BombAttackEntry list
                 string myName = GetLocalPlayerName();
@@ -1381,6 +1457,14 @@ namespace Kingdoms.Bot.Modules
                         " send time(s) for target " + newTargetVid + ".");
                 }
 
+                // Log per-entry detail so queue launches are visible in the log like initial launches
+                foreach (var e in newEntries)
+                    LogInfo("[Queue] Launch entry: village=" + e.SourceVillageId +
+                        " stack=" + e.Stack +
+                        " sendTime=" + e.ScheduledSendTime.ToString("HH:mm:ss") +
+                        " travel=" + (int)e.TravelTimeSeconds +
+                        "s formation='" + e.FormationName + "'");
+
                 return newEntries;
             }
             catch (Exception ex)
@@ -1443,6 +1527,18 @@ namespace Kingdoms.Bot.Modules
 
                     if (candidate.attackingVillage != entry.SourceVillageId)
                     {
+                        // attackingVillage == 0 means the server returned an error response
+                        // for our request (village data wasn't populated). Treat it as our
+                        // actual (failed) callback rather than looping forever until timeout.
+                        if (candidate.attackingVillage == 0)
+                        {
+                            entry.Status = "Error: Server returned village 0 (errorCode=" +
+                                candidate.m_errorCode + ")";
+                            entry.Cancelled = true;
+                            LogError("[Prepare] Village " + entry.SourceVillageId +
+                                ": server returned attackingVillage=0 — treating as failed response.");
+                            return false;
+                        }
                         LogWarning("[Prepare] Discarding stale callback for village " +
                             candidate.attackingVillage + " (expected " + entry.SourceVillageId + ")");
                         continue;

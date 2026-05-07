@@ -264,7 +264,7 @@ namespace HadesUpdater
                 if (!string.IsNullOrEmpty(Program.RelaunchPath) &&
                     File.Exists(Program.RelaunchPath))
                 {
-                    Process.Start(Program.RelaunchPath);
+                    Process.Start(Program.RelaunchPath, "-InstallerVersion 117 en");
                 }
             }
             catch (Exception ex)
