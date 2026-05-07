@@ -149,6 +149,30 @@ namespace Kingdoms.Bot.Modules
             _currentIndex++;
         }
 
+        /// <summary>
+        /// Requests an immediate refresh of the specified village.
+        /// Uses a background (non-UI) refresh if the village map is already loaded,
+        /// or a force-download if it hasn't been loaded yet.
+        /// Safe to call from any thread for already-loaded villages.
+        /// </summary>
+        public void RefreshVillageNow(int villageId)
+        {
+            try
+            {
+                VillageMap village = GameEngine.Instance != null
+                    ? GameEngine.Instance.getVillage(villageId) : null;
+                if (village != null)
+                    BackGroundRefresh(village);
+                else
+                    ForceRefresh(villageId);
+                LogInfo("Refreshed village [" + villageId + "] on request.");
+            }
+            catch (Exception ex)
+            {
+                LogWarning("RefreshVillageNow [" + villageId + "] failed: " + ex.Message);
+            }
+        }
+
         private void BackGroundRefresh(VillageMap village)
         {
             LogInfo("Background refreshing village [" + village.VillageID + "] ");

@@ -784,6 +784,8 @@ namespace Kingdoms.Bot
         public int StackDelaySeconds = 1;
         public bool FakeSendEnabled;
         public bool TargetQueueEnabled;
+        // Force-refresh each attacking village ~5s before prepare to reduce server callback errors
+        public bool PreRefreshVillages = true;
         public List<TargetQueueEntry> TargetQueue = new List<TargetQueueEntry>();
 
         // Runtime state — not persisted

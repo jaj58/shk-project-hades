@@ -69,6 +69,13 @@ namespace Kingdoms.Bot
             _modules.Add(module);
         }
 
+        public T GetModule<T>() where T : class, IBotModule
+        {
+            foreach (IBotModule m in _modules)
+                if (m is T) return (T)m;
+            return null;
+        }
+
         public void ApplySettings()
         {
             if (_settings == null)

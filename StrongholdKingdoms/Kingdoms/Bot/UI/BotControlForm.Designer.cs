@@ -279,6 +279,7 @@ namespace Kingdoms.Bot.UI
             this._abmResetBtn = new System.Windows.Forms.Button();
             this._abmTakeCoordBtn = new System.Windows.Forms.Button();
             this._abmCoordStatusLabel = new System.Windows.Forms.Label();
+            this._abmPreRefreshCheck = new System.Windows.Forms.CheckBox();
             this._abmQueueEnabledCheck = new System.Windows.Forms.CheckBox();
             this._abmQueueVidInput = new System.Windows.Forms.NumericUpDown();
             this._abmQueueAddIdBtn = new System.Windows.Forms.Button();
@@ -3527,10 +3528,11 @@ namespace Kingdoms.Bot.UI
             this._abmCtrlPanel.Controls.Add(this._abmFakeSendCheck);
             this._abmCtrlPanel.Controls.Add(this._abmStackDelayInput);
             this._abmCtrlPanel.Controls.Add(this._abmTargetVidBox);
+            this._abmCtrlPanel.Controls.Add(this._abmPreRefreshCheck);
             this._abmCtrlPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._abmCtrlPanel.Location = new System.Drawing.Point(0, 0);
             this._abmCtrlPanel.Name = "_abmCtrlPanel";
-            this._abmCtrlPanel.Size = new System.Drawing.Size(1134, 32);
+            this._abmCtrlPanel.Size = new System.Drawing.Size(1134, 54);
             this._abmCtrlPanel.TabIndex = 2;
             //
             // _abmTargetVidBox
@@ -3580,6 +3582,19 @@ namespace Kingdoms.Bot.UI
             this._abmAutoInterdictCheck.Size = new System.Drawing.Size(140, 18);
             this._abmAutoInterdictCheck.TabIndex = 3;
             this._abmAutoInterdictCheck.Text = "Auto Cancel Interdict";
+            //
+            // _abmPreRefreshCheck
+            //
+            this._abmPreRefreshCheck.Checked = true;
+            this._abmPreRefreshCheck.CheckState = System.Windows.Forms.CheckState.Checked;
+            this._abmPreRefreshCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmPreRefreshCheck.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._abmPreRefreshCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmPreRefreshCheck.Location = new System.Drawing.Point(6, 34);
+            this._abmPreRefreshCheck.Name = "_abmPreRefreshCheck";
+            this._abmPreRefreshCheck.Size = new System.Drawing.Size(180, 18);
+            this._abmPreRefreshCheck.TabIndex = 11;
+            this._abmPreRefreshCheck.Text = "Pre-refresh villages before prepare";
             //
             // _abmPushConfigBtn
             //
@@ -4572,6 +4587,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _abmStackDelayInput;
         private System.Windows.Forms.CheckBox _abmFakeSendCheck;
         private System.Windows.Forms.CheckBox _abmAutoInterdictCheck;
+        private System.Windows.Forms.CheckBox _abmPreRefreshCheck;
         private System.Windows.Forms.Button _abmPushConfigBtn;
         private System.Windows.Forms.Button _abmPrepareBtn;
         private System.Windows.Forms.Button _abmLaunchBtn;

@@ -837,6 +837,29 @@ namespace Kingdoms.Bot.Modules
                             continue;
                         }
 
+                        // If pre-refresh is enabled, wait until 13s before send time,
+                        // fire a background village refresh, then wait the remaining 5s
+                        // before the prepare window. The refresh is fire-and-forget so
+                        // the 5s gap is enough for the server response to arrive.
+                        if (settings.PreRefreshVillages)
+                        {
+                            TimeSpan waitForRefresh = entry.ScheduledSendTime - DateTime.Now - TimeSpan.FromSeconds(13);
+                            if (waitForRefresh > TimeSpan.Zero)
+                            {
+                                if (_cancelLaunchEvent.WaitOne((int)waitForRefresh.TotalMilliseconds))
+                                    { cancelled = true; break; }
+                            }
+                            if (!_cancelLaunchEvent.WaitOne(0))
+                            {
+                                var syncModule = Engine != null
+                                    ? Engine.GetModule<VillageSyncModule>() : null;
+                                if (syncModule != null)
+                                    syncModule.RefreshVillageNow(entry.SourceVillageId);
+                                else
+                                    LogWarning("[Thread] VillageSyncModule not found — skipping pre-refresh.");
+                            }
+                        }
+
                         // Wait until 8s before send time, then prepare
                         TimeSpan waitBefore = entry.ScheduledSendTime - DateTime.Now - TimeSpan.FromSeconds(8);
                         if (waitBefore > TimeSpan.Zero)

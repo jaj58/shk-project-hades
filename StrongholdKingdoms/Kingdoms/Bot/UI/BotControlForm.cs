@@ -3287,6 +3287,12 @@ namespace Kingdoms.Bot.UI
                 if (s != null && _abmQueueEnabledCheck.Enabled)
                     s.TargetQueueEnabled = _abmQueueEnabledCheck.Checked;
             };
+            _abmPreRefreshCheck.CheckedChanged += delegate
+            {
+                AutoBombMultiSettings s = AbmSettings;
+                if (s != null)
+                    s.PreRefreshVillages = _abmPreRefreshCheck.Checked;
+            };
             _abmQueueAddIdBtn.Click             += delegate { AbmQueueAddId(); };
             _abmQueueLookupBtn.Click            += delegate { AbmQueueLookupPlayer(); };
             _abmQueueAddSelectedVillageBtn.Click += delegate { AbmQueueAddSelectedVillage(); };
@@ -3317,6 +3323,7 @@ namespace Kingdoms.Bot.UI
             _abmFakeSendCheck.Checked      = s.FakeSendEnabled;
             _abmStackDelayInput.Value = Math.Max(_abmStackDelayInput.Minimum,
                 Math.Min(_abmStackDelayInput.Maximum, s.StackDelaySeconds));
+            _abmPreRefreshCheck.Checked   = s.PreRefreshVillages;
             _abmQueueEnabledCheck.Checked = s.TargetQueueEnabled;
             AbmRefreshQueueList(s);
         }
@@ -3331,6 +3338,7 @@ namespace Kingdoms.Bot.UI
             s.AutoCancelOnInterdict = _abmAutoInterdictCheck.Checked;
             s.FakeSendEnabled      = _abmFakeSendCheck.Checked;
             s.StackDelaySeconds    = (int)_abmStackDelayInput.Value;
+            s.PreRefreshVillages   = _abmPreRefreshCheck.Checked;
             s.TargetQueueEnabled   = _abmQueueEnabledCheck.Checked;
         }
 
@@ -3458,6 +3466,7 @@ namespace Kingdoms.Bot.UI
             s.AutoCancelOnInterdict = _abmAutoInterdictCheck.Checked;
             s.StackDelaySeconds = (int)_abmStackDelayInput.Value;
             s.FakeSendEnabled = _abmFakeSendCheck.Checked;
+            s.PreRefreshVillages = _abmPreRefreshCheck.Checked;
 
             AutoBombMultiModule mod = AbmModule;
             if (mod != null)
@@ -3847,6 +3856,7 @@ namespace Kingdoms.Bot.UI
             _abmStackDelayInput.Enabled     = coordControls;
             _abmFakeSendCheck.Enabled       = coordControls;
             _abmAutoInterdictCheck.Enabled  = coordControls;
+            _abmPreRefreshCheck.Enabled     = modEnabled;
             _abmPushConfigBtn.Enabled       = coordControls;
             _abmPrepareBtn.Enabled          = coordControls;
             _abmLaunchBtn.Enabled           = coordControls && (stateText == "configured" || stateText == "prepared" || stateText == "preparing");
