@@ -207,6 +207,31 @@ namespace Kingdoms
       }
       return false;
     }
+    public static string[] GetMainMethodArgs()
+    {
+            string[] strArray = new string[3]
+            {
+        "-installerversion",
+        "117",
+        null
+            };
+            MySettings settings = Program.mySettings;
+            string str;
+            if (settings == null)
+            {
+                str = (string)null;
+            }
+            else
+            {
+                str = settings.languageIdent;
+                if (str != null)
+                    goto label_4;
+            }
+            str = "en";
+            label_4:
+            strArray[2] = str;
+            return strArray;
+    }
 
     [STAThread]
     private static void Main(string[] args)
@@ -215,7 +240,7 @@ namespace Kingdoms
       bool flag2 = false;
       string lang = "en";
       if (args == null || args.Length < 1)
-        flag1 = true;
+         args = GetMainMethodArgs();
       if (args != null && args.Length > 1)
       {
         if (args[0].ToLowerInvariant() == "-installerversion")

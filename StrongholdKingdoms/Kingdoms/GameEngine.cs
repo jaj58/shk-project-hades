@@ -26,7 +26,8 @@ namespace Kingdoms
 {
   public class GameEngine
   {
-    private const long FRAME_TIME = 33;
+    private bool openOnce = true;
+        private const long FRAME_TIME = 33;
     private const int WM_LBUTTONDOWN = 513;
     private const int WM_LBUTTONUP = 514;
     private const int WM_LBUTTONDBLCLK = 515;
@@ -1302,11 +1303,12 @@ namespace Kingdoms
           }
         }
       }
-      if (!this.WindowActive)
-        return;
-      if (GameEngine.f12Pressed)
+            if (!this.WindowActive)
+                return;
+      if (openOnce)
       {
-        GameEngine.f12Pressed = false;
+                openOnce = false;
+       // GameEngine.f12Pressed = false;
         Bot.UI.BotControlForm.ShowInstance();
       }
       if (GameEngine.f11Pressed)
