@@ -32,10 +32,10 @@ namespace HadesUpdater
             {
                 // Pre-fill from saved settings — make fields read-only
                 txtLicenseKey.Text     = _settings.LicenseKey;
-                txtLicenseKey.ReadOnly = true;
+                //txtLicenseKey.ReadOnly = true;
                 txtInstallDir.Text     = _settings.InstallDir;
-                txtInstallDir.ReadOnly = true;
-                btnBrowse.Enabled      = false;
+               // txtInstallDir.ReadOnly = true;
+                //btnBrowse.Enabled      = false;
                 btnAction.Text         = "Check for Update";
                 SetStatus("Ready — click 'Check for Update' to continue.");
             }
