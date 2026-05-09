@@ -1930,9 +1930,11 @@ namespace Kingdoms.Bot.UI
 
             if (_logBox.Lines.Length > 3000)
             {
+                _logBox.ReadOnly = false;
                 _logBox.SelectionStart = 0;
                 _logBox.SelectionLength = _logBox.GetFirstCharIndexFromLine(500);
                 _logBox.SelectedText = "";
+                _logBox.ReadOnly = true;
             }
             _logBox.SelectionStart = _logBox.TextLength;
             _logBox.ScrollToCaret();
