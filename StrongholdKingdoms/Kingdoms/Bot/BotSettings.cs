@@ -786,6 +786,10 @@ namespace Kingdoms.Bot
         public bool TargetQueueEnabled;
         // Force-refresh each attacking village ~5s before prepare to reduce server callback errors
         public bool PreRefreshVillages = true;
+        // Automatically play the correct speed card at T-3s before each attack send
+        public bool PlayCards = false;
+        // Cancel a wrong active speed card before playing the desired one
+        public bool AutoCancelWrongCard = false;
         public List<TargetQueueEntry> TargetQueue = new List<TargetQueueEntry>();
 
         // Runtime state — not persisted

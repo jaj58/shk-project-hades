@@ -3295,6 +3295,18 @@ namespace Kingdoms.Bot.UI
                 if (s != null)
                     s.PreRefreshVillages = _abmPreRefreshCheck.Checked;
             };
+            _abmPlayCardsCheck.CheckedChanged += delegate
+            {
+                AutoBombMultiSettings s = AbmSettings;
+                if (s != null)
+                    s.PlayCards = _abmPlayCardsCheck.Checked;
+            };
+            _abmAutoCancelCardCheck.CheckedChanged += delegate
+            {
+                AutoBombMultiSettings s = AbmSettings;
+                if (s != null)
+                    s.AutoCancelWrongCard = _abmAutoCancelCardCheck.Checked;
+            };
             _abmQueueAddIdBtn.Click             += delegate { AbmQueueAddId(); };
             _abmQueueLookupBtn.Click            += delegate { AbmQueueLookupPlayer(); };
             _abmQueueAddSelectedVillageBtn.Click += delegate { AbmQueueAddSelectedVillage(); };
@@ -3325,7 +3337,9 @@ namespace Kingdoms.Bot.UI
             _abmFakeSendCheck.Checked      = s.FakeSendEnabled;
             _abmStackDelayInput.Value = Math.Max(_abmStackDelayInput.Minimum,
                 Math.Min(_abmStackDelayInput.Maximum, s.StackDelaySeconds));
-            _abmPreRefreshCheck.Checked   = s.PreRefreshVillages;
+            _abmPreRefreshCheck.Checked      = s.PreRefreshVillages;
+            _abmPlayCardsCheck.Checked       = s.PlayCards;
+            _abmAutoCancelCardCheck.Checked  = s.AutoCancelWrongCard;
             _abmQueueEnabledCheck.Checked = s.TargetQueueEnabled;
             AbmRefreshQueueList(s);
         }
@@ -3341,6 +3355,8 @@ namespace Kingdoms.Bot.UI
             s.FakeSendEnabled      = _abmFakeSendCheck.Checked;
             s.StackDelaySeconds    = (int)_abmStackDelayInput.Value;
             s.PreRefreshVillages   = _abmPreRefreshCheck.Checked;
+            s.PlayCards            = _abmPlayCardsCheck.Checked;
+            s.AutoCancelWrongCard  = _abmAutoCancelCardCheck.Checked;
             s.TargetQueueEnabled   = _abmQueueEnabledCheck.Checked;
         }
 
@@ -3469,6 +3485,8 @@ namespace Kingdoms.Bot.UI
             s.StackDelaySeconds = (int)_abmStackDelayInput.Value;
             s.FakeSendEnabled = _abmFakeSendCheck.Checked;
             s.PreRefreshVillages = _abmPreRefreshCheck.Checked;
+            s.PlayCards = _abmPlayCardsCheck.Checked;
+            s.AutoCancelWrongCard = _abmAutoCancelCardCheck.Checked;
 
             AutoBombMultiModule mod = AbmModule;
             if (mod != null)
@@ -3859,6 +3877,8 @@ namespace Kingdoms.Bot.UI
             _abmFakeSendCheck.Enabled       = coordControls;
             _abmAutoInterdictCheck.Enabled  = coordControls;
             _abmPreRefreshCheck.Enabled     = modEnabled;
+            _abmPlayCardsCheck.Enabled      = modEnabled;
+            _abmAutoCancelCardCheck.Enabled = modEnabled;
             _abmPushConfigBtn.Enabled       = coordControls;
             _abmPrepareBtn.Enabled          = coordControls;
             _abmLaunchBtn.Enabled           = coordControls && (stateText == "configured" || stateText == "prepared" || stateText == "preparing");
