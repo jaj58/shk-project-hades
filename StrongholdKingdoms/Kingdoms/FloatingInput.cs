@@ -117,7 +117,7 @@ namespace Kingdoms
       foreach (char c in text)
       {
         if (char.IsDigit(c))
-          str += (string) (object) c;
+          str += c.ToString();
       }
       if (text != str)
         this.textBox1.Text = str;
