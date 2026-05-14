@@ -1,4 +1,5 @@
 using CommonTypes;
+using Stronghold.AuthClient;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -1880,7 +1881,7 @@ namespace Kingdoms.Bot.Modules
                     if (cd.cards[i] == 0) continue;
                     CardTypes.CardDefinition def = CardTypes.getCardDefinition(cd.cards[i]);
                     if (def == null) continue;
-                    if (def.category != 6 && def.category != 7) continue;
+                    if (def.cardCategory != 6 && def.cardCategory != 7) continue;
 
                     outInstanceId = cd.cards[i];
                     outMultiplier = overallSpeed;
@@ -1892,7 +1893,7 @@ namespace Kingdoms.Bot.Modules
                         double minsRemaining = (cd.cardsExpiry[i] - DateTime.Now).TotalMinutes;
                         outIsLogistics = minsRemaining < 60;
                         LogDebug("[Card] Active speed card: instanceId=" + outInstanceId +
-                            " category=" + def.category +
+                            " category=" + def.cardCategory +
                             " mult=" + overallSpeed.ToString("F3") +
                             " expiryMins=" + (int)minsRemaining +
                             " isLogistics=" + outIsLogistics);
@@ -1900,9 +1901,9 @@ namespace Kingdoms.Bot.Modules
                     else
                     {
                         // No expiry info — fall back to category guess (7 = logistics tentative)
-                        outIsLogistics = (def.category == 7);
+                        outIsLogistics = (def.cardCategory == 7);
                         LogDebug("[Card] Active speed card: instanceId=" + outInstanceId +
-                            " category=" + def.category + " (no expiry data, isLogistics=" + outIsLogistics + ")");
+                            " category=" + def.cardCategory + " (no expiry data, isLogistics=" + outIsLogistics + ")");
                     }
                     return true;
                 }
@@ -1915,7 +1916,7 @@ namespace Kingdoms.Bot.Modules
                     if (cd.cards[i] == 0) continue;
                     CardTypes.CardDefinition d = CardTypes.getCardDefinition(cd.cards[i]);
                     if (d != null)
-                        LogWarning("[Card]   cards[" + i + "] instanceId=" + cd.cards[i] + " category=" + d.category);
+                        LogWarning("[Card]   cards[" + i + "] instanceId=" + cd.cards[i] + " category=" + d.cardCategory);
                 }
             }
             catch (Exception ex) { LogWarning("[Card] GetActiveSpeedCard: " + ex.Message); }
@@ -1952,7 +1953,7 @@ namespace Kingdoms.Bot.Modules
                 foreach (var kvp in mgr.ProfileCards)
                 {
                     if (kvp.Value == null) continue;
-                    if (kvp.Value.category != targetCategory) continue;
+                    if (kvp.Value.cardCategory != targetCategory) continue;
                     if (activeIds.Contains(kvp.Key)) continue; // already active
                     candidates.Add(kvp);
                 }
@@ -1964,7 +1965,7 @@ namespace Kingdoms.Bot.Modules
                     " candidates=" + candidates.Count);
                 for (int i = 0; i < candidates.Count; i++)
                     LogDebug("[Card]   [" + i + "] instanceId=" + candidates[i].Key +
-                        " defId=" + candidates[i].Value.id + " category=" + candidates[i].Value.category);
+                        " defId=" + candidates[i].Value.id + " category=" + candidates[i].Value.cardCategory);
 
                 if (tierIndex >= 0 && tierIndex < candidates.Count)
                     return candidates[tierIndex].Key;
@@ -2058,8 +2059,8 @@ namespace Kingdoms.Bot.Modules
                     "-1",  // village = -1 → global (not village-specific)
                     RemoteServices.Instance.ProfileWorldID.ToString());
                 provider.PlayUserCard(req,
-                    delegate(string r) { LogDebug("[Card] PlayUserCard callback: " + r); },
-                    InterfaceMgr.Instance.getDXBasePanel());
+                    delegate(ICardsProvider p, ICardsResponse r) { LogDebug("[Card] PlayUserCard response received."); },
+                    (System.Windows.Forms.Control)InterfaceMgr.Instance.getDXBasePanel());
 
                 return true;
             }
