@@ -651,8 +651,7 @@ namespace Kingdoms.Bot.Modules
                 string targetName = GetVillageName(targetVillage);
                 string actionLabel = GetActionLabel(actionKey);
 
-                string message = "[Friend] " + member.PlayerName + "\n" +
-                    actionLabel + commandSuffix + " detected!" + countSuffix + "\n" +
+                string message = actionLabel + commandSuffix + " detected!" + countSuffix + "\n" +
                     "From: " + sourceName + " [" + person.person.homeVillageID + "]\n" +
                     "To: " + targetName + " [" + targetVillage + "]";
 
