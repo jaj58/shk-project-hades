@@ -35,7 +35,7 @@ namespace Kingdoms
 
     // ---- Bot update/license constants ----------------------------------------
     // TODO: replace with your real domain before deploying
-    private const string LicenseApiUrl = "https://projecthades.co.uk/api/updater_api.php";
+    private const string LicenseApiUrl = "https://www.projecthades.co.uk/api/updater_api.php";
     public static int steam_SessionTicketUserID = 0;
     public static byte[] steam_SessionTicket = (byte[]) null;
     public static bool steamActive = false;
