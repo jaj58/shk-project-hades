@@ -113,11 +113,8 @@ namespace Kingdoms.Bot.Modules
         private Dictionary<long, WorldMap.LocalPerson> _trackedPeople = new Dictionary<long, WorldMap.LocalPerson>();
         private Dictionary<long, int> _personMissingTicks = new Dictionary<long, int>();
 
-        // Pending army detail lookups — keyed by armyID
+        // Pending army detail lookups � keyed by armyID
         private Dictionary<long, PendingArmyLookup> _pendingLookups = new Dictionary<long, PendingArmyLookup>();
-
-        // Pending person (monk) detail lookups — keyed by group key
-        private Dictionary<string, PendingPersonGroup> _pendingPersonGroups = new Dictionary<string, PendingPersonGroup>();
 
         // Group member player village lookup
         private System.Threading.ManualResetEvent _groupLookupEvent = new System.Threading.ManualResetEvent(false);
@@ -131,16 +128,6 @@ namespace Kingdoms.Bot.Modules
             public RadarActionSettings ActionSettings;
             public GroupRadarMember GroupMember;      // null = user-village path
             public GroupRadarSettings GroupSettings;  // null = user-village path
-        }
-
-        private class PendingPersonGroup
-        {
-            public string GroupKey;
-            public List<PendingPersonNotification> Notifications;
-            public int ResolvedCommand;
-            public DateTime RequestTime;
-            public RadarSettings Settings;
-            public bool Completed;
         }
 
         private class PendingArmyLookup
@@ -192,7 +179,6 @@ namespace Kingdoms.Bot.Modules
             _armyMissingTicks.Clear();
             _trackedPeople.Clear();
             _personMissingTicks.Clear();
-            _pendingPersonGroups.Clear();
             _firstScan = true;
         }
 
@@ -217,7 +203,6 @@ namespace Kingdoms.Bot.Modules
             }
 
             ProcessPendingLookups(settings);
-            ProcessPendingPersonGroups(settings);
             ScanArmies(settings);
             ScanPeople(settings);
 
@@ -655,156 +640,6 @@ namespace Kingdoms.Bot.Modules
             return null;
         }
 
-        // Fires a batched person notification with a pre-resolved command value.
-        private void DispatchPersonGroup(List<PendingPersonNotification> group, int command, RadarSettings settings)
-        {
-            PendingPersonNotification first = group[0];
-            int count = group.Count;
-            string countSuffix = count > 1 ? " (x" + count + ")" : "";
-            string monkCommandLabel = GetMonkCommandLabel(command);
-            string commandSuffix = monkCommandLabel != null ? " - " + monkCommandLabel : "";
-
-            if (count > 1)
-                LogDebug("Batching " + count + " " + GetActionLabel(first.ActionKey) + commandSuffix
-                    + " from village [" + first.Person.person.homeVillageID + "]"
-                    + " to village [" + first.TargetVillage + "] into a single notification.");
-
-            if (first.GroupMember != null)
-            {
-                FireGroupPersonNotification(first.Person, first.TargetVillage, first.ActionKey,
-                    first.GroupMember, first.GroupSettings, countSuffix, commandSuffix);
-            }
-            else
-            {
-                string sourceName = GetVillageName(first.Person.person.homeVillageID);
-                string targetName = GetVillageName(first.TargetVillage);
-                string actionLabel = GetActionLabel(first.ActionKey);
-
-                string message = actionLabel + commandSuffix + " detected!" + countSuffix + "\n" +
-                    "From: " + sourceName + " [" + first.Person.person.homeVillageID + "]\n" +
-                    "To: " + targetName + " [" + first.TargetVillage + "]";
-
-                LogWarning(message.Replace("\n", " | "));
-
-                if (first.ActionSettings.SystemNotify)
-                    ShowSystemNotification(actionLabel + commandSuffix + countSuffix, message);
-
-                if (first.ActionSettings.DiscordNotify && !string.IsNullOrEmpty(settings.DiscordWebhookUrl))
-                    DiscordNotifier.SendAsync(settings.DiscordWebhookUrl,
-                        "⚠ " + actionLabel + commandSuffix + " Incoming!", message, 15105570,
-                        string.IsNullOrEmpty(settings.DiscordMentionTag) ? null : settings.DiscordMentionTag);
-
-                if (first.ActionSettings.AutoInterdict)
-                    TryAutoInterdict(first.TargetVillage, settings);
-            }
-        }
-
-        // Callback from RetrievePeople — attempts to resolve the command field for enemy monks.
-        // Logs heavily so we can see exactly what the server returns during testing.
-        private void RetrievePeopleCallback(RetrievePeople_ReturnType returnData)
-        {
-            try
-            {
-                if (returnData == null || !returnData.Success)
-                {
-                    LogDebug("RetrievePeople callback: failed or null — firing pending groups without command.");
-                    List<string> toRemoveOnFail = new List<string>();
-                    foreach (PendingPersonGroup pg in _pendingPersonGroups.Values)
-                    {
-                        if (!pg.Completed)
-                        {
-                            pg.Completed = true;
-                            DispatchPersonGroup(pg.Notifications, 0, pg.Settings);
-                            toRemoveOnFail.Add(pg.GroupKey);
-                        }
-                    }
-                    foreach (string k in toRemoveOnFail)
-                        _pendingPersonGroups.Remove(k);
-                    return;
-                }
-
-                int peopleCount = returnData.people != null ? returnData.people.Count : 0;
-                LogDebug("RetrievePeople callback: received " + peopleCount + " people.");
-
-                // Log raw command values for every person returned so we can see what the server sends
-                if (returnData.people != null)
-                {
-                    foreach (PersonData pd in returnData.people)
-                        LogDebug("  -> personID=" + pd.personID + " command=" + pd.command
-                            + " personType=" + pd.personType);
-                }
-
-                // Build personID -> command lookup from the response
-                Dictionary<long, int> commandByPersonId = new Dictionary<long, int>();
-                if (returnData.people != null)
-                {
-                    foreach (PersonData pd in returnData.people)
-                        commandByPersonId[pd.personID] = pd.command;
-                }
-
-                // Match returned people to pending groups by personID
-                List<string> toRemove = new List<string>();
-                foreach (PendingPersonGroup pg in _pendingPersonGroups.Values)
-                {
-                    if (pg.Completed) continue;
-
-                    int resolvedCommand = 0;
-                    bool matched = false;
-                    foreach (PendingPersonNotification n in pg.Notifications)
-                    {
-                        int cmd;
-                        if (commandByPersonId.TryGetValue(n.Person.personID, out cmd))
-                        {
-                            resolvedCommand = cmd;
-                            matched = true;
-                            break;
-                        }
-                    }
-
-                    if (matched)
-                    {
-                        pg.Completed = true;
-                        string label = GetMonkCommandLabel(resolvedCommand);
-                        LogDebug("Person group [" + pg.GroupKey + "] command resolved: "
-                            + (label ?? "unknown") + " (raw=" + resolvedCommand + ")");
-                        DispatchPersonGroup(pg.Notifications, resolvedCommand, pg.Settings);
-                        toRemove.Add(pg.GroupKey);
-                    }
-                }
-                foreach (string k in toRemove)
-                    _pendingPersonGroups.Remove(k);
-            }
-            catch (Exception ex)
-            {
-                LogError("RetrievePeopleCallback error: " + ex.Message);
-            }
-        }
-
-        // Timeout handler — fires any pending person groups that haven't received a callback
-        // within 5 seconds, so notifications always get through even if the server ignores the request.
-        private void ProcessPendingPersonGroups(RadarSettings settings)
-        {
-            if (_pendingPersonGroups.Count == 0) return;
-
-            List<string> toRemove = new List<string>();
-            foreach (PendingPersonGroup pg in _pendingPersonGroups.Values)
-            {
-                if (!pg.Completed && (DateTime.Now - pg.RequestTime).TotalSeconds > 5)
-                {
-                    LogDebug("Person group lookup timed out for [" + pg.GroupKey + "] — firing without command.");
-                    pg.Completed = true;
-                    DispatchPersonGroup(pg.Notifications, 0, pg.Settings);
-                    toRemove.Add(pg.GroupKey);
-                }
-                else if (pg.Completed)
-                {
-                    toRemove.Add(pg.GroupKey);
-                }
-            }
-            foreach (string k in toRemove)
-                _pendingPersonGroups.Remove(k);
-        }
-
         // Notification for a monk/scout/captain targeting a group member's village
         private void FireGroupPersonNotification(WorldMap.LocalPerson person, int targetVillage,
             string actionKey, GroupRadarMember member, GroupRadarSettings groupSettings,
@@ -954,55 +789,44 @@ namespace Kingdoms.Bot.Modules
             foreach (List<PendingPersonNotification> group in groups.Values)
             {
                 PendingPersonNotification first = group[0];
-                int command = first.Person.person.command;
+                int count = group.Count;
+                string countSuffix = count > 1 ? " (x" + count + ")" : "";
 
-                // If the command is already known (own monks), dispatch immediately
-                if (command > 0)
+                string monkCommandLabel = GetMonkCommandLabel(first.Person.person.command);
+                string commandSuffix = monkCommandLabel != null ? " - " + monkCommandLabel : "";
+
+                if (count > 1)
+                    LogDebug("Batching " + count + " " + GetActionLabel(first.ActionKey) + commandSuffix
+                        + " from village [" + first.Person.person.homeVillageID + "]"
+                        + " to village [" + first.TargetVillage + "] into a single notification.");
+
+                if (first.GroupMember != null)
                 {
-                    DispatchPersonGroup(group, command, settings);
-                    continue;
+                    FireGroupPersonNotification(first.Person, first.TargetVillage, first.ActionKey,
+                        first.GroupMember, first.GroupSettings, countSuffix, commandSuffix);
                 }
-
-                // Command is unknown (enemy monks) \u2014 request details from server using
-                // the source village ID, as suggested. Falls back to firing without the
-                // action label if the server doesn't respond within 5 seconds.
-                string groupKey = first.Person.person.homeVillageID + "|"
-                    + first.TargetVillage + "|"
-                    + first.ActionKey + "|"
-                    + (first.GroupMember != null ? first.GroupMember.PlayerName : "user");
-
-                if (_pendingPersonGroups.ContainsKey(groupKey))
-                    continue;
-
-                List<long> personIds = new List<long>();
-                foreach (PendingPersonNotification n in group)
-                    personIds.Add(n.Person.personID);
-
-                PendingPersonGroup pendingGroup = new PendingPersonGroup
+                else
                 {
-                    GroupKey = groupKey,
-                    Notifications = group,
-                    ResolvedCommand = 0,
-                    RequestTime = DateTime.Now,
-                    Settings = settings,
-                    Completed = false
-                };
-                _pendingPersonGroups[groupKey] = pendingGroup;
+                    string sourceName = GetVillageName(first.Person.person.homeVillageID);
+                    string targetName = GetVillageName(first.TargetVillage);
+                    string actionLabel = GetActionLabel(first.ActionKey);
 
-                try
-                {
-                    RemoteServices.Instance.set_RetrievePeople_UserCallBack(
-                        new RemoteServices.RetrievePeople_UserCallBack(this.RetrievePeopleCallback));
-                    RemoteServices.Instance.RetrievePeople(personIds, first.Person.person.homeVillageID, 4);
-                    LogDebug("Requesting person details for " + group.Count + " monk(s) from source village ["
-                        + first.Person.person.homeVillageID + "] targeting [" + first.TargetVillage + "]");
-                }
-                catch (Exception ex)
-                {
-                    LogWarning("Failed to request person details: " + ex.Message);
-                    pendingGroup.Completed = true;
-                    _pendingPersonGroups.Remove(groupKey);
-                    DispatchPersonGroup(group, 0, settings);
+                    string message = actionLabel + commandSuffix + " detected!" + countSuffix + "\n" +
+                        "From: " + sourceName + " [" + first.Person.person.homeVillageID + "]\n" +
+                        "To: " + targetName + " [" + first.TargetVillage + "]";
+
+                    LogWarning(message.Replace("\n", " | "));
+
+                    if (first.ActionSettings.SystemNotify)
+                        ShowSystemNotification(actionLabel + commandSuffix + countSuffix, message);
+
+                    if (first.ActionSettings.DiscordNotify && !string.IsNullOrEmpty(settings.DiscordWebhookUrl))
+                        DiscordNotifier.SendAsync(settings.DiscordWebhookUrl,
+                            "\u26A0 " + actionLabel + commandSuffix + " Incoming!", message, 15105570,
+                            string.IsNullOrEmpty(settings.DiscordMentionTag) ? null : settings.DiscordMentionTag);
+
+                    if (first.ActionSettings.AutoInterdict)
+                        TryAutoInterdict(first.TargetVillage, settings);
                 }
             }
 
