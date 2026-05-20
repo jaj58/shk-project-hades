@@ -6,6 +6,16 @@ on:
     paths:
       - 'StrongholdKingdoms/**'
       - '4gb_patch.exe'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target environment'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - dev
 
 jobs:
   build-and-deploy:
@@ -66,7 +76,16 @@ jobs:
         id: env
         shell: pwsh
         run: |
-          if ("${{ github.ref_name }}" -eq "main") {
+          # Manual trigger uses the selected input; push uses the branch name
+          $target = if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            "${{ github.event.inputs.target }}"
+          } elseif ("${{ github.ref_name }}" -eq "main") {
+            "prod"
+          } else {
+            "dev"
+          }
+
+          if ($target -eq "prod") {
             echo "deploy_url=${{ secrets.HADES_DEPLOY_URL_PROD }}"       >> $env:GITHUB_OUTPUT
             echo "deploy_token=${{ secrets.HADES_DEPLOY_TOKEN_PROD }}"   >> $env:GITHUB_OUTPUT
             echo "download_base=${{ secrets.HADES_DOWNLOAD_BASE_PROD }}" >> $env:GITHUB_OUTPUT
