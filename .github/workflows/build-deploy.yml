@@ -136,6 +136,29 @@ jobs:
             zip_password = "${{ secrets.HADES_ZIP_PASSWORD }}"
           } | ConvertTo-Json -Compress | Set-Content api\version.json -Encoding UTF8 -NoNewline
 
+      - name: Upload version.json to server
+        shell: pwsh
+        run: |
+          $bytes    = [System.IO.File]::ReadAllBytes("api\version.json")
+          $boundary = [System.Guid]::NewGuid().ToString("N")
+
+          $body = [System.Collections.Generic.List[byte]]::new()
+          foreach ($chunk in @(
+            "--$boundary`r`nContent-Disposition: form-data; name=`"path`"`r`n`r`napi/version.json`r`n",
+            "--$boundary`r`nContent-Disposition: form-data; name=`"file`"; filename=`"version.json`"`r`nContent-Type: application/json`r`n`r`n"
+          )) { $body.AddRange([System.Text.Encoding]::UTF8.GetBytes($chunk)) }
+          $body.AddRange($bytes)
+          $body.AddRange([System.Text.Encoding]::UTF8.GetBytes("`r`n--$boundary--`r`n"))
+
+          $r = Invoke-WebRequest `
+            -Uri "${{ steps.env.outputs.deploy_url }}" -Method POST `
+            -Headers @{ 'X-Deploy-Token' = "${{ steps.env.outputs.deploy_token }}" } `
+            -ContentType "multipart/form-data; boundary=$boundary" `
+            -Body $body.ToArray() -UseBasicParsing
+          Write-Host "HTTP $($r.StatusCode) — Response: $($r.Content)"
+          $json = $r.Content | ConvertFrom-Json
+          if (-not $json.ok) { throw "version.json upload failed: $($json.error)" }
+
       - name: Commit version bump and push
         shell: pwsh
         run: |
