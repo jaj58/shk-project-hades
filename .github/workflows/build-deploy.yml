@@ -119,6 +119,7 @@ jobs:
             -Headers @{ 'X-Deploy-Token' = "${{ steps.env.outputs.deploy_token }}" } `
             -ContentType "multipart/form-data; boundary=$boundary" `
             -Body $body.ToArray() -UseBasicParsing
+          Write-Host "HTTP $($r.StatusCode) — Response: $($r.Content)"
           $json = $r.Content | ConvertFrom-Json
           if (-not $json.ok) { throw "ZIP upload failed: $($json.error)" }
 
