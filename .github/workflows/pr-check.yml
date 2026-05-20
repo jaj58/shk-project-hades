@@ -6,6 +6,7 @@ on:
     paths:
       - 'StrongholdKingdoms/**'
       - '4gb_patch.exe'
+  workflow_dispatch:
 
 jobs:
   build-check:
