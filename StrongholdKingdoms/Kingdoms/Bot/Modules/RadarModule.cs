@@ -582,7 +582,7 @@ namespace Kingdoms.Bot.Modules
                 string timeLeft = GetTimeLeft(army.serverEndTime);
                 string actionLabel = GetActionLabel(pending.ActionKey);
 
-                string message = "[Friend] " + member.PlayerName + "\n" +
+                string message =  member.PlayerName + "\n" +
                     actionLabel + " detected!\n" +
                     "From: " + sourceName + " [" + army.travelFromVillageID + "]\n" +
                     "To: " + targetName + " [" + army.targetVillageID + "]\n" +
