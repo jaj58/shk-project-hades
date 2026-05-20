@@ -120,6 +120,16 @@ namespace Kingdoms.Bot.Modules
         private System.Threading.ManualResetEvent _groupLookupEvent = new System.Threading.ManualResetEvent(false);
         private GetOtherUserVillageIDList_ReturnType _groupLookupResult;
 
+        private class PendingPersonNotification
+        {
+            public WorldMap.LocalPerson Person;
+            public int TargetVillage;
+            public string ActionKey;
+            public RadarActionSettings ActionSettings;
+            public GroupRadarMember GroupMember;      // null = user-village path
+            public GroupRadarSettings GroupSettings;  // null = user-village path
+        }
+
         private class PendingArmyLookup
         {
             public long ArmyID;
@@ -632,7 +642,8 @@ namespace Kingdoms.Bot.Modules
 
         // Notification for a monk/scout/captain targeting a group member's village
         private void FireGroupPersonNotification(WorldMap.LocalPerson person, int targetVillage,
-            string actionKey, GroupRadarMember member, GroupRadarSettings groupSettings)
+            string actionKey, GroupRadarMember member, GroupRadarSettings groupSettings,
+            string countSuffix = "", string commandSuffix = "")
         {
             try
             {
@@ -641,7 +652,7 @@ namespace Kingdoms.Bot.Modules
                 string actionLabel = GetActionLabel(actionKey);
 
                 string message = "[Friend] " + member.PlayerName + "\n" +
-                    actionLabel + " detected!\n" +
+                    actionLabel + commandSuffix + " detected!" + countSuffix + "\n" +
                     "From: " + sourceName + " [" + person.person.homeVillageID + "]\n" +
                     "To: " + targetName + " [" + targetVillage + "]";
 
@@ -656,7 +667,7 @@ namespace Kingdoms.Bot.Modules
                             ? member.DiscordTag
                             : (!string.IsNullOrEmpty(groupSettings.DiscordMentionTag) ? groupSettings.DiscordMentionTag : null);
                         DiscordNotifier.SendAsync(groupSettings.DiscordWebhookUrl,
-                            "⚠ " + actionLabel + " Incoming!", message, 15105570, mention);
+                            "⚠ " + actionLabel + commandSuffix + " Incoming!", message, 15105570, mention);
                     }
                 }
             }
@@ -695,6 +706,7 @@ namespace Kingdoms.Bot.Modules
         private void ScanPeople(RadarSettings settings)
         {
             Dictionary<long, bool> currentIds = new Dictionary<long, bool>();
+            List<PendingPersonNotification> pendingNotifications = new List<PendingPersonNotification>();
 
             foreach (KeyValuePair<long, WorldMap.LocalPerson> kvp in _trackedPeople)
             {
@@ -713,10 +725,11 @@ namespace Kingdoms.Bot.Modules
                 int targetVillage = person.person.targetVillageID;
                 bool targetingUser = IsTargetingUser(targetVillage);
                 GroupRadarMember groupMember = null;
+                GroupRadarSettings groupSettings = null;
 
                 if (!targetingUser)
                 {
-                    GroupRadarSettings groupSettings = settings.GroupRadar;
+                    groupSettings = settings.GroupRadar;
                     if (groupSettings == null || !groupSettings.Enabled) continue;
                     groupMember = FindGroupMember(targetVillage, groupSettings);
                     if (groupMember == null || !groupMember.Enabled) continue;
@@ -727,38 +740,95 @@ namespace Kingdoms.Bot.Modules
 
                 if (groupMember != null)
                 {
-                    // Group member path \u2014 fire immediately, no system notify, no auto-interdict
-                    GroupRadarSettings groupSettings = settings.GroupRadar;
                     RadarActionSettings actionSettings = groupSettings.GetActionSettings(actionKey);
                     if (!actionSettings.Monitor) continue;
-                    FireGroupPersonNotification(person, targetVillage, actionKey, groupMember, groupSettings);
+                    pendingNotifications.Add(new PendingPersonNotification
+                    {
+                        Person = person,
+                        TargetVillage = targetVillage,
+                        ActionKey = actionKey,
+                        ActionSettings = actionSettings,
+                        GroupMember = groupMember,
+                        GroupSettings = groupSettings
+                    });
                     continue;
                 }
 
-                // User village path (existing logic)
+                // User village path
                 RadarActionSettings userActionSettings = settings.GetActionSettings(actionKey);
                 if (!userActionSettings.Monitor) continue;
 
-                string sourceName = GetVillageName(person.person.homeVillageID);
-                string targetName = GetVillageName(targetVillage);
-                string actionLabel = GetActionLabel(actionKey);
+                pendingNotifications.Add(new PendingPersonNotification
+                {
+                    Person = person,
+                    TargetVillage = targetVillage,
+                    ActionKey = actionKey,
+                    ActionSettings = userActionSettings,
+                    GroupMember = null,
+                    GroupSettings = null
+                });
+            }
 
-                string message = actionLabel + " detected!\n" +
-                    "From: " + sourceName + " [" + person.person.homeVillageID + "]\n" +
-                    "To: " + targetName + " [" + targetVillage + "]";
+            // --- Batch and dispatch notifications ---
+            // Group by (source village, target village, action type, group member) so that
+            // multiple monks sent in the same scan tick are condensed into one notification.
+            Dictionary<string, List<PendingPersonNotification>> groups =
+                new Dictionary<string, List<PendingPersonNotification>>();
 
-                LogWarning(message.Replace("\n", " | "));
+            foreach (PendingPersonNotification pending in pendingNotifications)
+            {
+                string key = pending.Person.person.homeVillageID + "|"
+                    + pending.TargetVillage + "|"
+                    + pending.ActionKey + "|"
+                    + (pending.GroupMember != null ? pending.GroupMember.PlayerName : "user");
 
-                if (userActionSettings.SystemNotify)
-                    ShowSystemNotification(actionLabel, message);
+                if (!groups.ContainsKey(key))
+                    groups[key] = new List<PendingPersonNotification>();
+                groups[key].Add(pending);
+            }
 
-                if (userActionSettings.DiscordNotify && !string.IsNullOrEmpty(settings.DiscordWebhookUrl))
-                    DiscordNotifier.SendAsync(settings.DiscordWebhookUrl,
-                        "\u26A0 " + actionLabel + " Incoming!", message, 15105570,
-                        string.IsNullOrEmpty(settings.DiscordMentionTag) ? null : settings.DiscordMentionTag);
+            foreach (List<PendingPersonNotification> group in groups.Values)
+            {
+                PendingPersonNotification first = group[0];
+                int count = group.Count;
+                string countSuffix = count > 1 ? " (x" + count + ")" : "";
 
-                if (userActionSettings.AutoInterdict)
-                    TryAutoInterdict(targetVillage, settings);
+                string monkCommandLabel = GetMonkCommandLabel(first.Person.person.command);
+                string commandSuffix = monkCommandLabel != null ? " - " + monkCommandLabel : "";
+
+                if (count > 1)
+                    LogDebug("Batching " + count + " " + GetActionLabel(first.ActionKey) + commandSuffix
+                        + " from village [" + first.Person.person.homeVillageID + "]"
+                        + " to village [" + first.TargetVillage + "] into a single notification.");
+
+                if (first.GroupMember != null)
+                {
+                    FireGroupPersonNotification(first.Person, first.TargetVillage, first.ActionKey,
+                        first.GroupMember, first.GroupSettings, countSuffix, commandSuffix);
+                }
+                else
+                {
+                    string sourceName = GetVillageName(first.Person.person.homeVillageID);
+                    string targetName = GetVillageName(first.TargetVillage);
+                    string actionLabel = GetActionLabel(first.ActionKey);
+
+                    string message = actionLabel + commandSuffix + " detected!" + countSuffix + "\n" +
+                        "From: " + sourceName + " [" + first.Person.person.homeVillageID + "]\n" +
+                        "To: " + targetName + " [" + first.TargetVillage + "]";
+
+                    LogWarning(message.Replace("\n", " | "));
+
+                    if (first.ActionSettings.SystemNotify)
+                        ShowSystemNotification(actionLabel + commandSuffix + countSuffix, message);
+
+                    if (first.ActionSettings.DiscordNotify && !string.IsNullOrEmpty(settings.DiscordWebhookUrl))
+                        DiscordNotifier.SendAsync(settings.DiscordWebhookUrl,
+                            "\u26A0 " + actionLabel + commandSuffix + " Incoming!", message, 15105570,
+                            string.IsNullOrEmpty(settings.DiscordMentionTag) ? null : settings.DiscordMentionTag);
+
+                    if (first.ActionSettings.AutoInterdict)
+                        TryAutoInterdict(first.TargetVillage, settings);
+                }
             }
 
             List<long> staleIds = new List<long>();
@@ -1246,6 +1316,24 @@ namespace Kingdoms.Bot.Modules
                 case ACTION_AI_ATTACK_COUNTRY: return "AI Attack (Country)";
                 case ACTION_AI_FORAGING: return "AI Foraging";
                 default: return actionKey;
+            }
+        }
+
+        // Maps the PersonData.command value to a human-readable monk action label.
+        // Values sourced from AllArmiesPanel2.cs monk command constants.
+        public static string GetMonkCommandLabel(int command)
+        {
+            switch (command)
+            {
+                case 1: return "Blessing";
+                case 2: return "Positive Influence";
+                case 3: return "Inquisition";
+                case 4: return "Interdiction";
+                case 5: return "Restoration";
+                case 6: return "Absolution";
+                case 7: return "Excommunication";
+                case 8: return "Negative Influence";
+                default: return null;
             }
         }
 
