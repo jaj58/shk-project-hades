@@ -1,0 +1,174 @@
+name: Build & Deploy Client
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'StrongholdKingdoms/**'
+      - '4gb_patch.exe'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target environment'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+          - dev
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore NuGet packages
+        run: nuget restore StrongholdKingdoms\StrongholdKingdoms.sln
+
+      - name: Increment version in AssemblyInfo.cs
+        id: version
+        shell: pwsh
+        run: |
+          $path    = "StrongholdKingdoms\AssemblyInfo.cs"
+          $content = Get-Content $path -Raw
+
+          if ($content -notmatch '\[assembly: AssemblyVersion\("(\d+)\.(\d+)\.(\d+)\.(\d+)"\)\]') {
+            throw "Could not parse AssemblyVersion"
+          }
+          $major = [int]$Matches[1]; $minor = [int]$Matches[2]
+          $patch = [int]$Matches[3] + 1; $build = [int]$Matches[4]
+
+          $newVer     = "$major.$minor.$patch.$build"
+          $releaseVer = "$major.$minor.$patch"
+
+          $content = $content -replace '\[assembly: AssemblyVersion\("(\d+\.\d+\.\d+\.\d+)"\)\]',     "[assembly: AssemblyVersion(`"$newVer`")]"
+          $content = $content -replace '\[assembly: AssemblyFileVersion\("(\d+\.\d+\.\d+\.\d+)"\)\]', "[assembly: AssemblyFileVersion(`"$newVer`")]"
+          Set-Content $path $content -NoNewline
+
+          echo "release_version=$releaseVer" >> $env:GITHUB_OUTPUT
+          echo "zip_name=hades_$releaseVer.zip" >> $env:GITHUB_OUTPUT
+
+      - name: Build Release
+        run: msbuild StrongholdKingdoms\StrongholdKingdoms.sln /p:Configuration=Release /p:Platform="Any CPU" /v:quiet /nologo
+
+      - name: Apply 4GB patch
+        shell: pwsh
+        run: .\4gb_patch.exe StrongholdKingdoms\bin\Release\StrongholdKingdoms.exe
+
+      - name: Create password-protected ZIP
+        shell: pwsh
+        run: |
+          $zipName = "${{ steps.version.outputs.zip_name }}"
+          $exeDir  = "$env:GITHUB_WORKSPACE\StrongholdKingdoms\bin\Release"
+          $zipPath = "$env:GITHUB_WORKSPACE\builds\$zipName"
+          New-Item -ItemType Directory -Force "$env:GITHUB_WORKSPACE\builds" | Out-Null
+          # Push-Location so 7-Zip stores just the filename, not the full path
+          Push-Location $exeDir
+          & "C:\Program Files\7-Zip\7z.exe" a -tzip -mem=AES256 `
+            "-p${{ secrets.HADES_ZIP_PASSWORD }}" `
+            $zipPath `
+            "StrongholdKingdoms.exe"
+          Pop-Location
+
+      - name: Select environment targets
+        id: env
+        shell: pwsh
+        run: |
+          # Manual trigger uses the selected input; push uses the branch name
+          $target = if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            "${{ github.event.inputs.target }}"
+          } elseif ("${{ github.ref_name }}" -eq "main") {
+            "prod"
+          } else {
+            "dev"
+          }
+
+          if ($target -eq "prod") {
+            echo "deploy_url=${{ secrets.HADES_DEPLOY_URL_PROD }}"       >> $env:GITHUB_OUTPUT
+            echo "deploy_token=${{ secrets.HADES_DEPLOY_TOKEN_PROD }}"   >> $env:GITHUB_OUTPUT
+            echo "download_base=${{ secrets.HADES_DOWNLOAD_BASE_PROD }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "deploy_url=${{ secrets.HADES_DEPLOY_URL_DEV }}"        >> $env:GITHUB_OUTPUT
+            echo "deploy_token=${{ secrets.HADES_DEPLOY_TOKEN_DEV }}"    >> $env:GITHUB_OUTPUT
+            echo "download_base=${{ secrets.HADES_DOWNLOAD_BASE_DEV }}"  >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Upload ZIP to Railway volume
+        shell: pwsh
+        run: |
+          $zipName   = "${{ steps.version.outputs.zip_name }}"
+          $zipPath   = "builds\$zipName"
+          $boundary  = [System.Guid]::NewGuid().ToString("N")
+          $fileBytes = [System.IO.File]::ReadAllBytes($zipPath)
+
+          $body = [System.Collections.Generic.List[byte]]::new()
+          foreach ($chunk in @(
+            "--$boundary`r`nContent-Disposition: form-data; name=`"path`"`r`n`r`ndownloads/$zipName`r`n",
+            "--$boundary`r`nContent-Disposition: form-data; name=`"file`"; filename=`"$zipName`"`r`nContent-Type: application/octet-stream`r`n`r`n"
+          )) { $body.AddRange([System.Text.Encoding]::UTF8.GetBytes($chunk)) }
+          $body.AddRange($fileBytes)
+          $body.AddRange([System.Text.Encoding]::UTF8.GetBytes("`r`n--$boundary--`r`n"))
+
+          $r = Invoke-WebRequest `
+            -Uri "${{ steps.env.outputs.deploy_url }}" -Method POST `
+            -Headers @{ 'X-Deploy-Token' = "${{ steps.env.outputs.deploy_token }}" } `
+            -ContentType "multipart/form-data; boundary=$boundary" `
+            -Body $body.ToArray() -UseBasicParsing
+          Write-Host "HTTP $($r.StatusCode) — Response: $($r.Content)"
+          $json = $r.Content | ConvertFrom-Json
+          if (-not $json.ok) { throw "ZIP upload failed: $($json.error)" }
+
+      - name: Write version.json
+        shell: pwsh
+        run: |
+          $ver  = "${{ steps.version.outputs.release_version }}"
+          $zip  = "${{ steps.version.outputs.zip_name }}"
+          $base = "${{ steps.env.outputs.download_base }}"
+          [ordered]@{
+            version      = $ver
+            download_url = "$base/downloads/$zip"
+            changelog    = ""
+            zip_password = "${{ secrets.HADES_ZIP_PASSWORD }}"
+          } | ConvertTo-Json -Compress | Set-Content api\version.json -Encoding UTF8 -NoNewline
+
+      - name: Upload version.json to server
+        shell: pwsh
+        run: |
+          $bytes    = [System.IO.File]::ReadAllBytes("api\version.json")
+          $boundary = [System.Guid]::NewGuid().ToString("N")
+
+          $body = [System.Collections.Generic.List[byte]]::new()
+          foreach ($chunk in @(
+            "--$boundary`r`nContent-Disposition: form-data; name=`"path`"`r`n`r`napi/version.json`r`n",
+            "--$boundary`r`nContent-Disposition: form-data; name=`"file`"; filename=`"version.json`"`r`nContent-Type: application/json`r`n`r`n"
+          )) { $body.AddRange([System.Text.Encoding]::UTF8.GetBytes($chunk)) }
+          $body.AddRange($bytes)
+          $body.AddRange([System.Text.Encoding]::UTF8.GetBytes("`r`n--$boundary--`r`n"))
+
+          $r = Invoke-WebRequest `
+            -Uri "${{ steps.env.outputs.deploy_url }}" -Method POST `
+            -Headers @{ 'X-Deploy-Token' = "${{ steps.env.outputs.deploy_token }}" } `
+            -ContentType "multipart/form-data; boundary=$boundary" `
+            -Body $body.ToArray() -UseBasicParsing
+          Write-Host "HTTP $($r.StatusCode) — Response: $($r.Content)"
+          $json = $r.Content | ConvertFrom-Json
+          if (-not $json.ok) { throw "version.json upload failed: $($json.error)" }
+
+      - name: Commit version bump and push
+        shell: pwsh
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add StrongholdKingdoms\AssemblyInfo.cs api\version.json
+          git commit -m "Release ${{ steps.version.outputs.release_version }} [skip ci]"
+          git push

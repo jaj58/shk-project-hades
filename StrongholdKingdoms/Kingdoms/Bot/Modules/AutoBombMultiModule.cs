@@ -1,4 +1,5 @@
 using CommonTypes;
+using Stronghold.AuthClient;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -902,6 +903,41 @@ namespace Kingdoms.Bot.Modules
                         }
                         PostAttackEvent(settings, "attack_prepared", entry.SourceVillageId);
 
+                        // ── Card management at T-3s (fire-and-forget) ─────────
+                        if (settings.PlayCards)
+                        {
+                            TimeSpan waitCard = entry.ScheduledSendTime - DateTime.Now - TimeSpan.FromSeconds(3);
+                            if (waitCard > TimeSpan.Zero)
+                            {
+                                if (_cancelLaunchEvent.WaitOne((int)waitCard.TotalMilliseconds))
+                                    { cancelled = true; break; }
+                            }
+                            if (!_cancelLaunchEvent.WaitOne(0))
+                            {
+                                if (!EnsureCorrectCardActive(entry.CardType, settings))
+                                {
+                                    LogError("[Thread] Card management failed for village " +
+                                        entry.SourceVillageId + " — cancelling batch.");
+                                    _prepareErrorCancel = true;
+                                    _cancelLaunchEvent.Set();
+                                    CancelRemainingLocalAttacks();
+                                    bool anySentCard = false;
+                                    lock (_attacksLock)
+                                        { foreach (var ex in _myAttacks) if (ex.Sent) { anySentCard = true; break; } }
+                                    if (anySentCard) RecallAll(settings);
+                                    try { PostAction(settings, "cancel_attacks",
+                                        new Dictionary<string, object>
+                                        {
+                                            ["player_name"] = GetLocalPlayerName(),
+                                            ["reason"]      = "card_failed"
+                                        }); }
+                                    catch { }
+                                    cancelled = true;
+                                    break;
+                                }
+                            }
+                        }
+
                         // Wait until the exact send time
                         TimeSpan waitFire = entry.ScheduledSendTime - DateTime.Now;
                         if (waitFire > TimeSpan.Zero)
@@ -1787,6 +1823,252 @@ namespace Kingdoms.Bot.Modules
         private void DisposeFakeSendTimer()
         {
             if (_fakeSendTimer != null) { _fakeSendTimer.Dispose(); _fakeSendTimer = null; }
+        }
+
+        // ── Card management ───────────────────────────────────────────────────
+
+        /// <summary>
+        /// Returns the desired army travel-time multiplier for a given card_type value.
+        /// card_type: 0=none, 1=x2-disc(3h), 2=x4-disc(3h), 3=x6-disc(3h),
+        ///            4=x2-log(1use), 5=x3-log(1use), 6=x5-log(1use)
+        /// </summary>
+        private static double GetDesiredCardMultiplier(int cardType)
+        {
+            switch (cardType)
+            {
+                case 1: case 4: return 0.5;
+                case 2:         return 0.25;
+                case 3:         return 1.0 / 6.0;
+                case 5:         return 1.0 / 3.0;
+                case 6:         return 0.2;
+                default:        return 1.0;
+            }
+        }
+
+        /// <summary>
+        /// Returns true if cardType represents a one-use logistics card (values 4, 5, 6).
+        /// </summary>
+        private static bool IsLogisticsCardType(int cardType)
+        {
+            return cardType >= 4 && cardType <= 6;
+        }
+
+        /// <summary>
+        /// Scans UserCardData for an active army speed card.
+        /// Army speed cards are identified by category 6 or 7 (per CardBarGDI section 9 grouping).
+        /// Discipline vs logistics is determined via the cardsExpiry heuristic:
+        ///   expiry > 60 min from now → discipline (3-hour card); else → logistics.
+        /// Returns false if no speed card is active.
+        /// </summary>
+        private bool GetActiveSpeedCard(out int outInstanceId, out double outMultiplier, out bool outIsLogistics)
+        {
+            outInstanceId = 0;
+            outMultiplier = 1.0;
+            outIsLogistics = false;
+            try
+            {
+                var mgr = GameEngine.Instance != null ? GameEngine.Instance.cardsManager : null;
+                if (mgr == null) return false;
+                CardData cd = mgr.UserCardData;
+                if (cd == null || cd.cards == null) return false;
+
+                double overallSpeed = CardTypes.getArmySpeed(cd);
+                if (Math.Abs(overallSpeed - 1.0) < 0.001)
+                    return false; // no speed bonus active
+
+                for (int i = 0; i < cd.cards.Length; i++)
+                {
+                    if (cd.cards[i] == 0) continue;
+                    CardTypes.CardDefinition def = CardTypes.getCardDefinition(cd.cards[i]);
+                    if (def == null) continue;
+                    if (def.cardCategory != 6 && def.cardCategory != 7) continue;
+
+                    outInstanceId = cd.cards[i];
+                    outMultiplier = overallSpeed;
+
+                    // Discipline: ~3h duration → expiry well over an hour from now.
+                    // Logistics:  consumed on send → usually short or no meaningful expiry window.
+                    if (cd.cardsExpiry != null && i < cd.cardsExpiry.Length)
+                    {
+                        double minsRemaining = (cd.cardsExpiry[i] - DateTime.Now).TotalMinutes;
+                        outIsLogistics = minsRemaining < 60;
+                        LogDebug("[Card] Active speed card: instanceId=" + outInstanceId +
+                            " category=" + def.cardCategory +
+                            " mult=" + overallSpeed.ToString("F3") +
+                            " expiryMins=" + (int)minsRemaining +
+                            " isLogistics=" + outIsLogistics);
+                    }
+                    else
+                    {
+                        // No expiry info — fall back to category guess (7 = logistics tentative)
+                        outIsLogistics = (def.cardCategory == 7);
+                        LogDebug("[Card] Active speed card: instanceId=" + outInstanceId +
+                            " category=" + def.cardCategory + " (no expiry data, isLogistics=" + outIsLogistics + ")");
+                    }
+                    return true;
+                }
+
+                // Speed bonus detected but no category-6/7 card found — log for diagnosis
+                LogWarning("[Card] Army speed active (mult=" + overallSpeed.ToString("F3") +
+                    ") but no category-6/7 card found. Active card categories:");
+                for (int i = 0; i < cd.cards.Length; i++)
+                {
+                    if (cd.cards[i] == 0) continue;
+                    CardTypes.CardDefinition d = CardTypes.getCardDefinition(cd.cards[i]);
+                    if (d != null)
+                        LogWarning("[Card]   cards[" + i + "] instanceId=" + cd.cards[i] + " category=" + d.cardCategory);
+                }
+            }
+            catch (Exception ex) { LogWarning("[Card] GetActiveSpeedCard: " + ex.Message); }
+            return false;
+        }
+
+        /// <summary>
+        /// Searches ProfileCards for a card matching the desired card_type.
+        /// Within each speed-category group, cards are sorted ascending by definition ID
+        /// (assumed ordering: basic < advanced < expert).
+        /// Returns the user instance ID to pass to PlayUserCard, or 0 if not found.
+        /// </summary>
+        private int FindInventoryCard(int cardType)
+        {
+            try
+            {
+                var mgr = GameEngine.Instance != null ? GameEngine.Instance.cardsManager : null;
+                if (mgr == null) return 0;
+
+                bool wantLogistics = IsLogisticsCardType(cardType);
+                // Tier index within the category: x2→0, x4/x3→1, x6/x5→2
+                int tierIndex = (cardType <= 3 ? cardType : cardType - 3) - 1;
+
+                // Exclude instance IDs already active so we don't double-play
+                CardData cd = mgr.UserCardData;
+                var activeIds = new System.Collections.Generic.HashSet<int>();
+                if (cd != null && cd.cards != null)
+                    foreach (int c in cd.cards)
+                        if (c != 0) activeIds.Add(c);
+
+                // Collect ProfileCards with the target category (6=discipline, 7=logistics — tentative)
+                int targetCategory = wantLogistics ? 7 : 6;
+                var candidates = new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<int, CardTypes.CardDefinition>>();
+                foreach (var kvp in mgr.ProfileCards)
+                {
+                    if (kvp.Value == null) continue;
+                    if (kvp.Value.cardCategory != targetCategory) continue;
+                    if (activeIds.Contains(kvp.Key)) continue; // already active
+                    candidates.Add(kvp);
+                }
+                // Sort by definition ID ascending (basic < advanced < expert within category)
+                candidates.Sort((a, b) => a.Value.id.CompareTo(b.Value.id));
+
+                LogDebug("[Card] FindInventoryCard: cardType=" + cardType +
+                    " wantLogistics=" + wantLogistics + " tierIndex=" + tierIndex +
+                    " candidates=" + candidates.Count);
+                for (int i = 0; i < candidates.Count; i++)
+                    LogDebug("[Card]   [" + i + "] instanceId=" + candidates[i].Key +
+                        " defId=" + candidates[i].Value.id + " category=" + candidates[i].Value.cardCategory);
+
+                if (tierIndex >= 0 && tierIndex < candidates.Count)
+                    return candidates[tierIndex].Key;
+
+                LogWarning("[Card] No card found for type " + cardType +
+                    " (wantLogistics=" + wantLogistics + ", tierIndex=" + tierIndex +
+                    ", candidates=" + candidates.Count + ").");
+            }
+            catch (Exception ex) { LogWarning("[Card] FindInventoryCard: " + ex.Message); }
+            return 0;
+        }
+
+        /// <summary>
+        /// Ensures the correct speed card is active just before an attack send (fire-and-forget).
+        /// Called at T-3s per-village in LaunchThreadProc.
+        /// Returns true if the state is acceptable (correct card active or no action needed),
+        /// false only on an unrecoverable error (wrong card with auto-cancel off, or card not in inventory).
+        /// </summary>
+        private bool EnsureCorrectCardActive(int cardType, AutoBombMultiSettings settings)
+        {
+            try
+            {
+                int activeId;
+                double activeMult;
+                bool activeIsLogistics;
+                bool speedCardActive = GetActiveSpeedCard(out activeId, out activeMult, out activeIsLogistics);
+
+                // ── card_type == 0: no card desired ─────────────────────────────
+                if (cardType == 0)
+                {
+                    if (!speedCardActive) return true;
+                    if (settings.AutoCancelWrongCard)
+                    {
+                        LogInfo("[Card] card_type=0 but speed card active (id=" + activeId + ") — cancelling.");
+                        RemoteServices.Instance.CancelCard(activeId);
+                    }
+                    else
+                    {
+                        LogWarning("[Card] card_type=0 but speed card is active — AutoCancelWrongCard is off, leaving it.");
+                    }
+                    return true;
+                }
+
+                // ── card_type > 0: specific card desired ────────────────────────
+                double desiredMult = GetDesiredCardMultiplier(cardType);
+                bool desiredIsLogistics = IsLogisticsCardType(cardType);
+
+                if (speedCardActive)
+                {
+                    bool multMatch     = Math.Abs(activeMult - desiredMult) < 0.001;
+                    bool typeMatch     = (activeIsLogistics == desiredIsLogistics);
+
+                    if (multMatch && typeMatch)
+                    {
+                        LogDebug("[Card] Correct card already active (type=" + cardType + ").");
+                        return true;
+                    }
+
+                    // Wrong card is active
+                    if (!settings.AutoCancelWrongCard)
+                    {
+                        LogError("[Card] Wrong speed card active (activeMult=" + activeMult.ToString("F3") +
+                            " activeIsLogistics=" + activeIsLogistics + ") for desired card_type=" + cardType +
+                            " — AutoCancelWrongCard is off. Cancelling batch.");
+                        return false;
+                    }
+
+                    LogInfo("[Card] Wrong speed card active (id=" + activeId + ", mult=" + activeMult.ToString("F3") +
+                        ") — cancelling before playing card_type=" + cardType + ".");
+                    RemoteServices.Instance.CancelCard(activeId);
+                }
+
+                // Find and play the desired card from inventory
+                int instanceId = FindInventoryCard(cardType);
+                if (instanceId == 0)
+                {
+                    LogError("[Card] Card type " + cardType + " not found in inventory — cancelling batch.");
+                    return false;
+                }
+
+                LogInfo("[Card] Playing card_type=" + cardType + " (instanceId=" + instanceId + ").");
+                XmlRpcCardsProvider provider = XmlRpcCardsProvider.CreateForEndpoint(
+                    URLs.ProfileProtocol,
+                    URLs.ProfileServerAddressCards,
+                    URLs.ProfileServerPort,
+                    URLs.ProfileCardPath);
+                XmlRpcCardsRequest req = new XmlRpcCardsRequest(
+                    RemoteServices.Instance.UserGuid.ToString().Replace("-", ""),
+                    RemoteServices.Instance.SessionGuid.ToString().Replace("-", ""),
+                    instanceId.ToString(),
+                    "-1",  // village = -1 → global (not village-specific)
+                    RemoteServices.Instance.ProfileWorldID.ToString());
+                provider.PlayUserCard(req,
+                    delegate(ICardsProvider p, ICardsResponse r) { LogDebug("[Card] PlayUserCard response received."); },
+                    (System.Windows.Forms.Control)InterfaceMgr.Instance.getDXBasePanel());
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogError("[Card] EnsureCorrectCardActive: " + ex.Message);
+                return false;
+            }
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────

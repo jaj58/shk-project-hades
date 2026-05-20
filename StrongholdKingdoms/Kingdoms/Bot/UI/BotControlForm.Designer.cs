@@ -280,6 +280,8 @@ namespace Kingdoms.Bot.UI
             this._abmTakeCoordBtn = new System.Windows.Forms.Button();
             this._abmCoordStatusLabel = new System.Windows.Forms.Label();
             this._abmPreRefreshCheck = new System.Windows.Forms.CheckBox();
+            this._abmPlayCardsCheck = new System.Windows.Forms.CheckBox();
+            this._abmAutoCancelCardCheck = new System.Windows.Forms.CheckBox();
             this._abmQueueEnabledCheck = new System.Windows.Forms.CheckBox();
             this._abmQueueVidInput = new System.Windows.Forms.NumericUpDown();
             this._abmQueueAddIdBtn = new System.Windows.Forms.Button();
@@ -3529,6 +3531,8 @@ namespace Kingdoms.Bot.UI
             this._abmCtrlPanel.Controls.Add(this._abmStackDelayInput);
             this._abmCtrlPanel.Controls.Add(this._abmTargetVidBox);
             this._abmCtrlPanel.Controls.Add(this._abmPreRefreshCheck);
+            this._abmCtrlPanel.Controls.Add(this._abmPlayCardsCheck);
+            this._abmCtrlPanel.Controls.Add(this._abmAutoCancelCardCheck);
             this._abmCtrlPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._abmCtrlPanel.Location = new System.Drawing.Point(0, 0);
             this._abmCtrlPanel.Name = "_abmCtrlPanel";
@@ -3595,6 +3599,28 @@ namespace Kingdoms.Bot.UI
             this._abmPreRefreshCheck.Size = new System.Drawing.Size(180, 18);
             this._abmPreRefreshCheck.TabIndex = 11;
             this._abmPreRefreshCheck.Text = "Pre-refresh villages before prepare";
+            //
+            // _abmPlayCardsCheck
+            //
+            this._abmPlayCardsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmPlayCardsCheck.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._abmPlayCardsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmPlayCardsCheck.Location = new System.Drawing.Point(192, 34);
+            this._abmPlayCardsCheck.Name = "_abmPlayCardsCheck";
+            this._abmPlayCardsCheck.Size = new System.Drawing.Size(80, 18);
+            this._abmPlayCardsCheck.TabIndex = 12;
+            this._abmPlayCardsCheck.Text = "Play Cards";
+            //
+            // _abmAutoCancelCardCheck
+            //
+            this._abmAutoCancelCardCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmAutoCancelCardCheck.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._abmAutoCancelCardCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmAutoCancelCardCheck.Location = new System.Drawing.Point(278, 34);
+            this._abmAutoCancelCardCheck.Name = "_abmAutoCancelCardCheck";
+            this._abmAutoCancelCardCheck.Size = new System.Drawing.Size(138, 18);
+            this._abmAutoCancelCardCheck.TabIndex = 13;
+            this._abmAutoCancelCardCheck.Text = "Auto Cancel Wrong Card";
             //
             // _abmPushConfigBtn
             //
@@ -4588,6 +4614,8 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _abmFakeSendCheck;
         private System.Windows.Forms.CheckBox _abmAutoInterdictCheck;
         private System.Windows.Forms.CheckBox _abmPreRefreshCheck;
+        private System.Windows.Forms.CheckBox _abmPlayCardsCheck;
+        private System.Windows.Forms.CheckBox _abmAutoCancelCardCheck;
         private System.Windows.Forms.Button _abmPushConfigBtn;
         private System.Windows.Forms.Button _abmPrepareBtn;
         private System.Windows.Forms.Button _abmLaunchBtn;
