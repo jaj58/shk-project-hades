@@ -133,10 +133,7 @@ $RECYCLE.BIN/
 _NCrunch*
 /StrongholdKingdoms/.vs
 
-# Hades Bot — sensitive server config (never commit)
-api/db_config.php
-api/deploy_config.php
-admin/admin_config.php
+# Hades Bot — config files use getenv() and are safe to commit
 
 # Release ZIPs
 /downloads/
