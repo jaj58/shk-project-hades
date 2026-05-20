@@ -69,11 +69,16 @@ jobs:
         shell: pwsh
         run: |
           $zipName = "${{ steps.version.outputs.zip_name }}"
-          New-Item -ItemType Directory -Force builds | Out-Null
+          $exeDir  = "$env:GITHUB_WORKSPACE\StrongholdKingdoms\bin\Release"
+          $zipPath = "$env:GITHUB_WORKSPACE\builds\$zipName"
+          New-Item -ItemType Directory -Force "$env:GITHUB_WORKSPACE\builds" | Out-Null
+          # Push-Location so 7-Zip stores just the filename, not the full path
+          Push-Location $exeDir
           & "C:\Program Files\7-Zip\7z.exe" a -tzip -mem=AES256 `
             "-p${{ secrets.HADES_ZIP_PASSWORD }}" `
-            "builds\$zipName" `
-            "StrongholdKingdoms\bin\Release\StrongholdKingdoms.exe"
+            $zipPath `
+            "StrongholdKingdoms.exe"
+          Pop-Location
 
       - name: Select environment targets
         id: env
