@@ -32,6 +32,9 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
+      - name: Restore NuGet packages
+        run: nuget restore StrongholdKingdoms\StrongholdKingdoms.sln
+
       - name: Increment version in AssemblyInfo.cs
         id: version
         shell: pwsh
@@ -56,7 +59,7 @@ jobs:
           echo "zip_name=hades_$releaseVer.zip" >> $env:GITHUB_OUTPUT
 
       - name: Build Release
-        run: msbuild StrongholdKingdoms\StrongholdKingdoms.sln /p:Configuration=Release /p:Platform="Any CPU" /v:minimal /nologo
+        run: msbuild StrongholdKingdoms\StrongholdKingdoms.sln /p:Configuration=Release /p:Platform="Any CPU" /v:quiet /nologo
 
       - name: Apply 4GB patch
         shell: pwsh
