@@ -1,8 +1,7 @@
-name: PR Build Check
+name: Client Build Check
 
 on:
-  pull_request:
-    branches: [main, dev]
+  push:
     paths:
       - 'StrongholdKingdoms/**'
       - '4gb_patch.exe'
