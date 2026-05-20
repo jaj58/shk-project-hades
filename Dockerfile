@@ -1,6 +1,7 @@
 FROM php:8.2-apache
 
-RUN docker-php-ext-install pdo pdo_mysql fileinfo
+RUN docker-php-ext-install pdo pdo_mysql fileinfo \
+    && a2dismod mpm_event && a2enmod mpm_prefork
 
 # Allow 128 MB uploads for release ZIPs
 RUN printf "upload_max_filesize=128M\npost_max_size=140M\n" \
