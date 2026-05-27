@@ -4852,7 +4852,7 @@ namespace Kingdoms.Bot.UI
             panel.Controls.Add(refreshBtn);
 
             // === Test 1: Free card with forged CardPoints=1 ===
-            int y = 84;
+            int y = 72;
             panel.Controls.Add(TexMakeSectionLabel("Test 1: Free Card — buyMultipleCards with req.CardPoints = 1", 16, y));
             y += 22;
             panel.Controls.Add(TexMakeMiniLabel("Card name:", 16, y + 5));
@@ -4872,7 +4872,7 @@ namespace Kingdoms.Bot.UI
             panel.Controls.Add(buyBtn);
 
             // === Test 2: Restart tutorial ===
-            y += 42;
+            y += 32;
             panel.Controls.Add(TexMakeSectionLabel("Test 2: Restart Tutorial — TutorialCommand(-4)", 16, y));
             y += 22;
             var restartBtn = TexMakeButton("Send TutorialCommand(-4)", new Point(16, y), 230);
@@ -4880,7 +4880,7 @@ namespace Kingdoms.Bot.UI
             panel.Controls.Add(restartBtn);
 
             // === Test 3: Flag objective complete ===
-            y += 42;
+            y += 32;
             panel.Controls.Add(TexMakeSectionLabel("Test 3: Flag Quest Objective Complete", 16, y));
             y += 22;
             panel.Controls.Add(TexMakeMiniLabel("Objective ID:", 16, y + 5));
@@ -4901,7 +4901,7 @@ namespace Kingdoms.Bot.UI
             panel.Controls.Add(flagBtn);
 
             // === Test 4: Complete quest ===
-            y += 42;
+            y += 32;
             panel.Controls.Add(TexMakeSectionLabel("Test 4: Complete Quest", 16, y));
             y += 22;
             panel.Controls.Add(TexMakeMiniLabel("Quest ID:", 16, y + 5));
