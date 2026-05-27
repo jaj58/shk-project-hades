@@ -5,6 +5,7 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using CommonTypes;
+using Stronghold.AuthClient;
 using Kingdoms.Bot.Modules;
 
 namespace Kingdoms.Bot.UI
@@ -4740,6 +4741,7 @@ namespace Kingdoms.Bot.UI
             _miscCollectFreeCardsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             _miscSaleRefreshBtn.Click += delegate { MiscRefreshSaleInfo(); };
             MiscRefreshSaleInfo();
+            BuildTutorialExploitPanel();
         }
 
         private void MiscLoadFromSettings()
@@ -4772,6 +4774,397 @@ namespace Kingdoms.Bot.UI
             _miscSalePctValue.Text = world.salePercentage + "%";
             _miscSaleStartValue.Text = epoch.AddSeconds(world.saleStartTime).ToLocalTime().ToString();
             _miscSaleEndValue.Text = epoch.AddSeconds(world.saleEndTime).ToLocalTime().ToString();
+        }
+
+        // =====================================================================
+        // Tutorial-exploit test panel (added to Misc tab below the sale info panel)
+        //
+        // Wires up four buttons that fire the RPCs identified in the exploit audit:
+        //   1. buyMultipleCards with forged req.CardPoints = 1
+        //   2. TutorialCommand(-4)  (restart tutorial)
+        //   3. FlagQuestObjectiveComplete(objective)
+        //   4. CompleteQuest(quest)
+        //
+        // Each writes its outcome to the bot log under the "TutorialTest" category.
+        // None of these are wired to the bot's normal automation — they only fire on
+        // an explicit button click.
+        // =====================================================================
+
+        private TextBox _texCardNameInput;
+        private NumericUpDown _texObjectiveIdInput;
+        private NumericUpDown _texQuestIdInput;
+        private Label _texStatusLabel;
+
+        private void BuildTutorialExploitPanel()
+        {
+            const string LOG_CAT = "TutorialTest";
+
+            var panel = new Panel
+            {
+                Location = new Point(0, 210),
+                Size = new Size(1142, 280),
+                BackColor = Color.FromArgb(30, 30, 40),
+            };
+
+            // Header
+            var header = new Label
+            {
+                Text = "Tutorial Exploit Tests",
+                Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+                ForeColor = TextPri,
+                Location = new Point(16, 8),
+                AutoSize = true
+            };
+            panel.Controls.Add(header);
+
+            var subHeader = new Label
+            {
+                Text = "Each button fires the named RPC and logs the server response under \"" + LOG_CAT + "\". Login required.",
+                Font = new Font("Segoe UI", 8.25f),
+                ForeColor = TextSec,
+                Location = new Point(16, 28),
+                AutoSize = true
+            };
+            panel.Controls.Add(subHeader);
+
+            // Status line
+            _texStatusLabel = new Label
+            {
+                Text = "Status: (not logged in)",
+                Font = new Font("Consolas", 8.5f),
+                ForeColor = AccentCol,
+                Location = new Point(16, 52),
+                Size = new Size(900, 18)
+            };
+            panel.Controls.Add(_texStatusLabel);
+
+            var refreshBtn = TexMakeButton("Refresh", new Point(920, 50), 80);
+            refreshBtn.Click += delegate { TexRefreshStatus(); };
+            panel.Controls.Add(refreshBtn);
+
+            // === Test 1: Free card with forged CardPoints=1 ===
+            int y = 84;
+            panel.Controls.Add(TexMakeSectionLabel("Test 1: Free Card — buyMultipleCards with req.CardPoints = 1", 16, y));
+            y += 22;
+            panel.Controls.Add(TexMakeMiniLabel("Card name:", 16, y + 5));
+            _texCardNameInput = new TextBox
+            {
+                Location = new Point(96, y + 1),
+                Size = new Size(240, 23),
+                Text = "CARDTYPE_BASIC_DIPLOMACY",
+                BackColor = Color.FromArgb(50, 52, 64),
+                ForeColor = TextPri,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = new Font("Consolas", 8.5f)
+            };
+            panel.Controls.Add(_texCardNameInput);
+            var buyBtn = TexMakeButton("Send buyMultipleCards (CardPoints=1)", new Point(346, y), 250);
+            buyBtn.Click += delegate { TexBuyFreeCard(); };
+            panel.Controls.Add(buyBtn);
+
+            // === Test 2: Restart tutorial ===
+            y += 42;
+            panel.Controls.Add(TexMakeSectionLabel("Test 2: Restart Tutorial — TutorialCommand(-4)", 16, y));
+            y += 22;
+            var restartBtn = TexMakeButton("Send TutorialCommand(-4)", new Point(16, y), 230);
+            restartBtn.Click += delegate { TexRestartTutorial(); };
+            panel.Controls.Add(restartBtn);
+
+            // === Test 3: Flag objective complete ===
+            y += 42;
+            panel.Controls.Add(TexMakeSectionLabel("Test 3: Flag Quest Objective Complete", 16, y));
+            y += 22;
+            panel.Controls.Add(TexMakeMiniLabel("Objective ID:", 16, y + 5));
+            _texObjectiveIdInput = new NumericUpDown
+            {
+                Location = new Point(110, y + 1),
+                Size = new Size(80, 23),
+                Minimum = 0,
+                Maximum = 99999,
+                Value = 10007,
+                BackColor = Color.FromArgb(50, 52, 64),
+                ForeColor = TextPri,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            panel.Controls.Add(_texObjectiveIdInput);
+            var flagBtn = TexMakeButton("Send FlagQuestObjectiveComplete", new Point(200, y), 230);
+            flagBtn.Click += delegate { TexFlagObjective(); };
+            panel.Controls.Add(flagBtn);
+
+            // === Test 4: Complete quest ===
+            y += 42;
+            panel.Controls.Add(TexMakeSectionLabel("Test 4: Complete Quest", 16, y));
+            y += 22;
+            panel.Controls.Add(TexMakeMiniLabel("Quest ID:", 16, y + 5));
+            _texQuestIdInput = new NumericUpDown
+            {
+                Location = new Point(110, y + 1),
+                Size = new Size(80, 23),
+                Minimum = 0,
+                Maximum = 99999,
+                Value = 0,
+                BackColor = Color.FromArgb(50, 52, 64),
+                ForeColor = TextPri,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            panel.Controls.Add(_texQuestIdInput);
+            var completeBtn = TexMakeButton("Send CompleteQuest", new Point(200, y), 180);
+            completeBtn.Click += delegate { TexCompleteQuest(); };
+            panel.Controls.Add(completeBtn);
+
+            _miscPage.Controls.Add(panel);
+            TexRefreshStatus();
+        }
+
+        private Label TexMakeSectionLabel(string text, int x, int y)
+        {
+            return new Label
+            {
+                Text = text,
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                ForeColor = TextPri,
+                Location = new Point(x, y),
+                AutoSize = true
+            };
+        }
+
+        private Label TexMakeMiniLabel(string text, int x, int y)
+        {
+            return new Label
+            {
+                Text = text,
+                Font = new Font("Segoe UI", 8.5f),
+                ForeColor = TextSec,
+                Location = new Point(x, y),
+                AutoSize = true
+            };
+        }
+
+        private Button TexMakeButton(string text, Point location, int width)
+        {
+            return new Button
+            {
+                Text = text,
+                Location = location,
+                Size = new Size(width, 25),
+                BackColor = Color.FromArgb(60, 63, 80),
+                ForeColor = TextPri,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8.5f)
+            };
+        }
+
+        private void TexRefreshStatus()
+        {
+            var w = GameEngine.Instance?.World;
+            if (w == null || RemoteServices.Instance.UserGuid == Guid.Empty)
+            {
+                _texStatusLabel.Text = "Status: (not logged in)";
+                _texStatusLabel.ForeColor = ErrorCol;
+                return;
+            }
+            int stage = w.getTutorialStage();
+            int cardCount = GameEngine.Instance.cardsManager != null
+                ? GameEngine.Instance.cardsManager.ProfileCards.Count
+                : -1;
+            _texStatusLabel.Text =
+                "Status: tutorialStage=" + stage +
+                "  ProfileCardpoints=" + w.ProfileCardpoints +
+                "  FakeCardPoints=" + w.FakeCardPoints +
+                "  Cards.Count=" + cardCount;
+            _texStatusLabel.ForeColor = AccentCol;
+        }
+
+        private bool TexEnsureLoggedIn(string testName)
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null ||
+                RemoteServices.Instance.UserGuid == Guid.Empty)
+            {
+                BotLogger.Log("TutorialTest", BotLogLevel.Warning,
+                    testName + " skipped — not logged in.");
+                return false;
+            }
+            return true;
+        }
+
+        private void TexBuyFreeCard()
+        {
+            if (!TexEnsureLoggedIn("Test1 (free card)")) return;
+
+            string cardName = (_texCardNameInput.Text ?? "").Trim();
+            if (string.IsNullOrEmpty(cardName))
+            {
+                BotLogger.Log("TutorialTest", BotLogLevel.Warning, "Test1: card name empty.");
+                return;
+            }
+
+            var world = GameEngine.Instance.World;
+            int beforeReal = world.ProfileCardpoints;
+            int beforeFake = world.FakeCardPoints;
+            int beforeCount = GameEngine.Instance.cardsManager.ProfileCards.Count;
+            int stage = world.getTutorialStage();
+
+            BotLogger.Log("TutorialTest", BotLogLevel.Info,
+                "Test1: sending buyMultipleCards CardString=\"" + cardName + "\" with forged CardPoints=1. " +
+                "Before: tutorialStage=" + stage +
+                " ProfileCardpoints=" + beforeReal +
+                " FakeCardPoints=" + beforeFake +
+                " Cards.Count=" + beforeCount);
+
+            try
+            {
+                var provider = XmlRpcCardsProvider.CreateForEndpoint(
+                    URLs.ProfileProtocol, URLs.ProfileServerAddressCards,
+                    URLs.ProfileServerPort, URLs.ProfileCardPath);
+
+                var req = new XmlRpcCardsRequest();
+                req.UserGUID = RemoteServices.Instance.UserGuid.ToString().Replace("-", "");
+                req.SessionGUID = RemoteServices.Instance.SessionGuid.ToString().Replace("-", "");
+                req.WorldID = RemoteServices.Instance.ProfileWorldID.ToString();
+                req.CardString = cardName;
+                req.CardPoints = new int?(1);  // the forged tutorial-102 flag
+
+                provider.buyMultipleCards((ICardsRequest)req,
+                    new CardsEndResponseDelegate(delegate(ICardsProvider p, ICardsResponse r)
+                    {
+                        int? sc = r.SuccessCode;
+                        bool ok = sc.HasValue && sc.Value == 1;
+                        BotLogger.Log("TutorialTest", ok ? BotLogLevel.Info : BotLogLevel.Warning,
+                            "Test1 response: SuccessCode=" + (sc.HasValue ? sc.Value.ToString() : "null") +
+                            " Message=\"" + (r.Message ?? "") + "\"" +
+                            " ResponseStrings=\"" + (r.Strings ?? "") + "\"");
+                        if (ok)
+                        {
+                            BotLogger.Log("TutorialTest", BotLogLevel.Warning,
+                                "Test1: server ACCEPTED the forged CardPoints=1 flag — free card likely granted. " +
+                                "Sync next to confirm whether ProfileCardpoints was charged server-side.");
+                        }
+                        if (!this.IsDisposed)
+                            this.BeginInvoke((MethodInvoker)delegate { TexRefreshStatus(); });
+                    }),
+                    (Control)this);
+            }
+            catch (Exception ex)
+            {
+                BotLogger.Log("TutorialTest", BotLogLevel.Error, "Test1 RPC exception: " + ex.Message);
+            }
+        }
+
+        private void TexRestartTutorial()
+        {
+            if (!TexEnsureLoggedIn("Test2 (restart tutorial)")) return;
+
+            int stageBefore = GameEngine.Instance.World.getTutorialStage();
+            BotLogger.Log("TutorialTest", BotLogLevel.Info,
+                "Test2: sending TutorialCommand(-4). Current stage=" + stageBefore);
+            try
+            {
+                RemoteServices.Instance.set_TutorialCommand_UserCallBack(
+                    new RemoteServices.TutorialCommand_UserCallBack(TexTutorialRestartCallback));
+                RemoteServices.Instance.TutorialCommand(-4);
+            }
+            catch (Exception ex)
+            {
+                BotLogger.Log("TutorialTest", BotLogLevel.Error, "Test2 RPC exception: " + ex.Message);
+            }
+        }
+
+        private void TexTutorialRestartCallback(TutorialCommand_ReturnType returnData)
+        {
+            if (returnData == null)
+            {
+                BotLogger.Log("TutorialTest", BotLogLevel.Error, "Test2 response: returnData was null.");
+                return;
+            }
+            int stageAfter = returnData.m_tutorialInfo != null
+                ? returnData.m_tutorialInfo.tutorialStage : -999;
+            BotLogger.Log("TutorialTest",
+                returnData.Success ? BotLogLevel.Warning : BotLogLevel.Info,
+                "Test2 response: Success=" + returnData.Success +
+                " ErrorCode=" + returnData.m_errorCode +
+                " NewStage=" + stageAfter +
+                (returnData.Success
+                    ? " — server ACCEPTED tutorial restart; check rewards on next quest completion"
+                    : " — server REJECTED the restart"));
+            if (!this.IsDisposed)
+                this.BeginInvoke((MethodInvoker)delegate { TexRefreshStatus(); });
+        }
+
+        private void TexFlagObjective()
+        {
+            if (!TexEnsureLoggedIn("Test3 (flag objective)")) return;
+
+            int objId = (int)_texObjectiveIdInput.Value;
+            BotLogger.Log("TutorialTest", BotLogLevel.Info,
+                "Test3: sending FlagQuestObjectiveComplete(" + objId + ").");
+            try
+            {
+                RemoteServices.Instance.set_FlagQuestObjectiveComplete_UserCallBack(
+                    new RemoteServices.FlagQuestObjectiveComplete_UserCallBack(TexFlagObjectiveCallback));
+                RemoteServices.Instance.FlagQuestObjectiveComplete(objId);
+            }
+            catch (Exception ex)
+            {
+                BotLogger.Log("TutorialTest", BotLogLevel.Error, "Test3 RPC exception: " + ex.Message);
+            }
+        }
+
+        private void TexFlagObjectiveCallback(FlagQuestObjectiveComplete_ReturnType returnData)
+        {
+            if (returnData == null)
+            {
+                BotLogger.Log("TutorialTest", BotLogLevel.Error, "Test3 response: returnData was null.");
+                return;
+            }
+            BotLogger.Log("TutorialTest",
+                returnData.Success && returnData.objectiveCompleted >= 0 ? BotLogLevel.Warning : BotLogLevel.Info,
+                "Test3 response: Success=" + returnData.Success +
+                " ErrorCode=" + returnData.m_errorCode +
+                " ObjectiveCompleted=" + returnData.objectiveCompleted +
+                (returnData.Success && returnData.objectiveCompleted >= 0
+                    ? " — server ACCEPTED the objective flag (now run Test4 to claim the quest)"
+                    : " — server REJECTED or no matching quest"));
+            if (!this.IsDisposed)
+                this.BeginInvoke((MethodInvoker)delegate { TexRefreshStatus(); });
+        }
+
+        private void TexCompleteQuest()
+        {
+            if (!TexEnsureLoggedIn("Test4 (complete quest)")) return;
+
+            int questId = (int)_texQuestIdInput.Value;
+            BotLogger.Log("TutorialTest", BotLogLevel.Info,
+                "Test4: sending CompleteQuest(" + questId + ").");
+            try
+            {
+                RemoteServices.Instance.set_CompleteQuest_UserCallBack(
+                    new RemoteServices.CompleteQuest_UserCallBack(TexCompleteQuestCallback));
+                RemoteServices.Instance.CompleteQuest(questId);
+            }
+            catch (Exception ex)
+            {
+                BotLogger.Log("TutorialTest", BotLogLevel.Error, "Test4 RPC exception: " + ex.Message);
+            }
+        }
+
+        private void TexCompleteQuestCallback(CompleteQuest_ReturnType returnData)
+        {
+            if (returnData == null)
+            {
+                BotLogger.Log("TutorialTest", BotLogLevel.Error, "Test4 response: returnData was null.");
+                return;
+            }
+            BotLogger.Log("TutorialTest",
+                returnData.Success && returnData.questCompleted >= 0 ? BotLogLevel.Warning : BotLogLevel.Info,
+                "Test4 response: Success=" + returnData.Success +
+                " ErrorCode=" + returnData.m_errorCode +
+                " QuestCompleted=" + returnData.questCompleted +
+                " CardAdded=" + returnData.cardAdded +
+                (returnData.Success && returnData.questCompleted >= 0
+                    ? " — server ACCEPTED the completion and granted rewards"
+                    : " — server REJECTED"));
+            if (!this.IsDisposed)
+                this.BeginInvoke((MethodInvoker)delegate { TexRefreshStatus(); });
         }
 
         // =====================================================================
