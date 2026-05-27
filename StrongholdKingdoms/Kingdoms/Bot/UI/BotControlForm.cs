@@ -4777,190 +4777,29 @@ namespace Kingdoms.Bot.UI
         }
 
         // =====================================================================
-        // Tutorial-exploit test panel (added to Misc tab below the sale info panel)
+        // Tutorial-exploit test panel (Designer-defined controls in the Misc tab)
         //
-        // Wires up four buttons that fire the RPCs identified in the exploit audit:
+        // The panel + buttons + inputs live in BotControlForm.Designer.cs under the
+        // _texXxx names. This file only wires click events and provides the RPC
+        // logic + server-response callbacks. Four buttons map to:
         //   1. buyMultipleCards with forged req.CardPoints = 1
         //   2. TutorialCommand(-4)  (restart tutorial)
         //   3. FlagQuestObjectiveComplete(objective)
         //   4. CompleteQuest(quest)
-        //
         // Each writes its outcome to the bot log under the "TutorialTest" category.
         // None of these are wired to the bot's normal automation — they only fire on
         // an explicit button click.
         // =====================================================================
 
-        private TextBox _texCardNameInput;
-        private NumericUpDown _texObjectiveIdInput;
-        private NumericUpDown _texQuestIdInput;
-        private Label _texStatusLabel;
-
         private void BuildTutorialExploitPanel()
         {
-            const string LOG_CAT = "TutorialTest";
-
-            // Size and anchor so the panel fills the remaining tab space below the
-            // docked sale-info panel and resizes with the form. AutoScroll lets it
-            // scroll if the tab is shorter than the test content.
-            int topOffset = 210;
-            int panelW = _miscPage.ClientSize.Width > 0 ? _miscPage.ClientSize.Width : 1142;
-            int panelH = _miscPage.ClientSize.Height - topOffset;
-            if (panelH < 100) panelH = 280;  // fallback if ClientSize isn't computed yet
-            var panel = new Panel
-            {
-                Location = new Point(0, topOffset),
-                Size = new Size(panelW, panelH),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
-                BackColor = Color.FromArgb(30, 30, 40),
-                AutoScroll = true,
-            };
-
-            // Header
-            var header = new Label
-            {
-                Text = "Tutorial Exploit Tests",
-                Font = new Font("Segoe UI", 10f, FontStyle.Bold),
-                ForeColor = TextPri,
-                Location = new Point(16, 8),
-                AutoSize = true
-            };
-            panel.Controls.Add(header);
-
-            var subHeader = new Label
-            {
-                Text = "Each button fires the named RPC and logs the server response under \"" + LOG_CAT + "\". Login required.",
-                Font = new Font("Segoe UI", 8.25f),
-                ForeColor = TextSec,
-                Location = new Point(16, 28),
-                AutoSize = true
-            };
-            panel.Controls.Add(subHeader);
-
-            // Status line
-            _texStatusLabel = new Label
-            {
-                Text = "Status: (not logged in)",
-                Font = new Font("Consolas", 8.5f),
-                ForeColor = AccentCol,
-                Location = new Point(16, 52),
-                Size = new Size(900, 18)
-            };
-            panel.Controls.Add(_texStatusLabel);
-
-            var refreshBtn = TexMakeButton("Refresh", new Point(920, 50), 80);
-            refreshBtn.Click += delegate { TexRefreshStatus(); };
-            panel.Controls.Add(refreshBtn);
-
-            // === Test 1: Free card with forged CardPoints=1 ===
-            int y = 72;
-            panel.Controls.Add(TexMakeSectionLabel("Test 1: Free Card — buyMultipleCards with req.CardPoints = 1", 16, y));
-            y += 22;
-            panel.Controls.Add(TexMakeMiniLabel("Card name:", 16, y + 5));
-            _texCardNameInput = new TextBox
-            {
-                Location = new Point(96, y + 1),
-                Size = new Size(240, 23),
-                Text = "CARDTYPE_BASIC_DIPLOMACY",
-                BackColor = Color.FromArgb(50, 52, 64),
-                ForeColor = TextPri,
-                BorderStyle = BorderStyle.FixedSingle,
-                Font = new Font("Consolas", 8.5f)
-            };
-            panel.Controls.Add(_texCardNameInput);
-            var buyBtn = TexMakeButton("Send buyMultipleCards (CardPoints=1)", new Point(346, y), 250);
-            buyBtn.Click += delegate { TexBuyFreeCard(); };
-            panel.Controls.Add(buyBtn);
-
-            // === Test 2: Restart tutorial ===
-            y += 32;
-            panel.Controls.Add(TexMakeSectionLabel("Test 2: Restart Tutorial — TutorialCommand(-4)", 16, y));
-            y += 22;
-            var restartBtn = TexMakeButton("Send TutorialCommand(-4)", new Point(16, y), 230);
-            restartBtn.Click += delegate { TexRestartTutorial(); };
-            panel.Controls.Add(restartBtn);
-
-            // === Test 3: Flag objective complete ===
-            y += 32;
-            panel.Controls.Add(TexMakeSectionLabel("Test 3: Flag Quest Objective Complete", 16, y));
-            y += 22;
-            panel.Controls.Add(TexMakeMiniLabel("Objective ID:", 16, y + 5));
-            _texObjectiveIdInput = new NumericUpDown
-            {
-                Location = new Point(110, y + 1),
-                Size = new Size(80, 23),
-                Minimum = 0,
-                Maximum = 99999,
-                Value = 10007,
-                BackColor = Color.FromArgb(50, 52, 64),
-                ForeColor = TextPri,
-                BorderStyle = BorderStyle.FixedSingle
-            };
-            panel.Controls.Add(_texObjectiveIdInput);
-            var flagBtn = TexMakeButton("Send FlagQuestObjectiveComplete", new Point(200, y), 230);
-            flagBtn.Click += delegate { TexFlagObjective(); };
-            panel.Controls.Add(flagBtn);
-
-            // === Test 4: Complete quest ===
-            y += 32;
-            panel.Controls.Add(TexMakeSectionLabel("Test 4: Complete Quest", 16, y));
-            y += 22;
-            panel.Controls.Add(TexMakeMiniLabel("Quest ID:", 16, y + 5));
-            _texQuestIdInput = new NumericUpDown
-            {
-                Location = new Point(110, y + 1),
-                Size = new Size(80, 23),
-                Minimum = 0,
-                Maximum = 99999,
-                Value = 0,
-                BackColor = Color.FromArgb(50, 52, 64),
-                ForeColor = TextPri,
-                BorderStyle = BorderStyle.FixedSingle
-            };
-            panel.Controls.Add(_texQuestIdInput);
-            var completeBtn = TexMakeButton("Send CompleteQuest", new Point(200, y), 180);
-            completeBtn.Click += delegate { TexCompleteQuest(); };
-            panel.Controls.Add(completeBtn);
-
-            _miscPage.Controls.Add(panel);
+            // Designer-defined controls; we just wire click events.
+            _texRefreshBtn.Click  += delegate { TexRefreshStatus(); };
+            _texBuyBtn.Click      += delegate { TexBuyFreeCard(); };
+            _texRestartBtn.Click  += delegate { TexRestartTutorial(); };
+            _texFlagBtn.Click     += delegate { TexFlagObjective(); };
+            _texCompleteBtn.Click += delegate { TexCompleteQuest(); };
             TexRefreshStatus();
-        }
-
-        private Label TexMakeSectionLabel(string text, int x, int y)
-        {
-            return new Label
-            {
-                Text = text,
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                ForeColor = TextPri,
-                Location = new Point(x, y),
-                AutoSize = true
-            };
-        }
-
-        private Label TexMakeMiniLabel(string text, int x, int y)
-        {
-            return new Label
-            {
-                Text = text,
-                Font = new Font("Segoe UI", 8.5f),
-                ForeColor = TextSec,
-                Location = new Point(x, y),
-                AutoSize = true
-            };
-        }
-
-        private Button TexMakeButton(string text, Point location, int width)
-        {
-            return new Button
-            {
-                Text = text,
-                Location = location,
-                Size = new Size(width, 25),
-                BackColor = Color.FromArgb(60, 63, 80),
-                ForeColor = TextPri,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 8.5f)
-            };
         }
 
         private void TexRefreshStatus()

@@ -319,6 +319,25 @@ namespace Kingdoms.Bot.UI
             this._miscSaleEndLabel = new System.Windows.Forms.Label();
             this._miscSaleEndValue = new System.Windows.Forms.Label();
             this._miscSaleRefreshBtn = new System.Windows.Forms.Button();
+            this._texPanel = new System.Windows.Forms.Panel();
+            this._texHeaderLabel = new System.Windows.Forms.Label();
+            this._texSubHeaderLabel = new System.Windows.Forms.Label();
+            this._texStatusLabel = new System.Windows.Forms.Label();
+            this._texRefreshBtn = new System.Windows.Forms.Button();
+            this._texTest1Label = new System.Windows.Forms.Label();
+            this._texCardNameLabel = new System.Windows.Forms.Label();
+            this._texCardNameInput = new System.Windows.Forms.TextBox();
+            this._texBuyBtn = new System.Windows.Forms.Button();
+            this._texTest2Label = new System.Windows.Forms.Label();
+            this._texRestartBtn = new System.Windows.Forms.Button();
+            this._texTest3Label = new System.Windows.Forms.Label();
+            this._texObjectiveIdLabel = new System.Windows.Forms.Label();
+            this._texObjectiveIdInput = new System.Windows.Forms.NumericUpDown();
+            this._texFlagBtn = new System.Windows.Forms.Button();
+            this._texTest4Label = new System.Windows.Forms.Label();
+            this._texQuestIdLabel = new System.Windows.Forms.Label();
+            this._texQuestIdInput = new System.Windows.Forms.NumericUpDown();
+            this._texCompleteBtn = new System.Windows.Forms.Button();
             this._logPanel = new System.Windows.Forms.Panel();
             this._logBox = new System.Windows.Forms.RichTextBox();
             this._logHeader = new System.Windows.Forms.Label();
@@ -404,6 +423,9 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).BeginInit();
             this._miscPage.SuspendLayout();
             this._miscSettingsPanel.SuspendLayout();
+            this._texPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._texObjectiveIdInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._texQuestIdInput)).BeginInit();
             this._logPanel.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -4155,10 +4177,11 @@ namespace Kingdoms.Bot.UI
             this._ppEnabledCheck.Size = new System.Drawing.Size(143, 23);
             this._ppEnabledCheck.TabIndex = 0;
             this._ppEnabledCheck.Text = "Enable Popularity";
-            // 
+            //
             // _miscPage
-            // 
+            //
             this._miscPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._miscPage.Controls.Add(this._texPanel);
             this._miscPage.Controls.Add(this._miscSettingsPanel);
             this._miscPage.Location = new System.Drawing.Point(4, 24);
             this._miscPage.Name = "_miscPage";
@@ -4272,8 +4295,216 @@ namespace Kingdoms.Bot.UI
             this._miscSaleRefreshBtn.TabIndex = 1;
             this._miscSaleRefreshBtn.Text = "Refresh";
             //
+            // _texPanel
+            //
+            this._texPanel.AutoScroll = true;
+            this._texPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._texPanel.Controls.Add(this._texHeaderLabel);
+            this._texPanel.Controls.Add(this._texSubHeaderLabel);
+            this._texPanel.Controls.Add(this._texStatusLabel);
+            this._texPanel.Controls.Add(this._texRefreshBtn);
+            this._texPanel.Controls.Add(this._texTest1Label);
+            this._texPanel.Controls.Add(this._texCardNameLabel);
+            this._texPanel.Controls.Add(this._texCardNameInput);
+            this._texPanel.Controls.Add(this._texBuyBtn);
+            this._texPanel.Controls.Add(this._texTest2Label);
+            this._texPanel.Controls.Add(this._texRestartBtn);
+            this._texPanel.Controls.Add(this._texTest3Label);
+            this._texPanel.Controls.Add(this._texObjectiveIdLabel);
+            this._texPanel.Controls.Add(this._texObjectiveIdInput);
+            this._texPanel.Controls.Add(this._texFlagBtn);
+            this._texPanel.Controls.Add(this._texTest4Label);
+            this._texPanel.Controls.Add(this._texQuestIdLabel);
+            this._texPanel.Controls.Add(this._texQuestIdInput);
+            this._texPanel.Controls.Add(this._texCompleteBtn);
+            this._texPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this._texPanel.Location = new System.Drawing.Point(0, 210);
+            this._texPanel.Name = "_texPanel";
+            this._texPanel.Size = new System.Drawing.Size(1142, 287);
+            this._texPanel.TabIndex = 1;
+            //
+            // _texHeaderLabel
+            //
+            this._texHeaderLabel.AutoSize = true;
+            this._texHeaderLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this._texHeaderLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._texHeaderLabel.Location = new System.Drawing.Point(16, 8);
+            this._texHeaderLabel.Name = "_texHeaderLabel";
+            this._texHeaderLabel.Text = "Tutorial Exploit Tests";
+            //
+            // _texSubHeaderLabel
+            //
+            this._texSubHeaderLabel.AutoSize = true;
+            this._texSubHeaderLabel.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            this._texSubHeaderLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._texSubHeaderLabel.Location = new System.Drawing.Point(16, 28);
+            this._texSubHeaderLabel.Name = "_texSubHeaderLabel";
+            this._texSubHeaderLabel.Text = "Each button fires the named RPC and logs the server response under \"TutorialTest" +
+    "\". Login required.";
+            //
+            // _texStatusLabel
+            //
+            this._texStatusLabel.Font = new System.Drawing.Font("Consolas", 8.5F);
+            this._texStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(160)))), ((int)(((byte)(255)))));
+            this._texStatusLabel.Location = new System.Drawing.Point(16, 52);
+            this._texStatusLabel.Name = "_texStatusLabel";
+            this._texStatusLabel.Size = new System.Drawing.Size(900, 18);
+            this._texStatusLabel.Text = "Status: (not logged in)";
+            //
+            // _texRefreshBtn
+            //
+            this._texRefreshBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(60)))), ((int)(((byte)(63)))), ((int)(((byte)(80)))));
+            this._texRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._texRefreshBtn.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._texRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._texRefreshBtn.Location = new System.Drawing.Point(920, 50);
+            this._texRefreshBtn.Name = "_texRefreshBtn";
+            this._texRefreshBtn.Size = new System.Drawing.Size(80, 25);
+            this._texRefreshBtn.Text = "Refresh";
+            //
+            // _texTest1Label
+            //
+            this._texTest1Label.AutoSize = true;
+            this._texTest1Label.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._texTest1Label.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._texTest1Label.Location = new System.Drawing.Point(16, 72);
+            this._texTest1Label.Name = "_texTest1Label";
+            this._texTest1Label.Text = "Test 1: Free Card — buyMultipleCards with req.CardPoints = 1";
+            //
+            // _texCardNameLabel
+            //
+            this._texCardNameLabel.AutoSize = true;
+            this._texCardNameLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._texCardNameLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._texCardNameLabel.Location = new System.Drawing.Point(16, 99);
+            this._texCardNameLabel.Name = "_texCardNameLabel";
+            this._texCardNameLabel.Text = "Card name:";
+            //
+            // _texCardNameInput
+            //
+            this._texCardNameInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._texCardNameInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._texCardNameInput.Font = new System.Drawing.Font("Consolas", 8.5F);
+            this._texCardNameInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._texCardNameInput.Location = new System.Drawing.Point(96, 95);
+            this._texCardNameInput.Name = "_texCardNameInput";
+            this._texCardNameInput.Size = new System.Drawing.Size(240, 21);
+            this._texCardNameInput.Text = "CARDTYPE_BASIC_DIPLOMACY";
+            //
+            // _texBuyBtn
+            //
+            this._texBuyBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(60)))), ((int)(((byte)(63)))), ((int)(((byte)(80)))));
+            this._texBuyBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._texBuyBtn.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._texBuyBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._texBuyBtn.Location = new System.Drawing.Point(346, 94);
+            this._texBuyBtn.Name = "_texBuyBtn";
+            this._texBuyBtn.Size = new System.Drawing.Size(250, 25);
+            this._texBuyBtn.Text = "Send buyMultipleCards (CardPoints=1)";
+            //
+            // _texTest2Label
+            //
+            this._texTest2Label.AutoSize = true;
+            this._texTest2Label.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._texTest2Label.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._texTest2Label.Location = new System.Drawing.Point(16, 126);
+            this._texTest2Label.Name = "_texTest2Label";
+            this._texTest2Label.Text = "Test 2: Restart Tutorial — TutorialCommand(-4)";
+            //
+            // _texRestartBtn
+            //
+            this._texRestartBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(60)))), ((int)(((byte)(63)))), ((int)(((byte)(80)))));
+            this._texRestartBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._texRestartBtn.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._texRestartBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._texRestartBtn.Location = new System.Drawing.Point(16, 148);
+            this._texRestartBtn.Name = "_texRestartBtn";
+            this._texRestartBtn.Size = new System.Drawing.Size(230, 25);
+            this._texRestartBtn.Text = "Send TutorialCommand(-4)";
+            //
+            // _texTest3Label
+            //
+            this._texTest3Label.AutoSize = true;
+            this._texTest3Label.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._texTest3Label.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._texTest3Label.Location = new System.Drawing.Point(16, 180);
+            this._texTest3Label.Name = "_texTest3Label";
+            this._texTest3Label.Text = "Test 3: Flag Quest Objective Complete";
+            //
+            // _texObjectiveIdLabel
+            //
+            this._texObjectiveIdLabel.AutoSize = true;
+            this._texObjectiveIdLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._texObjectiveIdLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._texObjectiveIdLabel.Location = new System.Drawing.Point(16, 207);
+            this._texObjectiveIdLabel.Name = "_texObjectiveIdLabel";
+            this._texObjectiveIdLabel.Text = "Objective ID:";
+            //
+            // _texObjectiveIdInput
+            //
+            this._texObjectiveIdInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._texObjectiveIdInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._texObjectiveIdInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._texObjectiveIdInput.Location = new System.Drawing.Point(110, 203);
+            this._texObjectiveIdInput.Maximum = new decimal(new int[] { 99999, 0, 0, 0 });
+            this._texObjectiveIdInput.Name = "_texObjectiveIdInput";
+            this._texObjectiveIdInput.Size = new System.Drawing.Size(80, 23);
+            this._texObjectiveIdInput.Value = new decimal(new int[] { 10007, 0, 0, 0 });
+            //
+            // _texFlagBtn
+            //
+            this._texFlagBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(60)))), ((int)(((byte)(63)))), ((int)(((byte)(80)))));
+            this._texFlagBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._texFlagBtn.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._texFlagBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._texFlagBtn.Location = new System.Drawing.Point(200, 202);
+            this._texFlagBtn.Name = "_texFlagBtn";
+            this._texFlagBtn.Size = new System.Drawing.Size(230, 25);
+            this._texFlagBtn.Text = "Send FlagQuestObjectiveComplete";
+            //
+            // _texTest4Label
+            //
+            this._texTest4Label.AutoSize = true;
+            this._texTest4Label.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._texTest4Label.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._texTest4Label.Location = new System.Drawing.Point(16, 234);
+            this._texTest4Label.Name = "_texTest4Label";
+            this._texTest4Label.Text = "Test 4: Complete Quest";
+            //
+            // _texQuestIdLabel
+            //
+            this._texQuestIdLabel.AutoSize = true;
+            this._texQuestIdLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._texQuestIdLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._texQuestIdLabel.Location = new System.Drawing.Point(16, 261);
+            this._texQuestIdLabel.Name = "_texQuestIdLabel";
+            this._texQuestIdLabel.Text = "Quest ID:";
+            //
+            // _texQuestIdInput
+            //
+            this._texQuestIdInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._texQuestIdInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._texQuestIdInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._texQuestIdInput.Location = new System.Drawing.Point(110, 257);
+            this._texQuestIdInput.Maximum = new decimal(new int[] { 99999, 0, 0, 0 });
+            this._texQuestIdInput.Name = "_texQuestIdInput";
+            this._texQuestIdInput.Size = new System.Drawing.Size(80, 23);
+            //
+            // _texCompleteBtn
+            //
+            this._texCompleteBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(60)))), ((int)(((byte)(63)))), ((int)(((byte)(80)))));
+            this._texCompleteBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._texCompleteBtn.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._texCompleteBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._texCompleteBtn.Location = new System.Drawing.Point(200, 256);
+            this._texCompleteBtn.Name = "_texCompleteBtn";
+            this._texCompleteBtn.Size = new System.Drawing.Size(180, 25);
+            this._texCompleteBtn.Text = "Send CompleteQuest";
+            //
             // _logPanel
-            // 
+            //
             this._logPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
             this._logPanel.Controls.Add(this._logBox);
             this._logPanel.Controls.Add(this._logHeader);
@@ -4434,6 +4665,10 @@ namespace Kingdoms.Bot.UI
             this._miscPage.ResumeLayout(false);
             this._miscSettingsPanel.ResumeLayout(false);
             this._miscSettingsPanel.PerformLayout();
+            this._texPanel.ResumeLayout(false);
+            this._texPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._texObjectiveIdInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._texQuestIdInput)).EndInit();
             this._logPanel.ResumeLayout(false);
             this.ResumeLayout(false);
 
@@ -4721,6 +4956,26 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Label _miscSaleEndLabel;
         private System.Windows.Forms.Label _miscSaleEndValue;
         private System.Windows.Forms.Button _miscSaleRefreshBtn;
+        // Tutorial-exploit test panel controls
+        private System.Windows.Forms.Panel _texPanel;
+        private System.Windows.Forms.Label _texHeaderLabel;
+        private System.Windows.Forms.Label _texSubHeaderLabel;
+        private System.Windows.Forms.Label _texStatusLabel;
+        private System.Windows.Forms.Button _texRefreshBtn;
+        private System.Windows.Forms.Label _texTest1Label;
+        private System.Windows.Forms.Label _texCardNameLabel;
+        private System.Windows.Forms.TextBox _texCardNameInput;
+        private System.Windows.Forms.Button _texBuyBtn;
+        private System.Windows.Forms.Label _texTest2Label;
+        private System.Windows.Forms.Button _texRestartBtn;
+        private System.Windows.Forms.Label _texTest3Label;
+        private System.Windows.Forms.Label _texObjectiveIdLabel;
+        private System.Windows.Forms.NumericUpDown _texObjectiveIdInput;
+        private System.Windows.Forms.Button _texFlagBtn;
+        private System.Windows.Forms.Label _texTest4Label;
+        private System.Windows.Forms.Label _texQuestIdLabel;
+        private System.Windows.Forms.NumericUpDown _texQuestIdInput;
+        private System.Windows.Forms.Button _texCompleteBtn;
         // Popularity tab controls
         private System.Windows.Forms.TabPage _popularityPage;
         private System.Windows.Forms.Panel _ppVillageListPanel;
