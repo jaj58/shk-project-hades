@@ -47,11 +47,11 @@ git push
 4. Note down the values for: `MYSQLHOST`, `MYSQLPORT`, `MYSQLUSER`, `MYSQLPASSWORD`
 
 ### Generate a Deploy Token
-Run this in PowerShell to generate a strong token — you'll need one for prod and one for dev:
+Run this in PowerShell to generate a strong token:
 ```powershell
 -join ((65..90+97..122+48..57) | Get-Random -Count 48 | % {[char]$_})
 ```
-Run it twice and save both outputs somewhere safe.
+Save the output — you'll use it as `DEPLOY_TOKEN` in Railway and `HADES_DEPLOY_TOKEN` in GitHub Secrets.
 
 ### Set Environment Variables (Production)
 Click your PHP service → **Variables** tab → add each of the following:
@@ -74,14 +74,8 @@ Click your PHP service → **Variables** tab → add each of the following:
 2. Set mount path: `/var/www/html/downloads`
 3. Set size: **5 GB** (expandable later if needed)
 
-### Set Up Dev Environment
-1. In the Railway project, click the environment dropdown (top-left) → **New Environment** → name it `Development`
-2. Inside the dev environment: **+ New → GitHub Repo** → select the same repo
-3. In the new service settings → **Source → Branch** → set to `dev`
-4. Set the same environment variables as production with these differences:
-   - `DB_*` values — use the **same MySQL service** as production (shared database)
-   - `DEPLOY_TOKEN` — use the **second generated token** (keep dev and prod tokens separate)
-5. Add a persistent volume at the same mount path (`/var/www/html/downloads`), **1–2 GB** is enough for dev
+### No Separate Dev Railway Environment Needed
+Dev and production builds both deploy to the **same Railway service** — the tier system on license keys controls which build each user receives. Standard-tier keys get the production build (`version.json`), dev-tier keys get the dev build (`dev_version.json`). No second environment required.
 
 ### Point Your Custom Domain (Production Only)
 1. Production PHP service → **Settings → Domains → Add Custom Domain**
@@ -134,23 +128,31 @@ SELECT COUNT(*) FROM users;
 SELECT COUNT(*) FROM license_log;
 ```
 
+### Run the Tier Migration
+After importing, run the tier column migration (adds `tier` to `license_keys` — safe on existing data):
+```sql
+ALTER TABLE license_keys
+  ADD COLUMN tier ENUM('standard', 'dev') NOT NULL DEFAULT 'standard'
+  AFTER is_active;
+```
+Or run it from the file: `migrations/add_tier_to_license_keys.sql`.
+
 ---
 
 ## 4. GitHub Secrets Setup
 
-In your GitHub repo → **Settings → Secrets and variables → Actions → New repository secret** — add all seven:
+In your GitHub repo → **Settings → Secrets and variables → Actions → New repository secret** — these four are required:
 
 | Secret name | Value |
 |---|---|
-| `HADES_DEPLOY_URL_PROD` | `https://your-prod-domain/api/deploy_api.php` |
-| `HADES_DEPLOY_URL_DEV` | `https://your-dev-railway-url.railway.app/api/deploy_api.php` |
-| `HADES_DEPLOY_TOKEN_PROD` | Prod deploy token (same as Railway `DEPLOY_TOKEN` env var) |
-| `HADES_DEPLOY_TOKEN_DEV` | Dev deploy token (same as Railway dev `DEPLOY_TOKEN` env var) |
-| `HADES_DOWNLOAD_BASE_PROD` | `https://your-prod-domain` (no trailing slash) |
-| `HADES_DOWNLOAD_BASE_DEV` | `https://your-dev-railway-url.railway.app` (no trailing slash) |
+| `HADES_DEPLOY_URL_PROD` | `https://your-domain/api/deploy_api.php` |
+| `HADES_DEPLOY_TOKEN_PROD` | Your deploy token (same value as Railway `DEPLOY_TOKEN` env var) |
+| `HADES_DOWNLOAD_BASE_PROD` | `https://your-domain` (no trailing slash) |
 | `HADES_ZIP_PASSWORD` | Your release ZIP password |
 
-The Railway service URLs are found in Railway → service → **Settings → Domains**.
+The Railway service URL is found in Railway → PHP service → **Settings → Domains**.
+
+> **Cleaning up old secrets?** Delete `HADES_DEPLOY_URL_DEV`, `HADES_DEPLOY_TOKEN_DEV`, and `HADES_DOWNLOAD_BASE_DEV` — the `_DEV` variants are no longer used.
 
 ---
 
@@ -180,23 +182,23 @@ git push           # → Railway redeploys automatically
 - Push to `main` → production updates
 
 ### New Client Release (C# exe)
-Push any changes inside `StrongholdKingdoms/` to trigger the full automated pipeline:
+Push any changes inside `StrongholdKingdoms/` to trigger the automated pipeline:
 ```
 git push
 ```
 GitHub Actions will automatically:
-1. Increment the patch version in `AssemblyInfo.cs`
-2. Build the release exe with MSBuild
-3. Apply the 4GB memory patch
-4. Create a password-protected ZIP
-5. Upload the ZIP to the correct Railway environment's persistent volume
-6. Update `api/version.json` with the new version and download URL
-7. Commit `AssemblyInfo.cs` + `version.json` back to git (`[skip ci]`)
-8. That commit triggers Railway to redeploy with the updated `version.json`
+1. **On `main`:** Increment the patch version in `AssemblyInfo.cs`, ZIP as `hades_X.Y.Z.zip`, update `api/version.json`, commit back `[skip ci]`
+2. **On `dev`:** Keep existing version, ZIP as `hades_dev_latest.zip` (overwrites previous), update `api/dev_version.json`, commit back `[skip ci]`
 
-**Branch → Environment mapping:**
-- `dev` branch → dev Railway environment
-- `main` branch → production Railway environment
+The correct build is served based on the key's tier — standard keys get the prod version, dev-tier keys get the dev version.
+
+**Who gets which build:**
+| Tier | Version file | ZIP |
+|---|---|---|
+| `standard` | `api/version.json` | `hades_X.Y.Z.zip` |
+| `dev` | `api/dev_version.json` | `hades_dev_latest.zip` |
+
+Assign tiers in the admin panel → **Licenses** page — each key has a tier dropdown.
 
 ### Emergency Manual Release
 If you need to release manually (e.g. CI is down):
@@ -219,8 +221,10 @@ Run through these after a fresh deployment to confirm everything is working:
 - [ ] Upload a test ZIP via the admin panel → appears in the file list
 - [ ] Trigger a manual Railway redeploy → ZIP still listed (confirms volume is persisting)
 - [ ] `GET /api/updater_api.php` with a valid license key returns expected JSON
-- [ ] Push a test C# change to `dev` → GitHub Actions runs and succeeds → ZIP appears in dev downloads
-- [ ] Merge to `main` → same pipeline runs against production
+- [ ] Push a test C# change to `dev` → GitHub Actions runs → `hades_dev_latest.zip` appears in downloads → `dev_version.json` updated
+- [ ] Push a test C# change to `main` → patch version incremented → `hades_X.Y.Z.zip` appears → `version.json` updated
+- [ ] A standard-tier key gets `version.json` response from `latest_version` endpoint
+- [ ] A dev-tier key gets `dev_version.json` response from `latest_version` endpoint
 - [ ] `.\deploy.ps1 -Release` completes successfully using PowerShell profile env vars
 
 ---
@@ -235,7 +239,7 @@ php -r "echo password_hash('yourpassword', PASSWORD_DEFAULT);"
 Update the env var in Railway and redeploy.
 
 **ZIP upload fails in GitHub Actions**
-- Check that `HADES_DEPLOY_TOKEN_PROD` / `HADES_DEPLOY_TOKEN_DEV` in GitHub Secrets matches the `DEPLOY_TOKEN` env var set in the corresponding Railway environment
+- Check that `HADES_DEPLOY_TOKEN_PROD` in GitHub Secrets matches the `DEPLOY_TOKEN` env var set in Railway
 - Check the Actions log for the HTTP response from `deploy_api.php`
 
 **Downloads not persisting after redeploy**

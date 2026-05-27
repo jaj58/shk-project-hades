@@ -113,7 +113,7 @@ function handle_verify_client($key, $hwid) {
     // Unbound key — allow but don't bind here (binding is validate_license's job)
     log_action($pdo, $row['id'], 'verify', $hwid);
 
-    $version = get_current_version();
+    $version = get_current_version($row['tier'] ?? 'standard');
     respond_ok(['allowed' => true, 'message' => 'OK', 'version' => $version]);
 }
 
@@ -125,14 +125,18 @@ function handle_latest_version($key) {
         respond_error('License key not authorized.', 403);
     }
 
-    $version_file = __DIR__ . '/version.json';
+    $tier = $row['tier'] ?? 'standard';
+    $version_file = $tier === 'dev'
+        ? __DIR__ . '/dev_version.json'
+        : __DIR__ . '/version.json';
+
     if (!file_exists($version_file)) {
         respond_error('Version info not found on server.', 500);
     }
 
     $data = json_decode(file_get_contents($version_file), true);
     if (!$data || !isset($data['version'], $data['download_url'], $data['zip_password'])) {
-        respond_error('Malformed version.json on server.', 500);
+        respond_error('Malformed version file on server.', 500);
     }
 
     respond_ok([
@@ -164,7 +168,7 @@ function get_db() {
 
 function get_key_row($pdo, $key_string) {
     $stmt = $pdo->prepare(
-        'SELECT k.id, k.hwid, k.is_active, k.valid_until
+        'SELECT k.id, k.hwid, k.is_active, k.valid_until, k.tier
          FROM license_keys k
          WHERE k.key_string = ?
          LIMIT 1'
@@ -173,8 +177,10 @@ function get_key_row($pdo, $key_string) {
     return $stmt->fetch() ?: null;
 }
 
-function get_current_version() {
-    $f = __DIR__ . '/version.json';
+function get_current_version($tier = 'standard') {
+    $f = $tier === 'dev'
+        ? __DIR__ . '/dev_version.json'
+        : __DIR__ . '/version.json';
     if (!file_exists($f)) return '';
     $d = json_decode(file_get_contents($f), true);
     return isset($d['version']) ? $d['version'] : '';
