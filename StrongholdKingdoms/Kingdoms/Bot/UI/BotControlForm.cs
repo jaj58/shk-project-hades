@@ -4799,11 +4799,20 @@ namespace Kingdoms.Bot.UI
         {
             const string LOG_CAT = "TutorialTest";
 
+            // Size and anchor so the panel fills the remaining tab space below the
+            // docked sale-info panel and resizes with the form. AutoScroll lets it
+            // scroll if the tab is shorter than the test content.
+            int topOffset = 210;
+            int panelW = _miscPage.ClientSize.Width > 0 ? _miscPage.ClientSize.Width : 1142;
+            int panelH = _miscPage.ClientSize.Height - topOffset;
+            if (panelH < 100) panelH = 280;  // fallback if ClientSize isn't computed yet
             var panel = new Panel
             {
-                Location = new Point(0, 210),
-                Size = new Size(1142, 280),
+                Location = new Point(0, topOffset),
+                Size = new Size(panelW, panelH),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
                 BackColor = Color.FromArgb(30, 30, 40),
+                AutoScroll = true,
             };
 
             // Header
