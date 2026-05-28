@@ -1283,6 +1283,12 @@ namespace Kingdoms
 
     private static bool IsNewerVersion(string server, string local)
     {
+      // Dev builds use a non-semver label (dev-<sha>) — any change means update
+      if (server.StartsWith("dev-", StringComparison.OrdinalIgnoreCase) ||
+          local.StartsWith("dev-", StringComparison.OrdinalIgnoreCase))
+      {
+        return !string.Equals(server, local, StringComparison.OrdinalIgnoreCase);
+      }
       try { return new Version(server) > new Version(local); }
       catch { return false; }
     }

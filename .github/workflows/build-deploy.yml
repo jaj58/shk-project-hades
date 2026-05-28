@@ -5,6 +5,7 @@ on:
     branches: [main, dev]
     paths:
       - 'StrongholdKingdoms/**'
+      - 'HadesUpdater/**'
       - '4gb_patch.exe'
   workflow_dispatch:
     inputs:
@@ -88,16 +89,20 @@ jobs:
       - name: Create password-protected ZIP
         shell: pwsh
         run: |
-          $zipName = "${{ steps.config.outputs.zip_name }}"
-          $exeDir  = "$env:GITHUB_WORKSPACE\StrongholdKingdoms\bin\Release"
-          $zipPath = "$env:GITHUB_WORKSPACE\builds\$zipName"
+          $zipName    = "${{ steps.config.outputs.zip_name }}"
+          $exeDir     = "$env:GITHUB_WORKSPACE\StrongholdKingdoms\bin\Release"
+          $updaterExe = "$env:GITHUB_WORKSPACE\HadesUpdater\bin\Release\HadesUpdater.exe"
+          $zipPath    = "$env:GITHUB_WORKSPACE\builds\$zipName"
           New-Item -ItemType Directory -Force "$env:GITHUB_WORKSPACE\builds" | Out-Null
-          # Push-Location so 7-Zip stores just the filename, not the full path
+          # Copy HadesUpdater next to main exe so both are stored with flat names in the ZIP
+          Copy-Item $updaterExe $exeDir -Force
+          # Push-Location so 7-Zip stores just filenames, not full paths
           Push-Location $exeDir
           & "C:\Program Files\7-Zip\7z.exe" a -tzip -mem=AES256 `
             "-p${{ secrets.HADES_ZIP_PASSWORD }}" `
             $zipPath `
-            "StrongholdKingdoms.exe"
+            "StrongholdKingdoms.exe" `
+            "HadesUpdater.exe"
           Pop-Location
 
       - name: Upload ZIP to server
