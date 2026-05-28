@@ -32,6 +32,8 @@ namespace Kingdoms.Bot.Modules
         private bool _waitingForPrices;
         private DateTime _priceFetchStarted = DateTime.MinValue;
         private int _priceFetchVillageId = -1;
+        private List<int> _marketsToFetch = new List<int>();   // remaining markets to request (non-premium sequential)
+        private int _fetchingMarketId = -1;                     // market whose response is currently in-flight
         private const double PriceFetchTimeoutSeconds = 15.0;
         private const double PriceCacheValidMinutes = 3.0;
 
@@ -60,6 +62,8 @@ namespace Kingdoms.Bot.Modules
             _currentVillageIndex = 0;
             _villageQueue.Clear();
             _waitingForPrices = false;
+            _marketsToFetch.Clear();
+            _fetchingMarketId = -1;
         }
 
         protected override void OnTick()
@@ -85,6 +89,23 @@ namespace Kingdoms.Bot.Modules
                     }
                     else
                     {
+                        // For non-premium sequential fetching: detect when the in-flight market's
+                        // data has arrived and immediately dispatch the next one.
+                        if (_fetchingMarketId != -1 && _marketsToFetch.Count > 0)
+                        {
+                            StockExchangeCache arrived;
+                            bool responseArrived = _stockExchangeCache.TryGetValue(_fetchingMarketId, out arrived) &&
+                                                   (DateTime.Now - arrived.LastUpdated).TotalMinutes < PriceCacheValidMinutes;
+                            if (responseArrived)
+                            {
+                                try { DispatchNextMarketFetch(); }
+                                catch (Exception ex)
+                                {
+                                    LogError("Failed to request stock exchange data: " + ex.Message);
+                                    _waitingForPrices = false;
+                                }
+                            }
+                        }
                         return; // Still waiting
                     }
                 }
@@ -170,38 +191,37 @@ namespace Kingdoms.Bot.Modules
             _priceFetchStarted = DateTime.Now;
             _priceFetchVillageId = villageId;
 
-            // Build list of markets we need data for (up to 20, sorted by distance)
-            List<int> marketsToFetch = new List<int>();
+            // Build full list of stale markets
+            _marketsToFetch.Clear();
+            _fetchingMarketId = -1;
             foreach (int marketId in marketInfo.MarketTargets)
             {
                 StockExchangeCache cache;
                 if (!_stockExchangeCache.TryGetValue(marketId, out cache) ||
                     (DateTime.Now - cache.LastUpdated).TotalMinutes >= PriceCacheValidMinutes)
-                {
-                    marketsToFetch.Add(marketId);
-                }
+                    _marketsToFetch.Add(marketId);
             }
 
-            if (marketsToFetch.Count > 20)
-                marketsToFetch.RemoveRange(20, marketsToFetch.Count - 20);
-
-            LogDebug(GetVillageName(villageId) + ": Fetching prices from " + marketsToFetch.Count + " market(s)...");
+            LogDebug(GetVillageName(villageId) + ": Fetching prices from " + _marketsToFetch.Count + " market(s)...");
 
             try
             {
                 RemoteServices.Instance.set_GetStockExchangeData_UserCallBack(
                     new RemoteServices.GetStockExchangeData_UserCallBack(OnStockExchangeDataReceived));
 
-                if (marketsToFetch.Count > 0 && GameEngine.Instance.World.isAccountPremium())
+                if (GameEngine.Instance.World.isAccountPremium())
                 {
-                    // Premium: fetch multiple at once
-                    RemoteServices.Instance.GetStockExchangePremiumData(villageId, marketsToFetch.ToArray());
+                    // Premium: fetch all at once (up to 20)
+                    List<int> batch = _marketsToFetch.Count > 20
+                        ? _marketsToFetch.GetRange(0, 20)
+                        : new List<int>(_marketsToFetch);
+                    RemoteServices.Instance.GetStockExchangePremiumData(villageId, batch.ToArray());
+                    _marketsToFetch.Clear(); // all dispatched in one call
                 }
                 else
                 {
-                    // Standard: fetch just the first market
-                    int targetMarket = marketsToFetch.Count > 0 ? marketsToFetch[0] : marketInfo.MarketTargets[0];
-                    RemoteServices.Instance.GetStockExchangeData(targetMarket, true);
+                    // Non-premium: dispatch first market; the rest are chained via OnTick
+                    DispatchNextMarketFetch();
                 }
             }
             catch (System.Exception ex)
@@ -209,6 +229,15 @@ namespace Kingdoms.Bot.Modules
                 LogError("Failed to request stock exchange data: " + ex.Message);
                 _waitingForPrices = false;
             }
+        }
+
+        private void DispatchNextMarketFetch()
+        {
+            if (_marketsToFetch.Count == 0) return;
+            _fetchingMarketId = _marketsToFetch[0];
+            _marketsToFetch.RemoveAt(0);
+            _priceFetchStarted = DateTime.Now; // reset per-request timeout
+            RemoteServices.Instance.GetStockExchangeData(_fetchingMarketId, true);
         }
 
         private void OnStockExchangeDataReceived(GetStockExchangeData_ReturnType returnData)
@@ -921,77 +950,66 @@ namespace Kingdoms.Bot.Modules
         // Helpers
         // =====================================================================
 
+        /// <summary>
+        /// Takes a thread-safe snapshot of the live trader array.
+        /// Retries only the snapshot acquisition if a background RPC thread modifies the
+        /// collection mid-enumeration; all filtering then runs on the local copy which
+        /// can never be concurrently modified, eliminating the spin-wait freeze.
+        /// </summary>
+        private static List<WorldMap.LocalTrader> SnapshotTraderArray()
+        {
+            SparseArray traderArray = GameEngine.Instance.World.getTraderArray();
+            while (true)
+            {
+                try
+                {
+                    return traderArray.Cast<WorldMap.LocalTrader>().ToList();
+                }
+                catch (InvalidOperationException)
+                {
+                    // Array modified mid-snapshot by a background thread; yield and retry.
+                    System.Threading.Thread.Yield();
+                }
+            }
+        }
+
         private int GetPurchasedAmount(int villageId, int resourceId, bool ignoreTransactions)
         {
             if (ignoreTransactions)
                 return 0;
 
-            SparseArray traderArray = GameEngine.Instance.World.getTraderArray();
+            List<WorldMap.LocalTrader> traders = SnapshotTraderArray();
             int buying = 0;
             int incoming = 0;
-            bool done;
-
-            do
+            foreach (WorldMap.LocalTrader localTrader in traders)
             {
-                try
-                {
-                    buying = 0;
-                    incoming = 0;
-                    foreach (WorldMap.LocalTrader localTrader in traderArray)
-                    {
-                        MarketTraderData trader = localTrader.trader;
-                        if (trader.homeVillageID == villageId && trader.resource == resourceId &&
-                            (trader.traderState == 5 || trader.traderState == 6))
-                            buying += trader.amount;
-                        if (trader.targetVillageID == villageId && trader.resource == resourceId &&
-                            trader.traderState == 1)
-                            incoming += trader.amount;
-                    }
-                    done = true;
-                }
-                catch (InvalidOperationException)
-                {
-                    done = false;
-                }
+                MarketTraderData trader = localTrader.trader;
+                if (trader.homeVillageID == villageId && trader.resource == resourceId &&
+                    (trader.traderState == 5 || trader.traderState == 6))
+                    buying += trader.amount;
+                if (trader.targetVillageID == villageId && trader.resource == resourceId &&
+                    trader.traderState == 1)
+                    incoming += trader.amount;
             }
-            while (!done);
-
             return buying + incoming;
         }
 
         private int CountMovingMerchants(int villageId, bool toMarkets)
         {
-            SparseArray traderArray = GameEngine.Instance.World.getTraderArray();
+            List<WorldMap.LocalTrader> traders = SnapshotTraderArray();
             int marketCount = 0;
             int villageCount = 0;
-            bool done;
-
-            do
+            foreach (WorldMap.LocalTrader localTrader in traders)
             {
-                try
+                MarketTraderData trader = localTrader.trader;
+                if (trader.homeVillageID == villageId)
                 {
-                    marketCount = 0;
-                    villageCount = 0;
-                    foreach (WorldMap.LocalTrader localTrader in traderArray)
-                    {
-                        MarketTraderData trader = localTrader.trader;
-                        if (trader.homeVillageID == villageId)
-                        {
-                            if (GameEngine.Instance.World.isCapital(trader.targetVillageID))
-                                marketCount += trader.numTraders;
-                            else
-                                villageCount += trader.numTraders;
-                        }
-                    }
-                    done = true;
-                }
-                catch (InvalidOperationException)
-                {
-                    done = false;
+                    if (GameEngine.Instance.World.isCapital(trader.targetVillageID))
+                        marketCount += trader.numTraders;
+                    else
+                        villageCount += trader.numTraders;
                 }
             }
-            while (!done);
-
             return toMarkets ? marketCount : villageCount;
         }
 
