@@ -357,6 +357,14 @@ namespace Kingdoms.Bot
         public int Priority = 1;
     }
 
+    public enum TradePriority
+    {
+        MarketSellFirst = 0,   // Market first: sell before buy
+        MarketBuyFirst  = 1,   // Market first: buy before sell
+        VillageRoutes   = 2,   // Village routes first
+        PlayerRoutes    = 3    // Player routes first
+    }
+
     [Serializable]
     public class TradeSettings
     {
@@ -369,7 +377,7 @@ namespace Kingdoms.Bot
         public bool AutoHireMerchants = false;
         public int AutoHireMerchantsLimit = 50;
         public bool IgnoreCurrentTransactions = false;
-        public bool PrioritiseMarkets = true; // true = markets first, false = village routes first
+        public TradePriority Priority = TradePriority.MarketSellFirst;
         public bool DisableOnTradeCardExpiry = false;
         public bool TradeCardsWereActive = false;
         public List<VillageMarketTradeInfo> VillageMarketSettings = new List<VillageMarketTradeInfo>();
@@ -507,6 +515,20 @@ namespace Kingdoms.Bot
             foreach (PlayerTradeResourceEntry e in Resources)
                 e.AmountSent = 0;
         }
+
+        public PlayerTradeRouteSettings Clone()
+        {
+            PlayerTradeRouteSettings r = new PlayerTradeRouteSettings();
+            r.Name = this.Name + " (Copy)";
+            r.Enabled = false;
+            r.FromVillages = new List<int>(this.FromVillages);
+            r.TargetVillageId = this.TargetVillageId;
+            r.KeepMinimum = this.KeepMinimum;
+            r.MaxMerchantsPerTransaction = this.MaxMerchantsPerTransaction;
+            foreach (PlayerTradeResourceEntry e in this.Resources)
+                r.Resources.Add(e.Clone());
+            return r;
+        }
     }
 
     [Serializable]
@@ -519,6 +541,16 @@ namespace Kingdoms.Bot
         public int Remaining
         {
             get { return Math.Max(0, TotalAmount - AmountSent); }
+        }
+
+        public PlayerTradeResourceEntry Clone()
+        {
+            return new PlayerTradeResourceEntry
+            {
+                ResourceId = this.ResourceId,
+                TotalAmount = this.TotalAmount,
+                AmountSent = 0
+            };
         }
     }
 

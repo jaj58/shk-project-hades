@@ -2104,6 +2104,8 @@ namespace Kingdoms.Bot.UI
             TrBuildRoutesTabLayout();
             // Build the Player Routes sub-tab
             TrBuildPlayerRoutesTab();
+            // Build the Stats sub-tab
+            TrBuildStatsTab();
 
             _trEnabledCheck.CheckedChanged += delegate { TrWriteToSettings(); };
             _trAddMarketsBtn.Click += delegate { TrAddMarketsClick(); };
@@ -2352,6 +2354,19 @@ namespace Kingdoms.Bot.UI
             resetBtn.Click += delegate { TrResetPlayerRouteClick(); };
             btnBar.Controls.Add(resetBtn);
 
+            Button dupBtn = new Button();
+            dupBtn.Text = "Duplicate Route";
+            dupBtn.BackColor = Color.FromArgb(80, 160, 80);
+            dupBtn.ForeColor = Color.White;
+            dupBtn.FlatStyle = FlatStyle.Flat;
+            dupBtn.FlatAppearance.BorderSize = 0;
+            dupBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            dupBtn.Size = new Size(120, 24);
+            dupBtn.Location = new Point(578, 4);
+            dupBtn.Cursor = Cursors.Hand;
+            dupBtn.Click += delegate { TrDuplicatePlayerRouteClick(); };
+            btnBar.Controls.Add(dupBtn);
+
             // Column header
             Panel colHdr = new Panel();
             colHdr.Dock = DockStyle.Top;
@@ -2477,6 +2492,239 @@ namespace Kingdoms.Bot.UI
                 "Player route '" + selected.Route.Name + "' progress reset and re-enabled.");
         }
 
+        private void TrDuplicatePlayerRouteClick()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            PlayerTradeRouteRow selected = null;
+            foreach (PlayerTradeRouteRow row in _trPlayerRouteRows)
+                if (row.IsSelected) { selected = row; break; }
+            if (selected == null) return;
+
+            PlayerTradeRouteSettings clone = selected.Route.Clone();
+            PlayerTradeRouteEditorForm form = new PlayerTradeRouteEditorForm(clone, "Duplicate Player Route");
+            form.ShowDialog(this);
+            if (form.Saved)
+            {
+                BotEngine.Instance.Settings.Trade.PlayerRoutes.Add(clone);
+                TrBuildPlayerRoutesList();
+                BotLogger.Log("Trade", BotLogLevel.Info,
+                    "Player route '" + clone.Name + "' duplicated from '" + selected.Route.Name + "'.");
+            }
+        }
+
+        // ── Stats tab ────────────────────────────────────────────────────────────
+
+        private ListView _trStatsListView;
+        private Label _trStatsSessionLabel;
+        private Label _trStatsDurationLabel;
+        private Label _trStatsStartGoldLabel;
+        private Label _trStatsCurrentGoldLabel;
+        private Label _trStatsGoldDeltaLabel;
+
+        private void TrBuildStatsTab()
+        {
+            _trStatsTab.Controls.Clear();
+
+            // ── Info bar ──────────────────────────────────────────────────────────
+            Panel infoBar = new Panel();
+            infoBar.Dock = DockStyle.Top;
+            infoBar.Height = 70;
+            infoBar.BackColor = Color.FromArgb(36, 38, 48);
+            infoBar.Padding = new Padding(8, 6, 8, 6);
+
+            _trStatsSessionLabel     = MakeStatsLabel("Session start: —",       8,  8);
+            _trStatsDurationLabel    = MakeStatsLabel("Duration: —",             8, 28);
+            _trStatsStartGoldLabel   = MakeStatsLabel("Starting gold: —",      340,  8);
+            _trStatsCurrentGoldLabel = MakeStatsLabel("Current gold: —",       340, 28);
+            _trStatsGoldDeltaLabel   = MakeStatsLabel("Gold change: —",        340, 48);
+            infoBar.Controls.Add(_trStatsSessionLabel);
+            infoBar.Controls.Add(_trStatsDurationLabel);
+            infoBar.Controls.Add(_trStatsStartGoldLabel);
+            infoBar.Controls.Add(_trStatsCurrentGoldLabel);
+            infoBar.Controls.Add(_trStatsGoldDeltaLabel);
+
+            // ── Button bar ────────────────────────────────────────────────────────
+            Panel btnBar = new Panel();
+            btnBar.Dock = DockStyle.Top;
+            btnBar.Height = 32;
+            btnBar.BackColor = Color.FromArgb(30, 32, 42);
+
+            Button refreshBtn = new Button();
+            refreshBtn.Text = "Refresh Stats";
+            refreshBtn.BackColor = Color.FromArgb(60, 100, 160);
+            refreshBtn.ForeColor = Color.White;
+            refreshBtn.FlatStyle = FlatStyle.Flat;
+            refreshBtn.FlatAppearance.BorderSize = 0;
+            refreshBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            refreshBtn.Size = new Size(110, 24);
+            refreshBtn.Location = new Point(8, 4);
+            refreshBtn.Cursor = Cursors.Hand;
+            refreshBtn.Click += delegate { TrRefreshStats(); };
+            btnBar.Controls.Add(refreshBtn);
+
+            Button resetBtn = new Button();
+            resetBtn.Text = "Reset Stats";
+            resetBtn.BackColor = Color.FromArgb(160, 60, 60);
+            resetBtn.ForeColor = Color.White;
+            resetBtn.FlatStyle = FlatStyle.Flat;
+            resetBtn.FlatAppearance.BorderSize = 0;
+            resetBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            resetBtn.Size = new Size(100, 24);
+            resetBtn.Location = new Point(126, 4);
+            resetBtn.Cursor = Cursors.Hand;
+            resetBtn.Click += delegate { TrResetStatsClick(); };
+            btnBar.Controls.Add(resetBtn);
+
+            // ── Column header row ─────────────────────────────────────────────────
+            Panel headerRow = new Panel();
+            headerRow.Dock = DockStyle.Top;
+            headerRow.Height = 22;
+            headerRow.BackColor = Color.FromArgb(44, 46, 58);
+            headerRow.Controls.Add(MakeStatsHeaderLabel("Resource",          8,   3));
+            headerRow.Controls.Add(MakeStatsHeaderLabel("Sold (units)",    220,   3));
+            headerRow.Controls.Add(MakeStatsHeaderLabel("Bought (units)",  360,   3));
+            headerRow.Controls.Add(MakeStatsHeaderLabel("Sent to Villages", 500,  3));
+
+            // ── Main ListView ─────────────────────────────────────────────────────
+            _trStatsListView = new ListView();
+            _trStatsListView.Dock = DockStyle.Fill;
+            _trStatsListView.View = View.Details;
+            _trStatsListView.FullRowSelect = true;
+            _trStatsListView.GridLines = false;
+            _trStatsListView.HeaderStyle = ColumnHeaderStyle.Nonclickable;
+            _trStatsListView.BackColor = Color.FromArgb(24, 24, 32);
+            _trStatsListView.ForeColor = Color.FromArgb(220, 220, 235);
+            _trStatsListView.Font = new Font("Segoe UI", 8.5f);
+            _trStatsListView.BorderStyle = BorderStyle.None;
+            _trStatsListView.Columns.Add("Resource",          200);
+            _trStatsListView.Columns.Add("Sold (units)",      130);
+            _trStatsListView.Columns.Add("Bought (units)",    130);
+            _trStatsListView.Columns.Add("Sent to Villages",  130);
+
+            // Add in reverse dock order so Fill goes to bottom
+            _trStatsTab.Controls.Add(_trStatsListView);
+            _trStatsTab.Controls.Add(headerRow);
+            _trStatsTab.Controls.Add(btnBar);
+            _trStatsTab.Controls.Add(infoBar);
+        }
+
+        private Label MakeStatsLabel(string text, int x, int y)
+        {
+            Label lbl = new Label();
+            lbl.AutoSize = true;
+            lbl.Font = new Font("Segoe UI", 8.5f);
+            lbl.ForeColor = Color.FromArgb(200, 200, 215);
+            lbl.BackColor = Color.Transparent;
+            lbl.Location = new Point(x, y);
+            lbl.Text = text;
+            return lbl;
+        }
+
+        private Label MakeStatsHeaderLabel(string text, int x, int y)
+        {
+            Label lbl = new Label();
+            lbl.AutoSize = true;
+            lbl.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            lbl.ForeColor = Color.FromArgb(170, 170, 190);
+            lbl.BackColor = Color.Transparent;
+            lbl.Location = new Point(x, y);
+            lbl.Text = text;
+            return lbl;
+        }
+
+        private void TrRefreshStats()
+        {
+            if (_trStatsListView == null) return;
+            TradeModule module = GetTradeModule();
+
+            if (module == null)
+            {
+                _trStatsSessionLabel.Text     = "Session start: (module not running)";
+                _trStatsDurationLabel.Text    = "Duration: —";
+                _trStatsStartGoldLabel.Text   = "Starting gold: —";
+                _trStatsCurrentGoldLabel.Text = "Current gold: —";
+                _trStatsGoldDeltaLabel.Text   = "Gold change: —";
+                _trStatsListView.Items.Clear();
+                return;
+            }
+
+            TradeModule.TradeSessionStats stats = module.GetStats();
+
+            _trStatsSessionLabel.Text  = "Session start: " + stats.SessionStart.ToString("HH:mm:ss dd/MM/yyyy");
+            TimeSpan dur = DateTime.Now - stats.SessionStart;
+            _trStatsDurationLabel.Text = "Duration: " + (int)dur.TotalHours + "h " + dur.Minutes + "m " + dur.Seconds + "s";
+            _trStatsStartGoldLabel.Text = "Starting gold: " + stats.SessionStartGold.ToString("N0");
+
+            long currentGold = 0;
+            try { currentGold = (long)GameEngine.Instance.World.getCurrentGold(); } catch { }
+            _trStatsCurrentGoldLabel.Text = "Current gold: " + currentGold.ToString("N0");
+
+            long delta = currentGold - stats.SessionStartGold;
+            string sign = delta >= 0 ? "+" : "";
+            _trStatsGoldDeltaLabel.Text   = "Gold change: " + sign + delta.ToString("N0");
+            _trStatsGoldDeltaLabel.ForeColor = delta >= 0
+                ? Color.FromArgb(100, 220, 100)
+                : Color.FromArgb(220, 100, 100);
+
+            _trStatsListView.Items.Clear();
+
+            System.Collections.Generic.HashSet<int> allIds =
+                new System.Collections.Generic.HashSet<int>(stats.SoldByResource.Keys);
+            foreach (int k in stats.BoughtByResource.Keys) allIds.Add(k);
+            foreach (int k in stats.SentByResource.Keys)   allIds.Add(k);
+
+            if (allIds.Count == 0)
+            {
+                _trStatsListView.Items.Add(new ListViewItem(
+                    new string[] { "No trades recorded yet.", "", "", "" }));
+                return;
+            }
+
+            System.Collections.Generic.List<ListViewItem> items =
+                new System.Collections.Generic.List<ListViewItem>();
+            foreach (int id in allIds)
+            {
+                long sold   = stats.SoldByResource.ContainsKey(id)   ? stats.SoldByResource[id]   : 0;
+                long bought = stats.BoughtByResource.ContainsKey(id) ? stats.BoughtByResource[id] : 0;
+                long sent   = stats.SentByResource.ContainsKey(id)   ? stats.SentByResource[id]   : 0;
+                string name = TradeModuleConstants.GetResourceName(id);
+                items.Add(new ListViewItem(new string[] {
+                    name,
+                    sold.ToString("N0"),
+                    bought.ToString("N0"),
+                    sent.ToString("N0")
+                }));
+            }
+            items.Sort((a, b) =>
+            {
+                long ta = ParseN0(a.SubItems[1].Text) + ParseN0(a.SubItems[2].Text) + ParseN0(a.SubItems[3].Text);
+                long tb = ParseN0(b.SubItems[1].Text) + ParseN0(b.SubItems[2].Text) + ParseN0(b.SubItems[3].Text);
+                return tb.CompareTo(ta);
+            });
+            _trStatsListView.Items.AddRange(items.ToArray());
+        }
+
+        private static long ParseN0(string s)
+        {
+            long v;
+            long.TryParse(s.Replace(",", "").Replace(" ", ""), out v);
+            return v;
+        }
+
+        private void _trSubTabs_Selected(object sender, System.Windows.Forms.TabControlEventArgs e)
+        {
+            if (_trSubTabs.SelectedTab == _trStatsTab)
+                TrRefreshStats();
+        }
+
+        private void TrResetStatsClick()
+        {
+            TradeModule module = GetTradeModule();
+            if (module != null) { module.GetStats().Reset(); TrRefreshStats(); }
+        }
+
+        // ── End stats tab ─────────────────────────────────────────────────────────
+
         private void TrLoadFromSettings()
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
@@ -2498,7 +2746,7 @@ namespace Kingdoms.Bot.UI
             _trAutoHireLimitInput.Value = Math.Max(_trAutoHireLimitInput.Minimum,
                 Math.Min(_trAutoHireLimitInput.Maximum, s.AutoHireMerchantsLimit));
             _trIgnoreTransactionsCheck.Checked = s.IgnoreCurrentTransactions;
-            _trPrioritiseMarketsCheck.Checked = s.PrioritiseMarkets;
+            _trPriorityCombo.SelectedIndex = (int)s.Priority;
             _trDisableOnCardExpiryCheck.Checked = s.DisableOnTradeCardExpiry;
 
             TrRefreshMarkets();
@@ -2521,7 +2769,7 @@ namespace Kingdoms.Bot.UI
             s.AutoHireMerchants = _trAutoHireCheck.Checked;
             s.AutoHireMerchantsLimit = (int)_trAutoHireLimitInput.Value;
             s.IgnoreCurrentTransactions = _trIgnoreTransactionsCheck.Checked;
-            s.PrioritiseMarkets = _trPrioritiseMarketsCheck.Checked;
+            s.Priority = (TradePriority)_trPriorityCombo.SelectedIndex;
             s.DisableOnTradeCardExpiry = _trDisableOnCardExpiryCheck.Checked;
 
             // Save currently displayed village's resource grid
@@ -2604,20 +2852,35 @@ namespace Kingdoms.Bot.UI
             _trResourceGrid.WriteToInfo(info);
         }
 
+        private void TrReloadCurrentVillageGrid()
+        {
+            if (_trSelectedVillageId == -1) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            VillageMarketTradeInfo info = BotEngine.Instance.Settings.Trade.GetVillageMarketInfo(_trSelectedVillageId);
+            _trVillageTradingCheck.Checked = info.IsTrading;
+            _trResourceGrid.LoadVillage(info);
+            _trMarketsListBox.Items.Clear();
+            foreach (int marketId in info.MarketTargets)
+                _trMarketsListBox.Items.Add(marketId);
+            _trMarketCountLabel.Text = "Total Markets: " + info.MarketTargets.Count;
+        }
+
+        private TradeModule GetTradeModule()
+        {
+            if (BotEngine.Instance == null) return null;
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                TradeModule t = m as TradeModule;
+                if (t != null) return t;
+            }
+            return null;
+        }
+
         private void TrAddMarketsClick()
         {
             TrSaveCurrentVillage();
 
-            TradeModule module = null;
-            if (BotEngine.Instance != null)
-            {
-                foreach (IBotModule m in BotEngine.Instance.Modules)
-                {
-                    module = m as TradeModule;
-                    if (module != null) break;
-                }
-            }
-
+            TradeModule module = GetTradeModule();
             if (module != null)
             {
                 double distance = (double)_trMarketDistanceInput.Value;
@@ -2639,8 +2902,9 @@ namespace Kingdoms.Bot.UI
 
             if (form.Copied)
             {
-                // Refresh the current village view to reflect any changes
-                TrOnVillageSelected();
+                // Reload grid from settings (no save — avoids overwriting the just-copied data)
+                TrReloadCurrentVillageGrid();
+                TrRefreshMarkets();
             }
         }
 

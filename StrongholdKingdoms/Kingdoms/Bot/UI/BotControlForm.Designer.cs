@@ -169,9 +169,11 @@ namespace Kingdoms.Bot.UI
             this._trAddRouteBtn = new System.Windows.Forms.Button();
             this._trPlayerRoutesTab = new System.Windows.Forms.TabPage();
             this._trPlayerRoutesListPanel = new System.Windows.Forms.Panel();
+            this._trStatsTab = new System.Windows.Forms.TabPage();
             this._trSettingsPanel = new System.Windows.Forms.Panel();
             this._trDisableOnCardExpiryCheck = new System.Windows.Forms.CheckBox();
-            this._trPrioritiseMarketsCheck = new System.Windows.Forms.CheckBox();
+            this._trPriorityCombo = new System.Windows.Forms.ComboBox();
+            this._trPriorityLabel = new System.Windows.Forms.Label();
             this._trIgnoreTransactionsCheck = new System.Windows.Forms.CheckBox();
             this._trAutoHireLimitInput = new System.Windows.Forms.NumericUpDown();
             this._trAutoHireLimitLabel = new System.Windows.Forms.Label();
@@ -2046,6 +2048,8 @@ namespace Kingdoms.Bot.UI
             this._trSubTabs.Controls.Add(this._trMarketsTab);
             this._trSubTabs.Controls.Add(this._trRoutesTab);
             this._trSubTabs.Controls.Add(this._trPlayerRoutesTab);
+            this._trSubTabs.Controls.Add(this._trStatsTab);
+            this._trSubTabs.Selected += new System.Windows.Forms.TabControlEventHandler(this._trSubTabs_Selected);
             this._trSubTabs.Dock = System.Windows.Forms.DockStyle.Fill;
             this._trSubTabs.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._trSubTabs.Location = new System.Drawing.Point(0, 100);
@@ -2231,12 +2235,20 @@ namespace Kingdoms.Bot.UI
             this._trPlayerRoutesListPanel.Name = "_trPlayerRoutesListPanel";
             this._trPlayerRoutesListPanel.Size = new System.Drawing.Size(1134, 371);
             this._trPlayerRoutesListPanel.TabIndex = 0;
-            // 
+            //
+            // _trStatsTab
+            //
+            this._trStatsTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._trStatsTab.Name = "_trStatsTab";
+            this._trStatsTab.Text = "Stats";
+            this._trStatsTab.TabIndex = 3;
+            //
             // _trSettingsPanel
-            // 
+            //
             this._trSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
             this._trSettingsPanel.Controls.Add(this._trDisableOnCardExpiryCheck);
-            this._trSettingsPanel.Controls.Add(this._trPrioritiseMarketsCheck);
+            this._trSettingsPanel.Controls.Add(this._trPriorityCombo);
+            this._trSettingsPanel.Controls.Add(this._trPriorityLabel);
             this._trSettingsPanel.Controls.Add(this._trIgnoreTransactionsCheck);
             this._trSettingsPanel.Controls.Add(this._trAutoHireLimitInput);
             this._trSettingsPanel.Controls.Add(this._trAutoHireLimitLabel);
@@ -2271,20 +2283,32 @@ namespace Kingdoms.Bot.UI
             this._trDisableOnCardExpiryCheck.Size = new System.Drawing.Size(139, 19);
             this._trDisableOnCardExpiryCheck.TabIndex = 17;
             this._trDisableOnCardExpiryCheck.Text = "Disable on card expiry";
-            // 
-            // _trPrioritiseMarketsCheck
-            // 
-            this._trPrioritiseMarketsCheck.AutoSize = true;
-            this._trPrioritiseMarketsCheck.Checked = true;
-            this._trPrioritiseMarketsCheck.CheckState = System.Windows.Forms.CheckState.Checked;
-            this._trPrioritiseMarketsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._trPrioritiseMarketsCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
-            this._trPrioritiseMarketsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trPrioritiseMarketsCheck.Location = new System.Drawing.Point(500, 70);
-            this._trPrioritiseMarketsCheck.Name = "_trPrioritiseMarketsCheck";
-            this._trPrioritiseMarketsCheck.Size = new System.Drawing.Size(114, 19);
-            this._trPrioritiseMarketsCheck.TabIndex = 16;
-            this._trPrioritiseMarketsCheck.Text = "Prioritise Markets";
+            //
+            // _trPriorityLabel
+            //
+            this._trPriorityLabel.AutoSize = true;
+            this._trPriorityLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trPriorityLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(200)))), ((int)(((byte)(210)))));
+            this._trPriorityLabel.Location = new System.Drawing.Point(500, 52);
+            this._trPriorityLabel.Name = "_trPriorityLabel";
+            this._trPriorityLabel.Text = "Priority:";
+            //
+            // _trPriorityCombo
+            //
+            this._trPriorityCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._trPriorityCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._trPriorityCombo.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trPriorityCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._trPriorityCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._trPriorityCombo.Location = new System.Drawing.Point(500, 68);
+            this._trPriorityCombo.Name = "_trPriorityCombo";
+            this._trPriorityCombo.Size = new System.Drawing.Size(220, 22);
+            this._trPriorityCombo.TabIndex = 16;
+            this._trPriorityCombo.Items.AddRange(new object[] {
+                "Market Priority (Sell then Buy)",
+                "Market Priority (Buy then Sell)",
+                "Village Route Priority",
+                "Player Route Priority"});
             // 
             // _trIgnoreTransactionsCheck
             // 
@@ -4698,7 +4722,9 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Label _trAutoHireLimitLabel;
         private System.Windows.Forms.NumericUpDown _trAutoHireLimitInput;
         private System.Windows.Forms.CheckBox _trIgnoreTransactionsCheck;
-        private System.Windows.Forms.CheckBox _trPrioritiseMarketsCheck;
+        private System.Windows.Forms.ComboBox _trPriorityCombo;
+        private System.Windows.Forms.Label _trPriorityLabel;
+        private System.Windows.Forms.TabPage _trStatsTab;
         private System.Windows.Forms.CheckBox _trDisableOnCardExpiryCheck;
         private System.Windows.Forms.Panel _trMarketVillageListPanel;
         private System.Windows.Forms.Button _trMarketRefreshBtn;
