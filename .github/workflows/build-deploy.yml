@@ -34,7 +34,9 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Restore NuGet packages
-        run: nuget restore StrongholdKingdoms\StrongholdKingdoms.sln
+        run: |
+          nuget restore StrongholdKingdoms\StrongholdKingdoms.sln
+          nuget restore HadesUpdater\HadesUpdater.csproj
 
       - name: Set build configuration
         id: config
@@ -91,15 +93,18 @@ jobs:
             $updaterContent = $updaterContent -replace '\[assembly: AssemblyInformationalVersion\(".*?"\)\]', "[assembly: AssemblyInformationalVersion(`"$devVer`")]"
             Set-Content $updaterPath $updaterContent -NoNewline
 
-            echo "is_release=false"                         >> $env:GITHUB_OUTPUT
-            echo "release_version=$devVer"                  >> $env:GITHUB_OUTPUT
-            echo "zip_name=hades_dev_latest.zip"            >> $env:GITHUB_OUTPUT
-            echo "version_file=api\dev_version.json"        >> $env:GITHUB_OUTPUT
-            echo "version_file_api=api/dev_version.json"    >> $env:GITHUB_OUTPUT
+            echo "is_release=false"                                   >> $env:GITHUB_OUTPUT
+            echo "release_version=$devVer"                         >> $env:GITHUB_OUTPUT
+            echo "zip_name=hades_dev_latest.zip"                   >> $env:GITHUB_OUTPUT
+            echo "version_file=downloads\dev_version.json"         >> $env:GITHUB_OUTPUT
+            echo "version_file_api=downloads/dev_version.json"     >> $env:GITHUB_OUTPUT
           }
 
-      - name: Build Release
+      - name: Build StrongholdKingdoms
         run: msbuild StrongholdKingdoms\StrongholdKingdoms.sln /p:Configuration=Release /p:Platform="Any CPU" /v:quiet /nologo /clp:ErrorsOnly
+
+      - name: Build HadesUpdater
+        run: msbuild HadesUpdater\HadesUpdater.csproj /p:Configuration=Release /p:Platform="AnyCPU" /v:quiet /nologo /clp:ErrorsOnly
 
       - name: Apply 4GB patch
         shell: pwsh
@@ -156,6 +161,7 @@ jobs:
           $zip  = "${{ steps.config.outputs.zip_name }}"
           $base = "${{ secrets.HADES_DOWNLOAD_BASE_PROD }}"
           $file = "${{ steps.config.outputs.version_file }}"
+          New-Item -ItemType Directory -Force (Split-Path $file) | Out-Null
           [ordered]@{
             version      = $ver
             download_url = "$base/downloads/$zip"
@@ -189,21 +195,15 @@ jobs:
           $json = $r.Content | ConvertFrom-Json
           if (-not $json.ok) { throw "Version file upload failed: $($json.error)" }
 
-      - name: Commit and push
+      - name: Commit and push (release only)
+        if: steps.config.outputs.is_release == 'true'
         shell: pwsh
         run: |
-          $isRelease = "${{ steps.config.outputs.is_release }}"
-          $ver       = "${{ steps.config.outputs.release_version }}"
-          $verFile   = "${{ steps.config.outputs.version_file }}"
+          $ver     = "${{ steps.config.outputs.release_version }}"
+          $verFile = "${{ steps.config.outputs.version_file }}"
 
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          if ($isRelease -eq "true") {
-            git add StrongholdKingdoms\AssemblyInfo.cs $verFile
-            git commit -m "Release $ver [skip ci]"
-          } else {
-            git add $verFile
-            git commit -m "Dev build $ver [skip ci]"
-          }
+          git add StrongholdKingdoms\AssemblyInfo.cs HadesUpdater\AssemblyInfo.cs $verFile
+          git commit -m "Release $ver [skip ci]"
           git push

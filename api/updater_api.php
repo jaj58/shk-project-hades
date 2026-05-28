@@ -127,7 +127,7 @@ function handle_latest_version($key) {
 
     $tier = $row['tier'] ?? 'standard';
     $version_file = $tier === 'dev'
-        ? __DIR__ . '/dev_version.json'
+        ? dirname(__DIR__) . '/downloads/dev_version.json'
         : __DIR__ . '/version.json';
 
     if (!file_exists($version_file)) {
@@ -179,7 +179,7 @@ function get_key_row($pdo, $key_string) {
 
 function get_current_version($tier = 'standard') {
     $f = $tier === 'dev'
-        ? __DIR__ . '/dev_version.json'
+        ? dirname(__DIR__) . '/downloads/dev_version.json'
         : __DIR__ . '/version.json';
     if (!file_exists($f)) return '';
     $d = json_decode(file_get_contents($f), true);
