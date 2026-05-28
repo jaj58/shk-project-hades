@@ -1273,6 +1273,24 @@ namespace Kingdoms
 
     private static string GetLocalVersion()
     {
+      // Prefer the version tracked by HadesUpdater — handles dev-<sha> builds correctly.
+      // Falls back to assembly version for fresh installs before the updater has run.
+      try
+      {
+        string settingsPath = System.IO.Path.Combine(
+          Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+          "HadesUpdater", "settings.json");
+        if (System.IO.File.Exists(settingsPath))
+        {
+          string json = System.IO.File.ReadAllText(settingsPath);
+          string installed = ExtractJsonValue(json, "InstalledVersion");
+          if (!string.IsNullOrEmpty(installed))
+            return installed;
+        }
+      }
+      catch { }
+
+      // Fallback: assembly version (x.y.z)
       try
       {
         Version v = new Version(Application.ProductVersion);
