@@ -2179,9 +2179,9 @@ namespace Kingdoms.Bot.Modules
                 });
             }
 
-            if (settings.IncludeVassals && GameEngine.Instance.VassalsManager != null)
+            if (settings.IncludeVassals && GameEngine.Instance.vassalsManager != null)
             {
-                var vassals = GameEngine.Instance.VassalsManager.GetVassals();
+                var vassals = GameEngine.Instance.vassalsManager.GetVassals();
                 if (vassals != null)
                 {
                     foreach (var vi in vassals)
