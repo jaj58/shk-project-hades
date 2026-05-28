@@ -1015,12 +1015,15 @@ namespace Kingdoms.Bot.Modules
             {
                 try
                 {
-                    return traderArray.Cast<WorldMap.LocalTrader>().ToList();
+                    var snapshot = new List<WorldMap.LocalTrader>();
+                    foreach (WorldMap.LocalTrader localTrader in traderArray)
+                        snapshot.Add(localTrader);
+                    return snapshot;
                 }
                 catch (InvalidOperationException)
                 {
                     // Array modified mid-snapshot by a background thread; yield and retry.
-                    System.Threading.Thread.Yield();
+                    System.Threading.Thread.Sleep(0);
                 }
             }
         }
