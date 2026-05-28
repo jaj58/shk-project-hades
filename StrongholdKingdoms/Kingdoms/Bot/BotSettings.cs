@@ -479,6 +479,22 @@ namespace Kingdoms.Bot
         public int SendMaximum = 5000;
         public bool IsDistanceLimited;
         public int DistanceLimit = 100;
+
+        public TradeRouteSettings Clone()
+        {
+            TradeRouteSettings r = new TradeRouteSettings();
+            r.Name = this.Name + " (Copy)";
+            r.Enabled = false;
+            r.FromVillages = new List<int>(this.FromVillages);
+            r.ToVillages = new List<int>(this.ToVillages);
+            r.Resources = new List<int>(this.Resources);
+            r.KeepMinimum = this.KeepMinimum;
+            r.MaxMerchantsPerTransaction = this.MaxMerchantsPerTransaction;
+            r.SendMaximum = this.SendMaximum;
+            r.IsDistanceLimited = this.IsDistanceLimited;
+            r.DistanceLimit = this.DistanceLimit;
+            return r;
+        }
     }
 
     [Serializable]

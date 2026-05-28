@@ -2153,6 +2153,19 @@ namespace Kingdoms.Bot.UI
             editBtn.Click += delegate { TrEditRouteClick(); };
             btnBar.Controls.Add(editBtn);
 
+            Button dupRouteBtn = new Button();
+            dupRouteBtn.Text = "Duplicate Route";
+            dupRouteBtn.BackColor = Color.FromArgb(80, 160, 80);
+            dupRouteBtn.ForeColor = Color.White;
+            dupRouteBtn.FlatStyle = FlatStyle.Flat;
+            dupRouteBtn.FlatAppearance.BorderSize = 0;
+            dupRouteBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            dupRouteBtn.Size = new Size(120, 24);
+            dupRouteBtn.Location = new Point(458, 4);
+            dupRouteBtn.Cursor = Cursors.Hand;
+            dupRouteBtn.Click += delegate { TrDuplicateRouteClick(); };
+            btnBar.Controls.Add(dupRouteBtn);
+
             // Column header
             Panel routeColHdr = new Panel();
             routeColHdr.Dock = DockStyle.Top;
@@ -3020,6 +3033,28 @@ namespace Kingdoms.Bot.UI
             _trSelectedRouteIndex = -1;
             TrBuildRoutesList();
             BotLogger.Log("Trade", BotLogLevel.Info, "Deleted trade route: " + name);
+        }
+
+        private void TrDuplicateRouteClick()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            TradeSettings s = BotEngine.Instance.Settings.Trade;
+            if (_trSelectedRouteIndex < 0 || _trSelectedRouteIndex >= s.Routes.Count)
+            {
+                BotLogger.Log("Trade", BotLogLevel.Warning, "Select a route to duplicate.");
+                return;
+            }
+
+            TradeRouteSettings clone = s.Routes[_trSelectedRouteIndex].Clone();
+            TradeRouteEditorForm editor = new TradeRouteEditorForm(clone, "Duplicate Route - " + s.Routes[_trSelectedRouteIndex].Name);
+            editor.ShowDialog(this);
+            if (editor.Saved)
+            {
+                s.Routes.Add(clone);
+                TrBuildRoutesList();
+                BotLogger.Log("Trade", BotLogLevel.Info,
+                    "Trade route '" + clone.Name + "' duplicated from '" + s.Routes[_trSelectedRouteIndex].Name + "'.");
+            }
         }
 
         private void TrUpdateStatusDisplay()

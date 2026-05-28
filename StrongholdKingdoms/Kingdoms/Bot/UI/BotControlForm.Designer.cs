@@ -2278,7 +2278,7 @@ namespace Kingdoms.Bot.UI
             this._trDisableOnCardExpiryCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._trDisableOnCardExpiryCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trDisableOnCardExpiryCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trDisableOnCardExpiryCheck.Location = new System.Drawing.Point(650, 70);
+            this._trDisableOnCardExpiryCheck.Location = new System.Drawing.Point(775, 70);
             this._trDisableOnCardExpiryCheck.Name = "_trDisableOnCardExpiryCheck";
             this._trDisableOnCardExpiryCheck.Size = new System.Drawing.Size(139, 19);
             this._trDisableOnCardExpiryCheck.TabIndex = 17;
@@ -2289,7 +2289,7 @@ namespace Kingdoms.Bot.UI
             this._trPriorityLabel.AutoSize = true;
             this._trPriorityLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trPriorityLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(200)))), ((int)(((byte)(210)))));
-            this._trPriorityLabel.Location = new System.Drawing.Point(500, 52);
+            this._trPriorityLabel.Location = new System.Drawing.Point(490, 72);
             this._trPriorityLabel.Name = "_trPriorityLabel";
             this._trPriorityLabel.Text = "Priority:";
             //
@@ -2300,7 +2300,7 @@ namespace Kingdoms.Bot.UI
             this._trPriorityCombo.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trPriorityCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._trPriorityCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trPriorityCombo.Location = new System.Drawing.Point(500, 68);
+            this._trPriorityCombo.Location = new System.Drawing.Point(545, 68);
             this._trPriorityCombo.Name = "_trPriorityCombo";
             this._trPriorityCombo.Size = new System.Drawing.Size(220, 22);
             this._trPriorityCombo.TabIndex = 16;
