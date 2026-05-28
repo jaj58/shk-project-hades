@@ -691,6 +691,8 @@ namespace Kingdoms.Bot
         [System.Xml.Serialization.XmlIgnore]
         public DateTime EstimatedArrivalTime = DateTime.MaxValue;
         [System.Xml.Serialization.XmlIgnore]
+        public int ParentVillageId; // 0 = own village; lord village ID for vassal attacks
+        [System.Xml.Serialization.XmlIgnore]
         public bool Sent;
         [System.Xml.Serialization.XmlIgnore]
         public bool Cancelled;
@@ -745,6 +747,8 @@ namespace Kingdoms.Bot
         public int NumCaptains;
         public double TravelTimeArmy;
         public double TravelTimeCaptain;
+        public bool IsVassal;
+        public int ParentVillageId;
         // Attack assignment set by coordinator (stored in API, mirrored here for display)
         [System.Xml.Serialization.XmlIgnore]
         public string FormationName = "";
@@ -786,6 +790,7 @@ namespace Kingdoms.Bot
         public bool TargetQueueEnabled;
         // Force-refresh each attacking village ~5s before prepare to reduce server callback errors
         public bool PreRefreshVillages = true;
+        public bool IncludeVassals;
         public List<TargetQueueEntry> TargetQueue = new List<TargetQueueEntry>();
 
         // Runtime state — not persisted

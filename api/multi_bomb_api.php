@@ -229,6 +229,8 @@ function handle_set_attack_config(&$state, $req) {
         $merged[] = [
             'source_player'    => $a['source_player'],
             'source_village_id'=> $vid,
+            'parent_village_id'=> (int)($a['parent_village_id'] ?? 0),
+            'is_vassal'        => (bool)($a['is_vassal'] ?? false),
             'formation'        => $a['formation'],
             'stack'            => (int)$a['stack'],
             'card_type'        => (int)$a['card_type'],

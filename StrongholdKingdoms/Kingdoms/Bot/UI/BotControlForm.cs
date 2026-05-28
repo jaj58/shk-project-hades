@@ -3295,6 +3295,12 @@ namespace Kingdoms.Bot.UI
                 if (s != null)
                     s.PreRefreshVillages = _abmPreRefreshCheck.Checked;
             };
+            _abmIncludeVassalsCheck.CheckedChanged += delegate
+            {
+                AutoBombMultiSettings s = AbmSettings;
+                if (s != null)
+                    s.IncludeVassals = _abmIncludeVassalsCheck.Checked;
+            };
             _abmQueueAddIdBtn.Click             += delegate { AbmQueueAddId(); };
             _abmQueueLookupBtn.Click            += delegate { AbmQueueLookupPlayer(); };
             _abmQueueAddSelectedVillageBtn.Click += delegate { AbmQueueAddSelectedVillage(); };
@@ -3325,8 +3331,9 @@ namespace Kingdoms.Bot.UI
             _abmFakeSendCheck.Checked      = s.FakeSendEnabled;
             _abmStackDelayInput.Value = Math.Max(_abmStackDelayInput.Minimum,
                 Math.Min(_abmStackDelayInput.Maximum, s.StackDelaySeconds));
-            _abmPreRefreshCheck.Checked   = s.PreRefreshVillages;
-            _abmQueueEnabledCheck.Checked = s.TargetQueueEnabled;
+            _abmPreRefreshCheck.Checked    = s.PreRefreshVillages;
+            _abmIncludeVassalsCheck.Checked = s.IncludeVassals;
+            _abmQueueEnabledCheck.Checked  = s.TargetQueueEnabled;
             AbmRefreshQueueList(s);
         }
 
@@ -3341,6 +3348,7 @@ namespace Kingdoms.Bot.UI
             s.FakeSendEnabled      = _abmFakeSendCheck.Checked;
             s.StackDelaySeconds    = (int)_abmStackDelayInput.Value;
             s.PreRefreshVillages   = _abmPreRefreshCheck.Checked;
+            s.IncludeVassals       = _abmIncludeVassalsCheck.Checked;
             s.TargetQueueEnabled   = _abmQueueEnabledCheck.Checked;
         }
 
@@ -3469,6 +3477,7 @@ namespace Kingdoms.Bot.UI
             s.StackDelaySeconds = (int)_abmStackDelayInput.Value;
             s.FakeSendEnabled = _abmFakeSendCheck.Checked;
             s.PreRefreshVillages = _abmPreRefreshCheck.Checked;
+            s.IncludeVassals = _abmIncludeVassalsCheck.Checked;
 
             AutoBombMultiModule mod = AbmModule;
             if (mod != null)
@@ -3513,6 +3522,8 @@ namespace Kingdoms.Bot.UI
                 {
                     SourcePlayerName  = row.OwnerPlayerName,
                     SourceVillageId   = row.SourceVillageId,
+                    ParentVillageId   = row.ParentVillageId,
+                    IsVassal          = row.IsVassal,
                     FormationName     = row.SelectedFormation == "None" ? "" : row.SelectedFormation,
                     Stack             = row.StackOrder,
                     CardType          = row.SelectedCardType,
@@ -3858,7 +3869,8 @@ namespace Kingdoms.Bot.UI
             _abmStackDelayInput.Enabled     = coordControls;
             _abmFakeSendCheck.Enabled       = coordControls;
             _abmAutoInterdictCheck.Enabled  = coordControls;
-            _abmPreRefreshCheck.Enabled     = modEnabled;
+            _abmPreRefreshCheck.Enabled      = modEnabled;
+            _abmIncludeVassalsCheck.Enabled  = modEnabled;
             _abmPushConfigBtn.Enabled       = coordControls;
             _abmPrepareBtn.Enabled          = coordControls;
             _abmLaunchBtn.Enabled           = coordControls && (stateText == "configured" || stateText == "prepared" || stateText == "preparing");
@@ -3943,7 +3955,8 @@ namespace Kingdoms.Bot.UI
                         vi.TravelTimeArmy, vi.TravelTimeCaptain,
                         vi.NumPeasants, vi.NumArchers, vi.NumPikemen,
                         vi.NumSwordsmen, vi.NumCatapults, vi.NumCaptains,
-                        formationNames, isLocal, idx, isCoordinator);
+                        formationNames, isLocal, idx, isCoordinator,
+                        vi.IsVassal, vi.ParentVillageId);
 
                     row.Location = new Point(0, y);
                     row.Width = _abmVillageListPanel.Width > 0 ? _abmVillageListPanel.Width : 1100;

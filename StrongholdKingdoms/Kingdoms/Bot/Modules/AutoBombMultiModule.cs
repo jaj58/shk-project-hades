@@ -189,6 +189,8 @@ namespace Kingdoms.Bot.Modules
                 {
                     ["source_player"]     = a.SourcePlayerName,
                     ["source_village_id"] = a.SourceVillageId,
+                    ["parent_village_id"] = a.ParentVillageId,
+                    ["is_vassal"]         = a.IsVassal,
                     ["formation"]         = a.FormationName,
                     ["stack"]             = a.Stack,
                     ["card_type"]         = a.CardType,
@@ -422,6 +424,8 @@ namespace Kingdoms.Bot.Modules
                                 NumCaptains      = GetInt(vd, "captains"),
                                 TravelTimeArmy   = GetDouble(vd, "travel_time_army"),
                                 TravelTimeCaptain= GetDouble(vd, "travel_time_captain"),
+                                IsVassal         = GetBool(vd, "is_vassal"),
+                                ParentVillageId  = GetInt(vd, "parent_village_id"),
                             });
                         }
                     }
@@ -499,6 +503,7 @@ namespace Kingdoms.Bot.Modules
                 myEntries.Add(new BombAttackEntry
                 {
                     SourceVillageId   = GetInt(ad, "source_village_id"),
+                    ParentVillageId   = GetInt(ad, "parent_village_id"),
                     TargetVillageId   = targetVid,
                     AttackType        = GetInt(ad, "attack_type", 11),
                     FormationName     = GetStr(ad, "formation", ""),
@@ -664,6 +669,7 @@ namespace Kingdoms.Bot.Modules
                 var entry = new BombAttackEntry
                 {
                     SourceVillageId      = srcVid,
+                    ParentVillageId      = GetInt(ad, "parent_village_id"),
                     TargetVillageId      = targetVid,
                     AttackType           = GetInt(ad, "attack_type", 11),
                     FormationName        = GetStr(ad, "formation", ""),
@@ -1258,6 +1264,8 @@ namespace Kingdoms.Bot.Modules
                     {
                         ["source_player"]       = GetStr(ad, "source_player", ""),
                         ["source_village_id"]   = srcVid,
+                        ["parent_village_id"]   = GetInt(ad, "parent_village_id"),
+                        ["is_vassal"]           = GetBool(ad, "is_vassal"),
                         ["formation"]           = GetStr(ad, "formation", ""),
                         ["stack"]               = GetInt(ad, "stack", 1),
                         ["card_type"]           = cardType,
@@ -1372,6 +1380,7 @@ namespace Kingdoms.Bot.Modules
                     newEntries.Add(new BombAttackEntry
                     {
                         SourceVillageId      = srcVid,
+                        ParentVillageId      = GetInt(ad, "parent_village_id"),
                         TargetVillageId      = newTargetVid,
                         AttackType           = GetInt(ad, "attack_type", 11),
                         FormationName        = GetStr(ad, "formation", ""),
@@ -1464,6 +1473,7 @@ namespace Kingdoms.Bot.Modules
                             newEntries.Add(new BombAttackEntry
                             {
                                 SourceVillageId      = vid2,  TargetVillageId = newTargetVid,
+                                ParentVillageId      = GetInt(ad2, "parent_village_id"),
                                 AttackType           = GetInt(ad2, "attack_type", 11),
                                 FormationName        = GetStr(ad2, "formation", ""),
                                 Stack                = GetInt(ad2, "stack", 1),
@@ -1513,12 +1523,13 @@ namespace Kingdoms.Bot.Modules
                 _callbackEvent.Reset();
                 _callbackResult = null;
 
-                LogInfo("[Prepare] Village " + entry.SourceVillageId + ": dispatching PreAttackSetup (target=" + entry.TargetVillageId + ", formation='" + entry.FormationName + "')");
+                int parentVid = entry.ParentVillageId > 0 ? entry.ParentVillageId : entry.SourceVillageId;
+                LogInfo("[Prepare] Village " + entry.SourceVillageId + ": dispatching PreAttackSetup (parent=" + parentVid + " target=" + entry.TargetVillageId + ", formation='" + entry.FormationName + "')");
 
                 RemoteServices.Instance.set_PreAttackSetup_UserCallBack(
                     new RemoteServices.PreAttackSetup_UserCallBack(PreAttackSetupCallback));
                 RemoteServices.Instance.PreAttackSetup(
-                    entry.SourceVillageId, entry.SourceVillageId, entry.TargetVillageId,
+                    parentVid, entry.SourceVillageId, entry.TargetVillageId,
                     0, 0, 0, 0, 0, 11, 0, 0);
 
                 // Loop to discard callbacks belonging to other concurrent modules (e.g. AutoBombModule)
@@ -1591,10 +1602,11 @@ namespace Kingdoms.Bot.Modules
                     else { entry.Cancelled = true; }
                     return false;
                 }
-                if (rd.vacationVillage)    { entry.Status = "Target on vacation"; entry.Cancelled = true; return false; }
-                if (rd.peaceVillage)       { entry.Status = "Target in peace";    entry.Cancelled = true; return false; }
-                if (rd.peaceAttacker)      { entry.Status = "Attacker in peace";  entry.Cancelled = true; return false; }
-                if (rd.protectedAttacker)  { entry.Status = "Attacker interdicted"; entry.Cancelled = true; return false; }
+                if (rd.vacationVillage)    { entry.Status = "Target on vacation";  entry.Cancelled = true; return false; }
+                if (rd.vassalVacation)     { entry.Status = "Vassal on vacation";  entry.Cancelled = true; return false; }
+                if (rd.peaceVillage)       { entry.Status = "Target in peace";     entry.Cancelled = true; return false; }
+                if (rd.peaceAttacker)      { entry.Status = "Attacker in peace";   entry.Cancelled = true; return false; }
+                if (rd.protectedAttacker)  { entry.Status = entry.ParentVillageId > 0 ? "Vassal interdicted" : "Attacker interdicted"; entry.Cancelled = true; return false; }
                 if (!rd.Success)
                 {
                     entry.Status = "Server error: " + rd.m_errorCode;
@@ -1880,8 +1892,46 @@ namespace Kingdoms.Bot.Modules
                     ["captains"]            = cap,
                     ["travel_time_army"]    = travelArmy,
                     ["travel_time_captain"] = travelCaptain,
+                    ["is_vassal"]           = false,
+                    ["parent_village_id"]   = 0,
                 });
             }
+
+            if (settings.IncludeVassals && GameEngine.Instance.VassalsManager != null)
+            {
+                var vassals = GameEngine.Instance.VassalsManager.GetVassals();
+                if (vassals != null)
+                {
+                    foreach (var vi in vassals)
+                    {
+                        int vid = vi.villageID;
+                        string name = GameEngine.Instance.World.getVillageName(vid);
+                        double travelArmy    = 0;
+                        double travelCaptain = 0;
+                        if (targetVid > 0)
+                        {
+                            travelArmy    = AutoBombModule.CalculateBaseTravelTime(vid, targetVid, false);
+                            travelCaptain = AutoBombModule.CalculateBaseTravelTime(vid, targetVid, true);
+                        }
+                        result.Add(new Dictionary<string, object>
+                        {
+                            ["village_id"]          = vid,
+                            ["village_name"]        = (name ?? "") + " (V)",
+                            ["peasants"]            = vi.stationed_Peasants,
+                            ["archers"]             = vi.stationed_Archers,
+                            ["pikemen"]             = vi.stationed_Pikemen,
+                            ["swordsmen"]           = vi.stationed_Swordsmen,
+                            ["catapults"]           = vi.stationed_Catapults,
+                            ["captains"]            = 0,
+                            ["travel_time_army"]    = travelArmy,
+                            ["travel_time_captain"] = travelCaptain,
+                            ["is_vassal"]           = true,
+                            ["parent_village_id"]   = vi.yourVillageID,
+                        });
+                    }
+                }
+            }
+
             return result;
         }
 
@@ -2181,6 +2231,8 @@ namespace Kingdoms.Bot.Modules
     {
         public string SourcePlayerName = "";
         public int SourceVillageId;
+        public int ParentVillageId;
+        public bool IsVassal;
         public string FormationName = "";
         public int Stack = 1;
         public int CardType;

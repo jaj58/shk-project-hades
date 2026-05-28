@@ -23,6 +23,8 @@ namespace Kingdoms.Bot.UI
 
         public string OwnerPlayerName;
         public int SourceVillageId;
+        public int ParentVillageId;
+        public bool IsVassal;
         public bool IsLocalPlayer;
         public double BaseTravelTimeArmy;
         public double BaseTravelTimeCaptain;
@@ -123,10 +125,13 @@ namespace Kingdoms.Bot.UI
         public MultiBombVillageRow(string ownerPlayerName, int sourceVillageId, string villageName,
             double travelArmy, double travelCaptain,
             int peasants, int archers, int pikemen, int swordsmen, int catapults, int captains,
-            List<string> formationNames, bool isLocalPlayer, int index, bool isCoordinator)
+            List<string> formationNames, bool isLocalPlayer, int index, bool isCoordinator,
+            bool isVassal = false, int parentVillageId = 0)
         {
             OwnerPlayerName       = ownerPlayerName;
             SourceVillageId       = sourceVillageId;
+            IsVassal              = isVassal;
+            ParentVillageId       = parentVillageId;
             IsLocalPlayer         = isLocalPlayer;
             BaseTravelTimeArmy    = travelArmy;
             BaseTravelTimeCaptain = travelCaptain;
@@ -149,7 +154,9 @@ namespace Kingdoms.Bot.UI
             x += 22;
 
             Label villLabel = MakeLabel("[" + sourceVillageId + "] " + villageName, x, 170);
-            villLabel.ForeColor = isRemote ? TextRemote : TextPri;
+            villLabel.ForeColor = isVassal
+                ? Color.FromArgb(190, 160, 230)
+                : (isRemote ? TextRemote : TextPri);
             x += 176;
 
             TimeSpan ts = TimeSpan.FromSeconds(travelArmy);

@@ -280,6 +280,7 @@ namespace Kingdoms.Bot.UI
             this._abmTakeCoordBtn = new System.Windows.Forms.Button();
             this._abmCoordStatusLabel = new System.Windows.Forms.Label();
             this._abmPreRefreshCheck = new System.Windows.Forms.CheckBox();
+            this._abmIncludeVassalsCheck = new System.Windows.Forms.CheckBox();
             this._abmQueueEnabledCheck = new System.Windows.Forms.CheckBox();
             this._abmQueueVidInput = new System.Windows.Forms.NumericUpDown();
             this._abmQueueAddIdBtn = new System.Windows.Forms.Button();
@@ -3529,6 +3530,7 @@ namespace Kingdoms.Bot.UI
             this._abmCtrlPanel.Controls.Add(this._abmStackDelayInput);
             this._abmCtrlPanel.Controls.Add(this._abmTargetVidBox);
             this._abmCtrlPanel.Controls.Add(this._abmPreRefreshCheck);
+            this._abmCtrlPanel.Controls.Add(this._abmIncludeVassalsCheck);
             this._abmCtrlPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._abmCtrlPanel.Location = new System.Drawing.Point(0, 0);
             this._abmCtrlPanel.Name = "_abmCtrlPanel";
@@ -3595,6 +3597,17 @@ namespace Kingdoms.Bot.UI
             this._abmPreRefreshCheck.Size = new System.Drawing.Size(180, 18);
             this._abmPreRefreshCheck.TabIndex = 11;
             this._abmPreRefreshCheck.Text = "Pre-refresh villages before prepare";
+            //
+            // _abmIncludeVassalsCheck
+            //
+            this._abmIncludeVassalsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmIncludeVassalsCheck.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._abmIncludeVassalsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmIncludeVassalsCheck.Location = new System.Drawing.Point(190, 34);
+            this._abmIncludeVassalsCheck.Name = "_abmIncludeVassalsCheck";
+            this._abmIncludeVassalsCheck.Size = new System.Drawing.Size(130, 18);
+            this._abmIncludeVassalsCheck.TabIndex = 12;
+            this._abmIncludeVassalsCheck.Text = "Include Vassals";
             //
             // _abmPushConfigBtn
             //
@@ -4588,6 +4601,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _abmFakeSendCheck;
         private System.Windows.Forms.CheckBox _abmAutoInterdictCheck;
         private System.Windows.Forms.CheckBox _abmPreRefreshCheck;
+        private System.Windows.Forms.CheckBox _abmIncludeVassalsCheck;
         private System.Windows.Forms.Button _abmPushConfigBtn;
         private System.Windows.Forms.Button _abmPrepareBtn;
         private System.Windows.Forms.Button _abmLaunchBtn;
