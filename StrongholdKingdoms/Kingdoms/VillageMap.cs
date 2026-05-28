@@ -8464,7 +8464,9 @@ namespace Kingdoms
       {
         if ((DateTime.Now - this.lastMarketSend).TotalSeconds < 45.0)
           return false;
+        // Lock expired without a callback — reset and let the NEXT call send
         this.inMarketSend = false;
+        return false;
       }
       if (this.inMarketSend)
         return false;
@@ -8568,7 +8570,9 @@ namespace Kingdoms
       {
         if ((DateTime.Now - this.lastMarketSend).TotalSeconds < 45.0)
           return false;
+        // Lock expired without a callback — reset and let the NEXT call send
         this.inMarketSend = false;
+        return false;
       }
       if (!this.inMarketSend)
       {

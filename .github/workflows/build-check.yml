@@ -1,0 +1,25 @@
+name: Client Build Check
+
+on:
+  push:
+    paths:
+      - 'StrongholdKingdoms/**'
+      - '4gb_patch.exe'
+  workflow_dispatch:
+
+jobs:
+  build-check:
+    name: Build client (no deploy)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore NuGet packages
+        run: nuget restore StrongholdKingdoms\StrongholdKingdoms.sln
+
+      - name: Build Release
+        run: msbuild StrongholdKingdoms\StrongholdKingdoms.sln /p:Configuration=Release /p:Platform="Any CPU" /v:quiet /nologo /clp:ErrorsOnly

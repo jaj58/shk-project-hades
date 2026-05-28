@@ -1722,10 +1722,12 @@ namespace Kingdoms.Bot.Modules
         {
             switch (cardType)
             {
-                case 1: return baseTime * 0.5;
-                case 2: return baseTime * 0.25;
-                case 3: return baseTime / 6.0;
-                default: return baseTime;
+                case 1: case 4: return baseTime * 0.5;       // x2 — Basic Discipline (3h) or Basic Logistics (1-use)
+                case 2:         return baseTime * 0.25;      // x4 — Advanced Discipline (3h)
+                case 3:         return baseTime / 6.0;       // x6 — Expert Discipline (3h)
+                case 5:         return baseTime / 3.0;       // x3 — Advanced Logistics (1-use)
+                case 6:         return baseTime * 0.2;       // x5 — Expert Logistics (1-use)
+                default:        return baseTime;             // 0  = No card
             }
         }
 

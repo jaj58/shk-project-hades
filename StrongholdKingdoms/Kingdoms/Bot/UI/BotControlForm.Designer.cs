@@ -169,9 +169,11 @@ namespace Kingdoms.Bot.UI
             this._trAddRouteBtn = new System.Windows.Forms.Button();
             this._trPlayerRoutesTab = new System.Windows.Forms.TabPage();
             this._trPlayerRoutesListPanel = new System.Windows.Forms.Panel();
+            this._trStatsTab = new System.Windows.Forms.TabPage();
             this._trSettingsPanel = new System.Windows.Forms.Panel();
             this._trDisableOnCardExpiryCheck = new System.Windows.Forms.CheckBox();
-            this._trPrioritiseMarketsCheck = new System.Windows.Forms.CheckBox();
+            this._trPriorityCombo = new System.Windows.Forms.ComboBox();
+            this._trPriorityLabel = new System.Windows.Forms.Label();
             this._trIgnoreTransactionsCheck = new System.Windows.Forms.CheckBox();
             this._trAutoHireLimitInput = new System.Windows.Forms.NumericUpDown();
             this._trAutoHireLimitLabel = new System.Windows.Forms.Label();
@@ -281,6 +283,8 @@ namespace Kingdoms.Bot.UI
             this._abmCoordStatusLabel = new System.Windows.Forms.Label();
             this._abmPreRefreshCheck = new System.Windows.Forms.CheckBox();
             this._abmIncludeVassalsCheck = new System.Windows.Forms.CheckBox();
+            this._abmPlayCardsCheck = new System.Windows.Forms.CheckBox();
+            this._abmAutoCancelCardCheck = new System.Windows.Forms.CheckBox();
             this._abmQueueEnabledCheck = new System.Windows.Forms.CheckBox();
             this._abmQueueVidInput = new System.Windows.Forms.NumericUpDown();
             this._abmQueueAddIdBtn = new System.Windows.Forms.Button();
@@ -2045,6 +2049,8 @@ namespace Kingdoms.Bot.UI
             this._trSubTabs.Controls.Add(this._trMarketsTab);
             this._trSubTabs.Controls.Add(this._trRoutesTab);
             this._trSubTabs.Controls.Add(this._trPlayerRoutesTab);
+            this._trSubTabs.Controls.Add(this._trStatsTab);
+            this._trSubTabs.Selected += new System.Windows.Forms.TabControlEventHandler(this._trSubTabs_Selected);
             this._trSubTabs.Dock = System.Windows.Forms.DockStyle.Fill;
             this._trSubTabs.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._trSubTabs.Location = new System.Drawing.Point(0, 100);
@@ -2230,12 +2236,20 @@ namespace Kingdoms.Bot.UI
             this._trPlayerRoutesListPanel.Name = "_trPlayerRoutesListPanel";
             this._trPlayerRoutesListPanel.Size = new System.Drawing.Size(1134, 371);
             this._trPlayerRoutesListPanel.TabIndex = 0;
-            // 
+            //
+            // _trStatsTab
+            //
+            this._trStatsTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._trStatsTab.Name = "_trStatsTab";
+            this._trStatsTab.Text = "Stats";
+            this._trStatsTab.TabIndex = 3;
+            //
             // _trSettingsPanel
-            // 
+            //
             this._trSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
             this._trSettingsPanel.Controls.Add(this._trDisableOnCardExpiryCheck);
-            this._trSettingsPanel.Controls.Add(this._trPrioritiseMarketsCheck);
+            this._trSettingsPanel.Controls.Add(this._trPriorityCombo);
+            this._trSettingsPanel.Controls.Add(this._trPriorityLabel);
             this._trSettingsPanel.Controls.Add(this._trIgnoreTransactionsCheck);
             this._trSettingsPanel.Controls.Add(this._trAutoHireLimitInput);
             this._trSettingsPanel.Controls.Add(this._trAutoHireLimitLabel);
@@ -2265,25 +2279,37 @@ namespace Kingdoms.Bot.UI
             this._trDisableOnCardExpiryCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._trDisableOnCardExpiryCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trDisableOnCardExpiryCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trDisableOnCardExpiryCheck.Location = new System.Drawing.Point(650, 70);
+            this._trDisableOnCardExpiryCheck.Location = new System.Drawing.Point(775, 70);
             this._trDisableOnCardExpiryCheck.Name = "_trDisableOnCardExpiryCheck";
             this._trDisableOnCardExpiryCheck.Size = new System.Drawing.Size(139, 19);
             this._trDisableOnCardExpiryCheck.TabIndex = 17;
             this._trDisableOnCardExpiryCheck.Text = "Disable on card expiry";
-            // 
-            // _trPrioritiseMarketsCheck
-            // 
-            this._trPrioritiseMarketsCheck.AutoSize = true;
-            this._trPrioritiseMarketsCheck.Checked = true;
-            this._trPrioritiseMarketsCheck.CheckState = System.Windows.Forms.CheckState.Checked;
-            this._trPrioritiseMarketsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._trPrioritiseMarketsCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
-            this._trPrioritiseMarketsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trPrioritiseMarketsCheck.Location = new System.Drawing.Point(500, 70);
-            this._trPrioritiseMarketsCheck.Name = "_trPrioritiseMarketsCheck";
-            this._trPrioritiseMarketsCheck.Size = new System.Drawing.Size(114, 19);
-            this._trPrioritiseMarketsCheck.TabIndex = 16;
-            this._trPrioritiseMarketsCheck.Text = "Prioritise Markets";
+            //
+            // _trPriorityLabel
+            //
+            this._trPriorityLabel.AutoSize = true;
+            this._trPriorityLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trPriorityLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(200)))), ((int)(((byte)(210)))));
+            this._trPriorityLabel.Location = new System.Drawing.Point(490, 72);
+            this._trPriorityLabel.Name = "_trPriorityLabel";
+            this._trPriorityLabel.Text = "Priority:";
+            //
+            // _trPriorityCombo
+            //
+            this._trPriorityCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._trPriorityCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._trPriorityCombo.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trPriorityCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._trPriorityCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._trPriorityCombo.Location = new System.Drawing.Point(545, 68);
+            this._trPriorityCombo.Name = "_trPriorityCombo";
+            this._trPriorityCombo.Size = new System.Drawing.Size(220, 22);
+            this._trPriorityCombo.TabIndex = 16;
+            this._trPriorityCombo.Items.AddRange(new object[] {
+                "Market Priority (Sell then Buy)",
+                "Market Priority (Buy then Sell)",
+                "Village Route Priority",
+                "Player Route Priority"});
             // 
             // _trIgnoreTransactionsCheck
             // 
@@ -3531,6 +3557,8 @@ namespace Kingdoms.Bot.UI
             this._abmCtrlPanel.Controls.Add(this._abmTargetVidBox);
             this._abmCtrlPanel.Controls.Add(this._abmPreRefreshCheck);
             this._abmCtrlPanel.Controls.Add(this._abmIncludeVassalsCheck);
+            this._abmCtrlPanel.Controls.Add(this._abmPlayCardsCheck);
+            this._abmCtrlPanel.Controls.Add(this._abmAutoCancelCardCheck);
             this._abmCtrlPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._abmCtrlPanel.Location = new System.Drawing.Point(0, 0);
             this._abmCtrlPanel.Name = "_abmCtrlPanel";
@@ -3608,6 +3636,28 @@ namespace Kingdoms.Bot.UI
             this._abmIncludeVassalsCheck.Size = new System.Drawing.Size(130, 18);
             this._abmIncludeVassalsCheck.TabIndex = 12;
             this._abmIncludeVassalsCheck.Text = "Include Vassals";
+            //
+            // _abmPlayCardsCheck
+            //
+            this._abmPlayCardsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmPlayCardsCheck.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._abmPlayCardsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmPlayCardsCheck.Location = new System.Drawing.Point(324, 34);
+            this._abmPlayCardsCheck.Name = "_abmPlayCardsCheck";
+            this._abmPlayCardsCheck.Size = new System.Drawing.Size(80, 18);
+            this._abmPlayCardsCheck.TabIndex = 13;
+            this._abmPlayCardsCheck.Text = "Play Cards";
+            //
+            // _abmAutoCancelCardCheck
+            //
+            this._abmAutoCancelCardCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmAutoCancelCardCheck.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._abmAutoCancelCardCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmAutoCancelCardCheck.Location = new System.Drawing.Point(408, 34);
+            this._abmAutoCancelCardCheck.Name = "_abmAutoCancelCardCheck";
+            this._abmAutoCancelCardCheck.Size = new System.Drawing.Size(138, 18);
+            this._abmAutoCancelCardCheck.TabIndex = 14;
+            this._abmAutoCancelCardCheck.Text = "Auto Cancel Wrong Card";
             //
             // _abmPushConfigBtn
             //
@@ -4142,9 +4192,9 @@ namespace Kingdoms.Bot.UI
             this._ppEnabledCheck.Size = new System.Drawing.Size(143, 23);
             this._ppEnabledCheck.TabIndex = 0;
             this._ppEnabledCheck.Text = "Enable Popularity";
-            // 
+            //
             // _miscPage
-            // 
+            //
             this._miscPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
             this._miscPage.Controls.Add(this._miscSettingsPanel);
             this._miscPage.Location = new System.Drawing.Point(4, 24);
@@ -4260,7 +4310,7 @@ namespace Kingdoms.Bot.UI
             this._miscSaleRefreshBtn.Text = "Refresh";
             //
             // _logPanel
-            // 
+            //
             this._logPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
             this._logPanel.Controls.Add(this._logBox);
             this._logPanel.Controls.Add(this._logHeader);
@@ -4602,6 +4652,8 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _abmAutoInterdictCheck;
         private System.Windows.Forms.CheckBox _abmPreRefreshCheck;
         private System.Windows.Forms.CheckBox _abmIncludeVassalsCheck;
+        private System.Windows.Forms.CheckBox _abmPlayCardsCheck;
+        private System.Windows.Forms.CheckBox _abmAutoCancelCardCheck;
         private System.Windows.Forms.Button _abmPushConfigBtn;
         private System.Windows.Forms.Button _abmPrepareBtn;
         private System.Windows.Forms.Button _abmLaunchBtn;
@@ -4684,7 +4736,9 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Label _trAutoHireLimitLabel;
         private System.Windows.Forms.NumericUpDown _trAutoHireLimitInput;
         private System.Windows.Forms.CheckBox _trIgnoreTransactionsCheck;
-        private System.Windows.Forms.CheckBox _trPrioritiseMarketsCheck;
+        private System.Windows.Forms.ComboBox _trPriorityCombo;
+        private System.Windows.Forms.Label _trPriorityLabel;
+        private System.Windows.Forms.TabPage _trStatsTab;
         private System.Windows.Forms.CheckBox _trDisableOnCardExpiryCheck;
         private System.Windows.Forms.Panel _trMarketVillageListPanel;
         private System.Windows.Forms.Button _trMarketRefreshBtn;

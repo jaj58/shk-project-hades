@@ -18,7 +18,7 @@ namespace HadesUpdater
     public class UpdaterClient
     {
         // TODO: replace with your real domain before deploying
-        private const string ApiUrl = "https://projecthades.co.uk/api/updater_api.php";
+        private const string ApiUrl = "https://www.projecthades.co.uk/api/updater_api.php";
 
         private readonly JavaScriptSerializer _json = new JavaScriptSerializer();
 
