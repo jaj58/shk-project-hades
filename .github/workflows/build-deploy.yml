@@ -80,7 +80,7 @@ jobs:
           }
 
       - name: Build Release
-        run: msbuild StrongholdKingdoms\StrongholdKingdoms.sln /p:Configuration=Release /p:Platform="Any CPU" /v:quiet /nologo
+        run: msbuild StrongholdKingdoms\StrongholdKingdoms.sln /p:Configuration=Release /p:Platform="Any CPU" /v:quiet /nologo /clp:ErrorsOnly
 
       - name: Apply 4GB patch
         shell: pwsh
