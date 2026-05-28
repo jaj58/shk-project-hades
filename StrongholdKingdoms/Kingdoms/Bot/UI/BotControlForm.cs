@@ -3050,10 +3050,11 @@ namespace Kingdoms.Bot.UI
             editor.ShowDialog(this);
             if (editor.Saved)
             {
+                string originalName = s.Routes[_trSelectedRouteIndex].Name;
                 s.Routes.Add(clone);
                 TrBuildRoutesList();
                 BotLogger.Log("Trade", BotLogLevel.Info,
-                    "Trade route '" + clone.Name + "' duplicated from '" + s.Routes[_trSelectedRouteIndex].Name + "'.");
+                    "Trade route '" + clone.Name + "' duplicated from '" + originalName + "'.");
             }
         }
 
