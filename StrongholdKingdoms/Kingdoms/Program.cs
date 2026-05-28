@@ -1278,8 +1278,10 @@ namespace Kingdoms
       try
       {
         string settingsPath = System.IO.Path.Combine(
-          Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-          "HadesUpdater", "settings.json");
+          System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "HadesUpdater"),
+          "settings.json");
         if (System.IO.File.Exists(settingsPath))
         {
           string json = System.IO.File.ReadAllText(settingsPath);
