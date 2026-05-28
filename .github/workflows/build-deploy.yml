@@ -58,8 +58,9 @@ jobs:
             $patch = [int]$Matches[3] + 1; $build = [int]$Matches[4]
             $newVer     = "$major.$minor.$patch.$build"
             $releaseVer = "$major.$minor.$patch"
-            $content = $content -replace '\[assembly: AssemblyVersion\("(\d+\.\d+\.\d+\.\d+)"\)\]',     "[assembly: AssemblyVersion(`"$newVer`")]"
-            $content = $content -replace '\[assembly: AssemblyFileVersion\("(\d+\.\d+\.\d+\.\d+)"\)\]', "[assembly: AssemblyFileVersion(`"$newVer`")]"
+            $content = $content -replace '\[assembly: AssemblyVersion\("(\d+\.\d+\.\d+\.\d+)"\)\]',          "[assembly: AssemblyVersion(`"$newVer`")]"
+            $content = $content -replace '\[assembly: AssemblyFileVersion\("(\d+\.\d+\.\d+\.\d+)"\)\]',     "[assembly: AssemblyFileVersion(`"$newVer`")]"
+            $content = $content -replace '\[assembly: AssemblyInformationalVersion\(".*?"\)\]', "[assembly: AssemblyInformationalVersion(`"$releaseVer`")]"
             Set-Content $path $content -NoNewline
 
             echo "is_release=true"                      >> $env:GITHUB_OUTPUT
@@ -71,6 +72,12 @@ jobs:
             # Dev build: fixed filename, label with short commit SHA
             $shortSha = "${{ github.sha }}".Substring(0, 7)
             $devVer   = "dev-$shortSha"
+
+            # Stamp AssemblyInformationalVersion so Application.ProductVersion returns "dev-<sha>"
+            $path    = "StrongholdKingdoms\AssemblyInfo.cs"
+            $content = Get-Content $path -Raw
+            $content = $content -replace '\[assembly: AssemblyInformationalVersion\(".*?"\)\]', "[assembly: AssemblyInformationalVersion(`"$devVer`")]"
+            Set-Content $path $content -NoNewline
 
             echo "is_release=false"                         >> $env:GITHUB_OUTPUT
             echo "release_version=$devVer"                  >> $env:GITHUB_OUTPUT

@@ -13,4 +13,5 @@ using System.Security.Permissions;
 [assembly: Guid("97e4707f-bcf0-4c2a-9406-f9db3caaab13")]
 [assembly: AssemblyTitle("Stronghold Kingdoms")]
 [assembly: AssemblyVersion("1.0.51.0")]
+[assembly: AssemblyInformationalVersion("1.0.51")]
 [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
