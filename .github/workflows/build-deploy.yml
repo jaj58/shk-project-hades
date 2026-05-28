@@ -95,7 +95,7 @@ jobs:
 
             echo "is_release=false"                                   >> $env:GITHUB_OUTPUT
             echo "release_version=$devVer"                         >> $env:GITHUB_OUTPUT
-            echo "zip_name=hades_dev_latest.zip"                   >> $env:GITHUB_OUTPUT
+            echo "zip_name=hades_$devVer.zip"                      >> $env:GITHUB_OUTPUT
             echo "version_file=downloads\dev_version.json"         >> $env:GITHUB_OUTPUT
             echo "version_file_api=downloads/dev_version.json"     >> $env:GITHUB_OUTPUT
           }
