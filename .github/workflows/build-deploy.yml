@@ -63,6 +63,12 @@ jobs:
             $content = $content -replace '\[assembly: AssemblyInformationalVersion\(".*?"\)\]', "[assembly: AssemblyInformationalVersion(`"$releaseVer`")]"
             Set-Content $path $content -NoNewline
 
+            # Stamp HadesUpdater with the same release version
+            $updaterPath    = "HadesUpdater\AssemblyInfo.cs"
+            $updaterContent = Get-Content $updaterPath -Raw
+            $updaterContent = $updaterContent -replace '\[assembly: AssemblyInformationalVersion\(".*?"\)\]', "[assembly: AssemblyInformationalVersion(`"$releaseVer`")]"
+            Set-Content $updaterPath $updaterContent -NoNewline
+
             echo "is_release=true"                      >> $env:GITHUB_OUTPUT
             echo "release_version=$releaseVer"          >> $env:GITHUB_OUTPUT
             echo "zip_name=hades_$releaseVer.zip"       >> $env:GITHUB_OUTPUT
@@ -78,6 +84,12 @@ jobs:
             $content = Get-Content $path -Raw
             $content = $content -replace '\[assembly: AssemblyInformationalVersion\(".*?"\)\]', "[assembly: AssemblyInformationalVersion(`"$devVer`")]"
             Set-Content $path $content -NoNewline
+
+            # Stamp HadesUpdater with the same dev version
+            $updaterPath    = "HadesUpdater\AssemblyInfo.cs"
+            $updaterContent = Get-Content $updaterPath -Raw
+            $updaterContent = $updaterContent -replace '\[assembly: AssemblyInformationalVersion\(".*?"\)\]', "[assembly: AssemblyInformationalVersion(`"$devVer`")]"
+            Set-Content $updaterPath $updaterContent -NoNewline
 
             echo "is_release=false"                         >> $env:GITHUB_OUTPUT
             echo "release_version=$devVer"                  >> $env:GITHUB_OUTPUT

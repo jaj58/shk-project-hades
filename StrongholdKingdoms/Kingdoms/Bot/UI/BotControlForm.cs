@@ -127,8 +127,14 @@ namespace Kingdoms.Bot.UI
         {
             InitializeComponent();
 
-            var v = new Version(Application.ProductVersion);
-            _versionLabel.Text = $"v{v.Major}.{v.Minor}.{v.Build}";
+            string pv = Application.ProductVersion ?? "0.0.0";
+            if (pv.StartsWith("dev-", StringComparison.OrdinalIgnoreCase))
+                _versionLabel.Text = pv; // e.g. "dev-abc1234"
+            else
+            {
+                try { var v = new Version(pv); _versionLabel.Text = $"v{v.Major}.{v.Minor}.{v.Build}"; }
+                catch { _versionLabel.Text = "v" + pv; }
+            }
 
             if (!IsDesignTime)
             {
