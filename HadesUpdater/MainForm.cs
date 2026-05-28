@@ -18,6 +18,14 @@ namespace HadesUpdater
             InitializeComponent();
             _settings = UpdaterSettings.Load();
             _client   = new UpdaterClient();
+
+            // Clean up any leftover .old file from a previous self-update
+            try
+            {
+                string oldSelf = System.Reflection.Assembly.GetExecutingAssembly().Location + ".old";
+                if (File.Exists(oldSelf)) File.Delete(oldSelf);
+            }
+            catch { }
         }
 
         // ------------------------------------------------------------------ //
@@ -149,13 +157,30 @@ namespace HadesUpdater
             _client.DownloadFile(version.DownloadUrl, zipPath, pct =>
                 worker.ReportProgress(15 + (int)(pct * 0.72), "Downloading… " + pct + "%"));
 
-            // 6. Extract (password used in-memory only, never stored)
+            // 6. Rename our own exe if it would be overwritten (Windows blocks writing to a running exe
+            //    but allows renaming it — the new HadesUpdater.exe is then extracted in its place)
+            worker.ReportProgress(85, "Preparing files…");
+            string updaterDest   = Path.Combine(args.InstallDir, "HadesUpdater.exe");
+            string currentSelf   = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            bool   selfInInstall = string.Equals(
+                Path.GetFullPath(updaterDest),
+                Path.GetFullPath(currentSelf),
+                StringComparison.OrdinalIgnoreCase);
+
+            if (selfInInstall)
+            {
+                string oldSelf = currentSelf + ".old";
+                try { if (File.Exists(oldSelf)) File.Delete(oldSelf); } catch { }
+                File.Move(currentSelf, oldSelf); // rename the running exe — allowed by Windows
+            }
+
+            // 7. Extract (password used in-memory only, never stored)
             worker.ReportProgress(88, "Extracting files…");
             Directory.CreateDirectory(args.InstallDir);
             ExtractZip(zipPath, args.InstallDir, version.ZipPassword);
             version.ZipPassword = null; // clear from memory ASAP
 
-            // 7. Save settings + cleanup
+            // 8. Save settings + cleanup
             worker.ReportProgress(97, "Saving settings…");
             _settings.LicenseKey       = args.Key;
             _settings.InstallDir       = args.InstallDir;
