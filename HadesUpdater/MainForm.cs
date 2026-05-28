@@ -35,7 +35,9 @@ namespace HadesUpdater
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-            this.Text = "Hades Updater  —  v" + Application.ProductVersion;
+            string pv = Application.ProductVersion ?? "";
+            this.Text        = "Hades Bot Updater";
+            lblVersion.Text  = pv.Length > 0 ? "v" + pv : "";
 
             if (_settings.IsConfigured)
             {
