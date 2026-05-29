@@ -1438,7 +1438,7 @@ namespace Kingdoms
       if (!response.SuccessCode.HasValue || response.SuccessCode.Value != 1)
       {
         GameEngine.Instance.playInterfaceSound("PlayCardsPanel_play_card_failed");
-        if (!(BotEngine.Instance?.Settings?.Misc?.DisableCannotPlayCardPopup == true))
+        if (!(Bot.BotEngine.Instance?.Settings?.Misc?.DisableCannotPlayCardPopup == true))
           MyMessageBox.Show(CardsManager.translateCardError(response.Message, this.clickedCard.Definition.id), SK.Text("BuyCardsPanel_Cannot_Play_Cards", "Could not play card."));
         try
         {
