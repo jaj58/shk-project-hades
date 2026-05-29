@@ -4221,7 +4221,7 @@ namespace Kingdoms.Bot.UI
             this._miscSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._miscSettingsPanel.Name = "_miscSettingsPanel";
             this._miscSettingsPanel.Padding = new System.Windows.Forms.Padding(16);
-            this._miscSettingsPanel.Size = new System.Drawing.Size(1142, 200);
+            this._miscSettingsPanel.Size = new System.Drawing.Size(1142, 226);
             this._miscSettingsPanel.TabIndex = 0;
             // 
             // _miscCollectFreeCardsCheck
@@ -4253,7 +4253,7 @@ namespace Kingdoms.Bot.UI
             this._miscSaleHeaderLabel.AutoSize = true;
             this._miscSaleHeaderLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._miscSaleHeaderLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._miscSaleHeaderLabel.Location = new System.Drawing.Point(16, 58);
+            this._miscSaleHeaderLabel.Location = new System.Drawing.Point(16, 84);
             this._miscSaleHeaderLabel.Name = "_miscSaleHeaderLabel";
             this._miscSaleHeaderLabel.Text = "Sale Info";
             //
@@ -4262,7 +4262,7 @@ namespace Kingdoms.Bot.UI
             this._miscSalePctLabel.AutoSize = true;
             this._miscSalePctLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._miscSalePctLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._miscSalePctLabel.Location = new System.Drawing.Point(16, 80);
+            this._miscSalePctLabel.Location = new System.Drawing.Point(16, 106);
             this._miscSalePctLabel.Name = "_miscSalePctLabel";
             this._miscSalePctLabel.Text = "Sale %:";
             //
@@ -4271,7 +4271,7 @@ namespace Kingdoms.Bot.UI
             this._miscSalePctValue.AutoSize = true;
             this._miscSalePctValue.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._miscSalePctValue.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._miscSalePctValue.Location = new System.Drawing.Point(90, 80);
+            this._miscSalePctValue.Location = new System.Drawing.Point(90, 106);
             this._miscSalePctValue.Name = "_miscSalePctValue";
             this._miscSalePctValue.Text = "—";
             //
@@ -4280,7 +4280,7 @@ namespace Kingdoms.Bot.UI
             this._miscSaleStartLabel.AutoSize = true;
             this._miscSaleStartLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._miscSaleStartLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._miscSaleStartLabel.Location = new System.Drawing.Point(16, 102);
+            this._miscSaleStartLabel.Location = new System.Drawing.Point(16, 128);
             this._miscSaleStartLabel.Name = "_miscSaleStartLabel";
             this._miscSaleStartLabel.Text = "Start:";
             //
@@ -4289,7 +4289,7 @@ namespace Kingdoms.Bot.UI
             this._miscSaleStartValue.AutoSize = true;
             this._miscSaleStartValue.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._miscSaleStartValue.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._miscSaleStartValue.Location = new System.Drawing.Point(90, 102);
+            this._miscSaleStartValue.Location = new System.Drawing.Point(90, 128);
             this._miscSaleStartValue.Name = "_miscSaleStartValue";
             this._miscSaleStartValue.Text = "—";
             //
@@ -4298,7 +4298,7 @@ namespace Kingdoms.Bot.UI
             this._miscSaleEndLabel.AutoSize = true;
             this._miscSaleEndLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._miscSaleEndLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._miscSaleEndLabel.Location = new System.Drawing.Point(16, 124);
+            this._miscSaleEndLabel.Location = new System.Drawing.Point(16, 150);
             this._miscSaleEndLabel.Name = "_miscSaleEndLabel";
             this._miscSaleEndLabel.Text = "End:";
             //
@@ -4307,7 +4307,7 @@ namespace Kingdoms.Bot.UI
             this._miscSaleEndValue.AutoSize = true;
             this._miscSaleEndValue.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._miscSaleEndValue.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._miscSaleEndValue.Location = new System.Drawing.Point(90, 124);
+            this._miscSaleEndValue.Location = new System.Drawing.Point(90, 150);
             this._miscSaleEndValue.Name = "_miscSaleEndValue";
             this._miscSaleEndValue.Text = "—";
             //
@@ -4317,7 +4317,7 @@ namespace Kingdoms.Bot.UI
             this._miscSaleRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._miscSaleRefreshBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
             this._miscSaleRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._miscSaleRefreshBtn.Location = new System.Drawing.Point(200, 77);
+            this._miscSaleRefreshBtn.Location = new System.Drawing.Point(200, 103);
             this._miscSaleRefreshBtn.Name = "_miscSaleRefreshBtn";
             this._miscSaleRefreshBtn.Size = new System.Drawing.Size(70, 24);
             this._miscSaleRefreshBtn.TabIndex = 1;

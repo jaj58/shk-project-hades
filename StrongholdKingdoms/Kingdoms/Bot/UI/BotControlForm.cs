@@ -2028,6 +2028,11 @@ namespace Kingdoms.Bot.UI
                 AbmWriteToSettings();
                 tabName = "Auto Bomb Multi";
             }
+            else if (_tabControl.SelectedTab == _miscPage)
+            {
+                MiscWriteToSettings();
+                tabName = "Misc";
+            }
 
             BotEngine.Instance.SaveSettings();
             BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings saved.");
@@ -2080,6 +2085,11 @@ namespace Kingdoms.Bot.UI
             {
                 AbmLoadFromSettings();
                 tabName = "Auto Bomb Multi";
+            }
+            else if (_tabControl.SelectedTab == _miscPage)
+            {
+                MiscLoadFromSettings();
+                tabName = "Misc";
             }
 
             RefreshStatus();
@@ -5078,6 +5088,7 @@ namespace Kingdoms.Bot.UI
             MiscSettings s = BotEngine.Instance.Settings.Misc;
             s.CollectFreeCards = _miscCollectFreeCardsCheck.Checked;
             s.DisableCannotPlayCardPopup = _miscDisableCannotPlayCardCheck.Checked;
+            BotEngine.Instance.SaveSettings();
         }
 
         private void MiscRefreshSaleInfo()
