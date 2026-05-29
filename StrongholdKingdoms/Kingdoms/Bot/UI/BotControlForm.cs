@@ -1446,6 +1446,8 @@ namespace Kingdoms.Bot.UI
         {
             _crRefreshBtn.Click += delegate { CrPopulateVillageList(); };
             _crRepairAllBtn.Click += delegate { CrRepairAllNow(); };
+            _crMemoriseInfraBtn.Click += delegate { CrMemoriseInfraClick(); };
+            _crMemoriseTroopsBtn.Click += delegate { CrMemoriseTroopsClick(); };
 
             _crEnabledCheck.CheckedChanged += delegate { CrPushToSettings(); };
             _crIntervalInput.ValueChanged += delegate { CrPushToSettings(); };
@@ -1542,6 +1544,31 @@ namespace Kingdoms.Bot.UI
                     break;
                 }
             }
+        }
+
+        private CastleRepairModule CrGetModule()
+        {
+            if (BotEngine.Instance == null) return null;
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                CastleRepairModule crm = m as CastleRepairModule;
+                if (crm != null) return crm;
+            }
+            return null;
+        }
+
+        private void CrMemoriseInfraClick()
+        {
+            CastleRepairModule crm = CrGetModule();
+            if (crm != null)
+                crm.MemoriseAllInfrastructure();
+        }
+
+        private void CrMemoriseTroopsClick()
+        {
+            CastleRepairModule crm = CrGetModule();
+            if (crm != null)
+                crm.MemoriseAllTroops();
         }
 
         private void CrPushToSettings()

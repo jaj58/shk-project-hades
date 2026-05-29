@@ -147,6 +147,8 @@ namespace Kingdoms.Bot.UI
             this._crCopySettingsBtn = new System.Windows.Forms.Button();
             this._crRefreshBtn = new System.Windows.Forms.Button();
             this._crRepairAllBtn = new System.Windows.Forms.Button();
+            this._crMemoriseInfraBtn = new System.Windows.Forms.Button();
+            this._crMemoriseTroopsBtn = new System.Windows.Forms.Button();
             this._crRepairOnAttackCheck = new System.Windows.Forms.CheckBox();
             this._crDelayInput = new System.Windows.Forms.NumericUpDown();
             this._crDelayLabel = new System.Windows.Forms.Label();
@@ -1855,6 +1857,8 @@ namespace Kingdoms.Bot.UI
             this._crSettingsPanel.Controls.Add(this._crCopySettingsBtn);
             this._crSettingsPanel.Controls.Add(this._crRefreshBtn);
             this._crSettingsPanel.Controls.Add(this._crRepairAllBtn);
+            this._crSettingsPanel.Controls.Add(this._crMemoriseInfraBtn);
+            this._crSettingsPanel.Controls.Add(this._crMemoriseTroopsBtn);
             this._crSettingsPanel.Controls.Add(this._crRepairOnAttackCheck);
             this._crSettingsPanel.Controls.Add(this._crDelayInput);
             this._crSettingsPanel.Controls.Add(this._crDelayLabel);
@@ -1913,7 +1917,37 @@ namespace Kingdoms.Bot.UI
             this._crRepairAllBtn.TabIndex = 8;
             this._crRepairAllBtn.Text = "Repair All";
             this._crRepairAllBtn.UseVisualStyleBackColor = false;
-            // 
+            //
+            // _crMemoriseInfraBtn
+            //
+            this._crMemoriseInfraBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(130)))), ((int)(((byte)(80)))));
+            this._crMemoriseInfraBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._crMemoriseInfraBtn.FlatAppearance.BorderSize = 0;
+            this._crMemoriseInfraBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._crMemoriseInfraBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._crMemoriseInfraBtn.ForeColor = System.Drawing.Color.White;
+            this._crMemoriseInfraBtn.Location = new System.Drawing.Point(604, 98);
+            this._crMemoriseInfraBtn.Name = "_crMemoriseInfraBtn";
+            this._crMemoriseInfraBtn.Size = new System.Drawing.Size(100, 24);
+            this._crMemoriseInfraBtn.TabIndex = 11;
+            this._crMemoriseInfraBtn.Text = "Memorise Infra";
+            this._crMemoriseInfraBtn.UseVisualStyleBackColor = false;
+            //
+            // _crMemoriseTroopsBtn
+            //
+            this._crMemoriseTroopsBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(130)))), ((int)(((byte)(80)))));
+            this._crMemoriseTroopsBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._crMemoriseTroopsBtn.FlatAppearance.BorderSize = 0;
+            this._crMemoriseTroopsBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._crMemoriseTroopsBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._crMemoriseTroopsBtn.ForeColor = System.Drawing.Color.White;
+            this._crMemoriseTroopsBtn.Location = new System.Drawing.Point(716, 98);
+            this._crMemoriseTroopsBtn.Name = "_crMemoriseTroopsBtn";
+            this._crMemoriseTroopsBtn.Size = new System.Drawing.Size(100, 24);
+            this._crMemoriseTroopsBtn.TabIndex = 12;
+            this._crMemoriseTroopsBtn.Text = "Memorise Troops";
+            this._crMemoriseTroopsBtn.UseVisualStyleBackColor = false;
+            //
             // _crRepairOnAttackCheck
             // 
             this._crRepairOnAttackCheck.AutoSize = true;
@@ -4612,6 +4646,8 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _crDelayInput;
         private System.Windows.Forms.CheckBox _crRepairOnAttackCheck;
         private System.Windows.Forms.Button _crRepairAllBtn;
+        private System.Windows.Forms.Button _crMemoriseInfraBtn;
+        private System.Windows.Forms.Button _crMemoriseTroopsBtn;
         private System.Windows.Forms.Button _crRefreshBtn;
         private System.Windows.Forms.Button _crCopySettingsBtn;
         private System.Windows.Forms.Panel _crSeparator;
