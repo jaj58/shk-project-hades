@@ -314,6 +314,7 @@ namespace Kingdoms.Bot.UI
             this._miscPage = new System.Windows.Forms.TabPage();
             this._miscSettingsPanel = new System.Windows.Forms.Panel();
             this._miscCollectFreeCardsCheck = new System.Windows.Forms.CheckBox();
+            this._miscDisableCannotPlayCardCheck = new System.Windows.Forms.CheckBox();
             this._miscSaleHeaderLabel = new System.Windows.Forms.Label();
             this._miscSalePctLabel = new System.Windows.Forms.Label();
             this._miscSalePctValue = new System.Windows.Forms.Label();
