@@ -141,7 +141,7 @@ namespace Kingdoms
       this.btnForwardToFavourites.ImageOver = (Image) GFXLibrary.button_132_over;
       this.btnForwardToFavourites.ImageClick = (Image) GFXLibrary.button_132_in;
       this.btnForwardToFavourites.setSizeToImage();
-      this.btnForwardToFavourites.Position = new Point(this.btnForward.Rectangle.Right + 5, this.btnForward.Position.Y);
+      this.btnForwardToFavourites.Position = new Point(this.btnForward.Position.X, this.btnForward.Position.Y - this.btnForwardToFavourites.Height - 2);
       this.btnForwardToFavourites.Text.Font = FontManager.GetFont("Arial", 9f, FontStyle.Regular);
       this.btnForwardToFavourites.Text.Text = SK.Text("Reports_ForwardAllFavourites", "All Favourites");
       this.btnForwardToFavourites.TextYOffset = -2;
@@ -152,7 +152,7 @@ namespace Kingdoms
       this.btnUtility.ImageOver = (Image) GFXLibrary.button_132_over;
       this.btnUtility.ImageClick = (Image) GFXLibrary.button_132_in;
       this.btnUtility.setSizeToImage();
-      this.btnUtility.Position = new Point(this.btnForward.Position.X, this.btnForward.Position.Y - this.btnUtility.Height - 2);
+      this.btnUtility.Position = new Point(this.btnForward.Position.X, this.btnForwardToFavourites.Position.Y - this.btnUtility.Height - 2);
       this.btnUtility.Text.Font = FontManager.GetFont("Arial", 9f, FontStyle.Regular);
       this.btnUtility.TextYOffset = -2;
       this.btnUtility.Text.Color = ARGBColors.Black;
