@@ -922,6 +922,7 @@ namespace Kingdoms.Bot
         public bool DisableOnScoutCardExpiry = false;
         public bool ScoutCardsWereActive = false;
         public ScoutPriority Priority = ScoutPriority.ResourcePriority;
+        public bool SendOneScout = false;
         public List<VillageScoutSettings> Villages = new List<VillageScoutSettings>();
 
         public VillageScoutSettings GetVillageSettings(int villageId)

@@ -80,7 +80,7 @@ namespace Kingdoms.Bot.Modules
                 foreach (StashTarget target in targets)
                 {
                     if (village.m_numScouts <= 0) break;
-                    if (SendScout(village, target.StashId, 1))
+                    if (SendScout(village, target, settings.SendOneScout))
                     {
                         _lastSendTime = DateTime.Now;
                         return;
@@ -117,12 +117,25 @@ namespace Kingdoms.Bot.Modules
 
                 if (travelTime > maxTimeSec) continue;
 
+                // Try to get cached resource level — no download, avoids blocking
+                int resourceLevel = -1;
+                try
+                {
+                    WorldMap.SpecialVillageCache svc = GameEngine.Instance.World.getSpecialVillageData(vd.id, false);
+                    if (svc != null)
+                        resourceLevel = svc.resourceLevel;
+                    else
+                        GameEngine.Instance.World.getSpecialVillageData(vd.id, true); // trigger async fetch for next cycle
+                }
+                catch { }
+
                 result.Add(new StashTarget
                 {
                     StashId = vd.id,
                     TravelTime = travelTime,
                     ResourceType = special,
-                    TypeIndex = typeIndex
+                    TypeIndex = typeIndex,
+                    ResourceLevel = resourceLevel
                 });
             }
 
@@ -151,6 +164,35 @@ namespace Kingdoms.Bot.Modules
             t = GameEngine.Instance.World.adjustIfIslandTravel(t, fromVillageId, toVillageId);
             t *= CardTypes.getScoutSpeed(GameEngine.Instance.cardsManager.UserCardData);
             return t;
+        }
+
+        // Mirrors reference smethod_1: how many resources one scout can carry from this stash type
+        private static int CalculateCarryPerScout(int stashType)
+        {
+            int resourceCarryLevel = GameEngine.Instance.LocalWorldData.ScoutResourceCarryLevel;
+            int researchForaging = (int)GameEngine.Instance.World.UserResearchData.Research_Foraging;
+            int carry = CardTypes.adjustForagingLevel(GameEngine.Instance.cardsManager.UserCardData, resourceCarryLevel)
+                        * ResearchData.foragingResearch[researchForaging] / 2;
+
+            // Rare types carry 1/10 of base amount
+            switch (stashType)
+            {
+                case 119: case 121: case 122: case 123: case 124:
+                case 125: case 126: case 128: case 129: case 130:
+                case 131: case 132: case 133:
+                    carry /= 10;
+                    break;
+            }
+            return Math.Max(1, carry);
+        }
+
+        // Minimum scouts needed to fully clear a stash of the given resource level
+        private static int CalculateOptimalScouts(int resourceLevel, int carryPerScout)
+        {
+            if (resourceLevel <= 0) return 1;
+            int needed = resourceLevel / carryPerScout;
+            if (resourceLevel % carryPerScout > 0) needed++;
+            return Math.Max(1, needed);
         }
 
         private void TryHireScouts(VillageMap village, int targetCount)
@@ -191,18 +233,37 @@ namespace Kingdoms.Bot.Modules
             }
         }
 
-        private bool SendScout(VillageMap village, int stashId, int count)
+        private bool SendScout(VillageMap village, StashTarget target, bool sendOne)
         {
+            int count;
+            if (sendOne || target.ResourceLevel < 0)
+            {
+                // Either forced single-scout mode, or stash size unknown (data not yet cached)
+                count = 1;
+            }
+            else
+            {
+                try
+                {
+                    int carryPerScout = CalculateCarryPerScout(target.ResourceType);
+                    count = CalculateOptimalScouts(target.ResourceLevel, carryPerScout);
+                }
+                catch
+                {
+                    count = 1;
+                }
+                count = Math.Min(count, village.m_numScouts);
+            }
+
             try
             {
                 RemoteServices.Instance.set_SendScouts_UserCallBack(OnSendScoutsCallback);
-                RemoteServices.Instance.SendScouts(village.VillageID, stashId, count);
+                RemoteServices.Instance.SendScouts(village.VillageID, target.StashId, count);
                 village.addTroops(0, 0, 0, 0, 0, -count);
                 AllVillagesPanel.travellersChanged();
-                string stashName = GetStashDisplayName(stashId);
                 LogDebug(string.Format("{0}: sent {1} scout(s) to {2} ({3})",
                     GameEngine.Instance.World.getVillageName(village.VillageID),
-                    count, stashId, stashName));
+                    count, target.StashId, GetStashDisplayName(target.StashId)));
                 return true;
             }
             catch (Exception ex)
@@ -262,6 +323,7 @@ namespace Kingdoms.Bot.Modules
             public double TravelTime;
             public int ResourceType;
             public int TypeIndex;
+            public int ResourceLevel; // -1 = not yet cached from server
         }
     }
 }

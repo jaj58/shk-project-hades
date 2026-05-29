@@ -112,6 +112,7 @@ namespace Kingdoms.Bot.UI
         private CheckBox _scDisableOnCardExpiryCheck;
         private RadioButton _scPriorityResourceRadio;
         private RadioButton _scPriorityRangeRadio;
+        private CheckBox _scSendOneScoutCheck;
 
         // Popularity tab runtime state
         private Timer _ppRefreshTimer;
@@ -5423,6 +5424,14 @@ namespace Kingdoms.Bot.UI
             _scPriorityRangeRadio.Location = new Point(330, row3y);
             _scSettingsPanel.Controls.Add(_scPriorityRangeRadio);
 
+            _scSendOneScoutCheck = new CheckBox();
+            _scSendOneScoutCheck.Text = "Send 1 scout per stash (ignore stash size)";
+            _scSendOneScoutCheck.ForeColor = textPri;
+            _scSendOneScoutCheck.FlatStyle = FlatStyle.Flat;
+            _scSendOneScoutCheck.AutoSize = true;
+            _scSendOneScoutCheck.Location = new Point(570, row3y);
+            _scSettingsPanel.Controls.Add(_scSendOneScoutCheck);
+
             // ── Village list panel (left) ────────────────────────────────────
             // Listbox added BEFORE the header so WinForms docks the header first (last-added = first docked)
             _scVillageListBox = new ListBox();
@@ -5531,6 +5540,7 @@ namespace Kingdoms.Bot.UI
             _scDisableOnCardExpiryCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
             _scPriorityResourceRadio.CheckedChanged += delegate { ScPushGlobalSettings(); };
             _scPriorityRangeRadio.CheckedChanged += delegate { ScPushGlobalSettings(); };
+            _scSendOneScoutCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
 
             _scVillageListBox.SelectedIndexChanged += delegate { ScOnVillageSelected(); };
             _scVillageEnabledCheck.CheckedChanged += delegate { ScSaveCurrentVillage(); };
@@ -5571,6 +5581,7 @@ namespace Kingdoms.Bot.UI
                 _scDisableOnCardExpiryCheck.Checked = s.DisableOnScoutCardExpiry;
                 _scPriorityResourceRadio.Checked = s.Priority == ScoutPriority.ResourcePriority;
                 _scPriorityRangeRadio.Checked = s.Priority == ScoutPriority.RangePriority;
+                _scSendOneScoutCheck.Checked = s.SendOneScout;
                 ScUpdateStatusLabel();
                 ScPopulateVillageList();
             }
@@ -5592,6 +5603,7 @@ namespace Kingdoms.Bot.UI
             s.DelayBetweenSendsMs = (int)_scDelayInput.Value;
             s.DisableOnScoutCardExpiry = _scDisableOnCardExpiryCheck.Checked;
             s.Priority = _scPriorityResourceRadio.Checked ? ScoutPriority.ResourcePriority : ScoutPriority.RangePriority;
+            s.SendOneScout = _scSendOneScoutCheck.Checked;
 
             foreach (IBotModule module in BotEngine.Instance.Modules)
             {
