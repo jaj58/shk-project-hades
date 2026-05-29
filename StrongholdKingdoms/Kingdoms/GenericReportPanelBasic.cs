@@ -29,6 +29,7 @@ namespace Kingdoms
     protected CustomSelfDrawPanel.CSDButton btnClose = new CustomSelfDrawPanel.CSDButton();
     protected CustomSelfDrawPanel.CSDButton btnDelete = new CustomSelfDrawPanel.CSDButton();
     protected CustomSelfDrawPanel.CSDButton btnForward = new CustomSelfDrawPanel.CSDButton();
+    protected CustomSelfDrawPanel.CSDButton btnForwardToFavourites = new CustomSelfDrawPanel.CSDButton();
     protected CustomSelfDrawPanel.CSDButton btnUtility = new CustomSelfDrawPanel.CSDButton();
     protected CustomSelfDrawPanel.CSDLabel lblDate = new CustomSelfDrawPanel.CSDLabel();
     protected CustomSelfDrawPanel.CSDLabel lblSubTitle = new CustomSelfDrawPanel.CSDLabel();
@@ -136,6 +137,17 @@ namespace Kingdoms
       this.btnForward.Text.Color = ARGBColors.Black;
       this.btnForward.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.forwardClick), "Report_Forward");
       this.btnForward.Enabled = true;
+      this.btnForwardToFavourites.ImageNorm = (Image) GFXLibrary.button_132_normal;
+      this.btnForwardToFavourites.ImageOver = (Image) GFXLibrary.button_132_over;
+      this.btnForwardToFavourites.ImageClick = (Image) GFXLibrary.button_132_in;
+      this.btnForwardToFavourites.setSizeToImage();
+      this.btnForwardToFavourites.Position = new Point(this.btnForward.Rectangle.Right + 5, this.btnForward.Position.Y);
+      this.btnForwardToFavourites.Text.Font = FontManager.GetFont("Arial", 9f, FontStyle.Regular);
+      this.btnForwardToFavourites.Text.Text = SK.Text("Reports_ForwardAllFavourites", "All Favourites");
+      this.btnForwardToFavourites.TextYOffset = -2;
+      this.btnForwardToFavourites.Text.Color = ARGBColors.Black;
+      this.btnForwardToFavourites.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.forwardToFavouritesClick), "Report_ForwardToFavourites");
+      this.btnForwardToFavourites.Enabled = false;
       this.btnUtility.ImageNorm = (Image) GFXLibrary.button_132_normal;
       this.btnUtility.ImageOver = (Image) GFXLibrary.button_132_over;
       this.btnUtility.ImageClick = (Image) GFXLibrary.button_132_in;
@@ -164,6 +176,7 @@ namespace Kingdoms
         this.addControl((CustomSelfDrawPanel.CSDControl) this.imgBackground);
         this.imgBackground.addControl((CustomSelfDrawPanel.CSDControl) this.btnClose);
         this.imgBackground.addControl((CustomSelfDrawPanel.CSDControl) this.btnForward);
+        this.imgBackground.addControl((CustomSelfDrawPanel.CSDControl) this.btnForwardToFavourites);
         this.imgBackground.addControl((CustomSelfDrawPanel.CSDControl) this.btnUtility);
         this.imgBackground.addControl((CustomSelfDrawPanel.CSDControl) this.btnDelete);
         this.imgBackground.addControl((CustomSelfDrawPanel.CSDControl) this.lblMainText);
@@ -176,6 +189,7 @@ namespace Kingdoms
       {
         this.addControl((CustomSelfDrawPanel.CSDControl) this.btnClose);
         this.addControl((CustomSelfDrawPanel.CSDControl) this.btnForward);
+        this.addControl((CustomSelfDrawPanel.CSDControl) this.btnForwardToFavourites);
         this.addControl((CustomSelfDrawPanel.CSDControl) this.btnUtility);
         this.addControl((CustomSelfDrawPanel.CSDControl) this.btnDelete);
         this.addControl((CustomSelfDrawPanel.CSDControl) this.lblMainText);
@@ -225,9 +239,13 @@ namespace Kingdoms
         RemoteServices.Instance.set_GetMailRecipientsHistory_UserCallBack(new RemoteServices.GetMailRecipientsHistory_UserCallBack(this.mailRecipientsCallback));
         RemoteServices.Instance.GetMailRecipientsHistory();
         this.btnForward.Enabled = false;
+        this.btnForwardToFavourites.Enabled = false;
       }
       else
+      {
         this.btnForward.Enabled = true;
+        this.btnForwardToFavourites.Enabled = GenericReportPanelBasic.mailFavourites != null && GenericReportPanelBasic.mailFavourites.Length > 0;
+      }
       this.m_returnData = returnData;
       this.reportID = returnData.reportID;
       NumberFormatInfo nfi = GameEngine.NFI;
@@ -284,6 +302,21 @@ namespace Kingdoms
       mailUserPopup.Show();
     }
 
+    private void forwardToFavouritesClick()
+    {
+      if (GenericReportPanelBasic.MailFavourites == null || GenericReportPanelBasic.MailFavourites.Length == 0)
+        return;
+      GameEngine.Instance.playInterfaceSound("ReportsGeneric_forward");
+      this.forwardRecipients.Clear();
+      foreach (string favourite in GenericReportPanelBasic.MailFavourites)
+        this.addRecipient(favourite);
+      if (this.forwardRecipients.Count == 0)
+        return;
+      RemoteServices.Instance.set_ForwardReport_UserCallBack(new RemoteServices.ForwardReport_UserCallBack(this.forwardReportCallback));
+      RemoteServices.Instance.ForwardReport(this.reportID, this.forwardRecipients.ToArray());
+      GenericReportPanelBasic.ForceHistoryRefresh();
+    }
+
     protected virtual void utilityClick()
     {
     }
@@ -316,6 +349,7 @@ namespace Kingdoms
       GenericReportPanelBasic.MailFavourites = returnData.mailFavourites;
       GenericReportPanelBasic.MailUsersHistory = returnData.mailUsersHistory;
       this.btnForward.Enabled = true;
+      this.btnForwardToFavourites.Enabled = returnData.mailFavourites != null && returnData.mailFavourites.Length > 0;
     }
 
     protected override void Dispose(bool disposing)
