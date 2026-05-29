@@ -18,6 +18,7 @@ namespace Kingdoms.Bot.Modules
         };
 
         private bool _tradeCardsInPlay;
+        private bool _scoutCardsInPlay;
         private DateTime _nextCheckTime = DateTime.MinValue;
 
         public override string ModuleName
@@ -35,6 +36,8 @@ namespace Kingdoms.Bot.Modules
             // Seed from persisted state so expiry is detected even after a game restart
             _tradeCardsInPlay = Engine != null && Engine.Settings != null
                 && Engine.Settings.Trade.TradeCardsWereActive;
+            _scoutCardsInPlay = Engine != null && Engine.Settings != null
+                && Engine.Settings.Scout.ScoutCardsWereActive;
             _nextCheckTime = DateTime.MinValue;
         }
 
@@ -44,7 +47,9 @@ namespace Kingdoms.Bot.Modules
                 return;
 
             // Only run if at least one module cares about card expiry
-            if (!Engine.Settings.Trade.DisableOnTradeCardExpiry)
+            bool anyModuleCares = Engine.Settings.Trade.DisableOnTradeCardExpiry
+                || Engine.Settings.Scout.DisableOnScoutCardExpiry;
+            if (!anyModuleCares)
                 return;
 
             // Skip check if we know cards won't expire soon
@@ -66,6 +71,7 @@ namespace Kingdoms.Bot.Modules
                 return;
 
             CheckTradeCards(cardData, serverTime);
+            CheckScoutCards(cardData, serverTime);
         }
 
         private CardData GetCardData()
@@ -158,6 +164,62 @@ namespace Kingdoms.Bot.Modules
                     return;
                 }
             }
+        }
+
+        private void CheckScoutCards(CardData cardData, DateTime serverTime)
+        {
+            if (!Engine.Settings.Scout.DisableOnScoutCardExpiry) return;
+
+            bool scoutActive = false;
+
+            if (cardData.cards != null)
+            {
+                for (int i = 0; i < cardData.cards.Length; i++)
+                {
+                    if (cardData.cards[i] == 0) continue;
+                    int cardType;
+                    try { cardType = CardTypes.getCardType(cardData.cards[i]); }
+                    catch { continue; }
+                    if (IsScoutCard(cardType))
+                        scoutActive = true;
+                }
+            }
+
+            bool scoutCardsExpired = _scoutCardsInPlay && !scoutActive;
+            _scoutCardsInPlay = scoutActive;
+            Engine.Settings.Scout.ScoutCardsWereActive = scoutActive;
+
+            if (scoutCardsExpired)
+                OnScoutCardsExpired();
+        }
+
+        private void OnScoutCardsExpired()
+        {
+            if (Engine == null || Engine.Settings == null) return;
+
+            ScoutSettings scoutSettings = Engine.Settings.Scout;
+            if (!scoutSettings.DisableOnScoutCardExpiry) return;
+
+            foreach (IBotModule m in Engine.Modules)
+            {
+                ScoutModule scoutModule = m as ScoutModule;
+                if (scoutModule != null && scoutModule.Enabled)
+                {
+                    scoutModule.Enabled = false;
+                    scoutSettings.Enabled = false;
+                    LogWarning("Scout cards expired! Scout module has been disabled.");
+                    return;
+                }
+            }
+        }
+
+        private static bool IsScoutCard(int cardType)
+        {
+            for (int i = 0; i < ScoutCardTypes.Length; i++)
+            {
+                if (ScoutCardTypes[i] == cardType) return true;
+            }
+            return false;
         }
 
         private static bool IsTradeCard(int cardType)

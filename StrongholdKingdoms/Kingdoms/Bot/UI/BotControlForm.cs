@@ -91,6 +91,27 @@ namespace Kingdoms.Bot.UI
 
         // Misc tab — no runtime state needed (settings only)
 
+        // Scout tab runtime state
+        private int _scSelectedVillageId = -1;
+        private bool _scLoading;
+        // Controls created programmatically in WireUpScoutTab
+        private ListBox _scVillageListBox;
+        private CheckBox _scVillageEnabledCheck;
+        private ListBox _scScoutList;
+        private ListBox _scIgnoreList;
+        private Button _scMoveToIgnoreBtn;
+        private Button _scMoveToScoutBtn;
+        private Button _scMoveUpBtn;
+        private Button _scMoveDownBtn;
+        private CheckBox _scEnabledCheck;
+        private Label _scStatusLabel;
+        private NumericUpDown _scMaxTimeInput;
+        private NumericUpDown _scAutoHireInput;
+        private NumericUpDown _scDelayInput;
+        private CheckBox _scDisableOnCardExpiryCheck;
+        private RadioButton _scPriorityResourceRadio;
+        private RadioButton _scPriorityRangeRadio;
+
         // Popularity tab runtime state
         private Timer _ppRefreshTimer;
         private List<PopularityVillageRow> _ppVillageRows = new List<PopularityVillageRow>();
@@ -149,6 +170,7 @@ namespace Kingdoms.Bot.UI
                 WireUpAutoBombMultiTab();
                 WireUpMiscTab();
                 WireUpPopularityTab();
+                WireUpScoutTab();
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -167,6 +189,7 @@ namespace Kingdoms.Bot.UI
                 AbmLoadFromSettings();
                 MiscLoadFromSettings();
                 PpLoadFromSettings();
+                ScLoadFromSettings();
             }
         }
 
@@ -2112,6 +2135,11 @@ namespace Kingdoms.Bot.UI
             {
                 AbmLoadFromSettings();
                 tabName = "Auto Bomb Multi";
+            }
+            else if (_tabControl.SelectedTab == _scoutPage)
+            {
+                ScLoadFromSettings();
+                tabName = "Scout";
             }
             else if (_tabControl.SelectedTab == _miscPage)
             {
@@ -5276,6 +5304,440 @@ namespace Kingdoms.Bot.UI
             _ppStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
         }
 
+        // =====================================================================
+        // Scout tab runtime
+        // =====================================================================
+
+        private void WireUpScoutTab()
+        {
+            Color bg = Color.FromArgb(24, 24, 32);
+            Color panelBg = Color.FromArgb(30, 30, 40);
+            Color inputBg = Color.FromArgb(40, 40, 55);
+            Color textPri = Color.FromArgb(230, 230, 240);
+            Color textSec = Color.FromArgb(160, 165, 180);
+            Color listBg = Color.FromArgb(32, 32, 44);
+
+            // ── Settings panel (bottom) ──────────────────────────────────────
+            _scEnabledCheck = new CheckBox();
+            _scEnabledCheck.Text = "Enable Scout";
+            _scEnabledCheck.ForeColor = textPri;
+            _scEnabledCheck.FlatStyle = FlatStyle.Flat;
+            _scEnabledCheck.Font = new Font("Segoe UI", 10f);
+            _scEnabledCheck.AutoSize = true;
+            _scEnabledCheck.Location = new Point(8, 8);
+            _scSettingsPanel.Controls.Add(_scEnabledCheck);
+
+            _scStatusLabel = new Label();
+            _scStatusLabel.Text = "DISABLED";
+            _scStatusLabel.ForeColor = ErrorCol;
+            _scStatusLabel.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            _scStatusLabel.AutoSize = true;
+            _scStatusLabel.Location = new Point(160, 10);
+            _scSettingsPanel.Controls.Add(_scStatusLabel);
+
+            // Row 2: MaxTime | AutoHire | Delay | CardExpiry
+            int row2y = 36;
+            Label maxTimeLabel = new Label();
+            maxTimeLabel.Text = "Max scout time (sec):";
+            maxTimeLabel.ForeColor = textSec;
+            maxTimeLabel.AutoSize = true;
+            maxTimeLabel.Location = new Point(8, row2y + 3);
+            _scSettingsPanel.Controls.Add(maxTimeLabel);
+
+            _scMaxTimeInput = new NumericUpDown();
+            _scMaxTimeInput.Minimum = 10;
+            _scMaxTimeInput.Maximum = 9999;
+            _scMaxTimeInput.Value = 1200;
+            _scMaxTimeInput.BackColor = inputBg;
+            _scMaxTimeInput.ForeColor = textPri;
+            _scMaxTimeInput.Location = new Point(160, row2y);
+            _scMaxTimeInput.Size = new Size(70, 23);
+            _scSettingsPanel.Controls.Add(_scMaxTimeInput);
+
+            Label autoHireLabel = new Label();
+            autoHireLabel.Text = "Auto hire scouts (0=off):";
+            autoHireLabel.ForeColor = textSec;
+            autoHireLabel.AutoSize = true;
+            autoHireLabel.Location = new Point(244, row2y + 3);
+            _scSettingsPanel.Controls.Add(autoHireLabel);
+
+            _scAutoHireInput = new NumericUpDown();
+            _scAutoHireInput.Minimum = 0;
+            _scAutoHireInput.Maximum = 8;
+            _scAutoHireInput.Value = 0;
+            _scAutoHireInput.BackColor = inputBg;
+            _scAutoHireInput.ForeColor = textPri;
+            _scAutoHireInput.Location = new Point(420, row2y);
+            _scAutoHireInput.Size = new Size(55, 23);
+            _scSettingsPanel.Controls.Add(_scAutoHireInput);
+
+            Label delayLabel = new Label();
+            delayLabel.Text = "Delay between sends (ms):";
+            delayLabel.ForeColor = textSec;
+            delayLabel.AutoSize = true;
+            delayLabel.Location = new Point(490, row2y + 3);
+            _scSettingsPanel.Controls.Add(delayLabel);
+
+            _scDelayInput = new NumericUpDown();
+            _scDelayInput.Minimum = 500;
+            _scDelayInput.Maximum = 60000;
+            _scDelayInput.Value = 3000;
+            _scDelayInput.BackColor = inputBg;
+            _scDelayInput.ForeColor = textPri;
+            _scDelayInput.Location = new Point(695, row2y);
+            _scDelayInput.Size = new Size(75, 23);
+            _scSettingsPanel.Controls.Add(_scDelayInput);
+
+            _scDisableOnCardExpiryCheck = new CheckBox();
+            _scDisableOnCardExpiryCheck.Text = "Disable on scout card expiry";
+            _scDisableOnCardExpiryCheck.ForeColor = textPri;
+            _scDisableOnCardExpiryCheck.FlatStyle = FlatStyle.Flat;
+            _scDisableOnCardExpiryCheck.AutoSize = true;
+            _scDisableOnCardExpiryCheck.Location = new Point(790, row2y);
+            _scSettingsPanel.Controls.Add(_scDisableOnCardExpiryCheck);
+
+            // Row 3: Priority
+            int row3y = 62;
+            Label priorityLabel = new Label();
+            priorityLabel.Text = "Scout order:";
+            priorityLabel.ForeColor = textSec;
+            priorityLabel.AutoSize = true;
+            priorityLabel.Location = new Point(8, row3y + 2);
+            _scSettingsPanel.Controls.Add(priorityLabel);
+
+            _scPriorityResourceRadio = new RadioButton();
+            _scPriorityResourceRadio.Text = "Resource Priority (type order in list)";
+            _scPriorityResourceRadio.ForeColor = textPri;
+            _scPriorityResourceRadio.FlatStyle = FlatStyle.Flat;
+            _scPriorityResourceRadio.AutoSize = true;
+            _scPriorityResourceRadio.Checked = true;
+            _scPriorityResourceRadio.Location = new Point(90, row3y);
+            _scSettingsPanel.Controls.Add(_scPriorityResourceRadio);
+
+            _scPriorityRangeRadio = new RadioButton();
+            _scPriorityRangeRadio.Text = "Range Priority (nearest first)";
+            _scPriorityRangeRadio.ForeColor = textPri;
+            _scPriorityRangeRadio.FlatStyle = FlatStyle.Flat;
+            _scPriorityRangeRadio.AutoSize = true;
+            _scPriorityRangeRadio.Location = new Point(330, row3y);
+            _scSettingsPanel.Controls.Add(_scPriorityRangeRadio);
+
+            // ── Village list panel (left) ────────────────────────────────────
+            Label villageHeaderLabel = new Label();
+            villageHeaderLabel.Text = "Villages";
+            villageHeaderLabel.ForeColor = textSec;
+            villageHeaderLabel.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            villageHeaderLabel.Dock = DockStyle.Top;
+            villageHeaderLabel.Height = 22;
+            villageHeaderLabel.Padding = new Padding(6, 4, 0, 0);
+            villageHeaderLabel.BackColor = Color.FromArgb(30, 30, 40);
+            _scVillagePanel.Controls.Add(villageHeaderLabel);
+
+            Button refreshVillagesBtn = new Button();
+            refreshVillagesBtn.Text = "Refresh";
+            refreshVillagesBtn.FlatStyle = FlatStyle.Flat;
+            refreshVillagesBtn.BackColor = Color.FromArgb(50, 50, 70);
+            refreshVillagesBtn.ForeColor = textPri;
+            refreshVillagesBtn.Size = new Size(65, 22);
+            refreshVillagesBtn.Location = new Point(148, 0);
+            _scVillagePanel.Controls.Add(refreshVillagesBtn);
+
+            _scVillageListBox = new ListBox();
+            _scVillageListBox.BackColor = listBg;
+            _scVillageListBox.ForeColor = textPri;
+            _scVillageListBox.BorderStyle = BorderStyle.None;
+            _scVillageListBox.Dock = DockStyle.Fill;
+            _scVillageListBox.Font = new Font("Segoe UI", 9f);
+            _scVillagePanel.Controls.Add(_scVillageListBox);
+
+            // ── Content panel (right) ────────────────────────────────────────
+            _scVillageEnabledCheck = new CheckBox();
+            _scVillageEnabledCheck.Text = "Scout this village";
+            _scVillageEnabledCheck.ForeColor = textPri;
+            _scVillageEnabledCheck.FlatStyle = FlatStyle.Flat;
+            _scVillageEnabledCheck.Font = new Font("Segoe UI", 10f);
+            _scVillageEnabledCheck.AutoSize = true;
+            _scVillageEnabledCheck.Location = new Point(10, 8);
+            _scContentPanel.Controls.Add(_scVillageEnabledCheck);
+
+            Label scoutListLabel = new Label();
+            scoutListLabel.Text = "Resources to Scout";
+            scoutListLabel.ForeColor = textSec;
+            scoutListLabel.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            scoutListLabel.AutoSize = true;
+            scoutListLabel.Location = new Point(10, 36);
+            _scContentPanel.Controls.Add(scoutListLabel);
+
+            Label ignoreListLabel = new Label();
+            ignoreListLabel.Text = "Resources to Ignore";
+            ignoreListLabel.ForeColor = textSec;
+            ignoreListLabel.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            ignoreListLabel.AutoSize = true;
+            ignoreListLabel.Location = new Point(420, 36);
+            _scContentPanel.Controls.Add(ignoreListLabel);
+
+            _scScoutList = new ListBox();
+            _scScoutList.BackColor = listBg;
+            _scScoutList.ForeColor = textPri;
+            _scScoutList.BorderStyle = BorderStyle.FixedSingle;
+            _scScoutList.Location = new Point(10, 56);
+            _scScoutList.Size = new Size(290, 310);
+            _scContentPanel.Controls.Add(_scScoutList);
+
+            _scIgnoreList = new ListBox();
+            _scIgnoreList.BackColor = listBg;
+            _scIgnoreList.ForeColor = textPri;
+            _scIgnoreList.BorderStyle = BorderStyle.FixedSingle;
+            _scIgnoreList.Location = new Point(420, 56);
+            _scIgnoreList.Size = new Size(290, 310);
+            _scContentPanel.Controls.Add(_scIgnoreList);
+
+            // Up/Down buttons (to the right of scout list)
+            _scMoveUpBtn = new Button();
+            _scMoveUpBtn.Text = "▲";
+            _scMoveUpBtn.FlatStyle = FlatStyle.Flat;
+            _scMoveUpBtn.BackColor = Color.FromArgb(50, 50, 70);
+            _scMoveUpBtn.ForeColor = textPri;
+            _scMoveUpBtn.Location = new Point(308, 56);
+            _scMoveUpBtn.Size = new Size(30, 26);
+            _scContentPanel.Controls.Add(_scMoveUpBtn);
+
+            _scMoveDownBtn = new Button();
+            _scMoveDownBtn.Text = "▼";
+            _scMoveDownBtn.FlatStyle = FlatStyle.Flat;
+            _scMoveDownBtn.BackColor = Color.FromArgb(50, 50, 70);
+            _scMoveDownBtn.ForeColor = textPri;
+            _scMoveDownBtn.Location = new Point(308, 86);
+            _scMoveDownBtn.Size = new Size(30, 26);
+            _scContentPanel.Controls.Add(_scMoveDownBtn);
+
+            // >> / << transfer buttons (between lists)
+            _scMoveToIgnoreBtn = new Button();
+            _scMoveToIgnoreBtn.Text = ">>";
+            _scMoveToIgnoreBtn.FlatStyle = FlatStyle.Flat;
+            _scMoveToIgnoreBtn.BackColor = Color.FromArgb(50, 50, 70);
+            _scMoveToIgnoreBtn.ForeColor = textPri;
+            _scMoveToIgnoreBtn.Location = new Point(353, 180);
+            _scMoveToIgnoreBtn.Size = new Size(50, 26);
+            _scContentPanel.Controls.Add(_scMoveToIgnoreBtn);
+
+            _scMoveToScoutBtn = new Button();
+            _scMoveToScoutBtn.Text = "<<";
+            _scMoveToScoutBtn.FlatStyle = FlatStyle.Flat;
+            _scMoveToScoutBtn.BackColor = Color.FromArgb(50, 50, 70);
+            _scMoveToScoutBtn.ForeColor = textPri;
+            _scMoveToScoutBtn.Location = new Point(353, 214);
+            _scMoveToScoutBtn.Size = new Size(50, 26);
+            _scContentPanel.Controls.Add(_scMoveToScoutBtn);
+
+            // ── Wire events ──────────────────────────────────────────────────
+            _scEnabledCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
+            _scMaxTimeInput.ValueChanged += delegate { ScPushGlobalSettings(); };
+            _scAutoHireInput.ValueChanged += delegate { ScPushGlobalSettings(); };
+            _scDelayInput.ValueChanged += delegate { ScPushGlobalSettings(); };
+            _scDisableOnCardExpiryCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
+            _scPriorityResourceRadio.CheckedChanged += delegate { ScPushGlobalSettings(); };
+            _scPriorityRangeRadio.CheckedChanged += delegate { ScPushGlobalSettings(); };
+
+            refreshVillagesBtn.Click += delegate { ScPopulateVillageList(); };
+            _scVillageListBox.SelectedIndexChanged += delegate { ScOnVillageSelected(); };
+            _scVillageEnabledCheck.CheckedChanged += delegate { ScSaveCurrentVillage(); };
+
+            _scMoveToIgnoreBtn.Click += delegate { ScMoveSelectedToIgnore(); };
+            _scMoveToScoutBtn.Click += delegate { ScMoveSelectedToScout(); };
+            _scMoveUpBtn.Click += delegate { ScMoveScoutListItem(-1); };
+            _scMoveDownBtn.Click += delegate { ScMoveScoutListItem(1); };
+
+            _scScoutList.DoubleClick += delegate { ScMoveSelectedToIgnore(); };
+            _scIgnoreList.DoubleClick += delegate { ScMoveSelectedToScout(); };
+        }
+
+        private void ScLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            _scLoading = true;
+            try
+            {
+                ScoutSettings s = BotEngine.Instance.Settings.Scout;
+                _scEnabledCheck.Checked = s.Enabled;
+                _scMaxTimeInput.Value = Math.Max(_scMaxTimeInput.Minimum, Math.Min(_scMaxTimeInput.Maximum, s.MaxScoutTimeSeconds));
+                _scAutoHireInput.Value = Math.Max(0, Math.Min(8, s.AutoHireScouts));
+                _scDelayInput.Value = Math.Max(_scDelayInput.Minimum, Math.Min(_scDelayInput.Maximum, s.DelayBetweenSendsMs));
+                _scDisableOnCardExpiryCheck.Checked = s.DisableOnScoutCardExpiry;
+                _scPriorityResourceRadio.Checked = s.Priority == ScoutPriority.ResourcePriority;
+                _scPriorityRangeRadio.Checked = s.Priority == ScoutPriority.RangePriority;
+                ScUpdateStatusLabel();
+                ScPopulateVillageList();
+            }
+            finally
+            {
+                _scLoading = false;
+            }
+        }
+
+        private void ScPushGlobalSettings()
+        {
+            if (_scLoading) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            ScoutSettings s = BotEngine.Instance.Settings.Scout;
+            s.Enabled = _scEnabledCheck.Checked;
+            s.MaxScoutTimeSeconds = (int)_scMaxTimeInput.Value;
+            s.AutoHireScouts = (int)_scAutoHireInput.Value;
+            s.DelayBetweenSendsMs = (int)_scDelayInput.Value;
+            s.DisableOnScoutCardExpiry = _scDisableOnCardExpiryCheck.Checked;
+            s.Priority = _scPriorityResourceRadio.Checked ? ScoutPriority.ResourcePriority : ScoutPriority.RangePriority;
+
+            foreach (IBotModule module in BotEngine.Instance.Modules)
+            {
+                if (module is Modules.ScoutModule)
+                    module.Enabled = s.Enabled;
+            }
+
+            ScUpdateStatusLabel();
+        }
+
+        private void ScUpdateStatusLabel()
+        {
+            bool enabled = _scEnabledCheck.Checked;
+            _scStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
+            _scStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+        }
+
+        private void ScPopulateVillageList()
+        {
+            _scVillageListBox.Items.Clear();
+            _scSelectedVillageId = -1;
+
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+
+            List<WorldMap.UserVillageData> villages = GameEngine.Instance.World.getUserVillageList();
+            if (villages == null) return;
+
+            foreach (WorldMap.UserVillageData uvd in villages)
+            {
+                string name = "";
+                try { name = GameEngine.Instance.World.getVillageName(uvd.villageID); } catch { }
+                if (string.IsNullOrEmpty(name)) name = "Village";
+                _scVillageListBox.Items.Add(new ScoutVillageItem(uvd.villageID, name + " (" + uvd.villageID + ")"));
+            }
+
+            if (_scVillageListBox.Items.Count > 0)
+                _scVillageListBox.SelectedIndex = 0;
+        }
+
+        private void ScOnVillageSelected()
+        {
+            if (_scLoading) return;
+
+            ScoutVillageItem item = _scVillageListBox.SelectedItem as ScoutVillageItem;
+            if (item == null)
+            {
+                _scSelectedVillageId = -1;
+                return;
+            }
+
+            _scSelectedVillageId = item.VillageId;
+
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            _scLoading = true;
+            try
+            {
+                VillageScoutSettings vs = BotEngine.Instance.Settings.Scout.GetVillageSettings(_scSelectedVillageId);
+                _scVillageEnabledCheck.Checked = vs.ScoutingEnabled;
+
+                _scScoutList.Items.Clear();
+                foreach (int type in vs.ResourceTypesToScout)
+                    _scScoutList.Items.Add(new ScoutResourceItem(type, ScGetResourceTypeName(type)));
+
+                _scIgnoreList.Items.Clear();
+                foreach (int type in vs.ResourceTypesToIgnore)
+                    _scIgnoreList.Items.Add(new ScoutResourceItem(type, ScGetResourceTypeName(type)));
+            }
+            finally
+            {
+                _scLoading = false;
+            }
+        }
+
+        private void ScSaveCurrentVillage()
+        {
+            if (_scLoading) return;
+            if (_scSelectedVillageId < 0) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            VillageScoutSettings vs = BotEngine.Instance.Settings.Scout.GetVillageSettings(_scSelectedVillageId);
+            vs.ScoutingEnabled = _scVillageEnabledCheck.Checked;
+
+            vs.ResourceTypesToScout.Clear();
+            foreach (object item in _scScoutList.Items)
+            {
+                ScoutResourceItem ri = item as ScoutResourceItem;
+                if (ri != null) vs.ResourceTypesToScout.Add(ri.ResourceType);
+            }
+
+            vs.ResourceTypesToIgnore.Clear();
+            foreach (object item in _scIgnoreList.Items)
+            {
+                ScoutResourceItem ri = item as ScoutResourceItem;
+                if (ri != null) vs.ResourceTypesToIgnore.Add(ri.ResourceType);
+            }
+        }
+
+        private void ScMoveSelectedToIgnore()
+        {
+            ScoutResourceItem item = _scScoutList.SelectedItem as ScoutResourceItem;
+            if (item == null) return;
+            int idx = _scScoutList.SelectedIndex;
+            _scScoutList.Items.Remove(item);
+            _scIgnoreList.Items.Add(item);
+            _scIgnoreList.SelectedItem = item;
+            if (idx < _scScoutList.Items.Count) _scScoutList.SelectedIndex = idx;
+            ScSaveCurrentVillage();
+        }
+
+        private void ScMoveSelectedToScout()
+        {
+            ScoutResourceItem item = _scIgnoreList.SelectedItem as ScoutResourceItem;
+            if (item == null) return;
+            int idx = _scIgnoreList.SelectedIndex;
+            _scIgnoreList.Items.Remove(item);
+            _scScoutList.Items.Add(item);
+            _scScoutList.SelectedItem = item;
+            if (idx < _scIgnoreList.Items.Count) _scIgnoreList.SelectedIndex = idx;
+            ScSaveCurrentVillage();
+        }
+
+        private void ScMoveScoutListItem(int direction)
+        {
+            int idx = _scScoutList.SelectedIndex;
+            if (idx < 0) return;
+            int newIdx = idx + direction;
+            if (newIdx < 0 || newIdx >= _scScoutList.Items.Count) return;
+            object item = _scScoutList.Items[idx];
+            _scScoutList.Items.RemoveAt(idx);
+            _scScoutList.Items.Insert(newIdx, item);
+            _scScoutList.SelectedIndex = newIdx;
+            ScSaveCurrentVillage();
+        }
+
+        private static string ScGetResourceTypeName(int type)
+        {
+            if (type == 100) return "New Stash";
+            try
+            {
+                if (type > 100 && type <= 133)
+                {
+                    string name = VillageBuildingsData.getResourceNames(type - 100);
+                    if (!string.IsNullOrEmpty(name)) return name;
+                }
+            }
+            catch { }
+            return "Type " + type;
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.UserClosing)
@@ -5329,5 +5791,33 @@ namespace Kingdoms.Bot.UI
             };
             Controls.Add(modeCombo);
         }
+    }
+
+    internal class ScoutVillageItem
+    {
+        public readonly int VillageId;
+        private readonly string _display;
+
+        public ScoutVillageItem(int villageId, string display)
+        {
+            VillageId = villageId;
+            _display = display;
+        }
+
+        public override string ToString() { return _display; }
+    }
+
+    internal class ScoutResourceItem
+    {
+        public readonly int ResourceType;
+        private readonly string _display;
+
+        public ScoutResourceItem(int resourceType, string display)
+        {
+            ResourceType = resourceType;
+            _display = display;
+        }
+
+        public override string ToString() { return _display; }
     }
 }

@@ -23,6 +23,7 @@ namespace Kingdoms.Bot
         public AutoBombSettings AutoBomb = new AutoBombSettings();
         public AutoBombMultiSettings AutoBombMulti = new AutoBombMultiSettings();
         public PopularitySettings Popularity = new PopularitySettings();
+        public ScoutSettings Scout = new ScoutSettings();
         public MiscSettings Misc = new MiscSettings();
 
         private static string GetSettingsFilePath()
@@ -903,5 +904,53 @@ namespace Kingdoms.Bot
     {
         public bool CollectFreeCards = false;
         public bool DisableCannotPlayCardPopup = false;
+    }
+
+    public enum ScoutPriority
+    {
+        ResourcePriority = 0,  // type order in scout list first, distance as tiebreak
+        RangePriority    = 1   // nearest stash first, regardless of type order
+    }
+
+    [Serializable]
+    public class ScoutSettings
+    {
+        public bool Enabled = false;
+        public int MaxScoutTimeSeconds = 1200;
+        public int AutoHireScouts = 0;          // 0 = disabled; 1-8 = target count (capped by Research_Scouts)
+        public int DelayBetweenSendsMs = 3000;
+        public bool DisableOnScoutCardExpiry = false;
+        public bool ScoutCardsWereActive = false;
+        public ScoutPriority Priority = ScoutPriority.ResourcePriority;
+        public List<VillageScoutSettings> Villages = new List<VillageScoutSettings>();
+
+        public VillageScoutSettings GetVillageSettings(int villageId)
+        {
+            foreach (VillageScoutSettings v in Villages)
+            {
+                if (v.VillageId == villageId) return v;
+            }
+            VillageScoutSettings newV = new VillageScoutSettings();
+            newV.VillageId = villageId;
+            newV.InitDefaults();
+            Villages.Add(newV);
+            return newV;
+        }
+    }
+
+    [Serializable]
+    public class VillageScoutSettings
+    {
+        public int VillageId;
+        public bool ScoutingEnabled = true;
+        public List<int> ResourceTypesToScout = new List<int>();
+        public List<int> ResourceTypesToIgnore = new List<int>();
+
+        public void InitDefaults()
+        {
+            if (ResourceTypesToScout.Count > 0) return;
+            for (int t = 100; t <= 133; t++)
+                ResourceTypesToScout.Add(t);
+        }
     }
 }

@@ -30,6 +30,7 @@ namespace Kingdoms.Bot.UI
                 }
                 if (components != null)
                     components.Dispose();
+                // Scout tab has no persistent timer (refresh on tab select only)
             }
             base.Dispose(disposing);
         }
@@ -313,6 +314,12 @@ namespace Kingdoms.Bot.UI
             this._ppIntervalLabel = new System.Windows.Forms.Label();
             this._ppStatusLabel = new System.Windows.Forms.Label();
             this._ppEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._scoutPage = new System.Windows.Forms.TabPage();
+            this._scSettingsPanel = new System.Windows.Forms.Panel();
+            this._scVillagePanel = new System.Windows.Forms.Panel();
+            this._scDivider = new System.Windows.Forms.Panel();
+            this._scContentPanel = new System.Windows.Forms.Panel();
+            this._scSeparator = new System.Windows.Forms.Panel();
             this._miscPage = new System.Windows.Forms.TabPage();
             this._miscSettingsPanel = new System.Windows.Forms.Panel();
             this._miscCollectFreeCardsCheck = new System.Windows.Forms.CheckBox();
@@ -406,6 +413,10 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._abmQueueVidInput)).BeginInit();
             this._popularityPage.SuspendLayout();
             this._ppSettingsPanel.SuspendLayout();
+            this._scoutPage.SuspendLayout();
+            this._scSettingsPanel.SuspendLayout();
+            this._scVillagePanel.SuspendLayout();
+            this._scContentPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._ppDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).BeginInit();
             this._miscPage.SuspendLayout();
@@ -589,6 +600,7 @@ namespace Kingdoms.Bot.UI
             this._tabControl.Controls.Add(this._bombPage);
             this._tabControl.Controls.Add(this._bombMultiPage);
             this._tabControl.Controls.Add(this._popularityPage);
+            this._tabControl.Controls.Add(this._scoutPage);
             this._tabControl.Controls.Add(this._miscPage);
             this._tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this._tabControl.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
@@ -4228,6 +4240,66 @@ namespace Kingdoms.Bot.UI
             this._ppEnabledCheck.TabIndex = 0;
             this._ppEnabledCheck.Text = "Enable Popularity";
             //
+            // _scoutPage
+            //
+            this._scoutPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._scoutPage.Controls.Add(this._scContentPanel);
+            this._scoutPage.Controls.Add(this._scDivider);
+            this._scoutPage.Controls.Add(this._scVillagePanel);
+            this._scoutPage.Controls.Add(this._scSeparator);
+            this._scoutPage.Controls.Add(this._scSettingsPanel);
+            this._scoutPage.Location = new System.Drawing.Point(4, 24);
+            this._scoutPage.Name = "_scoutPage";
+            this._scoutPage.Size = new System.Drawing.Size(1142, 497);
+            this._scoutPage.TabIndex = 9;
+            this._scoutPage.Text = "Scout";
+            //
+            // _scSettingsPanel
+            //
+            this._scSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._scSettingsPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this._scSettingsPanel.Location = new System.Drawing.Point(0, 407);
+            this._scSettingsPanel.Name = "_scSettingsPanel";
+            this._scSettingsPanel.Padding = new System.Windows.Forms.Padding(8, 6, 8, 6);
+            this._scSettingsPanel.Size = new System.Drawing.Size(1142, 90);
+            this._scSettingsPanel.TabIndex = 0;
+            //
+            // _scSeparator
+            //
+            this._scSeparator.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(55)))), ((int)(((byte)(70)))));
+            this._scSeparator.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this._scSeparator.Location = new System.Drawing.Point(0, 406);
+            this._scSeparator.Name = "_scSeparator";
+            this._scSeparator.Size = new System.Drawing.Size(1142, 1);
+            this._scSeparator.TabIndex = 4;
+            //
+            // _scVillagePanel
+            //
+            this._scVillagePanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(28)))), ((int)(((byte)(28)))), ((int)(((byte)(38)))));
+            this._scVillagePanel.Dock = System.Windows.Forms.DockStyle.Left;
+            this._scVillagePanel.Location = new System.Drawing.Point(0, 0);
+            this._scVillagePanel.Name = "_scVillagePanel";
+            this._scVillagePanel.Size = new System.Drawing.Size(220, 406);
+            this._scVillagePanel.TabIndex = 1;
+            //
+            // _scDivider
+            //
+            this._scDivider.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(55)))), ((int)(((byte)(70)))));
+            this._scDivider.Dock = System.Windows.Forms.DockStyle.Left;
+            this._scDivider.Location = new System.Drawing.Point(220, 0);
+            this._scDivider.Name = "_scDivider";
+            this._scDivider.Size = new System.Drawing.Size(2, 406);
+            this._scDivider.TabIndex = 2;
+            //
+            // _scContentPanel
+            //
+            this._scContentPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._scContentPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._scContentPanel.Location = new System.Drawing.Point(222, 0);
+            this._scContentPanel.Name = "_scContentPanel";
+            this._scContentPanel.Size = new System.Drawing.Size(920, 406);
+            this._scContentPanel.TabIndex = 3;
+            //
             // _miscPage
             //
             this._miscPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
@@ -4516,6 +4588,10 @@ namespace Kingdoms.Bot.UI
             this._ppSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._ppDelayInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).EndInit();
+            this._scoutPage.ResumeLayout(false);
+            this._scSettingsPanel.ResumeLayout(false);
+            this._scVillagePanel.ResumeLayout(false);
+            this._scContentPanel.ResumeLayout(false);
             this._miscPage.ResumeLayout(false);
             this._miscSettingsPanel.ResumeLayout(false);
             this._miscSettingsPanel.PerformLayout();
@@ -4826,5 +4902,12 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _ppDelayInput;
         private System.Windows.Forms.Button _ppRefreshBtn;
         private System.Windows.Forms.Button _ppRunNowBtn;
+        // Scout tab controls
+        private System.Windows.Forms.TabPage _scoutPage;
+        private System.Windows.Forms.Panel _scSettingsPanel;
+        private System.Windows.Forms.Panel _scSeparator;
+        private System.Windows.Forms.Panel _scVillagePanel;
+        private System.Windows.Forms.Panel _scDivider;
+        private System.Windows.Forms.Panel _scContentPanel;
     }
 }
