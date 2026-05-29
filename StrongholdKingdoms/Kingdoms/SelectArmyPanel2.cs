@@ -107,8 +107,11 @@ namespace Kingdoms
         (Image) GFXLibrary.wl_moving_unit_icons[5],
         (Image) GFXLibrary.barracks_unit_captain,
       };
-      int[] colX = new int[] { 5, 52, 99, 146 };
-      int[] rowY = new int[] { 228, 252 };
+      // barracks_unit images are ~200px tall; 0.12 scale renders them at ~24px
+      const float troopIconScale = 0.12f;
+      const int iconW = 24;   // rendered icon width at that scale
+      int[] colX = new int[] { 5, 51, 97, 143 };   // 4 cols × 46px each in ~185px
+      int[] rowY = new int[] { 225, 249 };
 
       for (int i = 0; i < 7; i++)
       {
@@ -118,13 +121,13 @@ namespace Kingdoms
         this.troopIcons[i] = new CustomSelfDrawPanel.CSDImage();
         this.troopIcons[i].Image = unitImages[i];
         this.troopIcons[i].Position = new Point(x, y);
-        this.troopIcons[i].setScale(0.45f);
+        this.troopIcons[i].setScale(troopIconScale);
         this.troopIcons[i].Visible = false;
         csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.troopIcons[i]);
 
         this.troopLabels[i] = new CustomSelfDrawPanel.CSDLabel();
-        this.troopLabels[i].Position = new Point(x + 17, y + 1);
-        this.troopLabels[i].Size = new Size(30, 16);
+        this.troopLabels[i].Position = new Point(x + iconW, y + 4);
+        this.troopLabels[i].Size = new Size(22, 16);
         this.troopLabels[i].Font = FontManager.GetFont("Arial", 7f, FontStyle.Regular);
         this.troopLabels[i].Color = ARGBColors.Black;
         this.troopLabels[i].Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
