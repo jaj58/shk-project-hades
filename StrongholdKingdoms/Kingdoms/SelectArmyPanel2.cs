@@ -78,14 +78,14 @@ namespace Kingdoms
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.returnButton);
       this.forceReturnOff = false;
 
-      // 4px under the target village button (ends ~y=177)
-      this.attackTypeIcon.Position = new Point(6, 181);
+      // Sits right under the visual end of the target village button (~y=158)
+      this.attackTypeIcon.Position = new Point(6, 161);
       this.attackTypeIcon.Size = new Size(46, 46);
       this.attackTypeIcon.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeIcon);
 
-      // Vertically centred within the icon height; wide enough for abbreviated names
-      this.attackTypeLabel.Position = new Point(57, 192);
+      // Vertically centred within the 46px icon
+      this.attackTypeLabel.Position = new Point(57, 172);
       this.attackTypeLabel.Size = new Size(90, 22);
       this.attackTypeLabel.Font = FontManager.GetFont("Arial", 9.5f, FontStyle.Bold);
       this.attackTypeLabel.Color = ARGBColors.Black;
@@ -94,7 +94,7 @@ namespace Kingdoms
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeLabel);
 
       // Pillage % on the same line, right of the attack type label
-      this.pillageLabel.Position = new Point(150, 192);
+      this.pillageLabel.Position = new Point(150, 172);
       this.pillageLabel.Size = new Size(34, 22);
       this.pillageLabel.Font = FontManager.GetFont("Arial", 9.5f, FontStyle.Bold);
       this.pillageLabel.Color = ARGBColors.Black;
@@ -116,7 +116,7 @@ namespace Kingdoms
       const int iconW = 31;   // 28 × 1.1
       const int iconH = 33;   // 30 × 1.1
       int[] colX = new int[] { 4, 65, 126 };   // 3 cols × 61px in ~185px
-      int[] rowY = new int[] { 231, 268 };    // directly under icon (ends y=227) + 4px gap
+      int[] rowY = new int[] { 211, 248 };    // directly under icon (ends y=207) + 4px gap
 
       for (int i = 0; i < 6; i++)
       {
