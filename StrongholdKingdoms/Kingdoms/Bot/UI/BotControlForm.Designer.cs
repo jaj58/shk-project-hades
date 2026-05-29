@@ -1928,7 +1928,7 @@ namespace Kingdoms.Bot.UI
             this._crMemoriseInfraBtn.ForeColor = System.Drawing.Color.White;
             this._crMemoriseInfraBtn.Location = new System.Drawing.Point(604, 98);
             this._crMemoriseInfraBtn.Name = "_crMemoriseInfraBtn";
-            this._crMemoriseInfraBtn.Size = new System.Drawing.Size(100, 24);
+            this._crMemoriseInfraBtn.Size = new System.Drawing.Size(115, 24);
             this._crMemoriseInfraBtn.TabIndex = 11;
             this._crMemoriseInfraBtn.Text = "Memorise Infra";
             this._crMemoriseInfraBtn.UseVisualStyleBackColor = false;
@@ -1941,9 +1941,9 @@ namespace Kingdoms.Bot.UI
             this._crMemoriseTroopsBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._crMemoriseTroopsBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._crMemoriseTroopsBtn.ForeColor = System.Drawing.Color.White;
-            this._crMemoriseTroopsBtn.Location = new System.Drawing.Point(716, 98);
+            this._crMemoriseTroopsBtn.Location = new System.Drawing.Point(731, 98);
             this._crMemoriseTroopsBtn.Name = "_crMemoriseTroopsBtn";
-            this._crMemoriseTroopsBtn.Size = new System.Drawing.Size(100, 24);
+            this._crMemoriseTroopsBtn.Size = new System.Drawing.Size(115, 24);
             this._crMemoriseTroopsBtn.TabIndex = 12;
             this._crMemoriseTroopsBtn.Text = "Memorise Troops";
             this._crMemoriseTroopsBtn.UseVisualStyleBackColor = false;
