@@ -85,15 +85,20 @@ namespace Kingdoms.Bot.Modules
                 if (settings.AutoHireScouts > 0)
                     TryHireScouts(village, settings.AutoHireScouts);
 
-                if (village.m_numScouts <= 0) continue;
+                // Use army array as source of truth — m_numScouts can be reset by VillageSync
+                int allEnRoute = GetAllScoutsEnRouteFromVillage(uvd.villageID);
+                int availableScouts = Math.Max(0, village.m_numScouts - allEnRoute);
+                if (availableScouts <= 0) continue;
 
                 List<StashTarget> targets = GetStashTargets(uvd.villageID, vs,
                     settings.MaxScoutTimeSeconds, settings.Priority);
 
                 foreach (StashTarget target in targets)
                 {
-                    if (village.m_numScouts <= 0) break;
-                    if (SendScout(village, target, settings.SendOneScout, settings.SendOneOnNewStash))
+                    allEnRoute = GetAllScoutsEnRouteFromVillage(uvd.villageID);
+                    availableScouts = Math.Max(0, village.m_numScouts - allEnRoute);
+                    if (availableScouts <= 0) break;
+                    if (SendScout(village, target, availableScouts, settings.SendOneScout, settings.SendOneOnNewStash))
                     {
                         // One send per tick — come back next tick for the next target
                         _lastSendTime = DateTime.Now;
@@ -221,6 +226,38 @@ namespace Kingdoms.Bot.Modules
             return Math.Max(1, needed);
         }
 
+        // Count ALL scouts from a specific village that are currently outbound to any stash.
+        // This is the source of truth for "how many scouts are genuinely available" because
+        // village.m_numScouts can be reset by VillageSync refreshes before the server confirms the send.
+        private static int GetAllScoutsEnRouteFromVillage(int villageId)
+        {
+            int total = 0;
+            int attempts = 0;
+            while (attempts < 3)
+            {
+                try
+                {
+                    foreach (object obj in GameEngine.Instance.World.getArmyArray())
+                    {
+                        WorldMap.LocalArmyData army = (WorldMap.LocalArmyData)obj;
+                        if (army.numScouts > 0
+                            && army.lootType < 0   // outbound, not returning
+                            && army.homeVillageID == villageId)
+                        {
+                            total += army.numScouts;
+                        }
+                    }
+                    break;
+                }
+                catch (InvalidOperationException)
+                {
+                    total = 0;
+                    attempts++;
+                }
+            }
+            return total;
+        }
+
         // Count scouts from any user village already en route to this stash (outbound only)
         private static int GetScoutsEnRoute(int stashId)
         {
@@ -292,8 +329,11 @@ namespace Kingdoms.Bot.Modules
             }
         }
 
-        private bool SendScout(VillageMap village, StashTarget target, bool sendOne, bool sendOneOnNew)
+        private bool SendScout(VillageMap village, StashTarget target, int availableScouts,
+            bool sendOne, bool sendOneOnNew)
         {
+            if (availableScouts <= 0) return false;
+
             int enRoute = GetScoutsEnRoute(target.StashId);
 
             int count;
@@ -302,12 +342,11 @@ namespace Kingdoms.Bot.Modules
             {
                 // New/undiscovered stash — size unknown until scouted
                 if (enRoute > 0) return false; // already being discovered
-                count = sendOneOnNew ? 1 : village.m_numScouts;
+                count = sendOneOnNew ? 1 : availableScouts;
             }
             else if (sendOne)
             {
-                // Single-scout mode: drip-feed 1 scout at a time until stash is fully covered.
-                // Keep sending as long as en-route scouts won't carry everything.
+                // Single-scout mode: drip-feed 1 scout at a time until stash is fully covered
                 if (target.ResourceLevel > 0)
                 {
                     try
@@ -334,7 +373,7 @@ namespace Kingdoms.Bot.Modules
                 {
                     return false;
                 }
-                count = Math.Min(count, village.m_numScouts);
+                count = Math.Min(count, availableScouts);
             }
 
             if (count <= 0) return false;
