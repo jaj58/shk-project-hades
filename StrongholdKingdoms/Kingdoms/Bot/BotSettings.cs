@@ -916,6 +916,7 @@ namespace Kingdoms.Bot
     public class ScoutSettings
     {
         public bool Enabled = false;
+        public int CycleIntervalSeconds = 60;
         public int MaxScoutTimeSeconds = 1200;
         public int AutoHireScouts = 0;          // 0 = disabled; 1-8 = target count (capped by Research_Scouts)
         public int DelayBetweenSendsMs = 3000;

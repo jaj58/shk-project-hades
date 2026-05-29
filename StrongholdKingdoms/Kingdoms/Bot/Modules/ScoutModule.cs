@@ -7,6 +7,8 @@ namespace Kingdoms.Bot.Modules
     public class ScoutModule : BotModuleBase
     {
         private DateTime _lastSendTime = DateTime.MinValue;
+        private DateTime _lastCycleTime = DateTime.MinValue;
+        private bool _cycleComplete = true;
 
         public override string ModuleName
         {
@@ -31,6 +33,8 @@ namespace Kingdoms.Bot.Modules
         protected override void OnInitialize()
         {
             _lastSendTime = DateTime.MinValue;
+            _lastCycleTime = DateTime.MinValue;
+            _cycleComplete = true;
         }
 
         protected override void OnTick()
@@ -38,7 +42,12 @@ namespace Kingdoms.Bot.Modules
             ScoutSettings settings = Settings;
             if (settings == null) return;
 
+            // Respect the delay between individual scout sends (within-cycle pacing)
             if ((DateTime.Now - _lastSendTime).TotalMilliseconds < settings.DelayBetweenSendsMs)
+                return;
+
+            // Once the current cycle drains to nothing, wait the full interval before starting again
+            if (_cycleComplete && (DateTime.Now - _lastCycleTime).TotalSeconds < settings.CycleIntervalSeconds)
                 return;
 
             List<WorldMap.UserVillageData> villages;
@@ -51,6 +60,7 @@ namespace Kingdoms.Bot.Modules
 
             if (villages == null) return;
 
+            // Shuffle so we don't always favour the same village
             List<WorldMap.UserVillageData> shuffled = new List<WorldMap.UserVillageData>(villages);
             Random rng = new Random();
             for (int i = shuffled.Count - 1; i > 0; i--)
@@ -61,6 +71,7 @@ namespace Kingdoms.Bot.Modules
                 shuffled[j] = tmp;
             }
 
+            bool sentAnything = false;
             foreach (WorldMap.UserVillageData uvd in shuffled)
             {
                 VillageScoutSettings vs = settings.GetVillageSettings(uvd.villageID);
@@ -84,10 +95,20 @@ namespace Kingdoms.Bot.Modules
                     if (village.m_numScouts <= 0) break;
                     if (SendScout(village, target, settings.SendOneScout, settings.SendOneOnNewStash))
                     {
+                        // One send per tick — come back next tick for the next target
                         _lastSendTime = DateTime.Now;
+                        _cycleComplete = false;
                         return;
                     }
                 }
+            }
+
+            // Iterated everything without finding a target to send — cycle is done
+            if (!sentAnything)
+            {
+                _cycleComplete = true;
+                _lastCycleTime = DateTime.Now;
+                LogDebug("Scout cycle complete. Next cycle in " + settings.CycleIntervalSeconds + "s.");
             }
         }
 

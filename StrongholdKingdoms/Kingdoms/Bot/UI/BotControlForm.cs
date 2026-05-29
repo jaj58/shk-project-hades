@@ -109,6 +109,7 @@ namespace Kingdoms.Bot.UI
         private Button _scMoveDownBtn;
         private CheckBox _scEnabledCheck;
         private Label _scStatusLabel;
+        private NumericUpDown _scIntervalInput;
         private NumericUpDown _scMaxTimeInput;
         private NumericUpDown _scAutoHireInput;
         private NumericUpDown _scDelayInput;
@@ -5341,6 +5342,23 @@ namespace Kingdoms.Bot.UI
             _scStatusLabel.Location = new Point(160, 10);
             _scSettingsPanel.Controls.Add(_scStatusLabel);
 
+            Label intervalLabel = new Label();
+            intervalLabel.Text = "Cycle interval (sec):";
+            intervalLabel.ForeColor = textSec;
+            intervalLabel.AutoSize = true;
+            intervalLabel.Location = new Point(290, 10);
+            _scSettingsPanel.Controls.Add(intervalLabel);
+
+            _scIntervalInput = new NumericUpDown();
+            _scIntervalInput.Minimum = 10;
+            _scIntervalInput.Maximum = 3600;
+            _scIntervalInput.Value = 60;
+            _scIntervalInput.BackColor = inputBg;
+            _scIntervalInput.ForeColor = textPri;
+            _scIntervalInput.Location = new Point(450, 7);
+            _scIntervalInput.Size = new Size(70, 23);
+            _scSettingsPanel.Controls.Add(_scIntervalInput);
+
             // Row 2: MaxTime | AutoHire | Delay | CardExpiry
             int row2y = 36;
             Label maxTimeLabel = new Label();
@@ -5546,6 +5564,7 @@ namespace Kingdoms.Bot.UI
 
             // ── Wire events ──────────────────────────────────────────────────
             _scEnabledCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
+            _scIntervalInput.ValueChanged += delegate { ScPushGlobalSettings(); };
             _scMaxTimeInput.ValueChanged += delegate { ScPushGlobalSettings(); };
             _scAutoHireInput.ValueChanged += delegate { ScPushGlobalSettings(); };
             _scDelayInput.ValueChanged += delegate { ScPushGlobalSettings(); };
@@ -5596,6 +5615,7 @@ namespace Kingdoms.Bot.UI
             {
                 ScoutSettings s = BotEngine.Instance.Settings.Scout;
                 _scEnabledCheck.Checked = s.Enabled;
+                _scIntervalInput.Value = Math.Max(_scIntervalInput.Minimum, Math.Min(_scIntervalInput.Maximum, s.CycleIntervalSeconds));
                 _scMaxTimeInput.Value = Math.Max(_scMaxTimeInput.Minimum, Math.Min(_scMaxTimeInput.Maximum, s.MaxScoutTimeSeconds));
                 _scAutoHireInput.Value = Math.Max(0, Math.Min(8, s.AutoHireScouts));
                 _scDelayInput.Value = Math.Max(_scDelayInput.Minimum, Math.Min(_scDelayInput.Maximum, s.DelayBetweenSendsMs));
@@ -5620,6 +5640,7 @@ namespace Kingdoms.Bot.UI
 
             ScoutSettings s = BotEngine.Instance.Settings.Scout;
             s.Enabled = _scEnabledCheck.Checked;
+            s.CycleIntervalSeconds = (int)_scIntervalInput.Value;
             s.MaxScoutTimeSeconds = (int)_scMaxTimeInput.Value;
             s.AutoHireScouts = (int)_scAutoHireInput.Value;
             s.DelayBetweenSendsMs = (int)_scDelayInput.Value;
