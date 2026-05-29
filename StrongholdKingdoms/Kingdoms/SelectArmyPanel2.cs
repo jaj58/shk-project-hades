@@ -49,6 +49,9 @@ namespace Kingdoms
       this.clearControls();
       CustomSelfDrawPanel.CSDImage csdImage = this.backGround.init(true, 1000);
       this.backGround.stretchBackground();
+      // Expand further so the troop section has room
+      this.backGround.Size = new Size(199, 320);
+      csdImage.Size = new Size(csdImage.Width, csdImage.Height + 47);
       this.backGround.centerSubHeading();
       this.addControl((CustomSelfDrawPanel.CSDControl) this.backGround);
       this.backGround.initTravelButton(this.homeVillageButton);
@@ -76,21 +79,21 @@ namespace Kingdoms
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.returnButton);
       this.forceReturnOff = false;
 
-      this.attackTypeIcon.Position = new Point(8, 186);
+      this.attackTypeIcon.Position = new Point(8, 185);
       this.attackTypeIcon.Size = new Size(18, 18);
       this.attackTypeIcon.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeIcon);
 
-      this.attackTypeLabel.Position = new Point(30, 187);
-      this.attackTypeLabel.Size = new Size(155, 18);
+      this.attackTypeLabel.Position = new Point(30, 185);
+      this.attackTypeLabel.Size = new Size(152, 18);
       this.attackTypeLabel.Font = FontManager.GetFont("Arial", 8f, FontStyle.Bold);
       this.attackTypeLabel.Color = ARGBColors.Black;
       this.attackTypeLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
       this.attackTypeLabel.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeLabel);
 
-      this.pillageLabel.Position = new Point(8, 207);
-      this.pillageLabel.Size = new Size(177, 16);
+      this.pillageLabel.Position = new Point(8, 206);
+      this.pillageLabel.Size = new Size(177, 15);
       this.pillageLabel.Font = FontManager.GetFont("Arial", 7f, FontStyle.Regular);
       this.pillageLabel.Color = ARGBColors.Black;
       this.pillageLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
@@ -107,13 +110,12 @@ namespace Kingdoms
         (Image) GFXLibrary.wl_moving_unit_icons[5],
         (Image) GFXLibrary.barracks_unit_captain,
       };
-      // Set Size directly (no setScale) so icons render at the right position.
-      // setScale() multiplies the Position by the scale factor before drawing,
-      // which would move icons to the top of the panel.
-      const int iconW = 20;   // rendered icon width
-      const int iconH = 24;   // rendered icon height
-      int[] colX = new int[] { 5, 51, 97, 143 };   // 4 cols × 46px each in ~185px
-      int[] rowY = new int[] { 222, 247 };
+      // Use Size (not setScale) to control rendered dimensions — setScale() also
+      // scales the Position which would mis-place all icons.
+      const int iconW = 24;
+      const int iconH = 28;
+      int[] colX = new int[] { 4, 50, 96, 142 };   // 4 cols × 46px in ~185px
+      int[] rowY = new int[] { 224, 258 };
 
       for (int i = 0; i < 7; i++)
       {
@@ -121,16 +123,16 @@ namespace Kingdoms
         int y = rowY[i / 4];
 
         this.troopIcons[i] = new CustomSelfDrawPanel.CSDImage();
-        this.troopIcons[i].Image = unitImages[i];      // setSizeToImage() fires here
-        this.troopIcons[i].Size = new Size(iconW, iconH);  // override to desired size
+        this.troopIcons[i].Image = unitImages[i];
+        this.troopIcons[i].Size = new Size(iconW, iconH);
         this.troopIcons[i].Position = new Point(x, y);
         this.troopIcons[i].Visible = false;
         csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.troopIcons[i]);
 
         this.troopLabels[i] = new CustomSelfDrawPanel.CSDLabel();
-        this.troopLabels[i].Position = new Point(x + iconW + 2, y + 4);
-        this.troopLabels[i].Size = new Size(20, 16);
-        this.troopLabels[i].Font = FontManager.GetFont("Arial", 7f, FontStyle.Regular);
+        this.troopLabels[i].Position = new Point(x + iconW + 2, y + 6);
+        this.troopLabels[i].Size = new Size(18, 16);
+        this.troopLabels[i].Font = FontManager.GetFont("Arial", 8f, FontStyle.Regular);
         this.troopLabels[i].Color = ARGBColors.Black;
         this.troopLabels[i].Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
         this.troopLabels[i].Visible = false;
@@ -354,10 +356,11 @@ namespace Kingdoms
       };
       for (int i = 0; i < 7; i++)
       {
-        bool show = counts[i] > 0;
-        this.troopIcons[i].Visible = show;
-        this.troopLabels[i].Visible = show;
-        if (show) this.troopLabels[i].Text = counts[i].ToString();
+        this.troopIcons[i].Visible = true;
+        this.troopLabels[i].Visible = true;
+        this.troopLabels[i].Text = counts[i].ToString();
+        this.troopIcons[i].Alpha = counts[i] > 0 ? 1.0f : 0.3f;
+        this.troopLabels[i].Color = counts[i] > 0 ? ARGBColors.Black : Color.FromArgb(140, 100, 90, 80);
       }
     }
 
@@ -399,10 +402,11 @@ namespace Kingdoms
       };
       for (int i = 0; i < 7; i++)
       {
-        bool show = serverCounts[i] > 0;
-        this.troopIcons[i].Visible = show;
-        this.troopLabels[i].Visible = show;
-        if (show) this.troopLabels[i].Text = serverCounts[i].ToString();
+        this.troopIcons[i].Visible = true;
+        this.troopLabels[i].Visible = true;
+        this.troopLabels[i].Text = serverCounts[i].ToString();
+        this.troopIcons[i].Alpha = serverCounts[i] > 0 ? 1.0f : 0.3f;
+        this.troopLabels[i].Color = serverCounts[i] > 0 ? ARGBColors.Black : Color.FromArgb(140, 100, 90, 80);
       }
 
       int pct = returnData.armyData.pillagePercent;
@@ -494,7 +498,7 @@ namespace Kingdoms
       this.AutoScaleMode = AutoScaleMode.None;
       this.BackColor = ARGBColors.Transparent;
       this.Name = nameof (SelectArmyPanel2);
-      this.Size = new Size(199, 273);
+      this.Size = new Size(199, 320);
       this.ResumeLayout(false);
     }
   }
