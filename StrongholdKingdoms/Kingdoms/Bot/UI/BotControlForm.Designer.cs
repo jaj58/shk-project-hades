@@ -4215,6 +4215,7 @@ namespace Kingdoms.Bot.UI
             this._miscSettingsPanel.Controls.Add(this._miscSalePctLabel);
             this._miscSettingsPanel.Controls.Add(this._miscSaleHeaderLabel);
             this._miscSettingsPanel.Controls.Add(this._miscCollectFreeCardsCheck);
+            this._miscSettingsPanel.Controls.Add(this._miscDisableCannotPlayCardCheck);
             this._miscSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._miscSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._miscSettingsPanel.Name = "_miscSettingsPanel";
@@ -4233,6 +4234,18 @@ namespace Kingdoms.Bot.UI
             this._miscCollectFreeCardsCheck.Size = new System.Drawing.Size(214, 23);
             this._miscCollectFreeCardsCheck.TabIndex = 0;
             this._miscCollectFreeCardsCheck.Text = "Collect free cards automatically";
+            //
+            // _miscDisableCannotPlayCardCheck
+            //
+            this._miscDisableCannotPlayCardCheck.AutoSize = true;
+            this._miscDisableCannotPlayCardCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._miscDisableCannotPlayCardCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._miscDisableCannotPlayCardCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscDisableCannotPlayCardCheck.Location = new System.Drawing.Point(16, 46);
+            this._miscDisableCannotPlayCardCheck.Name = "_miscDisableCannotPlayCardCheck";
+            this._miscDisableCannotPlayCardCheck.Size = new System.Drawing.Size(214, 23);
+            this._miscDisableCannotPlayCardCheck.TabIndex = 2;
+            this._miscDisableCannotPlayCardCheck.Text = "Disable can't play card popup";
             //
             // _miscSaleHeaderLabel
             //
@@ -4753,6 +4766,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.TabPage _miscPage;
         private System.Windows.Forms.Panel _miscSettingsPanel;
         private System.Windows.Forms.CheckBox _miscCollectFreeCardsCheck;
+        private System.Windows.Forms.CheckBox _miscDisableCannotPlayCardCheck;
         private System.Windows.Forms.Label _miscSaleHeaderLabel;
         private System.Windows.Forms.Label _miscSalePctLabel;
         private System.Windows.Forms.Label _miscSalePctValue;

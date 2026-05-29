@@ -902,5 +902,6 @@ namespace Kingdoms.Bot
     public class MiscSettings
     {
         public bool CollectFreeCards = false;
+        public bool DisableCannotPlayCardPopup = false;
     }
 }

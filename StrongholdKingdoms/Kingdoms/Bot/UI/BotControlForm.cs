@@ -5057,6 +5057,7 @@ namespace Kingdoms.Bot.UI
         private void WireUpMiscTab()
         {
             _miscCollectFreeCardsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
+            _miscDisableCannotPlayCardCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             _miscSaleRefreshBtn.Click += delegate { MiscRefreshSaleInfo(); };
             MiscRefreshSaleInfo();
         }
@@ -5067,6 +5068,7 @@ namespace Kingdoms.Bot.UI
                 return;
             MiscSettings s = BotEngine.Instance.Settings.Misc;
             _miscCollectFreeCardsCheck.Checked = s.CollectFreeCards;
+            _miscDisableCannotPlayCardCheck.Checked = s.DisableCannotPlayCardPopup;
         }
 
         private void MiscWriteToSettings()
@@ -5075,6 +5077,7 @@ namespace Kingdoms.Bot.UI
                 return;
             MiscSettings s = BotEngine.Instance.Settings.Misc;
             s.CollectFreeCards = _miscCollectFreeCardsCheck.Checked;
+            s.DisableCannotPlayCardPopup = _miscDisableCannotPlayCardCheck.Checked;
         }
 
         private void MiscRefreshSaleInfo()
