@@ -24,6 +24,7 @@ namespace Kingdoms.Bot
         public AutoBombMultiSettings AutoBombMulti = new AutoBombMultiSettings();
         public PopularitySettings Popularity = new PopularitySettings();
         public MiscSettings Misc = new MiscSettings();
+        public AutoSettings Auto = new AutoSettings();
 
         private static string GetSettingsFilePath()
         {
@@ -903,5 +904,68 @@ namespace Kingdoms.Bot
     {
         public bool CollectFreeCards = false;
         public bool DisableCannotPlayCardPopup = false;
+    }
+
+    // =========================================================================
+    // Auto Tab Settings
+    // =========================================================================
+
+    [Serializable]
+    public class AutoSettings
+    {
+        public bool Enabled = false;
+        public List<ProductionCardSettings> ProductionCards = new List<ProductionCardSettings>();
+        public List<ModuleScheduleSettings> ModuleSchedules = new List<ModuleScheduleSettings>();
+
+        public ProductionCardSettings GetProduction(string goodKey)
+        {
+            foreach (ProductionCardSettings p in ProductionCards)
+                if (p.GoodKey == goodKey) return p;
+            ProductionCardSettings newP = new ProductionCardSettings();
+            newP.GoodKey = goodKey;
+            ProductionCards.Add(newP);
+            return newP;
+        }
+
+        public ModuleScheduleSettings GetModuleSchedule(string moduleName)
+        {
+            foreach (ModuleScheduleSettings m in ModuleSchedules)
+                if (m.ModuleName == moduleName) return m;
+            ModuleScheduleSettings newM = new ModuleScheduleSettings();
+            newM.ModuleName = moduleName;
+            ModuleSchedules.Add(newM);
+            return newM;
+        }
+    }
+
+    [Serializable]
+    public class ProductionCardSettings
+    {
+        public string GoodKey = "";
+        public bool Enabled = false;
+        public int CardFilterId = 0;     // cardFilter ID for this good type
+        public int TierIndex = 0;        // 0=smallest (x3), 1=mid (x5), 2=largest (x10)
+        public int TargetCount = 1;
+        public int PlayedCount = 0;
+        public int StartDelayMinutes = 0;
+        public DateTime ScheduledStartTime = DateTime.MinValue;
+
+        [System.Xml.Serialization.XmlIgnore]
+        public int LastPlayedInstanceId = 0;
+        [System.Xml.Serialization.XmlIgnore]
+        public int PreviousTargetCount = -1;
+    }
+
+    [Serializable]
+    public class ModuleScheduleSettings
+    {
+        public string ModuleName = "";
+        public bool[] HourlySchedule = new bool[24];
+        public bool AutoDisableEnabled = false;
+        public bool PlayCardOnStart = false;
+        public int CardDefId = 0;
+        public bool WasAutoStarted = false;
+        public bool ManuallyDisabledDuringWindow = false;
+        public int LastPlayedCardInstanceId = 0;
     }
 }

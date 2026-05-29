@@ -28,6 +28,11 @@ namespace Kingdoms.Bot.UI
                     _ppRefreshTimer.Stop();
                     _ppRefreshTimer.Dispose();
                 }
+                if (_autoRefreshTimer != null)
+                {
+                    _autoRefreshTimer.Stop();
+                    _autoRefreshTimer.Dispose();
+                }
                 if (components != null)
                     components.Dispose();
             }
@@ -313,6 +318,7 @@ namespace Kingdoms.Bot.UI
             this._ppEnabledCheck = new System.Windows.Forms.CheckBox();
             this._miscPage = new System.Windows.Forms.TabPage();
             this._miscSettingsPanel = new System.Windows.Forms.Panel();
+            this._autoPage = new System.Windows.Forms.TabPage();
             this._miscCollectFreeCardsCheck = new System.Windows.Forms.CheckBox();
             this._miscDisableCannotPlayCardCheck = new System.Windows.Forms.CheckBox();
             this._miscSaleHeaderLabel = new System.Windows.Forms.Label();
@@ -408,6 +414,7 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).BeginInit();
             this._miscPage.SuspendLayout();
             this._miscSettingsPanel.SuspendLayout();
+            this._autoPage.SuspendLayout();
             this._logPanel.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -588,6 +595,7 @@ namespace Kingdoms.Bot.UI
             this._tabControl.Controls.Add(this._bombMultiPage);
             this._tabControl.Controls.Add(this._popularityPage);
             this._tabControl.Controls.Add(this._miscPage);
+            this._tabControl.Controls.Add(this._autoPage);
             this._tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this._tabControl.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._tabControl.Location = new System.Drawing.Point(0, 0);
@@ -4485,6 +4493,16 @@ namespace Kingdoms.Bot.UI
             this._miscPage.ResumeLayout(false);
             this._miscSettingsPanel.ResumeLayout(false);
             this._miscSettingsPanel.PerformLayout();
+            //
+            // _autoPage
+            //
+            this._autoPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._autoPage.Location = new System.Drawing.Point(4, 24);
+            this._autoPage.Name = "_autoPage";
+            this._autoPage.Size = new System.Drawing.Size(1142, 497);
+            this._autoPage.TabIndex = 9;
+            this._autoPage.Text = "Auto";
+            this._autoPage.ResumeLayout(false);
             this._logPanel.ResumeLayout(false);
             this.ResumeLayout(false);
 
@@ -4778,6 +4796,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Button _miscSaleRefreshBtn;
         // Popularity tab controls
         private System.Windows.Forms.TabPage _popularityPage;
+        private System.Windows.Forms.TabPage _autoPage;
         private System.Windows.Forms.Panel _ppVillageListPanel;
         private System.Windows.Forms.Panel _ppColHeader;
         private System.Windows.Forms.Panel _ppSeparator;
