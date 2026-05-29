@@ -28,9 +28,13 @@ namespace Kingdoms.Bot.UI
                     _ppRefreshTimer.Stop();
                     _ppRefreshTimer.Dispose();
                 }
+                if (_scRefreshTimer != null)
+                {
+                    _scRefreshTimer.Stop();
+                    _scRefreshTimer.Dispose();
+                }
                 if (components != null)
                     components.Dispose();
-                // Scout tab has no persistent timer (refresh on tab select only)
             }
             base.Dispose(disposing);
         }
@@ -4248,36 +4252,39 @@ namespace Kingdoms.Bot.UI
             this._scoutPage.Controls.Add(this._scVillagePanel);
             this._scoutPage.Controls.Add(this._scSeparator);
             this._scoutPage.Controls.Add(this._scSettingsPanel);
+            // NOTE: Add order is intentional — last-added is docked first in WinForms.
+            // _scSettingsPanel (Top, last) docks to very top; _scSeparator (Top) docks just below it;
+            // then Left panels fill the remaining area; _scContentPanel (Fill) takes the rest.
             this._scoutPage.Location = new System.Drawing.Point(4, 24);
             this._scoutPage.Name = "_scoutPage";
             this._scoutPage.Size = new System.Drawing.Size(1142, 497);
             this._scoutPage.TabIndex = 9;
             this._scoutPage.Text = "Scout";
             //
-            // _scSettingsPanel
+            // _scSettingsPanel  (docked Top — last added so docks to the very top first)
             //
             this._scSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
-            this._scSettingsPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this._scSettingsPanel.Location = new System.Drawing.Point(0, 407);
+            this._scSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._scSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._scSettingsPanel.Name = "_scSettingsPanel";
             this._scSettingsPanel.Padding = new System.Windows.Forms.Padding(8, 6, 8, 6);
             this._scSettingsPanel.Size = new System.Drawing.Size(1142, 90);
             this._scSettingsPanel.TabIndex = 0;
             //
-            // _scSeparator
+            // _scSeparator  (docked Top — docks just below _scSettingsPanel)
             //
             this._scSeparator.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(55)))), ((int)(((byte)(70)))));
-            this._scSeparator.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this._scSeparator.Location = new System.Drawing.Point(0, 406);
+            this._scSeparator.Dock = System.Windows.Forms.DockStyle.Top;
+            this._scSeparator.Location = new System.Drawing.Point(0, 90);
             this._scSeparator.Name = "_scSeparator";
             this._scSeparator.Size = new System.Drawing.Size(1142, 1);
             this._scSeparator.TabIndex = 4;
             //
-            // _scVillagePanel
+            // _scVillagePanel  (docked Left, fills height below settings+separator)
             //
             this._scVillagePanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(28)))), ((int)(((byte)(28)))), ((int)(((byte)(38)))));
             this._scVillagePanel.Dock = System.Windows.Forms.DockStyle.Left;
-            this._scVillagePanel.Location = new System.Drawing.Point(0, 0);
+            this._scVillagePanel.Location = new System.Drawing.Point(0, 91);
             this._scVillagePanel.Name = "_scVillagePanel";
             this._scVillagePanel.Size = new System.Drawing.Size(220, 406);
             this._scVillagePanel.TabIndex = 1;
@@ -4286,16 +4293,16 @@ namespace Kingdoms.Bot.UI
             //
             this._scDivider.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(55)))), ((int)(((byte)(70)))));
             this._scDivider.Dock = System.Windows.Forms.DockStyle.Left;
-            this._scDivider.Location = new System.Drawing.Point(220, 0);
+            this._scDivider.Location = new System.Drawing.Point(220, 91);
             this._scDivider.Name = "_scDivider";
             this._scDivider.Size = new System.Drawing.Size(2, 406);
             this._scDivider.TabIndex = 2;
             //
-            // _scContentPanel
+            // _scContentPanel  (Fill — takes everything remaining)
             //
             this._scContentPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
             this._scContentPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._scContentPanel.Location = new System.Drawing.Point(222, 0);
+            this._scContentPanel.Location = new System.Drawing.Point(222, 91);
             this._scContentPanel.Name = "_scContentPanel";
             this._scContentPanel.Size = new System.Drawing.Size(920, 406);
             this._scContentPanel.TabIndex = 3;

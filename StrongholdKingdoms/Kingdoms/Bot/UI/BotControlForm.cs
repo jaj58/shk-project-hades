@@ -94,6 +94,7 @@ namespace Kingdoms.Bot.UI
         // Scout tab runtime state
         private int _scSelectedVillageId = -1;
         private bool _scLoading;
+        private Timer _scRefreshTimer;
         // Controls created programmatically in WireUpScoutTab
         private ListBox _scVillageListBox;
         private CheckBox _scVillageEnabledCheck;
@@ -5317,7 +5318,7 @@ namespace Kingdoms.Bot.UI
             Color textSec = Color.FromArgb(160, 165, 180);
             Color listBg = Color.FromArgb(32, 32, 44);
 
-            // ── Settings panel (bottom) ──────────────────────────────────────
+            // ── Settings panel (top) ─────────────────────────────────────────
             _scEnabledCheck = new CheckBox();
             _scEnabledCheck.Text = "Enable Scout";
             _scEnabledCheck.ForeColor = textPri;
@@ -5423,6 +5424,15 @@ namespace Kingdoms.Bot.UI
             _scSettingsPanel.Controls.Add(_scPriorityRangeRadio);
 
             // ── Village list panel (left) ────────────────────────────────────
+            // Listbox added BEFORE the header so WinForms docks the header first (last-added = first docked)
+            _scVillageListBox = new ListBox();
+            _scVillageListBox.BackColor = listBg;
+            _scVillageListBox.ForeColor = textPri;
+            _scVillageListBox.BorderStyle = BorderStyle.None;
+            _scVillageListBox.Dock = DockStyle.Fill;
+            _scVillageListBox.Font = new Font("Segoe UI", 9f);
+            _scVillagePanel.Controls.Add(_scVillageListBox);
+
             Label villageHeaderLabel = new Label();
             villageHeaderLabel.Text = "Villages";
             villageHeaderLabel.ForeColor = textSec;
@@ -5432,23 +5442,6 @@ namespace Kingdoms.Bot.UI
             villageHeaderLabel.Padding = new Padding(6, 4, 0, 0);
             villageHeaderLabel.BackColor = Color.FromArgb(30, 30, 40);
             _scVillagePanel.Controls.Add(villageHeaderLabel);
-
-            Button refreshVillagesBtn = new Button();
-            refreshVillagesBtn.Text = "Refresh";
-            refreshVillagesBtn.FlatStyle = FlatStyle.Flat;
-            refreshVillagesBtn.BackColor = Color.FromArgb(50, 50, 70);
-            refreshVillagesBtn.ForeColor = textPri;
-            refreshVillagesBtn.Size = new Size(65, 22);
-            refreshVillagesBtn.Location = new Point(148, 0);
-            _scVillagePanel.Controls.Add(refreshVillagesBtn);
-
-            _scVillageListBox = new ListBox();
-            _scVillageListBox.BackColor = listBg;
-            _scVillageListBox.ForeColor = textPri;
-            _scVillageListBox.BorderStyle = BorderStyle.None;
-            _scVillageListBox.Dock = DockStyle.Fill;
-            _scVillageListBox.Font = new Font("Segoe UI", 9f);
-            _scVillagePanel.Controls.Add(_scVillageListBox);
 
             // ── Content panel (right) ────────────────────────────────────────
             _scVillageEnabledCheck = new CheckBox();
@@ -5539,7 +5532,6 @@ namespace Kingdoms.Bot.UI
             _scPriorityResourceRadio.CheckedChanged += delegate { ScPushGlobalSettings(); };
             _scPriorityRangeRadio.CheckedChanged += delegate { ScPushGlobalSettings(); };
 
-            refreshVillagesBtn.Click += delegate { ScPopulateVillageList(); };
             _scVillageListBox.SelectedIndexChanged += delegate { ScOnVillageSelected(); };
             _scVillageEnabledCheck.CheckedChanged += delegate { ScSaveCurrentVillage(); };
 
@@ -5550,6 +5542,18 @@ namespace Kingdoms.Bot.UI
 
             _scScoutList.DoubleClick += delegate { ScMoveSelectedToIgnore(); };
             _scIgnoreList.DoubleClick += delegate { ScMoveSelectedToScout(); };
+
+            // Auto-refresh: repopulate village list when world data becomes available,
+            // and keep the status label current.
+            _scRefreshTimer = new Timer();
+            _scRefreshTimer.Interval = 2000;
+            _scRefreshTimer.Tick += delegate
+            {
+                ScUpdateStatusLabel();
+                if (_scVillageListBox.Items.Count == 0)
+                    ScPopulateVillageList();
+            };
+            _scRefreshTimer.Start();
         }
 
         private void ScLoadFromSettings()

@@ -946,10 +946,22 @@ namespace Kingdoms.Bot
         public List<int> ResourceTypesToScout = new List<int>();
         public List<int> ResourceTypesToIgnore = new List<int>();
 
+        // Stash special IDs that have actual names in the game: TradeTypeIds + 100, plus 100 (new stash)
+        private static readonly int[] DefaultStashTypes = new int[]
+        {
+            100,                              // New Stash
+            106, 107, 108, 109,              // Wood, Stone, Iron, Pitch
+            112, 113, 114, 115,              // Ale, Apples, Bread, Vegetables
+            116, 117, 118, 122,              // Meat, Cheese, Fish, Venison
+            121, 126, 119, 133,              // Furniture, Metalware, Clothes, Wine
+            123, 124, 125,                   // Salt, Spices, Silk
+            129, 128, 131, 130, 132          // Bows, Pikes, Armour, Swords, Catapults
+        };
+
         public void InitDefaults()
         {
             if (ResourceTypesToScout.Count > 0) return;
-            for (int t = 100; t <= 133; t++)
+            foreach (int t in DefaultStashTypes)
                 ResourceTypesToScout.Add(t);
         }
     }
