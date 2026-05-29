@@ -77,7 +77,7 @@ namespace Kingdoms
       this.forceReturnOff = false;
 
       this.attackTypeIcon.Position = new Point(8, 186);
-      this.attackTypeIcon.setScale(0.55f);
+      this.attackTypeIcon.Size = new Size(18, 18);
       this.attackTypeIcon.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeIcon);
 
@@ -107,11 +107,13 @@ namespace Kingdoms
         (Image) GFXLibrary.wl_moving_unit_icons[5],
         (Image) GFXLibrary.barracks_unit_captain,
       };
-      // barracks_unit images are ~200px tall; 0.12 scale renders them at ~24px
-      const float troopIconScale = 0.12f;
-      const int iconW = 24;   // rendered icon width at that scale
+      // Set Size directly (no setScale) so icons render at the right position.
+      // setScale() multiplies the Position by the scale factor before drawing,
+      // which would move icons to the top of the panel.
+      const int iconW = 20;   // rendered icon width
+      const int iconH = 24;   // rendered icon height
       int[] colX = new int[] { 5, 51, 97, 143 };   // 4 cols × 46px each in ~185px
-      int[] rowY = new int[] { 225, 249 };
+      int[] rowY = new int[] { 222, 247 };
 
       for (int i = 0; i < 7; i++)
       {
@@ -119,15 +121,15 @@ namespace Kingdoms
         int y = rowY[i / 4];
 
         this.troopIcons[i] = new CustomSelfDrawPanel.CSDImage();
-        this.troopIcons[i].Image = unitImages[i];
+        this.troopIcons[i].Image = unitImages[i];      // setSizeToImage() fires here
+        this.troopIcons[i].Size = new Size(iconW, iconH);  // override to desired size
         this.troopIcons[i].Position = new Point(x, y);
-        this.troopIcons[i].setScale(troopIconScale);
         this.troopIcons[i].Visible = false;
         csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.troopIcons[i]);
 
         this.troopLabels[i] = new CustomSelfDrawPanel.CSDLabel();
-        this.troopLabels[i].Position = new Point(x + iconW, y + 4);
-        this.troopLabels[i].Size = new Size(22, 16);
+        this.troopLabels[i].Position = new Point(x + iconW + 2, y + 4);
+        this.troopLabels[i].Size = new Size(20, 16);
         this.troopLabels[i].Font = FontManager.GetFont("Arial", 7f, FontStyle.Regular);
         this.troopLabels[i].Color = ARGBColors.Black;
         this.troopLabels[i].Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
@@ -336,7 +338,11 @@ namespace Kingdoms
       {
         this.attackTypeLabel.Text = GetAttackTypeName(this.m_army.attackType);
         Image icon = GetAttackTypeIcon(this.m_army.attackType);
-        this.attackTypeIcon.Image = icon;
+        if (icon != null)
+        {
+          this.attackTypeIcon.Image = icon;
+          this.attackTypeIcon.Size = new Size(18, 18);
+        }
         this.attackTypeIcon.Visible = icon != null;
       }
 
