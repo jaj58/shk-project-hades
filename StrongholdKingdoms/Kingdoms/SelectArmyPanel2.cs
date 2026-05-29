@@ -49,9 +49,8 @@ namespace Kingdoms
       this.clearControls();
       CustomSelfDrawPanel.CSDImage csdImage = this.backGround.init(true, 1000);
       this.backGround.stretchBackground();
-      // Trim to exactly fit 6-troop layout (no excess blank space)
-      this.backGround.Size = new Size(199, 310);
-      csdImage.Size = new Size(csdImage.Width, csdImage.Height + 38);
+      this.backGround.Size = new Size(199, 320);
+      csdImage.Size = new Size(csdImage.Width, csdImage.Height + 47);
       this.backGround.centerSubHeading();
       this.addControl((CustomSelfDrawPanel.CSDControl) this.backGround);
       this.backGround.initTravelButton(this.homeVillageButton);
@@ -79,23 +78,23 @@ namespace Kingdoms
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.returnButton);
       this.forceReturnOff = false;
 
-      // ~10px below the target village button (ends ~y=177)
-      this.attackTypeIcon.Position = new Point(8, 188);
-      this.attackTypeIcon.Size = new Size(18, 18);
+      // ~5px below the target village button (ends ~y=177) — halved gap
+      this.attackTypeIcon.Position = new Point(8, 182);
+      this.attackTypeIcon.Size = new Size(23, 23);   // 18 × 1.3
       this.attackTypeIcon.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeIcon);
 
-      this.attackTypeLabel.Position = new Point(30, 188);
-      this.attackTypeLabel.Size = new Size(152, 18);
-      this.attackTypeLabel.Font = FontManager.GetFont("Arial", 8f, FontStyle.Bold);
+      this.attackTypeLabel.Position = new Point(35, 183);
+      this.attackTypeLabel.Size = new Size(148, 20);
+      this.attackTypeLabel.Font = FontManager.GetFont("Arial", 9.5f, FontStyle.Bold);   // 8 × 1.2
       this.attackTypeLabel.Color = ARGBColors.Black;
       this.attackTypeLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
       this.attackTypeLabel.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeLabel);
 
-      this.pillageLabel.Position = new Point(8, 209);
-      this.pillageLabel.Size = new Size(177, 14);
-      this.pillageLabel.Font = FontManager.GetFont("Arial", 7f, FontStyle.Regular);
+      this.pillageLabel.Position = new Point(8, 207);
+      this.pillageLabel.Size = new Size(177, 16);
+      this.pillageLabel.Font = FontManager.GetFont("Arial", 8.5f, FontStyle.Regular);   // 7 × 1.2
       this.pillageLabel.Color = ARGBColors.Black;
       this.pillageLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
       this.pillageLabel.Visible = false;
@@ -112,10 +111,10 @@ namespace Kingdoms
         (Image) GFXLibrary.barracks_unit_catapult,
         (Image) GFXLibrary.barracks_unit_captain,
       };
-      const int iconW = 28;
-      const int iconH = 30;
+      const int iconW = 31;   // 28 × 1.1
+      const int iconH = 33;   // 30 × 1.1
       int[] colX = new int[] { 4, 65, 126 };   // 3 cols × 61px in ~185px
-      int[] rowY = new int[] { 225, 259 };
+      int[] rowY = new int[] { 228, 265 };
 
       for (int i = 0; i < 6; i++)
       {
@@ -130,9 +129,9 @@ namespace Kingdoms
         csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.troopIcons[i]);
 
         this.troopLabels[i] = new CustomSelfDrawPanel.CSDLabel();
-        this.troopLabels[i].Position = new Point(x + iconW + 2, y + 7);
-        this.troopLabels[i].Size = new Size(29, 16);
-        this.troopLabels[i].Font = FontManager.GetFont("Arial", 8f, FontStyle.Regular);
+        this.troopLabels[i].Position = new Point(x + iconW + 2, y + 9);
+        this.troopLabels[i].Size = new Size(24, 16);
+        this.troopLabels[i].Font = FontManager.GetFont("Arial", 9.5f, FontStyle.Regular);   // 8 × 1.2
         this.troopLabels[i].Color = ARGBColors.Black;
         this.troopLabels[i].Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
         this.troopLabels[i].Visible = false;
@@ -343,7 +342,7 @@ namespace Kingdoms
         if (icon != null)
         {
           this.attackTypeIcon.Image = icon;
-          this.attackTypeIcon.Size = new Size(18, 18);
+          this.attackTypeIcon.Size = new Size(23, 23);
         }
         this.attackTypeIcon.Visible = icon != null;
       }
@@ -496,7 +495,7 @@ namespace Kingdoms
       this.AutoScaleMode = AutoScaleMode.None;
       this.BackColor = ARGBColors.Transparent;
       this.Name = nameof (SelectArmyPanel2);
-      this.Size = new Size(199, 310);
+      this.Size = new Size(199, 320);
       this.ResumeLayout(false);
     }
   }
