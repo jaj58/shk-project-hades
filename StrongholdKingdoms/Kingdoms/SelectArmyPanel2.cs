@@ -32,8 +32,8 @@ namespace Kingdoms
     private CustomSelfDrawPanel.CSDImage attackTypeIcon = new CustomSelfDrawPanel.CSDImage();
     private CustomSelfDrawPanel.CSDLabel attackTypeLabel = new CustomSelfDrawPanel.CSDLabel();
     private CustomSelfDrawPanel.CSDLabel pillageLabel = new CustomSelfDrawPanel.CSDLabel();
-    private CustomSelfDrawPanel.CSDImage[] troopIcons = new CustomSelfDrawPanel.CSDImage[7];
-    private CustomSelfDrawPanel.CSDLabel[] troopLabels = new CustomSelfDrawPanel.CSDLabel[7];
+    private CustomSelfDrawPanel.CSDImage[] troopIcons = new CustomSelfDrawPanel.CSDImage[6];
+    private CustomSelfDrawPanel.CSDLabel[] troopLabels = new CustomSelfDrawPanel.CSDLabel[6];
     private IContainer components;
 
     public SelectArmyPanel2()
@@ -49,9 +49,9 @@ namespace Kingdoms
       this.clearControls();
       CustomSelfDrawPanel.CSDImage csdImage = this.backGround.init(true, 1000);
       this.backGround.stretchBackground();
-      // Expand further so the troop section has room
-      this.backGround.Size = new Size(199, 320);
-      csdImage.Size = new Size(csdImage.Width, csdImage.Height + 47);
+      // Trim to exactly fit 6-troop layout (no excess blank space)
+      this.backGround.Size = new Size(199, 310);
+      csdImage.Size = new Size(csdImage.Width, csdImage.Height + 38);
       this.backGround.centerSubHeading();
       this.addControl((CustomSelfDrawPanel.CSDControl) this.backGround);
       this.backGround.initTravelButton(this.homeVillageButton);
@@ -79,12 +79,13 @@ namespace Kingdoms
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.returnButton);
       this.forceReturnOff = false;
 
-      this.attackTypeIcon.Position = new Point(8, 185);
+      // ~10px below the target village button (ends ~y=177)
+      this.attackTypeIcon.Position = new Point(8, 188);
       this.attackTypeIcon.Size = new Size(18, 18);
       this.attackTypeIcon.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeIcon);
 
-      this.attackTypeLabel.Position = new Point(30, 185);
+      this.attackTypeLabel.Position = new Point(30, 188);
       this.attackTypeLabel.Size = new Size(152, 18);
       this.attackTypeLabel.Font = FontManager.GetFont("Arial", 8f, FontStyle.Bold);
       this.attackTypeLabel.Color = ARGBColors.Black;
@@ -92,14 +93,16 @@ namespace Kingdoms
       this.attackTypeLabel.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeLabel);
 
-      this.pillageLabel.Position = new Point(8, 206);
-      this.pillageLabel.Size = new Size(177, 15);
+      this.pillageLabel.Position = new Point(8, 209);
+      this.pillageLabel.Size = new Size(177, 14);
       this.pillageLabel.Font = FontManager.GetFont("Arial", 7f, FontStyle.Regular);
       this.pillageLabel.Color = ARGBColors.Black;
       this.pillageLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
       this.pillageLabel.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.pillageLabel);
 
+      // 6 troop types (no scouts), 3 per row × 2 rows
+      // Peasants, Archers, Pikemen / Swordsmen, Catapults, Captains
       Image[] unitImages = new Image[]
       {
         (Image) GFXLibrary.barracks_unit_peasant,
@@ -107,20 +110,17 @@ namespace Kingdoms
         (Image) GFXLibrary.barracks_unit_pikemen,
         (Image) GFXLibrary.barracks_unit_swordsman,
         (Image) GFXLibrary.barracks_unit_catapult,
-        (Image) GFXLibrary.wl_moving_unit_icons[5],
         (Image) GFXLibrary.barracks_unit_captain,
       };
-      // Use Size (not setScale) to control rendered dimensions — setScale() also
-      // scales the Position which would mis-place all icons.
-      const int iconW = 24;
-      const int iconH = 28;
-      int[] colX = new int[] { 4, 50, 96, 142 };   // 4 cols × 46px in ~185px
-      int[] rowY = new int[] { 224, 258 };
+      const int iconW = 28;
+      const int iconH = 30;
+      int[] colX = new int[] { 4, 65, 126 };   // 3 cols × 61px in ~185px
+      int[] rowY = new int[] { 225, 259 };
 
-      for (int i = 0; i < 7; i++)
+      for (int i = 0; i < 6; i++)
       {
-        int x = colX[i % 4];
-        int y = rowY[i / 4];
+        int x = colX[i % 3];
+        int y = rowY[i / 3];
 
         this.troopIcons[i] = new CustomSelfDrawPanel.CSDImage();
         this.troopIcons[i].Image = unitImages[i];
@@ -130,8 +130,8 @@ namespace Kingdoms
         csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.troopIcons[i]);
 
         this.troopLabels[i] = new CustomSelfDrawPanel.CSDLabel();
-        this.troopLabels[i].Position = new Point(x + iconW + 2, y + 6);
-        this.troopLabels[i].Size = new Size(18, 16);
+        this.troopLabels[i].Position = new Point(x + iconW + 2, y + 7);
+        this.troopLabels[i].Size = new Size(29, 16);
         this.troopLabels[i].Font = FontManager.GetFont("Arial", 8f, FontStyle.Regular);
         this.troopLabels[i].Color = ARGBColors.Black;
         this.troopLabels[i].Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
@@ -351,10 +351,9 @@ namespace Kingdoms
       int[] counts = new int[]
       {
         this.m_army.numPeasants, this.m_army.numArchers, this.m_army.numPikemen,
-        this.m_army.numSwordsmen, this.m_army.numCatapults, this.m_army.numScouts,
-        this.m_army.numCaptains,
+        this.m_army.numSwordsmen, this.m_army.numCatapults, this.m_army.numCaptains,
       };
-      for (int i = 0; i < 7; i++)
+      for (int i = 0; i < 6; i++)
       {
         this.troopIcons[i].Visible = true;
         this.troopLabels[i].Visible = true;
@@ -369,10 +368,10 @@ namespace Kingdoms
       this.attackTypeIcon.Visible = false;
       this.attackTypeLabel.Visible = false;
       this.pillageLabel.Visible = false;
-      for (int i = 0; i < 7; i++)
+      for (int i = 0; i < 6; i++)
       {
-        this.troopIcons[i].Visible = false;
-        this.troopLabels[i].Visible = false;
+        if (this.troopIcons[i] != null) this.troopIcons[i].Visible = false;
+        if (this.troopLabels[i] != null) this.troopLabels[i].Visible = false;
       }
     }
 
@@ -397,10 +396,9 @@ namespace Kingdoms
       {
         returnData.armyData.numPeasants, returnData.armyData.numArchers,
         returnData.armyData.numPikemen,  returnData.armyData.numSwordsmen,
-        returnData.armyData.numCatapults, 0,
-        returnData.armyData.numCaptains,
+        returnData.armyData.numCatapults, returnData.armyData.numCaptains,
       };
-      for (int i = 0; i < 7; i++)
+      for (int i = 0; i < 6; i++)
       {
         this.troopIcons[i].Visible = true;
         this.troopLabels[i].Visible = true;
@@ -498,7 +496,7 @@ namespace Kingdoms
       this.AutoScaleMode = AutoScaleMode.None;
       this.BackColor = ARGBColors.Transparent;
       this.Name = nameof (SelectArmyPanel2);
-      this.Size = new Size(199, 320);
+      this.Size = new Size(199, 310);
       this.ResumeLayout(false);
     }
   }
