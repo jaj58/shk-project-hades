@@ -78,23 +78,25 @@ namespace Kingdoms
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.returnButton);
       this.forceReturnOff = false;
 
-      // ~5px below the target village button (ends ~y=177) — halved gap
-      this.attackTypeIcon.Position = new Point(8, 182);
-      this.attackTypeIcon.Size = new Size(23, 23);   // 18 × 1.3
+      // Sit tight under the target village button (ends ~y=177)
+      this.attackTypeIcon.Position = new Point(6, 178);
+      this.attackTypeIcon.Size = new Size(46, 46);   // doubled
       this.attackTypeIcon.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeIcon);
 
-      this.attackTypeLabel.Position = new Point(35, 183);
-      this.attackTypeLabel.Size = new Size(148, 20);
-      this.attackTypeLabel.Font = FontManager.GetFont("Arial", 9.5f, FontStyle.Bold);   // 8 × 1.2
+      // Vertically centred alongside the icon, shifted right to clear it
+      this.attackTypeLabel.Position = new Point(57, 189);
+      this.attackTypeLabel.Size = new Size(96, 22);
+      this.attackTypeLabel.Font = FontManager.GetFont("Arial", 9.5f, FontStyle.Bold);
       this.attackTypeLabel.Color = ARGBColors.Black;
       this.attackTypeLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
       this.attackTypeLabel.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeLabel);
 
-      this.pillageLabel.Position = new Point(8, 207);
-      this.pillageLabel.Size = new Size(177, 16);
-      this.pillageLabel.Font = FontManager.GetFont("Arial", 8.5f, FontStyle.Regular);   // 7 × 1.2
+      // Pillage % on the same line, to the right of the attack type label
+      this.pillageLabel.Position = new Point(155, 189);
+      this.pillageLabel.Size = new Size(30, 22);
+      this.pillageLabel.Font = FontManager.GetFont("Arial", 9.5f, FontStyle.Bold);
       this.pillageLabel.Color = ARGBColors.Black;
       this.pillageLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
       this.pillageLabel.Visible = false;
@@ -114,7 +116,7 @@ namespace Kingdoms
       const int iconW = 31;   // 28 × 1.1
       const int iconH = 33;   // 30 × 1.1
       int[] colX = new int[] { 4, 65, 126 };   // 3 cols × 61px in ~185px
-      int[] rowY = new int[] { 228, 265 };
+      int[] rowY = new int[] { 228, 264 };    // directly under icon (ends y=224) + 4px gap
 
       for (int i = 0; i < 6; i++)
       {
@@ -342,7 +344,7 @@ namespace Kingdoms
         if (icon != null)
         {
           this.attackTypeIcon.Image = icon;
-          this.attackTypeIcon.Size = new Size(23, 23);
+          this.attackTypeIcon.Size = new Size(46, 46);
         }
         this.attackTypeIcon.Visible = icon != null;
       }
