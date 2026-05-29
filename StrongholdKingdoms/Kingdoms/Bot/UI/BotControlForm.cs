@@ -94,6 +94,9 @@ namespace Kingdoms.Bot.UI
         // Scout tab runtime state
         private int _scSelectedVillageId = -1;
         private bool _scLoading;
+        private bool _scDragging;
+        private object _scDragItem;
+        private int _scDragFromIndex = -1;
         private Timer _scRefreshTimer;
         // Controls created programmatically in WireUpScoutTab
         private ListBox _scVillageListBox;
@@ -113,6 +116,7 @@ namespace Kingdoms.Bot.UI
         private RadioButton _scPriorityResourceRadio;
         private RadioButton _scPriorityRangeRadio;
         private CheckBox _scSendOneScoutCheck;
+        private CheckBox _scSendOneOnNewCheck;
 
         // Popularity tab runtime state
         private Timer _ppRefreshTimer;
@@ -5432,6 +5436,14 @@ namespace Kingdoms.Bot.UI
             _scSendOneScoutCheck.Location = new Point(570, row3y);
             _scSettingsPanel.Controls.Add(_scSendOneScoutCheck);
 
+            _scSendOneOnNewCheck = new CheckBox();
+            _scSendOneOnNewCheck.Text = "Send 1 scout on New Stash (to discover type)";
+            _scSendOneOnNewCheck.ForeColor = textPri;
+            _scSendOneOnNewCheck.FlatStyle = FlatStyle.Flat;
+            _scSendOneOnNewCheck.AutoSize = true;
+            _scSendOneOnNewCheck.Location = new Point(850, row3y);
+            _scSettingsPanel.Controls.Add(_scSendOneOnNewCheck);
+
             // ── Village list panel (left) ────────────────────────────────────
             // Listbox added BEFORE the header so WinForms docks the header first (last-added = first docked)
             _scVillageListBox = new ListBox();
@@ -5541,6 +5553,7 @@ namespace Kingdoms.Bot.UI
             _scPriorityResourceRadio.CheckedChanged += delegate { ScPushGlobalSettings(); };
             _scPriorityRangeRadio.CheckedChanged += delegate { ScPushGlobalSettings(); };
             _scSendOneScoutCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
+            _scSendOneOnNewCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
 
             _scVillageListBox.SelectedIndexChanged += delegate { ScOnVillageSelected(); };
             _scVillageEnabledCheck.CheckedChanged += delegate { ScSaveCurrentVillage(); };
@@ -5552,6 +5565,14 @@ namespace Kingdoms.Bot.UI
 
             _scScoutList.DoubleClick += delegate { ScMoveSelectedToIgnore(); };
             _scIgnoreList.DoubleClick += delegate { ScMoveSelectedToScout(); };
+
+            // Drag-to-reorder within each list
+            _scScoutList.MouseDown += ScListMouseDown;
+            _scScoutList.MouseMove += ScListMouseMove;
+            _scScoutList.MouseUp += ScListMouseUp;
+            _scIgnoreList.MouseDown += ScListMouseDown;
+            _scIgnoreList.MouseMove += ScListMouseMove;
+            _scIgnoreList.MouseUp += ScListMouseUp;
 
             // Auto-refresh: repopulate village list when world data becomes available,
             // and keep the status label current.
@@ -5582,6 +5603,7 @@ namespace Kingdoms.Bot.UI
                 _scPriorityResourceRadio.Checked = s.Priority == ScoutPriority.ResourcePriority;
                 _scPriorityRangeRadio.Checked = s.Priority == ScoutPriority.RangePriority;
                 _scSendOneScoutCheck.Checked = s.SendOneScout;
+                _scSendOneOnNewCheck.Checked = s.SendOneOnNewStash;
                 ScUpdateStatusLabel();
                 ScPopulateVillageList();
             }
@@ -5604,6 +5626,7 @@ namespace Kingdoms.Bot.UI
             s.DisableOnScoutCardExpiry = _scDisableOnCardExpiryCheck.Checked;
             s.Priority = _scPriorityResourceRadio.Checked ? ScoutPriority.ResourcePriority : ScoutPriority.RangePriority;
             s.SendOneScout = _scSendOneScoutCheck.Checked;
+            s.SendOneOnNewStash = _scSendOneOnNewCheck.Checked;
 
             foreach (IBotModule module in BotEngine.Instance.Modules)
             {
@@ -5645,7 +5668,7 @@ namespace Kingdoms.Bot.UI
 
         private void ScOnVillageSelected()
         {
-            if (_scLoading) return;
+            if (_scLoading || _scDragging) return;
 
             ScoutVillageItem item = _scVillageListBox.SelectedItem as ScoutVillageItem;
             if (item == null)
@@ -5700,6 +5723,37 @@ namespace Kingdoms.Bot.UI
                 ScoutResourceItem ri = item as ScoutResourceItem;
                 if (ri != null) vs.ResourceTypesToIgnore.Add(ri.ResourceType);
             }
+        }
+
+        private void ScListMouseDown(object sender, MouseEventArgs e)
+        {
+            ListBox lb = (ListBox)sender;
+            int idx = lb.IndexFromPoint(e.Location);
+            if (idx < 0) { _scDragItem = null; _scDragFromIndex = -1; return; }
+            _scDragItem = lb.Items[idx];
+            _scDragFromIndex = idx;
+        }
+
+        private void ScListMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left || _scDragItem == null) return;
+            ListBox lb = (ListBox)sender;
+            int idx = lb.IndexFromPoint(e.Location);
+            if (idx < 0 || idx == _scDragFromIndex) return;
+
+            _scDragging = true;
+            lb.Items.RemoveAt(_scDragFromIndex);
+            lb.Items.Insert(idx, _scDragItem);
+            lb.SelectedIndex = idx;
+            _scDragFromIndex = idx;
+            ScSaveCurrentVillage();
+        }
+
+        private void ScListMouseUp(object sender, MouseEventArgs e)
+        {
+            _scDragging = false;
+            _scDragItem = null;
+            _scDragFromIndex = -1;
         }
 
         private void ScMoveSelectedToIgnore()
