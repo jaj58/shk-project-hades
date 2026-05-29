@@ -36,13 +36,23 @@ namespace Kingdoms.Bot.Modules
                 {
                     if (!targetModule.Enabled && !entry.ManuallyDisabledDuringWindow)
                     {
-                        // Start the module
+                        // Module is off inside the window — either first start OR was disabled by
+                        // CardExpiryModule (or similar) mid-window. Either way: re-enable it.
+                        bool wasRunning = entry.WasAutoStarted;
                         targetModule.Enabled = true;
                         SyncModuleEnabledToSettings(entry.ModuleName, true);
                         entry.WasAutoStarted = true;
-                        LogInfo("Auto-enabled module '" + entry.ModuleName + "' at hour " + currentHour + ".");
 
-                        if (entry.PlayCardOnStart && entry.CardDefId != 0)
+                        if (wasRunning)
+                            LogInfo("Module '" + entry.ModuleName + "' was disabled mid-window (card expiry?) — re-enabling.");
+                        else
+                            LogInfo("Auto-enabled module '" + entry.ModuleName + "' at hour " + currentHour + ".");
+
+                        // Play a card if configured (on first start, or on re-enable if ReplayCardOnExpiry is set)
+                        bool shouldPlayCard = entry.PlayCardOnStart && entry.CardDefId != 0 &&
+                            (!wasRunning || entry.ReplayCardOnExpiry);
+
+                        if (shouldPlayCard)
                         {
                             int instanceId = FindCardInstanceByDefId(entry.CardDefId);
                             if (instanceId != 0)
@@ -57,10 +67,10 @@ namespace Kingdoms.Bot.Modules
                             }
                         }
                     }
-                    else if (entry.WasAutoStarted && entry.PlayCardOnStart &&
+                    else if (entry.WasAutoStarted && entry.PlayCardOnStart && entry.ReplayCardOnExpiry &&
                              entry.CardDefId != 0 && entry.LastPlayedCardInstanceId != 0)
                     {
-                        // Re-play card if it expired mid-window
+                        // Module is running — check if the card expired mid-window and re-play if enabled
                         CardData cd = GetCardData();
                         if (cd != null && !CardInstanceIsActive(cd, entry.LastPlayedCardInstanceId))
                         {

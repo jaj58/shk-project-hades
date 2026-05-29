@@ -963,6 +963,7 @@ namespace Kingdoms.Bot
         public bool[] HourlySchedule = new bool[24];
         public bool AutoDisableEnabled = false;
         public bool PlayCardOnStart = false;
+        public bool ReplayCardOnExpiry = true;  // Re-play card when it expires mid-window
         public int CardDefId = 0;
         public bool WasAutoStarted = false;
         public bool ManuallyDisabledDuringWindow = false;

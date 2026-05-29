@@ -5573,9 +5573,17 @@ namespace Kingdoms.Bot.UI
             hCard.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             header.Controls.Add(hCard);
 
+            Label hReplay = new Label();
+            hReplay.Text = "Re-play";
+            hReplay.Location = new Point(718, 4);
+            hReplay.AutoSize = true;
+            hReplay.ForeColor = TextSec;
+            hReplay.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            header.Controls.Add(hReplay);
+
             Label hAuto = new Label();
             hAuto.Text = "Auto-off";
-            hAuto.Location = new Point(720, 4);
+            hAuto.Location = new Point(810, 4);
             hAuto.AutoSize = true;
             hAuto.ForeColor = TextSec;
             hAuto.Font = new System.Drawing.Font("Segoe UI", 7.5F);
@@ -5659,10 +5667,22 @@ namespace Kingdoms.Bot.UI
             row.CardCombo = cardCombo;
             panel.Controls.Add(cardCombo);
 
+            // Re-play card on expiry checkbox
+            CheckBox replayCard = new CheckBox();
+            replayCard.Text = "Re-play";
+            replayCard.Location = new Point(718, 13);
+            replayCard.Size = new Size(78, 18);
+            replayCard.BackColor = Color.Transparent;
+            replayCard.ForeColor = TextPri;
+            replayCard.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            replayCard.Checked = true;
+            row.ReplayCardCheck = replayCard;
+            panel.Controls.Add(replayCard);
+
             // Auto-disable checkbox
             CheckBox autoOff = new CheckBox();
             autoOff.Text = "Auto-disable";
-            autoOff.Location = new Point(718, 13);
+            autoOff.Location = new Point(808, 13);
             autoOff.Size = new Size(95, 18);
             autoOff.BackColor = Color.Transparent;
             autoOff.ForeColor = TextPri;
@@ -5724,6 +5744,7 @@ namespace Kingdoms.Bot.UI
                 ModuleScheduleSettings m = s.GetModuleSchedule(row.ModuleName);
                 for (int h = 0; h < 24; h++)
                     row.HourChecks[h].Checked = m.HourlySchedule != null && h < m.HourlySchedule.Length && m.HourlySchedule[h];
+                row.ReplayCardCheck.Checked = m.ReplayCardOnExpiry;
                 row.AutoDisableCheck.Checked = m.AutoDisableEnabled;
 
                 // Populate card dropdown from ProfileCards
@@ -5824,6 +5845,7 @@ namespace Kingdoms.Bot.UI
                     m.HourlySchedule = new bool[24];
                 for (int h = 0; h < 24; h++)
                     m.HourlySchedule[h] = row.HourChecks[h].Checked;
+                m.ReplayCardOnExpiry = row.ReplayCardCheck.Checked;
                 m.AutoDisableEnabled = row.AutoDisableCheck.Checked;
 
                 AutoCardOption selected = row.CardCombo.SelectedItem as AutoCardOption;
@@ -5951,6 +5973,7 @@ namespace Kingdoms.Bot.UI
         public string ModuleName;
         public CheckBox[] HourChecks = new CheckBox[24];
         public ComboBox CardCombo;
+        public CheckBox ReplayCardCheck;
         public CheckBox AutoDisableCheck;
         public Panel RowPanel;
     }
