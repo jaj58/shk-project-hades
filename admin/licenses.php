@@ -21,13 +21,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $valid_until = $custom
                 ? date('Y-m-d H:i:s', strtotime($custom . ' 23:59:59'))
                 : date('Y-m-d H:i:s', strtotime("+{$days} days"));
+            $tier = ($_POST['tier'] ?? '') === 'dev' ? 'dev' : 'standard';
 
             $key_string = generate_key();
             try {
                 $pdo->prepare(
-                    'INSERT INTO license_keys (key_string, user_id, valid_from, valid_until)
-                     VALUES (?, ?, NOW(), ?)'
-                )->execute([$key_string, $user_id, $valid_until]);
+                    'INSERT INTO license_keys (key_string, user_id, valid_from, valid_until, tier)
+                     VALUES (?, ?, NOW(), ?, ?)'
+                )->execute([$key_string, $user_id, $valid_until, $tier]);
                 $msg = "Key created: <code>{$key_string}</code>";
             } catch (PDOException $e) {
                 $err = 'Failed to create key: ' . $e->getMessage();
@@ -64,6 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($_POST['key_id'] ?? 0);
         $pdo->prepare('DELETE FROM license_keys WHERE id = ?')->execute([$id]);
         $msg = 'Key deleted.';
+    }
+
+    if ($action === 'set_tier') {
+        $id   = (int)($_POST['key_id'] ?? 0);
+        $tier = ($_POST['tier'] ?? '') === 'dev' ? 'dev' : 'standard';
+        $pdo->prepare('UPDATE license_keys SET tier = ? WHERE id = ?')->execute([$tier, $id]);
+        $msg = 'Tier updated to ' . $tier . '.';
     }
 }
 
@@ -128,7 +136,7 @@ flash('danger', $err);
     <div class="card-body p-0">
         <table class="table table-striped mb-0 small">
             <thead><tr>
-                <th>Key</th><th>User</th><th>Valid Until</th><th>Status</th><th>HWID</th><th>Last Seen</th><th>Actions</th>
+                <th>Key</th><th>User</th><th>Valid Until</th><th>Status</th><th>Tier</th><th>HWID</th><th>Last Seen</th><th>Actions</th>
             </tr></thead>
             <tbody>
             <?php foreach ($keys as $k):
@@ -145,6 +153,18 @@ flash('danger', $err);
                 <td><?= htmlspecialchars($k['username']) ?></td>
                 <td class="<?= $expired ? 'text-danger' : 'text-muted' ?>"><?= htmlspecialchars(substr($k['valid_until'], 0, 10)) ?></td>
                 <td><?= $status_badge ?></td>
+                <td>
+                    <form method="POST" class="d-inline">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="form_action" value="set_tier">
+                        <input type="hidden" name="key_id" value="<?= $k['id'] ?>">
+                        <select name="tier" class="form-select form-select-sm tier-select <?= ($k['tier'] ?? 'standard') === 'dev' ? 'tier-dev' : 'tier-std' ?>"
+                            style="width:100px" onchange="this.form.submit()">
+                            <option value="standard" <?= ($k['tier'] ?? 'standard') === 'standard' ? 'selected' : '' ?>>Standard</option>
+                            <option value="dev"      <?= ($k['tier'] ?? 'standard') === 'dev'      ? 'selected' : '' ?>>Dev</option>
+                        </select>
+                    </form>
+                </td>
                 <td class="text-muted">
                     <?php if ($k['hwid']): ?>
                         <span title="<?= htmlspecialchars($k['hwid']) ?>"><?= substr(htmlspecialchars($k['hwid']), 0, 10) ?>…</span>
@@ -191,7 +211,7 @@ flash('danger', $err);
             </tr>
             <?php endforeach; ?>
             <?php if (!$keys): ?>
-                <tr><td colspan="7" class="text-center text-muted py-3">No license keys found.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-3">No license keys found.</td></tr>
             <?php endif; ?>
             </tbody>
         </table>
@@ -218,6 +238,14 @@ flash('danger', $err);
               <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['username']) ?></option>
               <?php endforeach; ?>
             </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Tier</label>
+            <select name="tier" class="form-select">
+              <option value="standard">Standard (release builds)</option>
+              <option value="dev">Dev (dev builds)</option>
+            </select>
+            <div class="form-text text-muted">Dev tier users receive dev branch builds.</div>
           </div>
           <div class="mb-3">
             <label class="form-label">Validity Period</label>
@@ -268,6 +296,11 @@ flash('danger', $err);
   </div>
 </div>
 
+<style>
+.tier-select { font-size: .75rem; padding: .15rem .4rem; }
+.tier-dev  { border-color: #c8a800 !important; color: #c8a800 !important; }
+.tier-std  { border-color: #555 !important; }
+</style>
 <script>
 function toggleCustomDate(sel) {
     document.getElementById('customDateRow').classList.toggle('d-none', sel.value !== '0');

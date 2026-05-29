@@ -29,6 +29,11 @@ namespace Kingdoms
     private WorldMap.LocalArmyData m_army;
     private long selectedArmyID;
     private DockableControl dockableControl;
+    private CustomSelfDrawPanel.CSDImage attackTypeIcon = new CustomSelfDrawPanel.CSDImage();
+    private CustomSelfDrawPanel.CSDLabel attackTypeLabel = new CustomSelfDrawPanel.CSDLabel();
+    private CustomSelfDrawPanel.CSDLabel pillageLabel = new CustomSelfDrawPanel.CSDLabel();
+    private CustomSelfDrawPanel.CSDImage[] troopIcons = new CustomSelfDrawPanel.CSDImage[6];
+    private CustomSelfDrawPanel.CSDLabel[] troopLabels = new CustomSelfDrawPanel.CSDLabel[6];
     private IContainer components;
 
     public SelectArmyPanel2()
@@ -43,6 +48,9 @@ namespace Kingdoms
     {
       this.clearControls();
       CustomSelfDrawPanel.CSDImage csdImage = this.backGround.init(true, 1000);
+      this.backGround.stretchBackground();
+      this.backGround.Size = new Size(199, 350);
+      csdImage.Size = new Size(csdImage.Width, csdImage.Height + 110);
       this.backGround.centerSubHeading();
       this.addControl((CustomSelfDrawPanel.CSDControl) this.backGround);
       this.backGround.initTravelButton(this.homeVillageButton);
@@ -69,6 +77,68 @@ namespace Kingdoms
       this.returnButton.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.returnButton);
       this.forceReturnOff = false;
+
+      // Sits right under the visual end of the target village button (~y=158)
+      this.attackTypeIcon.Position = new Point(6, 161);
+      this.attackTypeIcon.Size = new Size(46, 46);
+      this.attackTypeIcon.Visible = false;
+      csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeIcon);
+
+      // Vertically centred within the 46px icon
+      this.attackTypeLabel.Position = new Point(57, 172);
+      this.attackTypeLabel.Size = new Size(90, 22);
+      this.attackTypeLabel.Font = FontManager.GetFont("Arial", 9.5f, FontStyle.Bold);
+      this.attackTypeLabel.Color = ARGBColors.Black;
+      this.attackTypeLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
+      this.attackTypeLabel.Visible = false;
+      csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeLabel);
+
+      // Pillage % on the same line, right of the attack type label
+      this.pillageLabel.Position = new Point(150, 172);
+      this.pillageLabel.Size = new Size(34, 22);
+      this.pillageLabel.Font = FontManager.GetFont("Arial", 9.5f, FontStyle.Bold);
+      this.pillageLabel.Color = ARGBColors.Black;
+      this.pillageLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
+      this.pillageLabel.Visible = false;
+      csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.pillageLabel);
+
+      // 6 troop types (no scouts), 3 per row × 2 rows
+      // Peasants, Archers, Pikemen / Swordsmen, Catapults, Captains
+      Image[] unitImages = new Image[]
+      {
+        (Image) GFXLibrary.barracks_unit_peasant,
+        (Image) GFXLibrary.barracks_unit_archer,
+        (Image) GFXLibrary.barracks_unit_pikemen,
+        (Image) GFXLibrary.barracks_unit_swordsman,
+        (Image) GFXLibrary.barracks_unit_catapult,
+        (Image) GFXLibrary.barracks_unit_captain,
+      };
+      const int iconW = 31;   // 28 × 1.1
+      const int iconH = 33;   // 30 × 1.1
+      int[] colX = new int[] { 4, 65, 126 };   // 3 cols × 61px in ~185px
+      int[] rowY = new int[] { 211, 248 };    // directly under icon (ends y=207) + 4px gap
+
+      for (int i = 0; i < 6; i++)
+      {
+        int x = colX[i % 3];
+        int y = rowY[i / 3];
+
+        this.troopIcons[i] = new CustomSelfDrawPanel.CSDImage();
+        this.troopIcons[i].Image = unitImages[i];
+        this.troopIcons[i].Size = new Size(iconW, iconH);
+        this.troopIcons[i].Position = new Point(x, y);
+        this.troopIcons[i].Visible = false;
+        csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.troopIcons[i]);
+
+        this.troopLabels[i] = new CustomSelfDrawPanel.CSDLabel();
+        this.troopLabels[i].Position = new Point(x + iconW + 2, y + 9);
+        this.troopLabels[i].Size = new Size(24, 16);
+        this.troopLabels[i].Font = FontManager.GetFont("Arial", 9.5f, FontStyle.Regular);   // 8 × 1.2
+        this.troopLabels[i].Color = ARGBColors.Black;
+        this.troopLabels[i].Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
+        this.troopLabels[i].Visible = false;
+        csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.troopLabels[i]);
+      }
     }
 
     public void update()
@@ -180,6 +250,7 @@ namespace Kingdoms
               this.toVillageID = this.m_army.targetVillageID;
               this.returnButton.Visible = false;
             }
+            this.updateAttackInfo();
           }
           this.backGround.updateSubHeading(buildTimeString);
         }
@@ -199,11 +270,14 @@ namespace Kingdoms
         this.m_army = army;
         this.lastState = -2;
         this.update();
+        this.updateAttackInfo();
+        this.fetchAttackDetails(armyID);
       }
       else
       {
         InterfaceMgr.Instance.closeArmySelectedPanel();
         this.m_army = (WorldMap.LocalArmyData) null;
+        this.hideAttackInfo();
       }
     }
 
@@ -255,6 +329,131 @@ namespace Kingdoms
         this.forceReturnOff = false;
     }
 
+    private void updateAttackInfo()
+    {
+      if (this.m_army == null) { hideAttackInfo(); return; }
+
+      bool isScoutsOnly = this.m_army.isScouts();
+      this.attackTypeIcon.Visible = false;
+      this.attackTypeLabel.Visible = !isScoutsOnly;
+
+      if (!isScoutsOnly)
+      {
+        this.attackTypeLabel.Text = GetAttackTypeName(this.m_army.attackType);
+        Image icon = GetAttackTypeIcon(this.m_army.attackType);
+        if (icon != null)
+        {
+          this.attackTypeIcon.Image = icon;
+          this.attackTypeIcon.Size = new Size(46, 46);
+        }
+        this.attackTypeIcon.Visible = icon != null;
+      }
+
+      int[] counts = new int[]
+      {
+        this.m_army.numPeasants, this.m_army.numArchers, this.m_army.numPikemen,
+        this.m_army.numSwordsmen, this.m_army.numCatapults, this.m_army.numCaptains,
+      };
+      for (int i = 0; i < 6; i++)
+      {
+        this.troopIcons[i].Visible = true;
+        this.troopLabels[i].Visible = true;
+        this.troopLabels[i].Text = counts[i].ToString();
+        this.troopIcons[i].Alpha = counts[i] > 0 ? 1.0f : 0.3f;
+        this.troopLabels[i].Color = counts[i] > 0 ? ARGBColors.Black : Color.FromArgb(140, 100, 90, 80);
+      }
+    }
+
+    private void hideAttackInfo()
+    {
+      this.attackTypeIcon.Visible = false;
+      this.attackTypeLabel.Visible = false;
+      this.pillageLabel.Visible = false;
+      for (int i = 0; i < 6; i++)
+      {
+        if (this.troopIcons[i] != null) this.troopIcons[i].Visible = false;
+        if (this.troopLabels[i] != null) this.troopLabels[i].Visible = false;
+      }
+    }
+
+    private void fetchAttackDetails(long armyID)
+    {
+      RemoteServices.Instance.set_RetrieveAttackResult_UserCallBack(
+        new RemoteServices.RetrieveAttackResult_UserCallBack(this.attackDetailCallback));
+      RemoteServices.Instance.RetrieveAttackResult(armyID, GameEngine.Instance.World.StoredVillageFactionPos);
+    }
+
+    private void attackDetailCallback(RetrieveAttackResult_ReturnType returnData)
+    {
+      RemoteServices.Instance.set_RetrieveAttackResult_UserCallBack(
+        new RemoteServices.RetrieveAttackResult_UserCallBack(
+          GameEngine.Instance.World.retrieveAttackResultCallback));
+      GameEngine.Instance.World.retrieveAttackResultCallback(returnData);
+
+      if (!returnData.Success || returnData.armyData == null) return;
+      if (returnData.armyData.armyID != this.selectedArmyID) return;
+
+      int[] serverCounts = new int[]
+      {
+        returnData.armyData.numPeasants, returnData.armyData.numArchers,
+        returnData.armyData.numPikemen,  returnData.armyData.numSwordsmen,
+        returnData.armyData.numCatapults, returnData.armyData.numCaptains,
+      };
+      for (int i = 0; i < 6; i++)
+      {
+        this.troopIcons[i].Visible = true;
+        this.troopLabels[i].Visible = true;
+        this.troopLabels[i].Text = serverCounts[i].ToString();
+        this.troopIcons[i].Alpha = serverCounts[i] > 0 ? 1.0f : 0.3f;
+        this.troopLabels[i].Color = serverCounts[i] > 0 ? ARGBColors.Black : Color.FromArgb(140, 100, 90, 80);
+      }
+
+      int pct = returnData.armyData.pillagePercent;
+      if (pct > 0 && this.m_army != null && !this.m_army.isScouts())
+      {
+        this.pillageLabel.Text = pct + "%";
+        this.pillageLabel.Visible = true;
+      }
+
+      this.Invalidate();
+    }
+
+    private static string GetAttackTypeName(int attackType)
+    {
+      switch (attackType)
+      {
+        case 1:  return SK.Text("AttackType_Capture",          "Capture");
+        case 2:  return SK.Text("AttackType_PillageStockpile", "Pillage Stk.");
+        case 3:  return SK.Text("AttackType_Ransack",          "Ransack");
+        case 4:  return SK.Text("AttackType_PillageGranary",   "Pillage Grn.");
+        case 5:  return SK.Text("AttackType_PillageBanquet",   "Pillage Bnq.");
+        case 6:  return SK.Text("AttackType_PillageAle",       "Pillage Ale");
+        case 7:  return SK.Text("AttackType_PillageArmoury",   "Pillage Arm.");
+        case 9:  return SK.Text("AttackType_Raze",             "Raze");
+        case 11: return SK.Text("AttackType_Vandalise",        "Vandalise");
+        case 12: return SK.Text("AttackType_GoldRaid",         "Gold Raid");
+        case 17: return SK.Text("GENERIC_Invasion",            "Invasion");
+        case 30: return SK.Text("AttackType_VassalSupport",    "Vassal Support");
+        case 31: return SK.Text("AttackType_CapitalSupport",   "Capital Support");
+        default: return "";
+      }
+    }
+
+    private static Image GetAttackTypeIcon(int attackType)
+    {
+      switch (attackType)
+      {
+        case 1:                         return (Image) GFXLibrary.send_army_buttons[3];
+        case 2: case 4: case 5:
+        case 6: case 7:                 return (Image) GFXLibrary.send_army_buttons[5];
+        case 3:                         return (Image) GFXLibrary.send_army_buttons[2];
+        case 9:                         return (Image) GFXLibrary.send_army_buttons[4];
+        case 11:                        return (Image) GFXLibrary.send_army_buttons[1];
+        case 12:                        return (Image) GFXLibrary.send_army_buttons[0];
+        default:                        return null;
+      }
+    }
+
     private void panel1_Paint(object sender, PaintEventArgs e)
     {
     }
@@ -298,7 +497,7 @@ namespace Kingdoms
       this.AutoScaleMode = AutoScaleMode.None;
       this.BackColor = ARGBColors.Transparent;
       this.Name = nameof (SelectArmyPanel2);
-      this.Size = new Size(199, 213);
+      this.Size = new Size(199, 350);
       this.ResumeLayout(false);
     }
   }

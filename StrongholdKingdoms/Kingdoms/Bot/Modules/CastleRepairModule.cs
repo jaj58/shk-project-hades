@@ -14,6 +14,7 @@ namespace Kingdoms.Bot.Modules
         private Dictionary<int, bool> _pendingRepairOnAttack = new Dictionary<int, bool>();
         private Dictionary<long, int> _trackedAttacks = new Dictionary<long, int>();
         private bool _firstScan = true;
+        private bool _cycleInProgress = false;
 
         // State machine steps matching the proven CastleRepairService sequence:
         //   switch village -> download -> wait castle -> initial commit (refresh damage) ->
@@ -47,6 +48,22 @@ namespace Kingdoms.Bot.Modules
         private const int ShortDelayMs = 1000;
         private const int LongDelayMs = 2000;
 
+        // =================================================================
+        // Memorise state machine â€” snapshot current castle layout to local
+        // .cas files so the repair module can restore from them later.
+        // =================================================================
+
+        private enum MemoriseType { Infrastructure, Troops }
+        private enum MemoriseStep { Idle, SwitchVillage, WaitForCastle, Memorise }
+
+        private MemoriseStep _memoriseStep = MemoriseStep.Idle;
+        private MemoriseType _memoriseType;
+        private List<int> _memoriseQueue = new List<int>();
+        private int _memoriseIndex;
+        private int _memoriseVillageId;
+        private int _memorisedCount;
+        private DateTime _memoriseStepStarted = DateTime.MinValue;
+
         public override string ModuleName
         {
             get { return "Castle Repair"; }
@@ -75,6 +92,9 @@ namespace Kingdoms.Bot.Modules
             _trackedAttacks.Clear();
             _firstScan = true;
             _step = RepairStep.Idle;
+            _cycleInProgress = false;
+            _memoriseStep = MemoriseStep.Idle;
+            _memoriseQueue.Clear();
         }
 
         public List<int> GetAllKnownVillageIds()
@@ -96,7 +116,7 @@ namespace Kingdoms.Bot.Modules
         }
 
         // =================================================================
-        // Tick — drives the state machine and normal cycle
+        // Tick â€” drives the repair and memorise state machines
         // =================================================================
 
         protected override void OnTick()
@@ -104,10 +124,17 @@ namespace Kingdoms.Bot.Modules
             CastleRepairSettings settings = Settings;
             if (settings == null) return;
 
-            // If a repair sequence is in progress, run the state machine
+            // Repair state machine takes priority
             if (_step != RepairStep.Idle)
             {
                 RunRepairStateMachine();
+                return;
+            }
+
+            // Memorise state machine runs while no repair is active
+            if (_memoriseStep != MemoriseStep.Idle)
+            {
+                RunMemoriseStateMachine();
                 return;
             }
 
@@ -127,10 +154,12 @@ namespace Kingdoms.Bot.Modules
 
                 RefreshVillageQueue(settings);
                 _currentVillageIndex = 0;
-                _lastFullCycle = DateTime.Now;
 
                 if (_villageQueue.Count == 0)
                     return;
+
+                _cycleInProgress = true;
+                LogInfo("Starting scheduled repair cycle: " + _villageQueue.Count + " village(s) queued.");
             }
 
             if ((DateTime.Now - _lastVillageAction).TotalMilliseconds < settings.DelayBetweenVillagesMs)
@@ -141,7 +170,7 @@ namespace Kingdoms.Bot.Modules
             _lastVillageAction = DateTime.Now;
 
             VillageCastleRepairSettings vs = settings.GetVillageSettings(villageId);
-            BeginRepairVillage(villageId, vs);
+            BeginRepairVillage(villageId, vs, false);
         }
 
         private void RefreshVillageQueue(CastleRepairSettings settings)
@@ -163,7 +192,7 @@ namespace Kingdoms.Bot.Modules
         }
 
         // =================================================================
-        // Attack detection — only AI attacks (getSpecial != 0)
+        // Attack detection â€” only AI attacks (getSpecial != 0)
         // =================================================================
 
         private void ScanForArrivedAttacks(CastleRepairSettings settings)
@@ -185,7 +214,7 @@ namespace Kingdoms.Bot.Modules
                     army.attackType == 12 || army.attackType == 13)
                     continue;
 
-                // Only AI attacks — getSpecial != 0 means AI village
+                // Only AI attacks â€” getSpecial != 0 means AI village
                 try
                 {
                     if (GameEngine.Instance.World.getSpecial(army.homeVillageID) == 0)
@@ -240,22 +269,42 @@ namespace Kingdoms.Bot.Modules
             if (!settings.RepairOnAttack) { _pendingRepairOnAttack.Clear(); return; }
 
             List<int> toProcess = new List<int>(_pendingRepairOnAttack.Keys);
-            _pendingRepairOnAttack.Clear();
 
             foreach (int villageId in toProcess)
             {
                 VillageCastleRepairSettings vs = settings.GetVillageSettings(villageId);
                 if (vs.RepairInfrastructure || vs.RepairTroops)
                 {
-                    LogInfo("Repair on attack: repairing village " + villageId);
-                    BeginRepairVillage(villageId, vs);
+                    // Remove only this village from pending so remaining attacks are
+                    // processed on subsequent ticks after this repair completes.
+                    _pendingRepairOnAttack.Remove(villageId);
+                    // Remove from the normal queue to prevent a second repair when the
+                    // scheduled cycle reaches this village.
+                    RemoveFromNormalQueue(villageId);
+                    _lastVillageAction = DateTime.Now;
+                    BeginRepairVillage(villageId, vs, true);
+                    return;
+                }
+            }
+        }
+
+        // Removes a village from the not-yet-processed portion of the normal queue.
+        // Only searches from _currentVillageIndex onward so already-processed slots
+        // are not affected and list indices remain valid.
+        private void RemoveFromNormalQueue(int villageId)
+        {
+            for (int i = _currentVillageIndex; i < _villageQueue.Count; i++)
+            {
+                if (_villageQueue[i] == villageId)
+                {
+                    _villageQueue.RemoveAt(i);
                     return;
                 }
             }
         }
 
         // =================================================================
-        // Public — called from UI
+        // Public â€” called from UI
         // =================================================================
 
         public void RepairAllNow()
@@ -276,22 +325,90 @@ namespace Kingdoms.Bot.Modules
                     _villageQueue.Add(id);
             }
             _currentVillageIndex = 0;
+            _cycleInProgress = true;
             _lastFullCycle = DateTime.Now;
             _lastVillageAction = DateTime.MinValue;
             LogInfo("Repair all now: queued " + _villageQueue.Count + " village(s).");
         }
 
+        public void MemoriseAllInfrastructure()
+        {
+            if (_step != RepairStep.Idle || _memoriseStep != MemoriseStep.Idle)
+            {
+                LogWarning("Cannot memorise: a repair or memorise operation is already in progress.");
+                return;
+            }
+            StartMemoriseAll(MemoriseType.Infrastructure);
+        }
+
+        public void MemoriseAllTroops()
+        {
+            if (_step != RepairStep.Idle || _memoriseStep != MemoriseStep.Idle)
+            {
+                LogWarning("Cannot memorise: a repair or memorise operation is already in progress.");
+                return;
+            }
+            StartMemoriseAll(MemoriseType.Troops);
+        }
+
+        private void StartMemoriseAll(MemoriseType type)
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+
+            List<WorldMap.UserVillageData> villages = GameEngine.Instance.World.getUserVillageList();
+            if (villages == null || villages.Count == 0) return;
+
+            _memoriseQueue.Clear();
+            foreach (WorldMap.UserVillageData uvd in villages)
+                _memoriseQueue.Add(uvd.villageID);
+
+            _memoriseType = type;
+            _memoriseIndex = 0;
+            _memorisedCount = 0;
+            _memoriseVillageId = _memoriseQueue[0];
+            _memoriseStep = MemoriseStep.SwitchVillage;
+            _memoriseStepStarted = DateTime.Now;
+
+            string typeName = type == MemoriseType.Infrastructure ? "infrastructure" : "troop";
+            LogInfo("Memorising " + typeName + " layouts for " + _memoriseQueue.Count + " village(s)...");
+        }
+
         // =================================================================
-        // State machine — the core repair sequence
+        // Repair state machine â€” the core repair sequence
         // =================================================================
 
-        private void BeginRepairVillage(int villageId, VillageCastleRepairSettings vs)
+        private void BeginRepairVillage(int villageId, VillageCastleRepairSettings vs, bool attackTriggered)
         {
             _activeVillageId = villageId;
             _activeSettings = vs;
             _step = RepairStep.SwitchVillage;
             _stepStarted = DateTime.Now;
-            LogInfo("Starting repair sequence for village " + villageId);
+
+            string infraDesc = vs.RepairInfrastructure
+                ? "infra=" + (string.IsNullOrEmpty(vs.InfrastructurePresetName) || vs.InfrastructurePresetName == "Local"
+                    ? "Local" : "'" + vs.InfrastructurePresetName + "'")
+                : "infra=skip";
+            string troopsDesc = vs.RepairTroops
+                ? "troops=" + (string.IsNullOrEmpty(vs.TroopPresetName) || vs.TroopPresetName == "Local"
+                    ? "Local" : "'" + vs.TroopPresetName + "'")
+                : "troops=skip";
+            string trigger = attackTriggered ? " [attack-triggered]" : "";
+
+            LogInfo("Repairing village " + villageId + ": " + infraDesc + ", " + troopsDesc + trigger);
+        }
+
+        // Stamps _lastFullCycle when the last village in the normal cycle finishes
+        // (regardless of whether it completed cleanly or was aborted/timed out).
+        private void StampCycleCompleteIfDone()
+        {
+            if (!_cycleInProgress || _currentVillageIndex < _villageQueue.Count)
+                return;
+
+            _lastFullCycle = DateTime.Now;
+            _cycleInProgress = false;
+            CastleRepairSettings s = Settings;
+            int nextSecs = s != null ? s.IntervalSeconds : 0;
+            LogInfo("Repair cycle complete. Next scheduled cycle in " + nextSecs + "s.");
         }
 
         private void RunRepairStateMachine()
@@ -300,6 +417,7 @@ namespace Kingdoms.Bot.Modules
             {
                 LogWarning("Step " + _step + " timed out for village " + _activeVillageId + ", aborting.");
                 _step = RepairStep.Idle;
+                StampCycleCompleteIfDone();
                 return;
             }
 
@@ -360,9 +478,13 @@ namespace Kingdoms.Bot.Modules
                 LogError("Repair error at " + _step + " for village " + _activeVillageId + ": " + ex.Message);
                 _step = RepairStep.Idle;
             }
+
+            // Any transition to Idle (Done, abort, or exception) â€” stamp cycle end if last village.
+            if (_step == RepairStep.Idle)
+                StampCycleCompleteIfDone();
         }
 
-        // --- Individual steps ---
+        // --- Individual repair steps ---
 
         private void StepSwitchVillage()
         {
@@ -391,21 +513,21 @@ namespace Kingdoms.Bot.Modules
         {
             if (GameEngine.Instance.Castle == null)
             {
-                LogWarning("Castle null at autorepair for village " + _activeVillageId);
+                LogWarning("Village " + _activeVillageId + ": castle not loaded at auto-repair, aborting.");
                 _step = RepairStep.Idle;
                 return;
             }
 
             if (GameEngine.Instance.Castle.castleDamaged)
             {
-                LogInfo("Castle damaged, launching autorepair for village " + _activeVillageId);
+                LogInfo("Village " + _activeVillageId + ": castle is damaged â€” applying auto-repair.");
                 GameEngine.Instance.Castle.autoRepairCastle();
                 _step = RepairStep.WaitAfterAutoRepair;
                 _stepStarted = DateTime.Now;
             }
             else
             {
-                LogDebug("No damage for village " + _activeVillageId);
+                LogInfo("Village " + _activeVillageId + ": no castle damage detected, skipping auto-repair.");
                 _step = RepairStep.RestoreInfrastructure;
                 _stepStarted = DateTime.Now;
             }
@@ -422,7 +544,7 @@ namespace Kingdoms.Bot.Modules
 
             if (GameEngine.Instance.Castle == null)
             {
-                LogWarning("Castle null at infra restore for village " + _activeVillageId);
+                LogWarning("Village " + _activeVillageId + ": castle not loaded at infra restore, aborting.");
                 _step = RepairStep.Idle;
                 return;
             }
@@ -431,7 +553,7 @@ namespace Kingdoms.Bot.Modules
 
             if (string.IsNullOrEmpty(presetName) || presetName == "Local")
             {
-                LogInfo("Restoring local infrastructure for village " + _activeVillageId);
+                LogInfo("Village " + _activeVillageId + ": restoring infrastructure from local layout.");
                 GameEngine.Instance.Castle.restoreInfrastructure();
             }
             else
@@ -439,12 +561,12 @@ namespace Kingdoms.Bot.Modules
                 CastleMapPreset preset = FindPreset(presetName, PresetType.INFRASTRUCTURE);
                 if (preset != null)
                 {
-                    LogInfo("Restoring infrastructure preset '" + presetName + "' for village " + _activeVillageId);
+                    LogInfo("Village " + _activeVillageId + ": restoring infrastructure from preset '" + presetName + "'.");
                     GameEngine.Instance.Castle.restoreInfrastructurePreset(preset);
                 }
                 else
                 {
-                    LogWarning("Infrastructure preset not found: " + presetName);
+                    LogWarning("Village " + _activeVillageId + ": infrastructure preset '" + presetName + "' not found, skipping.");
                     _step = RepairStep.RestoreTroops;
                     _stepStarted = DateTime.Now;
                     return;
@@ -466,7 +588,7 @@ namespace Kingdoms.Bot.Modules
 
             if (GameEngine.Instance.Castle == null)
             {
-                LogWarning("Castle null at troop restore for village " + _activeVillageId);
+                LogWarning("Village " + _activeVillageId + ": castle not loaded at troop restore, aborting.");
                 _step = RepairStep.Idle;
                 return;
             }
@@ -475,7 +597,7 @@ namespace Kingdoms.Bot.Modules
 
             if (string.IsNullOrEmpty(presetName) || presetName == "Local")
             {
-                LogInfo("Restoring local troops for village " + _activeVillageId);
+                LogInfo("Village " + _activeVillageId + ": restoring troops from local layout.");
                 GameEngine.Instance.Castle.restoreTroops();
             }
             else
@@ -483,12 +605,12 @@ namespace Kingdoms.Bot.Modules
                 CastleMapPreset preset = FindPreset(presetName, PresetType.TROOP_DEFEND);
                 if (preset != null)
                 {
-                    LogInfo("Restoring troop preset '" + presetName + "' for village " + _activeVillageId);
+                    LogInfo("Village " + _activeVillageId + ": restoring troops from preset '" + presetName + "'.");
                     GameEngine.Instance.Castle.restoreTroopsPreset(preset);
                 }
                 else
                 {
-                    LogWarning("Troop preset not found: " + presetName);
+                    LogWarning("Village " + _activeVillageId + ": troop preset '" + presetName + "' not found, skipping.");
                     _step = RepairStep.Done;
                     _stepStarted = DateTime.Now;
                     return;
@@ -503,7 +625,7 @@ namespace Kingdoms.Bot.Modules
         {
             if (GameEngine.Instance.Castle == null)
             {
-                LogWarning("Castle null at commit for village " + _activeVillageId);
+                LogWarning("Village " + _activeVillageId + ": castle not loaded at commit, aborting.");
                 _step = RepairStep.Idle;
                 return;
             }
@@ -534,7 +656,87 @@ namespace Kingdoms.Bot.Modules
         }
 
         // =================================================================
-        // Preset lookup — PresetManager.Instance.m_presets directly
+        // Memorise state machine â€” switch to each village and snapshot layout
+        // =================================================================
+
+        private void RunMemoriseStateMachine()
+        {
+            if ((DateTime.Now - _memoriseStepStarted).TotalMilliseconds > StepTimeoutMs)
+            {
+                LogWarning("Memorise timed out for village " + _memoriseVillageId + ", skipping.");
+                AdvanceMemoriseQueue();
+                return;
+            }
+
+            try
+            {
+                switch (_memoriseStep)
+                {
+                    case MemoriseStep.SwitchVillage:
+                        LogDebug("Memorise: switching to village " + _memoriseVillageId);
+                        InterfaceMgr.Instance.setVillageNameBar(_memoriseVillageId);
+                        GameEngine.Instance.downloadCurrentVillage();
+                        _memoriseStep = MemoriseStep.WaitForCastle;
+                        _memoriseStepStarted = DateTime.Now;
+                        break;
+
+                    case MemoriseStep.WaitForCastle:
+                        if (GameEngine.Instance.Castle == null) return;
+                        if (GameEngine.Instance.Castle.VillageID != _memoriseVillageId) return;
+                        _memoriseStep = MemoriseStep.Memorise;
+                        _memoriseStepStarted = DateTime.Now;
+                        break;
+
+                    case MemoriseStep.Memorise:
+                        if (GameEngine.Instance.Castle == null)
+                        {
+                            LogWarning("Village " + _memoriseVillageId + ": castle not loaded, skipping memorise.");
+                            AdvanceMemoriseQueue();
+                            return;
+                        }
+
+                        if (_memoriseType == MemoriseType.Infrastructure)
+                        {
+                            GameEngine.Instance.Castle.memoriseInfrastructure();
+                            LogInfo("Village " + _memoriseVillageId + ": infrastructure layout memorised.");
+                        }
+                        else
+                        {
+                            GameEngine.Instance.Castle.memoriseTroops();
+                            LogInfo("Village " + _memoriseVillageId + ": troop layout memorised.");
+                        }
+                        _memorisedCount++;
+                        AdvanceMemoriseQueue();
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("Memorise error at village " + _memoriseVillageId + ": " + ex.Message);
+                AdvanceMemoriseQueue();
+            }
+        }
+
+        private void AdvanceMemoriseQueue()
+        {
+            _memoriseIndex++;
+            if (_memoriseIndex >= _memoriseQueue.Count)
+            {
+                string typeName = _memoriseType == MemoriseType.Infrastructure ? "infrastructure" : "troop";
+                LogInfo("Memorise complete: " + _memorisedCount + "/" + _memoriseQueue.Count
+                    + " " + typeName + " layout(s) saved to local files.");
+                _memoriseStep = MemoriseStep.Idle;
+                _memoriseQueue.Clear();
+                return;
+            }
+
+            _memoriseVillageId = _memoriseQueue[_memoriseIndex];
+            _memoriseStep = MemoriseStep.SwitchVillage;
+            _memoriseStepStarted = DateTime.Now;
+        }
+
+        // =================================================================
+        // Preset lookup â€” PresetManager.Instance.m_presets directly
         // =================================================================
 
         private static void EnsurePresetsLoaded()
@@ -605,6 +807,9 @@ namespace Kingdoms.Bot.Modules
             _pendingRepairOnAttack.Clear();
             _trackedAttacks.Clear();
             _step = RepairStep.Idle;
+            _cycleInProgress = false;
+            _memoriseStep = MemoriseStep.Idle;
+            _memoriseQueue.Clear();
         }
     }
 }

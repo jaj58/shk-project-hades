@@ -35,7 +35,7 @@ namespace Kingdoms
 
     // ---- Bot update/license constants ----------------------------------------
     // TODO: replace with your real domain before deploying
-    private const string LicenseApiUrl = "https://projecthades.co.uk/api/updater_api.php";
+    private const string LicenseApiUrl = "https://www.projecthades.co.uk/api/updater_api.php";
     public static int steam_SessionTicketUserID = 0;
     public static byte[] steam_SessionTicket = (byte[]) null;
     public static bool steamActive = false;
@@ -1273,16 +1273,29 @@ namespace Kingdoms
 
     private static string GetLocalVersion()
     {
+      // AssemblyInformationalVersion is set by CI to "dev-<sha>" for dev builds
+      // or "x.y.z" for release builds. Application.ProductVersion reads it directly.
+      string v = Application.ProductVersion ?? string.Empty;
+      if (v.StartsWith("dev-", StringComparison.OrdinalIgnoreCase))
+        return v; // dev build — return as-is
+
+      // Release build: parse x.y.z.w and return x.y.z to match server format
       try
       {
-        Version v = new Version(Application.ProductVersion);
-        return v.Major + "." + v.Minor + "." + v.Build;
+        Version parsed = new Version(v);
+        return parsed.Major + "." + parsed.Minor + "." + parsed.Build;
       }
       catch { return "0.0.0"; }
     }
 
     private static bool IsNewerVersion(string server, string local)
     {
+      // Dev builds use a non-semver label (dev-<sha>) — any change means update
+      if (server.StartsWith("dev-", StringComparison.OrdinalIgnoreCase) ||
+          local.StartsWith("dev-", StringComparison.OrdinalIgnoreCase))
+      {
+        return !string.Equals(server, local, StringComparison.OrdinalIgnoreCase);
+      }
       try { return new Version(server) > new Version(local); }
       catch { return false; }
     }

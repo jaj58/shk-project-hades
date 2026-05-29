@@ -357,6 +357,14 @@ namespace Kingdoms.Bot
         public int Priority = 1;
     }
 
+    public enum TradePriority
+    {
+        MarketSellFirst = 0,   // Market first: sell before buy
+        MarketBuyFirst  = 1,   // Market first: buy before sell
+        VillageRoutes   = 2,   // Village routes first
+        PlayerRoutes    = 3    // Player routes first
+    }
+
     [Serializable]
     public class TradeSettings
     {
@@ -369,7 +377,7 @@ namespace Kingdoms.Bot
         public bool AutoHireMerchants = false;
         public int AutoHireMerchantsLimit = 50;
         public bool IgnoreCurrentTransactions = false;
-        public bool PrioritiseMarkets = true; // true = markets first, false = village routes first
+        public TradePriority Priority = TradePriority.MarketSellFirst;
         public bool DisableOnTradeCardExpiry = false;
         public bool TradeCardsWereActive = false;
         public List<VillageMarketTradeInfo> VillageMarketSettings = new List<VillageMarketTradeInfo>();
@@ -471,6 +479,22 @@ namespace Kingdoms.Bot
         public int SendMaximum = 5000;
         public bool IsDistanceLimited;
         public int DistanceLimit = 100;
+
+        public TradeRouteSettings Clone()
+        {
+            TradeRouteSettings r = new TradeRouteSettings();
+            r.Name = this.Name + " (Copy)";
+            r.Enabled = false;
+            r.FromVillages = new List<int>(this.FromVillages);
+            r.ToVillages = new List<int>(this.ToVillages);
+            r.Resources = new List<int>(this.Resources);
+            r.KeepMinimum = this.KeepMinimum;
+            r.MaxMerchantsPerTransaction = this.MaxMerchantsPerTransaction;
+            r.SendMaximum = this.SendMaximum;
+            r.IsDistanceLimited = this.IsDistanceLimited;
+            r.DistanceLimit = this.DistanceLimit;
+            return r;
+        }
     }
 
     [Serializable]
@@ -507,6 +531,20 @@ namespace Kingdoms.Bot
             foreach (PlayerTradeResourceEntry e in Resources)
                 e.AmountSent = 0;
         }
+
+        public PlayerTradeRouteSettings Clone()
+        {
+            PlayerTradeRouteSettings r = new PlayerTradeRouteSettings();
+            r.Name = this.Name + " (Copy)";
+            r.Enabled = false;
+            r.FromVillages = new List<int>(this.FromVillages);
+            r.TargetVillageId = this.TargetVillageId;
+            r.KeepMinimum = this.KeepMinimum;
+            r.MaxMerchantsPerTransaction = this.MaxMerchantsPerTransaction;
+            foreach (PlayerTradeResourceEntry e in this.Resources)
+                r.Resources.Add(e.Clone());
+            return r;
+        }
     }
 
     [Serializable]
@@ -519,6 +557,16 @@ namespace Kingdoms.Bot
         public int Remaining
         {
             get { return Math.Max(0, TotalAmount - AmountSent); }
+        }
+
+        public PlayerTradeResourceEntry Clone()
+        {
+            return new PlayerTradeResourceEntry
+            {
+                ResourceId = this.ResourceId,
+                TotalAmount = this.TotalAmount,
+                AmountSent = 0
+            };
         }
     }
 
@@ -691,6 +739,8 @@ namespace Kingdoms.Bot
         [System.Xml.Serialization.XmlIgnore]
         public DateTime EstimatedArrivalTime = DateTime.MaxValue;
         [System.Xml.Serialization.XmlIgnore]
+        public int ParentVillageId; // 0 = own village; lord village ID for vassal attacks
+        [System.Xml.Serialization.XmlIgnore]
         public bool Sent;
         [System.Xml.Serialization.XmlIgnore]
         public bool Cancelled;
@@ -745,6 +795,8 @@ namespace Kingdoms.Bot
         public int NumCaptains;
         public double TravelTimeArmy;
         public double TravelTimeCaptain;
+        public bool IsVassal;
+        public int ParentVillageId;
         // Attack assignment set by coordinator (stored in API, mirrored here for display)
         [System.Xml.Serialization.XmlIgnore]
         public string FormationName = "";
@@ -786,6 +838,11 @@ namespace Kingdoms.Bot
         public bool TargetQueueEnabled;
         // Force-refresh each attacking village ~5s before prepare to reduce server callback errors
         public bool PreRefreshVillages = true;
+        public bool IncludeVassals;
+        // Automatically play the correct speed card at T-3s before each attack send
+        public bool PlayCards = false;
+        // Cancel a wrong active speed card before playing the desired one
+        public bool AutoCancelWrongCard = false;
         public List<TargetQueueEntry> TargetQueue = new List<TargetQueueEntry>();
 
         // Runtime state — not persisted
@@ -845,5 +902,6 @@ namespace Kingdoms.Bot
     public class MiscSettings
     {
         public bool CollectFreeCards = false;
+        public bool DisableCannotPlayCardPopup = false;
     }
 }

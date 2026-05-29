@@ -1,0 +1,209 @@
+name: Build & Deploy Client
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'StrongholdKingdoms/**'
+      - 'HadesUpdater/**'
+      - '4gb_patch.exe'
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - release
+          - dev
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore NuGet packages
+        run: |
+          nuget restore StrongholdKingdoms\StrongholdKingdoms.sln
+          nuget restore HadesUpdater\HadesUpdater.csproj
+
+      - name: Set build configuration
+        id: config
+        shell: pwsh
+        run: |
+          # Determine whether this is a release (main) or dev build
+          $isRelease = if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            "${{ github.event.inputs.build_type }}" -eq "release"
+          } else {
+            "${{ github.ref_name }}" -eq "main"
+          }
+
+          if ($isRelease) {
+            # Release build: increment patch version in AssemblyInfo.cs
+            $path    = "StrongholdKingdoms\AssemblyInfo.cs"
+            $content = Get-Content $path -Raw
+            if ($content -notmatch '\[assembly: AssemblyVersion\("(\d+)\.(\d+)\.(\d+)\.(\d+)"\)\]') {
+              throw "Could not parse AssemblyVersion"
+            }
+            $major = [int]$Matches[1]; $minor = [int]$Matches[2]
+            $patch = [int]$Matches[3] + 1; $build = [int]$Matches[4]
+            $newVer     = "$major.$minor.$patch.$build"
+            $releaseVer = "$major.$minor.$patch"
+            $content = $content -replace '\[assembly: AssemblyVersion\("(\d+\.\d+\.\d+\.\d+)"\)\]',          "[assembly: AssemblyVersion(`"$newVer`")]"
+            $content = $content -replace '\[assembly: AssemblyFileVersion\("(\d+\.\d+\.\d+\.\d+)"\)\]',     "[assembly: AssemblyFileVersion(`"$newVer`")]"
+            $content = $content -replace '\[assembly: AssemblyInformationalVersion\(".*?"\)\]', "[assembly: AssemblyInformationalVersion(`"$releaseVer`")]"
+            Set-Content $path $content -NoNewline
+
+            # Stamp HadesUpdater with the same release version
+            $updaterPath    = "HadesUpdater\AssemblyInfo.cs"
+            $updaterContent = Get-Content $updaterPath -Raw
+            $updaterContent = $updaterContent -replace '\[assembly: AssemblyInformationalVersion\(".*?"\)\]', "[assembly: AssemblyInformationalVersion(`"$releaseVer`")]"
+            Set-Content $updaterPath $updaterContent -NoNewline
+
+            echo "is_release=true"                      >> $env:GITHUB_OUTPUT
+            echo "release_version=$releaseVer"          >> $env:GITHUB_OUTPUT
+            echo "zip_name=hades_$releaseVer.zip"       >> $env:GITHUB_OUTPUT
+            echo "version_file=api\version.json"        >> $env:GITHUB_OUTPUT
+            echo "version_file_api=api/version.json"    >> $env:GITHUB_OUTPUT
+          } else {
+            # Dev build: fixed filename, label with short commit SHA
+            $shortSha = "${{ github.sha }}".Substring(0, 7)
+            $devVer   = "dev-$shortSha"
+
+            # Stamp AssemblyInformationalVersion so Application.ProductVersion returns "dev-<sha>"
+            $path    = "StrongholdKingdoms\AssemblyInfo.cs"
+            $content = Get-Content $path -Raw
+            $content = $content -replace '\[assembly: AssemblyInformationalVersion\(".*?"\)\]', "[assembly: AssemblyInformationalVersion(`"$devVer`")]"
+            Set-Content $path $content -NoNewline
+
+            # Stamp HadesUpdater with the same dev version
+            $updaterPath    = "HadesUpdater\AssemblyInfo.cs"
+            $updaterContent = Get-Content $updaterPath -Raw
+            $updaterContent = $updaterContent -replace '\[assembly: AssemblyInformationalVersion\(".*?"\)\]', "[assembly: AssemblyInformationalVersion(`"$devVer`")]"
+            Set-Content $updaterPath $updaterContent -NoNewline
+
+            echo "is_release=false"                                   >> $env:GITHUB_OUTPUT
+            echo "release_version=$devVer"                         >> $env:GITHUB_OUTPUT
+            echo "zip_name=hades_$devVer.zip"                      >> $env:GITHUB_OUTPUT
+            echo "version_file=downloads\dev_version.json"         >> $env:GITHUB_OUTPUT
+            echo "version_file_api=downloads/dev_version.json"     >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build StrongholdKingdoms
+        run: msbuild StrongholdKingdoms\StrongholdKingdoms.sln /p:Configuration=Release /p:Platform="Any CPU" /v:quiet /nologo /clp:ErrorsOnly
+
+      - name: Build HadesUpdater
+        run: msbuild HadesUpdater\HadesUpdater.csproj /p:Configuration=Release /p:Platform="AnyCPU" /v:quiet /nologo /clp:ErrorsOnly
+
+      - name: Apply 4GB patch
+        shell: pwsh
+        run: .\4gb_patch.exe StrongholdKingdoms\bin\Release\StrongholdKingdoms.exe
+
+      - name: Create password-protected ZIP
+        shell: pwsh
+        run: |
+          $zipName    = "${{ steps.config.outputs.zip_name }}"
+          $exeDir     = "$env:GITHUB_WORKSPACE\StrongholdKingdoms\bin\Release"
+          $updaterExe = "$env:GITHUB_WORKSPACE\HadesUpdater\bin\Release\HadesUpdater.exe"
+          $zipPath    = "$env:GITHUB_WORKSPACE\builds\$zipName"
+          New-Item -ItemType Directory -Force "$env:GITHUB_WORKSPACE\builds" | Out-Null
+          # Copy HadesUpdater next to main exe so both are stored with flat names in the ZIP
+          Copy-Item $updaterExe $exeDir -Force
+          # Push-Location so 7-Zip stores just filenames, not full paths
+          Push-Location $exeDir
+          & "C:\Program Files\7-Zip\7z.exe" a -tzip -mem=AES256 `
+            "-p${{ secrets.HADES_ZIP_PASSWORD }}" `
+            $zipPath `
+            "StrongholdKingdoms.exe" `
+            "HadesUpdater.exe"
+          Pop-Location
+
+      - name: Upload ZIP to server
+        shell: pwsh
+        run: |
+          $zipName   = "${{ steps.config.outputs.zip_name }}"
+          $zipPath   = "builds\$zipName"
+          $boundary  = [System.Guid]::NewGuid().ToString("N")
+          $fileBytes = [System.IO.File]::ReadAllBytes($zipPath)
+
+          $body = [System.Collections.Generic.List[byte]]::new()
+          foreach ($chunk in @(
+            "--$boundary`r`nContent-Disposition: form-data; name=`"path`"`r`n`r`ndownloads/$zipName`r`n",
+            "--$boundary`r`nContent-Disposition: form-data; name=`"file`"; filename=`"$zipName`"`r`nContent-Type: application/octet-stream`r`n`r`n"
+          )) { $body.AddRange([System.Text.Encoding]::UTF8.GetBytes($chunk)) }
+          $body.AddRange($fileBytes)
+          $body.AddRange([System.Text.Encoding]::UTF8.GetBytes("`r`n--$boundary--`r`n"))
+
+          $r = Invoke-WebRequest `
+            -Uri "${{ secrets.HADES_DEPLOY_URL_PROD }}" -Method POST `
+            -Headers @{ 'X-Deploy-Token' = "${{ secrets.HADES_DEPLOY_TOKEN_PROD }}" } `
+            -ContentType "multipart/form-data; boundary=$boundary" `
+            -Body $body.ToArray() -UseBasicParsing
+          Write-Host "HTTP $($r.StatusCode) — Response: $($r.Content)"
+          $json = $r.Content | ConvertFrom-Json
+          if (-not $json.ok) { throw "ZIP upload failed: $($json.error)" }
+
+      - name: Write version file
+        shell: pwsh
+        run: |
+          $ver  = "${{ steps.config.outputs.release_version }}"
+          $zip  = "${{ steps.config.outputs.zip_name }}"
+          $base = "${{ secrets.HADES_DOWNLOAD_BASE_PROD }}"
+          $file = "${{ steps.config.outputs.version_file }}"
+          New-Item -ItemType Directory -Force (Split-Path $file) | Out-Null
+          [ordered]@{
+            version      = $ver
+            download_url = "$base/downloads/$zip"
+            changelog    = ""
+            zip_password = "${{ secrets.HADES_ZIP_PASSWORD }}"
+          } | ConvertTo-Json -Compress | Set-Content $file -Encoding UTF8 -NoNewline
+
+      - name: Upload version file to server
+        shell: pwsh
+        run: |
+          $localFile  = "${{ steps.config.outputs.version_file }}"
+          $serverPath = "${{ steps.config.outputs.version_file_api }}"
+          $fileName   = Split-Path $localFile -Leaf
+          $bytes      = [System.IO.File]::ReadAllBytes($localFile)
+          $boundary   = [System.Guid]::NewGuid().ToString("N")
+
+          $body = [System.Collections.Generic.List[byte]]::new()
+          foreach ($chunk in @(
+            "--$boundary`r`nContent-Disposition: form-data; name=`"path`"`r`n`r`n$serverPath`r`n",
+            "--$boundary`r`nContent-Disposition: form-data; name=`"file`"; filename=`"$fileName`"`r`nContent-Type: application/json`r`n`r`n"
+          )) { $body.AddRange([System.Text.Encoding]::UTF8.GetBytes($chunk)) }
+          $body.AddRange($bytes)
+          $body.AddRange([System.Text.Encoding]::UTF8.GetBytes("`r`n--$boundary--`r`n"))
+
+          $r = Invoke-WebRequest `
+            -Uri "${{ secrets.HADES_DEPLOY_URL_PROD }}" -Method POST `
+            -Headers @{ 'X-Deploy-Token' = "${{ secrets.HADES_DEPLOY_TOKEN_PROD }}" } `
+            -ContentType "multipart/form-data; boundary=$boundary" `
+            -Body $body.ToArray() -UseBasicParsing
+          Write-Host "HTTP $($r.StatusCode) — Response: $($r.Content)"
+          $json = $r.Content | ConvertFrom-Json
+          if (-not $json.ok) { throw "Version file upload failed: $($json.error)" }
+
+      - name: Commit and push (release only)
+        if: steps.config.outputs.is_release == 'true'
+        shell: pwsh
+        run: |
+          $ver     = "${{ steps.config.outputs.release_version }}"
+          $verFile = "${{ steps.config.outputs.version_file }}"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add StrongholdKingdoms\AssemblyInfo.cs HadesUpdater\AssemblyInfo.cs $verFile
+          git commit -m "Release $ver [skip ci]"
+          git push

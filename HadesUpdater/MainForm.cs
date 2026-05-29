@@ -18,6 +18,14 @@ namespace HadesUpdater
             InitializeComponent();
             _settings = UpdaterSettings.Load();
             _client   = new UpdaterClient();
+
+            // Clean up any leftover .new file if a previous self-update cmd swap completed
+            try
+            {
+                string newSelf = System.Reflection.Assembly.GetExecutingAssembly().Location + ".new";
+                if (File.Exists(newSelf)) File.Delete(newSelf);
+            }
+            catch { }
         }
 
         // ------------------------------------------------------------------ //
@@ -27,6 +35,9 @@ namespace HadesUpdater
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
+            string pv = Application.ProductVersion ?? "";
+            this.Text        = "Hades Bot Updater";
+            lblVersion.Text  = pv.Length > 0 ? "v" + pv : "";
 
             if (_settings.IsConfigured)
             {
@@ -150,12 +161,28 @@ namespace HadesUpdater
                 worker.ReportProgress(15 + (int)(pct * 0.72), "Downloading… " + pct + "%"));
 
             // 6. Extract (password used in-memory only, never stored)
+            //    Locked files (e.g. this running exe) are extracted as .new and swapped after exit
             worker.ReportProgress(88, "Extracting files…");
             Directory.CreateDirectory(args.InstallDir);
             ExtractZip(zipPath, args.InstallDir, version.ZipPassword);
             version.ZipPassword = null; // clear from memory ASAP
 
-            // 7. Save settings + cleanup
+            // 7. If HadesUpdater.exe.new exists, schedule self-replacement via cmd after we exit
+            string selfNew = Path.Combine(args.InstallDir, "HadesUpdater.exe.new");
+            if (File.Exists(selfNew))
+            {
+                string selfExe = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                // ping provides a ~3 second delay for this process to exit before the move runs
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                    "cmd.exe",
+                    string.Format("/c ping 127.0.0.1 -n 3 >nul & move /y \"{0}\" \"{1}\"", selfNew, selfExe))
+                {
+                    CreateNoWindow  = true,
+                    WindowStyle     = System.Diagnostics.ProcessWindowStyle.Hidden,
+                });
+            }
+
+            // 8. Save settings + cleanup
             worker.ReportProgress(97, "Saving settings…");
             _settings.LicenseKey       = args.Key;
             _settings.InstallDir       = args.InstallDir;
@@ -251,8 +278,20 @@ namespace HadesUpdater
                         Directory.CreateDirectory(dir);
 
                     using (Stream entryStream = zip.GetInputStream(entry))
-                    using (FileStream outStream = File.Create(dest))
-                        entryStream.CopyTo(outStream);
+                    {
+                        string writePath = dest;
+                        try
+                        {
+                            using (FileStream outStream = File.Create(dest))
+                                entryStream.CopyTo(outStream);
+                        }
+                        catch (IOException)
+                        {
+                            // File is locked (e.g. this running exe) — write as .new for post-exit swap
+                            using (FileStream outStream = File.Create(dest + ".new"))
+                                entryStream.CopyTo(outStream);
+                        }
+                    }
                 }
             }
         }
