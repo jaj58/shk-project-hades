@@ -5376,17 +5376,6 @@ namespace Kingdoms.Bot.UI
             _autoProdScrollPanel.BackColor = Color.FromArgb(24, 24, 32);
             page.Controls.Add(_autoProdScrollPanel);
 
-            // Save button at bottom
-            Panel btnBar = new Panel();
-            btnBar.Dock = DockStyle.Bottom;
-            btnBar.Height = 34;
-            btnBar.BackColor = Color.FromArgb(32, 32, 44);
-            Button saveBtn = MakeDarkButton("Save Production Settings");
-            saveBtn.Location = new Point(10, 5);
-            saveBtn.Click += delegate { AutoWriteToSettings(); BotLogger.Log("Auto", BotLogLevel.Info, "Production settings saved."); };
-            btnBar.Controls.Add(saveBtn);
-            page.Controls.Add(btnBar);
-
             // Build rows
             _autoProdRows.Clear();
             int y = 0;
@@ -5636,17 +5625,6 @@ namespace Kingdoms.Bot.UI
             _autoModuleScrollPanel.Dock = DockStyle.Fill;
             _autoModuleScrollPanel.BackColor = Color.FromArgb(24, 24, 32);
             page.Controls.Add(_autoModuleScrollPanel);
-
-            // Save button
-            Panel btnBar = new Panel();
-            btnBar.Dock = DockStyle.Bottom;
-            btnBar.Height = 34;
-            btnBar.BackColor = Color.FromArgb(32, 32, 44);
-            Button saveBtn = MakeDarkButton("Save Module Settings");
-            saveBtn.Location = new Point(10, 5);
-            saveBtn.Click += delegate { AutoWriteToSettings(); BotLogger.Log("Auto", BotLogLevel.Info, "Module settings saved."); };
-            btnBar.Controls.Add(saveBtn);
-            page.Controls.Add(btnBar);
 
             // Build module rows
             _autoModuleRows.Clear();
