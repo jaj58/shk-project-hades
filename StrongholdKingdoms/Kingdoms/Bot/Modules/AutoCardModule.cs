@@ -100,7 +100,7 @@ namespace Kingdoms.Bot.Modules
 
         // Finds a card instance in ProfileCards matching the given filter ID and tier index.
         // Cards within a filter group are sorted by definition ID ascending; tierIndex selects which.
-        private static int FindCardInstance(int filterId, int tierIndex, CardData activeCardData)
+        private int FindCardInstance(int filterId, int tierIndex, CardData activeCardData)
         {
             try
             {
@@ -128,6 +128,25 @@ namespace Kingdoms.Bot.Modules
                     list.Add(kvp.Key);
                 }
 
+                if (byDefId.Count == 0)
+                {
+                    // No match — log what filter IDs ARE present so the catalog can be corrected
+                    var presentFilters = new SortedDictionary<int, int>(); // filterId → count
+                    foreach (var kvp in mgr.ProfileCards)
+                    {
+                        if (kvp.Value == null || activeIds.Contains(kvp.Key)) continue;
+                        int f = kvp.Value.cardFilter;
+                        if (!presentFilters.ContainsKey(f)) presentFilters[f] = 0;
+                        presentFilters[f]++;
+                    }
+                    System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                    foreach (var kv in presentFilters)
+                        sb.Append("filter=" + kv.Key + "(x" + kv.Value + ") ");
+                    LogWarning("No card for filterId=" + filterId + " tier=" + tierIndex
+                        + ". Filters in inventory: " + (sb.Length > 0 ? sb.ToString() : "(none)"));
+                    return 0;
+                }
+
                 // Sorted ascending by defId; tierIndex picks the tier
                 int idx = 0;
                 foreach (var entry in byDefId)
@@ -137,7 +156,7 @@ namespace Kingdoms.Bot.Modules
                     idx++;
                 }
             }
-            catch (Exception ex) { }
+            catch (Exception ex) { LogWarning("FindCardInstance error: " + ex.Message); }
             return 0;
         }
 

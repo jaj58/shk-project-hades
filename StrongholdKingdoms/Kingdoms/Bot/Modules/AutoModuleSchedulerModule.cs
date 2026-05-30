@@ -107,7 +107,7 @@ namespace Kingdoms.Bot.Modules
             }
         }
 
-        /// <summary>Re-play any card from the list whose instance is no longer active.</summary>
+        /// <summary>Re-play any card from the list whose definition type is no longer active.</summary>
         private void ReplayExpiredCards(ModuleScheduleSettings entry, CardData cd)
         {
             // Ensure tracking list is same length as CardDefIds
@@ -118,9 +118,13 @@ namespace Kingdoms.Bot.Modules
             {
                 int defId = entry.CardDefIds[i];
                 if (defId == 0) continue;
-                int tracked = entry.LastPlayedCardInstanceIds[i];
-                if (tracked != 0 && CardInstanceIsActive(cd, tracked))
-                    continue; // still active
+
+                // Check by definition TYPE rather than exact instance ID.
+                // UserCardData may not be refreshed immediately after PlayCard(), so checking
+                // the tracked instance ID directly would always return false (triggering
+                // replays every scheduler tick). Checking the type correctly handles lag.
+                if (CardDefTypeIsActive(cd, defId))
+                    continue; // card of this type is still active
 
                 int instanceId = FindCardInstanceByDefId(defId);
                 if (instanceId != 0)
@@ -131,6 +135,25 @@ namespace Kingdoms.Bot.Modules
                         + entry.ModuleName + "' after expiry.");
                 }
             }
+        }
+
+        /// <summary>
+        /// Returns true if any currently active card instance has the given definition ID.
+        /// More reliable than instance-ID matching since UserCardData refresh can lag behind PlayCard().
+        /// </summary>
+        private static bool CardDefTypeIsActive(CardData cd, int defId)
+        {
+            if (cd == null || cd.cards == null) return false;
+            for (int i = 0; i < cd.cards.Length; i++)
+            {
+                if (cd.cards[i] == 0) continue;
+                try
+                {
+                    if (CardTypes.getCardType(cd.cards[i]) == defId) return true;
+                }
+                catch { }
+            }
+            return false;
         }
 
         private IBotModule FindModule(string moduleName)

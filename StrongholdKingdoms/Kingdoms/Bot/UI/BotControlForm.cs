@@ -2137,6 +2137,11 @@ namespace Kingdoms.Bot.UI
                 MiscLoadFromSettings();
                 tabName = "Misc";
             }
+            else if (_tabControl.SelectedTab == _scoutPage)
+            {
+                ScLoadFromSettings();
+                tabName = "Scout";
+            }
             else if (_tabControl.SelectedTab == _autoPage)
             {
                 AutoLoadFromSettings();
@@ -6191,7 +6196,10 @@ namespace Kingdoms.Bot.UI
             try
             {
                 ScoutSettings s = BotEngine.Instance.Settings.Scout;
-                _scEnabledCheck.Checked = s.Enabled;
+                // Read enabled from the live module if available — the auto-scheduler may have
+                // enabled it after the settings were last loaded, so settings alone can be stale.
+                ScoutModule liveScout = BotEngine.Instance.GetModule<ScoutModule>();
+                _scEnabledCheck.Checked = liveScout != null ? liveScout.Enabled : s.Enabled;
                 _scIntervalInput.Value = Math.Max(_scIntervalInput.Minimum, Math.Min(_scIntervalInput.Maximum, s.CycleIntervalSeconds));
                 _scMaxTimeInput.Value = Math.Max(_scMaxTimeInput.Minimum, Math.Min(_scMaxTimeInput.Maximum, s.MaxScoutTimeSeconds));
                 _scAutoHireInput.Value = Math.Max(0, Math.Min(8, s.AutoHireScouts));
