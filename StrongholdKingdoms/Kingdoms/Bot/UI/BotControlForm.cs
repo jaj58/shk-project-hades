@@ -5637,6 +5637,13 @@ namespace Kingdoms.Bot.UI
             _autoModuleScrollPanel.AutoScroll = true;
             _autoModuleScrollPanel.Dock = DockStyle.Fill;
             _autoModuleScrollPanel.BackColor = Color.FromArgb(24, 24, 32);
+            // Reset scroll to top every time the panel becomes visible (tab switch, first open, etc.)
+            _autoModuleScrollPanel.VisibleChanged += delegate
+            {
+                if (_autoModuleScrollPanel.Visible)
+                    BeginInvoke((Action)(() =>
+                        _autoModuleScrollPanel.AutoScrollPosition = new System.Drawing.Point(0, 0)));
+            };
             page.Controls.Add(_autoModuleScrollPanel);
 
             // Save button
@@ -5810,9 +5817,10 @@ namespace Kingdoms.Bot.UI
                     AutoPopulateModuleCardCombo(row.CardCombo2, m.PlayCardOnStart ? m.CardDefId2 : 0);
             }
 
-            // Reset scroll so Trade row (y=2) is always visible at the top
+            // Reset scroll so Trade row is always visible — deferred to after layout completes
             if (_autoModuleScrollPanel != null)
-                _autoModuleScrollPanel.AutoScrollPosition = new System.Drawing.Point(0, 0);
+                BeginInvoke((Action)(() =>
+                    _autoModuleScrollPanel.AutoScrollPosition = new System.Drawing.Point(0, 0)));
         }
 
         private void AutoPopulateModuleCardCombo(ComboBox combo, int selectedDefId)
