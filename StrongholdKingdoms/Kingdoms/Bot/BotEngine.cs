@@ -46,6 +46,8 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.PopularityModule());
             RegisterModule(new Modules.ScoutModule());
             RegisterModule(new Modules.FreeCardCollectorModule());
+            RegisterModule(new Modules.AutoCardModule());
+            RegisterModule(new Modules.AutoModuleSchedulerModule());
 
             foreach (IBotModule module in _modules)
             {
@@ -106,6 +108,8 @@ namespace Kingdoms.Bot
                     module.Enabled = _settings.AutoBombMulti.Enabled;
                 else if (module is Modules.PopularityModule)
                     module.Enabled = _settings.Popularity.Enabled;
+                else if (module is Modules.AutoCardModule || module is Modules.AutoModuleSchedulerModule)
+                    module.Enabled = _settings.Auto.Enabled;
                 else if (module is Modules.ScoutModule)
                     module.Enabled = _settings.Scout.Enabled;
             }
@@ -135,6 +139,8 @@ namespace Kingdoms.Bot
                     _settings.AutoBomb.Enabled = module.Enabled;
                 else if (module is Modules.PopularityModule)
                     _settings.Popularity.Enabled = module.Enabled;
+                else if (module is Modules.AutoCardModule || module is Modules.AutoModuleSchedulerModule)
+                    _settings.Auto.Enabled = module.Enabled;
                 else if (module is Modules.ScoutModule)
                     _settings.Scout.Enabled = module.Enabled;
             }
