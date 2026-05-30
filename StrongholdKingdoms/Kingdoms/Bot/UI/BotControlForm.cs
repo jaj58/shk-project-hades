@@ -6424,6 +6424,7 @@ namespace Kingdoms.Bot.UI
             BotLogger.OnLogAdded -= OnLogEntryAdded;
             base.OnFormClosing(e);
         }
+    }
 
     internal class PopularityVillageRow : Panel
     {
