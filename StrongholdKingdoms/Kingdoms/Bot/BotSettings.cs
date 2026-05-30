@@ -969,9 +969,11 @@ namespace Kingdoms.Bot
         public bool PlayCardOnStart = false;
         public bool ReplayCardOnExpiry = true;  // Re-play card when it expires mid-window
         public int CardDefId = 0;
+        public int CardDefId2 = 0;             // Second card (Trade: capacity; Scout: range/speed)
         public bool WasAutoStarted = false;
         public bool ManuallyDisabledDuringWindow = false;
         public int LastPlayedCardInstanceId = 0;
+        public int LastPlayedCardInstanceId2 = 0; // Tracks second card instance
     }
 
     // =========================================================================

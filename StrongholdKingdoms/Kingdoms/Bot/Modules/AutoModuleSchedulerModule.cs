@@ -48,39 +48,33 @@ namespace Kingdoms.Bot.Modules
                         else
                             LogInfo("Auto-enabled module '" + entry.ModuleName + "' at hour " + currentHour + ".");
 
-                        // Play a card if configured (on first start, or on re-enable if ReplayCardOnExpiry is set)
-                        bool shouldPlayCard = entry.PlayCardOnStart && entry.CardDefId != 0 &&
+                        // Play card(s) if configured (on first start, or on re-enable if ReplayCardOnExpiry is set)
+                        bool shouldPlayCard = entry.PlayCardOnStart &&
                             (!wasRunning || entry.ReplayCardOnExpiry);
 
                         if (shouldPlayCard)
                         {
-                            int instanceId = FindCardInstanceByDefId(entry.CardDefId);
-                            if (instanceId != 0)
-                            {
-                                PlayCard(instanceId);
-                                entry.LastPlayedCardInstanceId = instanceId;
-                                LogInfo("Playing card (def " + entry.CardDefId + ", instance " + instanceId + ") for module '" + entry.ModuleName + "'.");
-                            }
-                            else
-                            {
-                                LogWarning("Card def " + entry.CardDefId + " not found in inventory for module '" + entry.ModuleName + "'.");
-                            }
+                            TryPlayCard(entry.CardDefId, ref entry.LastPlayedCardInstanceId, entry.ModuleName, 1);
+                            TryPlayCard(entry.CardDefId2, ref entry.LastPlayedCardInstanceId2, entry.ModuleName, 2);
                         }
                     }
-                    else if (entry.WasAutoStarted && entry.PlayCardOnStart && entry.ReplayCardOnExpiry &&
-                             entry.CardDefId != 0 && entry.LastPlayedCardInstanceId != 0)
+                    else if (entry.WasAutoStarted && entry.PlayCardOnStart && entry.ReplayCardOnExpiry)
                     {
-                        // Module is running — check if the card expired mid-window and re-play if enabled
+                        // Module is running — re-play any expired cards if enabled
                         CardData cd = GetCardData();
-                        if (cd != null && !CardInstanceIsActive(cd, entry.LastPlayedCardInstanceId))
+                        if (cd != null)
                         {
-                            entry.LastPlayedCardInstanceId = 0;
-                            int instanceId = FindCardInstanceByDefId(entry.CardDefId);
-                            if (instanceId != 0)
+                            if (entry.CardDefId != 0 && entry.LastPlayedCardInstanceId != 0
+                                && !CardInstanceIsActive(cd, entry.LastPlayedCardInstanceId))
                             {
-                                PlayCard(instanceId);
-                                entry.LastPlayedCardInstanceId = instanceId;
-                                LogInfo("Re-playing card for module '" + entry.ModuleName + "' after expiry.");
+                                entry.LastPlayedCardInstanceId = 0;
+                                TryPlayCard(entry.CardDefId, ref entry.LastPlayedCardInstanceId, entry.ModuleName, 1);
+                            }
+                            if (entry.CardDefId2 != 0 && entry.LastPlayedCardInstanceId2 != 0
+                                && !CardInstanceIsActive(cd, entry.LastPlayedCardInstanceId2))
+                            {
+                                entry.LastPlayedCardInstanceId2 = 0;
+                                TryPlayCard(entry.CardDefId2, ref entry.LastPlayedCardInstanceId2, entry.ModuleName, 2);
                             }
                         }
                     }
@@ -96,6 +90,7 @@ namespace Kingdoms.Bot.Modules
                         entry.ManuallyDisabledDuringWindow = true;
                         entry.WasAutoStarted = false;
                         entry.LastPlayedCardInstanceId = 0;
+                        entry.LastPlayedCardInstanceId2 = 0;
                         LogInfo("Module '" + entry.ModuleName + "' was manually disabled — respecting override.");
                     }
                     else if (entry.WasAutoStarted && targetModule.Enabled && entry.AutoDisableEnabled)
@@ -104,9 +99,26 @@ namespace Kingdoms.Bot.Modules
                         SyncModuleEnabledToSettings(entry.ModuleName, false);
                         entry.WasAutoStarted = false;
                         entry.LastPlayedCardInstanceId = 0;
+                        entry.LastPlayedCardInstanceId2 = 0;
                         LogInfo("Auto-disabled module '" + entry.ModuleName + "' at end of window (hour " + currentHour + ").");
                     }
                 }
+            }
+        }
+
+        private void TryPlayCard(int defId, ref int instanceIdField, string moduleName, int slot)
+        {
+            if (defId == 0) return;
+            int instanceId = FindCardInstanceByDefId(defId);
+            if (instanceId != 0)
+            {
+                PlayCard(instanceId);
+                instanceIdField = instanceId;
+                LogInfo("Playing card slot " + slot + " (def " + defId + ", instance " + instanceId + ") for module '" + moduleName + "'.");
+            }
+            else
+            {
+                LogWarning("Card slot " + slot + " def " + defId + " not found in inventory for module '" + moduleName + "'.");
             }
         }
 
