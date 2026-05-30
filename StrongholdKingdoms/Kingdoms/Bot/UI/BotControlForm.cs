@@ -92,6 +92,34 @@ namespace Kingdoms.Bot.UI
 
         // Misc tab — no runtime state needed (settings only)
 
+        // Scout tab runtime state
+        private int _scSelectedVillageId = -1;
+        private bool _scLoading;
+        private bool _scDragging;
+        private object _scDragItem;
+        private int _scDragFromIndex = -1;
+        private Timer _scRefreshTimer;
+        // Controls created programmatically in WireUpScoutTab
+        private ListBox _scVillageListBox;
+        private CheckBox _scVillageEnabledCheck;
+        private ListBox _scScoutList;
+        private ListBox _scIgnoreList;
+        private Button _scMoveToIgnoreBtn;
+        private Button _scMoveToScoutBtn;
+        private Button _scMoveUpBtn;
+        private Button _scMoveDownBtn;
+        private CheckBox _scEnabledCheck;
+        private Label _scStatusLabel;
+        private NumericUpDown _scIntervalInput;
+        private NumericUpDown _scMaxTimeInput;
+        private NumericUpDown _scAutoHireInput;
+        private NumericUpDown _scDelayInput;
+        private CheckBox _scDisableOnCardExpiryCheck;
+        private RadioButton _scPriorityResourceRadio;
+        private RadioButton _scPriorityRangeRadio;
+        private CheckBox _scSendOneScoutCheck;
+        private CheckBox _scSendOneOnNewCheck;
+
         // Popularity tab runtime state
         private Timer _ppRefreshTimer;
 
