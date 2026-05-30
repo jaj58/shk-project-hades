@@ -5606,24 +5606,16 @@ namespace Kingdoms.Bot.UI
             }
 
             Label hCard = new Label();
-            hCard.Text = "Card 1";
+            hCard.Text = "Cards to play (check all you want)";
             hCard.Location = new Point(510, 4);
             hCard.AutoSize = true;
             hCard.ForeColor = TextSec;
             hCard.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             header.Controls.Add(hCard);
 
-            Label hCard2 = new Label();
-            hCard2.Text = "Card 2 (Trade/Scout)";
-            hCard2.Location = new Point(658, 4);
-            hCard2.AutoSize = true;
-            hCard2.ForeColor = TextSec;
-            hCard2.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            header.Controls.Add(hCard2);
-
             Label hReplay = new Label();
             hReplay.Text = "Re-play";
-            hReplay.Location = new Point(862, 4);
+            hReplay.Location = new Point(810, 4);
             hReplay.AutoSize = true;
             hReplay.ForeColor = TextSec;
             hReplay.Font = new System.Drawing.Font("Segoe UI", 7.5F);
@@ -5631,7 +5623,7 @@ namespace Kingdoms.Bot.UI
 
             Label hAuto = new Label();
             hAuto.Text = "Auto-off";
-            hAuto.Location = new Point(952, 4);
+            hAuto.Location = new Point(900, 4);
             hAuto.AutoSize = true;
             hAuto.ForeColor = TextSec;
             hAuto.Font = new System.Drawing.Font("Segoe UI", 7.5F);
@@ -5668,7 +5660,7 @@ namespace Kingdoms.Bot.UI
                 AutoModuleRow row = BuildModuleRow(moduleNames[i], moduleLabels[i], y);
                 _autoModuleScrollPanel.Controls.Add(row.RowPanel);
                 _autoModuleRows.Add(row);
-                y += 50;
+                y += 70;   // 62px row + 8px gap
             }
         }
 
@@ -5679,7 +5671,7 @@ namespace Kingdoms.Bot.UI
 
             Panel panel = new Panel();
             panel.Location = new Point(0, y);
-            panel.Size = new Size(1100, 46);
+            panel.Size = new Size(1100, 62);   // taller row to show ~3 card items
             panel.BackColor = Color.FromArgb(30, 30, 42);
             row.RowPanel = panel;
 
@@ -5705,37 +5697,22 @@ namespace Kingdoms.Bot.UI
                 panel.Controls.Add(cb);
             }
 
-            bool hasTwoCards = (moduleName == "Trade" || moduleName == "Scout");
-
-            // Card 1 combo
-            ComboBox cardCombo = new ComboBox();
-            cardCombo.Location = new Point(510, 12);
-            cardCombo.Size = new Size(hasTwoCards ? 140 : 195, 20);
-            cardCombo.DropDownStyle = ComboBoxStyle.DropDownList;
-            cardCombo.BackColor = Color.FromArgb(40, 40, 55);
-            cardCombo.ForeColor = TextPri;
-            cardCombo.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            row.CardCombo = cardCombo;
-            panel.Controls.Add(cardCombo);
-
-            // Card 2 combo (Trade and Scout only)
-            if (hasTwoCards)
-            {
-                ComboBox cardCombo2 = new ComboBox();
-                cardCombo2.Location = new Point(658, 12);
-                cardCombo2.Size = new Size(140, 20);
-                cardCombo2.DropDownStyle = ComboBoxStyle.DropDownList;
-                cardCombo2.BackColor = Color.FromArgb(40, 40, 55);
-                cardCombo2.ForeColor = TextPri;
-                cardCombo2.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-                row.CardCombo2 = cardCombo2;
-                panel.Controls.Add(cardCombo2);
-            }
+            // Multi-select CheckedListBox — any number of cards from inventory
+            CheckedListBox clb = new CheckedListBox();
+            clb.Location = new Point(510, 4);
+            clb.Size = new Size(280, 54);
+            clb.BackColor = Color.FromArgb(40, 40, 55);
+            clb.ForeColor = TextPri;
+            clb.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            clb.CheckOnClick = true;
+            clb.BorderStyle = BorderStyle.FixedSingle;
+            row.CardsListBox = clb;
+            panel.Controls.Add(clb);
 
             // Re-play card on expiry checkbox
             CheckBox replayCard = new CheckBox();
             replayCard.Text = "Re-play";
-            replayCard.Location = new Point(862, 13);
+            replayCard.Location = new Point(810, 20);
             replayCard.Size = new Size(78, 18);
             replayCard.BackColor = Color.Transparent;
             replayCard.ForeColor = TextPri;
@@ -5747,7 +5724,7 @@ namespace Kingdoms.Bot.UI
             // Auto-disable checkbox
             CheckBox autoOff = new CheckBox();
             autoOff.Text = "Auto-disable";
-            autoOff.Location = new Point(952, 13);
+            autoOff.Location = new Point(900, 20);
             autoOff.Size = new Size(95, 18);
             autoOff.BackColor = Color.Transparent;
             autoOff.ForeColor = TextPri;
@@ -5811,21 +5788,15 @@ namespace Kingdoms.Bot.UI
                     row.HourChecks[h].Checked = m.HourlySchedule != null && h < m.HourlySchedule.Length && m.HourlySchedule[h];
                 row.ReplayCardCheck.Checked = m.ReplayCardOnExpiry;
                 row.AutoDisableCheck.Checked = m.AutoDisableEnabled;
-
-                // Populate card dropdowns from ProfileCards
-                AutoPopulateModuleCardCombo(row.CardCombo, m.PlayCardOnStart ? m.CardDefId : 0);
-                if (row.CardCombo2 != null)
-                    AutoPopulateModuleCardCombo(row.CardCombo2, m.PlayCardOnStart ? m.CardDefId2 : 0);
+                AutoPopulateModuleCardsListBox(row.CardsListBox, m.CardDefIds);
             }
 
             // Scroll reset is handled by moduleTab.Enter in BuildAutoTabUI — nothing to do here.
         }
 
-        private void AutoPopulateModuleCardCombo(ComboBox combo, int selectedDefId)
+        private void AutoPopulateModuleCardsListBox(CheckedListBox clb, System.Collections.Generic.List<int> selectedDefIds)
         {
-            combo.Items.Clear();
-            combo.Items.Add(new AutoCardOption { DefId = 0, Name = "(None)" });
-
+            clb.Items.Clear();
             try
             {
                 var mgr = GameEngine.Instance != null ? GameEngine.Instance.cardsManager : null;
@@ -5835,31 +5806,15 @@ namespace Kingdoms.Bot.UI
                     foreach (var kvp in mgr.ProfileCards)
                     {
                         if (kvp.Value == null) continue;
-                        if (seen.Add(kvp.Value.id))
-                        {
-                            string name = kvp.Value.name;
-                            if (string.IsNullOrEmpty(name)) name = "Card " + kvp.Value.id;
-                            combo.Items.Add(new AutoCardOption { DefId = kvp.Value.id, Name = name });
-                        }
+                        if (!seen.Add(kvp.Value.id)) continue;
+                        string name = kvp.Value.name;
+                        if (string.IsNullOrEmpty(name)) name = "Card " + kvp.Value.id;
+                        bool isChecked = selectedDefIds != null && selectedDefIds.Contains(kvp.Value.id);
+                        clb.Items.Add(new AutoCardOption { DefId = kvp.Value.id, Name = name }, isChecked);
                     }
                 }
             }
             catch { }
-
-            // Select the saved card
-            combo.SelectedIndex = 0;
-            if (selectedDefId != 0)
-            {
-                for (int i = 0; i < combo.Items.Count; i++)
-                {
-                    AutoCardOption opt = combo.Items[i] as AutoCardOption;
-                    if (opt != null && opt.DefId == selectedDefId)
-                    {
-                        combo.SelectedIndex = i;
-                        break;
-                    }
-                }
-            }
         }
 
         private void AutoWriteToSettings()
@@ -5917,13 +5872,11 @@ namespace Kingdoms.Bot.UI
                 m.ReplayCardOnExpiry = row.ReplayCardCheck.Checked;
                 m.AutoDisableEnabled = row.AutoDisableCheck.Checked;
 
-                AutoCardOption selected = row.CardCombo.SelectedItem as AutoCardOption;
-                AutoCardOption selected2 = row.CardCombo2 != null ? row.CardCombo2.SelectedItem as AutoCardOption : null;
-                int defId = selected != null ? selected.DefId : 0;
-                int defId2 = selected2 != null ? selected2.DefId : 0;
-                m.PlayCardOnStart = (defId != 0 || defId2 != 0);
-                m.CardDefId = defId;
-                m.CardDefId2 = defId2;
+                m.CardDefIds.Clear();
+                foreach (AutoCardOption opt in row.CardsListBox.CheckedItems)
+                    if (opt != null && opt.DefId != 0)
+                        m.CardDefIds.Add(opt.DefId);
+                m.PlayCardOnStart = m.CardDefIds.Count > 0;
             }
 
             // Enable the Auto modules if any production or module is active
@@ -6551,8 +6504,7 @@ namespace Kingdoms.Bot.UI
     {
         public string ModuleName;
         public CheckBox[] HourChecks = new CheckBox[24];
-        public ComboBox CardCombo;
-        public ComboBox CardCombo2;   // second card (Trade / Scout only; null for other modules)
+        public CheckedListBox CardsListBox;  // multi-select: any number of cards to play
         public CheckBox ReplayCardCheck;
         public CheckBox AutoDisableCheck;
         public Panel RowPanel;

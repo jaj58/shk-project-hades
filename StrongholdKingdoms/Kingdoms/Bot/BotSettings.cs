@@ -967,13 +967,17 @@ namespace Kingdoms.Bot
         public bool[] HourlySchedule = new bool[24];
         public bool AutoDisableEnabled = false;
         public bool PlayCardOnStart = false;
-        public bool ReplayCardOnExpiry = true;  // Re-play card when it expires mid-window
-        public int CardDefId = 0;
-        public int CardDefId2 = 0;             // Second card (Trade: capacity; Scout: range/speed)
+        public bool ReplayCardOnExpiry = true;
+        // Multi-select card list — replaces the old single/dual CardDefId fields
+        public List<int> CardDefIds = new List<int>();
+        // Legacy single/dual fields kept as XmlIgnore so old XML round-trips safely
+        [System.Xml.Serialization.XmlIgnore] public int CardDefId  = 0;
+        [System.Xml.Serialization.XmlIgnore] public int CardDefId2 = 0;
         public bool WasAutoStarted = false;
         public bool ManuallyDisabledDuringWindow = false;
-        public int LastPlayedCardInstanceId = 0;
-        public int LastPlayedCardInstanceId2 = 0; // Tracks second card instance
+        // Runtime-only tracking of active card instance IDs (not persisted)
+        [System.Xml.Serialization.XmlIgnore]
+        public List<int> LastPlayedCardInstanceIds = new List<int>();
     }
 
     // =========================================================================
