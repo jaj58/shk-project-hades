@@ -159,6 +159,7 @@ namespace Kingdoms.Bot.UI
                 WireUpMiscTab();
                 WireUpPopularityTab();
                 WireUpAutoTab();
+                WireUpScoutTab();
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -178,6 +179,7 @@ namespace Kingdoms.Bot.UI
                 MiscLoadFromSettings();
                 PpLoadFromSettings();
                 AutoLoadFromSettings();
+                ScLoadFromSettings();
             }
         }
 
@@ -5271,6 +5273,7 @@ namespace Kingdoms.Bot.UI
         }
 
         // =====================================================================
+        // Auto tab
         // =====================================================================
 
         private void WireUpAutoTab()
@@ -5610,8 +5613,8 @@ namespace Kingdoms.Bot.UI
 
             // Build module rows
             _autoModuleRows.Clear();
-            string[] moduleNames = { "Trade", "Recruiting", "VillageBuilder", "CastleRepair", "Popularity", "Scout" };
-            string[] moduleLabels = { "Trade", "Recruiting", "Village Builder", "Castle Repair", "Popularity", "Scout" };
+            string[] moduleNames = { "Trade", "Recruiting", "VillageBuilder", "CastleRepair", "Popularity" };
+            string[] moduleLabels = { "Trade", "Recruiting", "Village Builder", "Castle Repair", "Popularity" };
             int y = 2;
             for (int i = 0; i < moduleNames.Length; i++)
             {
@@ -5895,94 +5898,6 @@ namespace Kingdoms.Bot.UI
             }
             BotLogger.Log("Auto", BotLogLevel.Info, goodKey + " card progress reset.");
         }
-
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            if (e.CloseReason == CloseReason.UserClosing)
-            {
-                e.Cancel = true;
-                this.Hide();
-                return;
-            }
-            BotLogger.OnLogAdded -= OnLogEntryAdded;
-            base.OnFormClosing(e);
-        }
-    }
-
-    internal class PopularityVillageRow : Panel
-    {
-        public event Action<int, PopularityMode> ModeChanged;
-        private readonly int _villageId;
-
-        public PopularityVillageRow(WorldMap.UserVillageData uvd, VillagePopularitySettings vs)
-        {
-            _villageId = uvd.villageID;
-            Height = 28;
-            BackColor = Color.FromArgb(30, 30, 42);
-
-            Label nameLabel = new Label();
-            string vname = "";
-            try { vname = GameEngine.Instance.World.getVillageName(uvd.villageID); } catch { }
-            nameLabel.Text = (string.IsNullOrEmpty(vname) ? "Village" : vname) + " (" + uvd.villageID + ")";
-            nameLabel.ForeColor = Color.FromArgb(230, 230, 240);
-            nameLabel.AutoSize = false;
-            nameLabel.Width = 210;
-            nameLabel.Location = new Point(8, 6);
-            Controls.Add(nameLabel);
-
-            ComboBox modeCombo = new ComboBox();
-            modeCombo.DropDownStyle = ComboBoxStyle.DropDownList;
-            modeCombo.Items.Add("Disabled");
-            modeCombo.Items.Add("Max Popularity");
-            modeCombo.Items.Add("Max Gold");
-            modeCombo.Items.Add("Auto");
-            modeCombo.SelectedIndex = (int)vs.Mode;
-            modeCombo.Width = 130;
-            modeCombo.Location = new Point(220, 4);
-            modeCombo.BackColor = Color.FromArgb(40, 40, 55);
-            modeCombo.ForeColor = Color.FromArgb(230, 230, 240);
-            ComboBox capturedCombo = modeCombo;
-            capturedCombo.SelectedIndexChanged += delegate
-            {
-                if (ModeChanged != null)
-                    ModeChanged(_villageId, (PopularityMode)capturedCombo.SelectedIndex);
-            };
-            Controls.Add(modeCombo);
-        }
-    }
-
-    // =========================================================================
-    // Auto tab row helpers
-    // =========================================================================
-
-    class AutoProdRow
-    {
-        public string GoodKey;
-        public CheckBox EnabledCheck;
-        public ComboBox TierCombo;
-        public NumericUpDown TargetInput;
-        public NumericUpDown DelayHInput;
-        public NumericUpDown DelayMInput;
-        public Label ProgressLabel;
-        public Panel RowPanel;
-    }
-
-    class AutoModuleRow
-    {
-        public string ModuleName;
-        public CheckBox[] HourChecks = new CheckBox[24];
-        public ComboBox CardCombo;
-        public CheckBox ReplayCardCheck;
-        public CheckBox AutoDisableCheck;
-        public Panel RowPanel;
-    }
-
-    class AutoCardOption
-    {
-        public int DefId;
-        public string Name;
-        public override string ToString() { return Name; }
-
 
         private void WireUpScoutTab()
         {
@@ -6509,8 +6424,81 @@ namespace Kingdoms.Bot.UI
             BotLogger.OnLogAdded -= OnLogEntryAdded;
             base.OnFormClosing(e);
         }
+
+    internal class PopularityVillageRow : Panel
+    {
+        public event Action<int, PopularityMode> ModeChanged;
+        private readonly int _villageId;
+
+        public PopularityVillageRow(WorldMap.UserVillageData uvd, VillagePopularitySettings vs)
+        {
+            _villageId = uvd.villageID;
+            Height = 28;
+            BackColor = Color.FromArgb(30, 30, 42);
+
+            Label nameLabel = new Label();
+            string vname = "";
+            try { vname = GameEngine.Instance.World.getVillageName(uvd.villageID); } catch { }
+            nameLabel.Text = (string.IsNullOrEmpty(vname) ? "Village" : vname) + " (" + uvd.villageID + ")";
+            nameLabel.ForeColor = Color.FromArgb(230, 230, 240);
+            nameLabel.AutoSize = false;
+            nameLabel.Width = 210;
+            nameLabel.Location = new Point(8, 6);
+            Controls.Add(nameLabel);
+
+            ComboBox modeCombo = new ComboBox();
+            modeCombo.DropDownStyle = ComboBoxStyle.DropDownList;
+            modeCombo.Items.Add("Disabled");
+            modeCombo.Items.Add("Max Popularity");
+            modeCombo.Items.Add("Max Gold");
+            modeCombo.Items.Add("Auto");
+            modeCombo.SelectedIndex = (int)vs.Mode;
+            modeCombo.Width = 130;
+            modeCombo.Location = new Point(220, 4);
+            modeCombo.BackColor = Color.FromArgb(40, 40, 55);
+            modeCombo.ForeColor = Color.FromArgb(230, 230, 240);
+            ComboBox capturedCombo = modeCombo;
+            capturedCombo.SelectedIndexChanged += delegate
+            {
+                if (ModeChanged != null)
+                    ModeChanged(_villageId, (PopularityMode)capturedCombo.SelectedIndex);
+            };
+            Controls.Add(modeCombo);
+        }
     }
 
+    // =========================================================================
+    // Auto tab row helpers
+    // =========================================================================
+
+    class AutoProdRow
+    {
+        public string GoodKey;
+        public CheckBox EnabledCheck;
+        public ComboBox TierCombo;
+        public NumericUpDown TargetInput;
+        public NumericUpDown DelayHInput;
+        public NumericUpDown DelayMInput;
+        public Label ProgressLabel;
+        public Panel RowPanel;
+    }
+
+    class AutoModuleRow
+    {
+        public string ModuleName;
+        public CheckBox[] HourChecks = new CheckBox[24];
+        public ComboBox CardCombo;
+        public CheckBox ReplayCardCheck;
+        public CheckBox AutoDisableCheck;
+        public Panel RowPanel;
+    }
+
+    class AutoCardOption
+    {
+        public int DefId;
+        public string Name;
+        public override string ToString() { return Name; }
+    }
     internal class ScoutVillageItem
     {
         public readonly int VillageId;
