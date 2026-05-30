@@ -5640,7 +5640,7 @@ namespace Kingdoms.Bot.UI
             // Reset scroll to top every time the panel becomes visible (tab switch, first open, etc.)
             _autoModuleScrollPanel.VisibleChanged += delegate
             {
-                if (_autoModuleScrollPanel.Visible)
+                if (_autoModuleScrollPanel.Visible && IsHandleCreated)
                     BeginInvoke((Action)(() =>
                         _autoModuleScrollPanel.AutoScrollPosition = new System.Drawing.Point(0, 0)));
             };
@@ -5817,8 +5817,10 @@ namespace Kingdoms.Bot.UI
                     AutoPopulateModuleCardCombo(row.CardCombo2, m.PlayCardOnStart ? m.CardDefId2 : 0);
             }
 
-            // Reset scroll so Trade row is always visible — deferred to after layout completes
-            if (_autoModuleScrollPanel != null)
+            // Reset scroll so Trade row is always visible — deferred to after layout completes.
+            // Guard IsHandleCreated: BeginInvoke throws if called before the window handle exists
+            // (e.g. during ctor). The VisibleChanged handler covers that first-show case anyway.
+            if (_autoModuleScrollPanel != null && IsHandleCreated)
                 BeginInvoke((Action)(() =>
                     _autoModuleScrollPanel.AutoScrollPosition = new System.Drawing.Point(0, 0)));
         }
