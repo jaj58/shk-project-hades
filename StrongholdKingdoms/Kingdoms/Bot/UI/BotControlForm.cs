@@ -5610,8 +5610,8 @@ namespace Kingdoms.Bot.UI
 
             // Build module rows
             _autoModuleRows.Clear();
-            string[] moduleNames = { "Trade", "Recruiting", "VillageBuilder", "CastleRepair", "Popularity" };
-            string[] moduleLabels = { "Trade", "Recruiting", "Village Builder", "Castle Repair", "Popularity" };
+            string[] moduleNames = { "Trade", "Recruiting", "VillageBuilder", "CastleRepair", "Popularity", "Scout" };
+            string[] moduleLabels = { "Trade", "Recruiting", "Village Builder", "Castle Repair", "Popularity", "Scout" };
             int y = 2;
             for (int i = 0; i < moduleNames.Length; i++)
             {

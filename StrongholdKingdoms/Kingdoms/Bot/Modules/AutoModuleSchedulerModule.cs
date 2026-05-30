@@ -121,11 +121,12 @@ namespace Kingdoms.Bot.Modules
 
         private static string GetModuleKey(IBotModule m)
         {
-            if (m is TradeModule)       return "Trade";
-            if (m is RecruitingModule)  return "Recruiting";
+            if (m is TradeModule)          return "Trade";
+            if (m is RecruitingModule)     return "Recruiting";
             if (m is VillageBuilderModule) return "VillageBuilder";
-            if (m is CastleRepairModule) return "CastleRepair";
-            if (m is PopularityModule)  return "Popularity";
+            if (m is CastleRepairModule)   return "CastleRepair";
+            if (m is PopularityModule)     return "Popularity";
+            if (m is ScoutModule)          return "Scout";
             return null;
         }
 
@@ -139,6 +140,7 @@ namespace Kingdoms.Bot.Modules
                 case "VillageBuilder": Engine.Settings.VillageBuilder.Enabled = enabled; break;
                 case "CastleRepair":   Engine.Settings.CastleRepair.Enabled = enabled; break;
                 case "Popularity":     Engine.Settings.Popularity.Enabled = enabled; break;
+                case "Scout":          Engine.Settings.Scout.Enabled = enabled; break;
             }
         }
 
