@@ -14131,6 +14131,8 @@ namespace Kingdoms
 
     public VillageData GetVllageByID(int id) => this.villageList[id];
 
+    public VillageData[] getWorldVillageList() => this.villageList;
+
     public bool SecondAgeWorld
     {
       get => this.secondAgeWorld;

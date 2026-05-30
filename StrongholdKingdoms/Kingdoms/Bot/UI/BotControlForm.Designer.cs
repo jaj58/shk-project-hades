@@ -33,6 +33,11 @@ namespace Kingdoms.Bot.UI
                     _autoRefreshTimer.Stop();
                     _autoRefreshTimer.Dispose();
                 }
+                if (_scRefreshTimer != null)
+                {
+                    _scRefreshTimer.Stop();
+                    _scRefreshTimer.Dispose();
+                }
                 if (components != null)
                     components.Dispose();
             }
@@ -152,6 +157,8 @@ namespace Kingdoms.Bot.UI
             this._crCopySettingsBtn = new System.Windows.Forms.Button();
             this._crRefreshBtn = new System.Windows.Forms.Button();
             this._crRepairAllBtn = new System.Windows.Forms.Button();
+            this._crMemoriseInfraBtn = new System.Windows.Forms.Button();
+            this._crMemoriseTroopsBtn = new System.Windows.Forms.Button();
             this._crRepairOnAttackCheck = new System.Windows.Forms.CheckBox();
             this._crDelayInput = new System.Windows.Forms.NumericUpDown();
             this._crDelayLabel = new System.Windows.Forms.Label();
@@ -316,6 +323,12 @@ namespace Kingdoms.Bot.UI
             this._ppIntervalLabel = new System.Windows.Forms.Label();
             this._ppStatusLabel = new System.Windows.Forms.Label();
             this._ppEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._scoutPage = new System.Windows.Forms.TabPage();
+            this._scSettingsPanel = new System.Windows.Forms.Panel();
+            this._scVillagePanel = new System.Windows.Forms.Panel();
+            this._scDivider = new System.Windows.Forms.Panel();
+            this._scContentPanel = new System.Windows.Forms.Panel();
+            this._scSeparator = new System.Windows.Forms.Panel();
             this._miscPage = new System.Windows.Forms.TabPage();
             this._miscSettingsPanel = new System.Windows.Forms.Panel();
             this._autoPage = new System.Windows.Forms.TabPage();
@@ -410,6 +423,10 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._abmQueueVidInput)).BeginInit();
             this._popularityPage.SuspendLayout();
             this._ppSettingsPanel.SuspendLayout();
+            this._scoutPage.SuspendLayout();
+            this._scSettingsPanel.SuspendLayout();
+            this._scVillagePanel.SuspendLayout();
+            this._scContentPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._ppDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).BeginInit();
             this._miscPage.SuspendLayout();
@@ -594,6 +611,7 @@ namespace Kingdoms.Bot.UI
             this._tabControl.Controls.Add(this._bombPage);
             this._tabControl.Controls.Add(this._bombMultiPage);
             this._tabControl.Controls.Add(this._popularityPage);
+            this._tabControl.Controls.Add(this._scoutPage);
             this._tabControl.Controls.Add(this._miscPage);
             this._tabControl.Controls.Add(this._autoPage);
             this._tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -1863,6 +1881,8 @@ namespace Kingdoms.Bot.UI
             this._crSettingsPanel.Controls.Add(this._crCopySettingsBtn);
             this._crSettingsPanel.Controls.Add(this._crRefreshBtn);
             this._crSettingsPanel.Controls.Add(this._crRepairAllBtn);
+            this._crSettingsPanel.Controls.Add(this._crMemoriseInfraBtn);
+            this._crSettingsPanel.Controls.Add(this._crMemoriseTroopsBtn);
             this._crSettingsPanel.Controls.Add(this._crRepairOnAttackCheck);
             this._crSettingsPanel.Controls.Add(this._crDelayInput);
             this._crSettingsPanel.Controls.Add(this._crDelayLabel);
@@ -1921,7 +1941,37 @@ namespace Kingdoms.Bot.UI
             this._crRepairAllBtn.TabIndex = 8;
             this._crRepairAllBtn.Text = "Repair All";
             this._crRepairAllBtn.UseVisualStyleBackColor = false;
-            // 
+            //
+            // _crMemoriseInfraBtn
+            //
+            this._crMemoriseInfraBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(130)))), ((int)(((byte)(80)))));
+            this._crMemoriseInfraBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._crMemoriseInfraBtn.FlatAppearance.BorderSize = 0;
+            this._crMemoriseInfraBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._crMemoriseInfraBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._crMemoriseInfraBtn.ForeColor = System.Drawing.Color.White;
+            this._crMemoriseInfraBtn.Location = new System.Drawing.Point(604, 98);
+            this._crMemoriseInfraBtn.Name = "_crMemoriseInfraBtn";
+            this._crMemoriseInfraBtn.Size = new System.Drawing.Size(115, 24);
+            this._crMemoriseInfraBtn.TabIndex = 11;
+            this._crMemoriseInfraBtn.Text = "Memorise Infra";
+            this._crMemoriseInfraBtn.UseVisualStyleBackColor = false;
+            //
+            // _crMemoriseTroopsBtn
+            //
+            this._crMemoriseTroopsBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(130)))), ((int)(((byte)(80)))));
+            this._crMemoriseTroopsBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._crMemoriseTroopsBtn.FlatAppearance.BorderSize = 0;
+            this._crMemoriseTroopsBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._crMemoriseTroopsBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._crMemoriseTroopsBtn.ForeColor = System.Drawing.Color.White;
+            this._crMemoriseTroopsBtn.Location = new System.Drawing.Point(731, 98);
+            this._crMemoriseTroopsBtn.Name = "_crMemoriseTroopsBtn";
+            this._crMemoriseTroopsBtn.Size = new System.Drawing.Size(115, 24);
+            this._crMemoriseTroopsBtn.TabIndex = 12;
+            this._crMemoriseTroopsBtn.Text = "Memorise Troops";
+            this._crMemoriseTroopsBtn.UseVisualStyleBackColor = false;
+            //
             // _crRepairOnAttackCheck
             // 
             this._crRepairOnAttackCheck.AutoSize = true;
@@ -4202,6 +4252,69 @@ namespace Kingdoms.Bot.UI
             this._ppEnabledCheck.TabIndex = 0;
             this._ppEnabledCheck.Text = "Enable Popularity";
             //
+            // _scoutPage
+            //
+            this._scoutPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._scoutPage.Controls.Add(this._scContentPanel);
+            this._scoutPage.Controls.Add(this._scDivider);
+            this._scoutPage.Controls.Add(this._scVillagePanel);
+            this._scoutPage.Controls.Add(this._scSeparator);
+            this._scoutPage.Controls.Add(this._scSettingsPanel);
+            // NOTE: Add order is intentional — last-added is docked first in WinForms.
+            // _scSettingsPanel (Top, last) docks to very top; _scSeparator (Top) docks just below it;
+            // then Left panels fill the remaining area; _scContentPanel (Fill) takes the rest.
+            this._scoutPage.Location = new System.Drawing.Point(4, 24);
+            this._scoutPage.Name = "_scoutPage";
+            this._scoutPage.Size = new System.Drawing.Size(1142, 497);
+            this._scoutPage.TabIndex = 9;
+            this._scoutPage.Text = "Scout";
+            //
+            // _scSettingsPanel  (docked Top — last added so docks to the very top first)
+            //
+            this._scSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._scSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._scSettingsPanel.Location = new System.Drawing.Point(0, 0);
+            this._scSettingsPanel.Name = "_scSettingsPanel";
+            this._scSettingsPanel.Padding = new System.Windows.Forms.Padding(8, 6, 8, 6);
+            this._scSettingsPanel.Size = new System.Drawing.Size(1142, 90);
+            this._scSettingsPanel.TabIndex = 0;
+            //
+            // _scSeparator  (docked Top — docks just below _scSettingsPanel)
+            //
+            this._scSeparator.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(55)))), ((int)(((byte)(70)))));
+            this._scSeparator.Dock = System.Windows.Forms.DockStyle.Top;
+            this._scSeparator.Location = new System.Drawing.Point(0, 90);
+            this._scSeparator.Name = "_scSeparator";
+            this._scSeparator.Size = new System.Drawing.Size(1142, 1);
+            this._scSeparator.TabIndex = 4;
+            //
+            // _scVillagePanel  (docked Left, fills height below settings+separator)
+            //
+            this._scVillagePanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(28)))), ((int)(((byte)(28)))), ((int)(((byte)(38)))));
+            this._scVillagePanel.Dock = System.Windows.Forms.DockStyle.Left;
+            this._scVillagePanel.Location = new System.Drawing.Point(0, 91);
+            this._scVillagePanel.Name = "_scVillagePanel";
+            this._scVillagePanel.Size = new System.Drawing.Size(220, 406);
+            this._scVillagePanel.TabIndex = 1;
+            //
+            // _scDivider
+            //
+            this._scDivider.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(55)))), ((int)(((byte)(70)))));
+            this._scDivider.Dock = System.Windows.Forms.DockStyle.Left;
+            this._scDivider.Location = new System.Drawing.Point(220, 91);
+            this._scDivider.Name = "_scDivider";
+            this._scDivider.Size = new System.Drawing.Size(2, 406);
+            this._scDivider.TabIndex = 2;
+            //
+            // _scContentPanel  (Fill — takes everything remaining)
+            //
+            this._scContentPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._scContentPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._scContentPanel.Location = new System.Drawing.Point(222, 91);
+            this._scContentPanel.Name = "_scContentPanel";
+            this._scContentPanel.Size = new System.Drawing.Size(920, 406);
+            this._scContentPanel.TabIndex = 3;
+            //
             // _miscPage
             //
             this._miscPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
@@ -4490,6 +4603,10 @@ namespace Kingdoms.Bot.UI
             this._ppSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._ppDelayInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).EndInit();
+            this._scoutPage.ResumeLayout(false);
+            this._scSettingsPanel.ResumeLayout(false);
+            this._scVillagePanel.ResumeLayout(false);
+            this._scContentPanel.ResumeLayout(false);
             this._miscPage.ResumeLayout(false);
             this._miscSettingsPanel.ResumeLayout(false);
             this._miscSettingsPanel.PerformLayout();
@@ -4630,6 +4747,8 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _crDelayInput;
         private System.Windows.Forms.CheckBox _crRepairOnAttackCheck;
         private System.Windows.Forms.Button _crRepairAllBtn;
+        private System.Windows.Forms.Button _crMemoriseInfraBtn;
+        private System.Windows.Forms.Button _crMemoriseTroopsBtn;
         private System.Windows.Forms.Button _crRefreshBtn;
         private System.Windows.Forms.Button _crCopySettingsBtn;
         private System.Windows.Forms.Panel _crSeparator;
@@ -4809,5 +4928,12 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _ppDelayInput;
         private System.Windows.Forms.Button _ppRefreshBtn;
         private System.Windows.Forms.Button _ppRunNowBtn;
+        // Scout tab controls
+        private System.Windows.Forms.TabPage _scoutPage;
+        private System.Windows.Forms.Panel _scSettingsPanel;
+        private System.Windows.Forms.Panel _scSeparator;
+        private System.Windows.Forms.Panel _scVillagePanel;
+        private System.Windows.Forms.Panel _scDivider;
+        private System.Windows.Forms.Panel _scContentPanel;
     }
 }

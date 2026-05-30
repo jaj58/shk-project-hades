@@ -104,6 +104,7 @@
     <Compile Include="Kingdoms\Bot\Modules\PopularityModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\RadarModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\RecruitingModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\ScoutModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\TradeModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\VillageBuilderModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\VillageSyncModule.cs" />

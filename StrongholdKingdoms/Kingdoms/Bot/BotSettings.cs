@@ -23,6 +23,7 @@ namespace Kingdoms.Bot
         public AutoBombSettings AutoBomb = new AutoBombSettings();
         public AutoBombMultiSettings AutoBombMulti = new AutoBombMultiSettings();
         public PopularitySettings Popularity = new PopularitySettings();
+        public ScoutSettings Scout = new ScoutSettings();
         public MiscSettings Misc = new MiscSettings();
         public AutoSettings Auto = new AutoSettings();
 
@@ -68,7 +69,10 @@ namespace Kingdoms.Bot
             }
             catch (Exception ex)
             {
-                BotLogger.Log("BotSettings", BotLogLevel.Error, "Failed to save settings: " + ex.Message);
+                string msg = ex.Message;
+                if (ex.InnerException != null) msg += " | Inner: " + ex.InnerException.Message;
+                if (ex.InnerException?.InnerException != null) msg += " | Inner2: " + ex.InnerException.InnerException.Message;
+                BotLogger.Log("BotSettings", BotLogLevel.Error, "Failed to save settings: " + msg);
             }
         }
     }
@@ -968,5 +972,71 @@ namespace Kingdoms.Bot
         public bool WasAutoStarted = false;
         public bool ManuallyDisabledDuringWindow = false;
         public int LastPlayedCardInstanceId = 0;
+    }
+
+    // =========================================================================
+    // Scout Module Settings
+    // =========================================================================
+
+    public enum ScoutPriority
+    {
+        ResourcePriority = 0,  // type order in scout list first, distance as tiebreak
+        RangePriority    = 1   // nearest stash first, regardless of type order
+    }
+
+    [Serializable]
+    public class ScoutSettings
+    {
+        public bool Enabled = false;
+        public int CycleIntervalSeconds = 60;
+        public int MaxScoutTimeSeconds = 1200;
+        public int AutoHireScouts = 0;          // 0 = disabled; 1-8 = target count (capped by Research_Scouts)
+        public int DelayBetweenSendsMs = 3000;
+        public bool DisableOnScoutCardExpiry = false;
+        public bool ScoutCardsWereActive = false;
+        public ScoutPriority Priority = ScoutPriority.ResourcePriority;
+        public bool SendOneScout = false;
+        public bool SendOneOnNewStash = true;
+        public List<VillageScoutSettings> Villages = new List<VillageScoutSettings>();
+
+        public VillageScoutSettings GetVillageSettings(int villageId)
+        {
+            foreach (VillageScoutSettings v in Villages)
+            {
+                if (v.VillageId == villageId) return v;
+            }
+            VillageScoutSettings newV = new VillageScoutSettings();
+            newV.VillageId = villageId;
+            newV.InitDefaults();
+            Villages.Add(newV);
+            return newV;
+        }
+    }
+
+    [Serializable]
+    public class VillageScoutSettings
+    {
+        public int VillageId;
+        public bool ScoutingEnabled = true;
+        public List<int> ResourceTypesToScout = new List<int>();
+        public List<int> ResourceTypesToIgnore = new List<int>();
+
+        public void InitDefaults()
+        {
+            if (ResourceTypesToScout.Count > 0) return;
+            // Valid stash special IDs: TradeTypeIds + 100, plus 100 (new stash)
+            int[] types = new int[]
+            {
+                100,                         // New Stash
+                106, 107, 108, 109,          // Wood, Stone, Iron, Pitch
+                112, 113, 114, 115,          // Ale, Apples, Bread, Vegetables
+                116, 117, 118, 122,          // Meat, Cheese, Fish, Venison
+                121, 126, 119, 133,          // Furniture, Metalware, Clothes, Wine
+                123, 124, 125,               // Salt, Spices, Silk
+                129, 128, 131, 130, 132      // Bows, Pikes, Armour, Swords, Catapults
+            };
+            foreach (int t in types)
+                ResourceTypesToScout.Add(t);
+        }
     }
 }

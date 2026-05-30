@@ -49,8 +49,8 @@ namespace Kingdoms
       this.clearControls();
       CustomSelfDrawPanel.CSDImage csdImage = this.backGround.init(true, 1000);
       this.backGround.stretchBackground();
-      this.backGround.Size = new Size(199, 320);
-      csdImage.Size = new Size(csdImage.Width, csdImage.Height + 47);
+      this.backGround.Size = new Size(199, 350);
+      csdImage.Size = new Size(csdImage.Width, csdImage.Height + 110);
       this.backGround.centerSubHeading();
       this.addControl((CustomSelfDrawPanel.CSDControl) this.backGround);
       this.backGround.initTravelButton(this.homeVillageButton);
@@ -78,24 +78,24 @@ namespace Kingdoms
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.returnButton);
       this.forceReturnOff = false;
 
-      // Sit tight under the target village button (ends ~y=177)
-      this.attackTypeIcon.Position = new Point(6, 178);
-      this.attackTypeIcon.Size = new Size(46, 46);   // doubled
+      // Sits right under the visual end of the target village button (~y=158)
+      this.attackTypeIcon.Position = new Point(6, 161);
+      this.attackTypeIcon.Size = new Size(46, 46);
       this.attackTypeIcon.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeIcon);
 
-      // Vertically centred alongside the icon, shifted right to clear it
-      this.attackTypeLabel.Position = new Point(57, 189);
-      this.attackTypeLabel.Size = new Size(96, 22);
+      // Vertically centred within the 46px icon
+      this.attackTypeLabel.Position = new Point(57, 172);
+      this.attackTypeLabel.Size = new Size(90, 22);
       this.attackTypeLabel.Font = FontManager.GetFont("Arial", 9.5f, FontStyle.Bold);
       this.attackTypeLabel.Color = ARGBColors.Black;
       this.attackTypeLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
       this.attackTypeLabel.Visible = false;
       csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.attackTypeLabel);
 
-      // Pillage % on the same line, to the right of the attack type label
-      this.pillageLabel.Position = new Point(155, 189);
-      this.pillageLabel.Size = new Size(30, 22);
+      // Pillage % on the same line, right of the attack type label
+      this.pillageLabel.Position = new Point(150, 172);
+      this.pillageLabel.Size = new Size(34, 22);
       this.pillageLabel.Font = FontManager.GetFont("Arial", 9.5f, FontStyle.Bold);
       this.pillageLabel.Color = ARGBColors.Black;
       this.pillageLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
@@ -116,7 +116,7 @@ namespace Kingdoms
       const int iconW = 31;   // 28 × 1.1
       const int iconH = 33;   // 30 × 1.1
       int[] colX = new int[] { 4, 65, 126 };   // 3 cols × 61px in ~185px
-      int[] rowY = new int[] { 228, 264 };    // directly under icon (ends y=224) + 4px gap
+      int[] rowY = new int[] { 211, 248 };    // directly under icon (ends y=207) + 4px gap
 
       for (int i = 0; i < 6; i++)
       {
@@ -423,12 +423,12 @@ namespace Kingdoms
       switch (attackType)
       {
         case 1:  return SK.Text("AttackType_Capture",          "Capture");
-        case 2:  return SK.Text("AttackType_PillageStockpile", "Pillage Stockpile");
+        case 2:  return SK.Text("AttackType_PillageStockpile", "Pillage Stk.");
         case 3:  return SK.Text("AttackType_Ransack",          "Ransack");
-        case 4:  return SK.Text("AttackType_PillageGranary",   "Pillage Granary");
-        case 5:  return SK.Text("AttackType_PillageBanquet",   "Pillage Banquet");
+        case 4:  return SK.Text("AttackType_PillageGranary",   "Pillage Grn.");
+        case 5:  return SK.Text("AttackType_PillageBanquet",   "Pillage Bnq.");
         case 6:  return SK.Text("AttackType_PillageAle",       "Pillage Ale");
-        case 7:  return SK.Text("AttackType_PillageArmoury",   "Pillage Armoury");
+        case 7:  return SK.Text("AttackType_PillageArmoury",   "Pillage Arm.");
         case 9:  return SK.Text("AttackType_Raze",             "Raze");
         case 11: return SK.Text("AttackType_Vandalise",        "Vandalise");
         case 12: return SK.Text("AttackType_GoldRaid",         "Gold Raid");
@@ -497,7 +497,7 @@ namespace Kingdoms
       this.AutoScaleMode = AutoScaleMode.None;
       this.BackColor = ARGBColors.Transparent;
       this.Name = nameof (SelectArmyPanel2);
-      this.Size = new Size(199, 320);
+      this.Size = new Size(199, 350);
       this.ResumeLayout(false);
     }
   }
