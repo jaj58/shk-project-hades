@@ -2805,6 +2805,9 @@ namespace Kingdoms.Bot.UI
                 return;
 
             TradeSettings s = BotEngine.Instance.Settings.Trade;
+            // Set the priority combo FIRST so that when _trEnabledCheck.Checked fires
+            // TrWriteToSettings() via CheckedChanged, SelectedIndex is already valid.
+            _trPriorityCombo.SelectedIndex = (int)s.Priority;
             _trEnabledCheck.Checked = s.Enabled;
             _trIntervalInput.Value = Math.Max(_trIntervalInput.Minimum,
                 Math.Min(_trIntervalInput.Maximum, s.CycleIntervalSeconds));
@@ -2820,7 +2823,6 @@ namespace Kingdoms.Bot.UI
             _trAutoHireLimitInput.Value = Math.Max(_trAutoHireLimitInput.Minimum,
                 Math.Min(_trAutoHireLimitInput.Maximum, s.AutoHireMerchantsLimit));
             _trIgnoreTransactionsCheck.Checked = s.IgnoreCurrentTransactions;
-            _trPriorityCombo.SelectedIndex = (int)s.Priority;
             _trDisableOnCardExpiryCheck.Checked = s.DisableOnTradeCardExpiry;
 
             TrRefreshMarkets();
@@ -2843,7 +2845,8 @@ namespace Kingdoms.Bot.UI
             s.AutoHireMerchants = _trAutoHireCheck.Checked;
             s.AutoHireMerchantsLimit = (int)_trAutoHireLimitInput.Value;
             s.IgnoreCurrentTransactions = _trIgnoreTransactionsCheck.Checked;
-            s.Priority = (TradePriority)_trPriorityCombo.SelectedIndex;
+            if (_trPriorityCombo.SelectedIndex >= 0)
+                s.Priority = (TradePriority)_trPriorityCombo.SelectedIndex;
             s.DisableOnTradeCardExpiry = _trDisableOnCardExpiryCheck.Checked;
 
             // Save currently displayed village's resource grid
