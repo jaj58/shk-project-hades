@@ -341,7 +341,6 @@ namespace Kingdoms.Bot.UI
             this._miscSaleStartValue = new System.Windows.Forms.Label();
             this._miscSaleEndLabel = new System.Windows.Forms.Label();
             this._miscSaleEndValue = new System.Windows.Forms.Label();
-            this._miscSaleRefreshBtn = new System.Windows.Forms.Button();
             this._logPanel = new System.Windows.Forms.Panel();
             this._logBox = new System.Windows.Forms.RichTextBox();
             this._logHeader = new System.Windows.Forms.Label();
@@ -4328,7 +4327,6 @@ namespace Kingdoms.Bot.UI
             // _miscSettingsPanel
             // 
             this._miscSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
-            this._miscSettingsPanel.Controls.Add(this._miscSaleRefreshBtn);
             this._miscSettingsPanel.Controls.Add(this._miscSaleEndValue);
             this._miscSettingsPanel.Controls.Add(this._miscSaleEndLabel);
             this._miscSettingsPanel.Controls.Add(this._miscSaleStartValue);
@@ -4431,18 +4429,6 @@ namespace Kingdoms.Bot.UI
             this._miscSaleEndValue.Location = new System.Drawing.Point(90, 150);
             this._miscSaleEndValue.Name = "_miscSaleEndValue";
             this._miscSaleEndValue.Text = "—";
-            //
-            // _miscSaleRefreshBtn
-            //
-            this._miscSaleRefreshBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(60)))), ((int)(((byte)(63)))), ((int)(((byte)(80)))));
-            this._miscSaleRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._miscSaleRefreshBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
-            this._miscSaleRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._miscSaleRefreshBtn.Location = new System.Drawing.Point(200, 103);
-            this._miscSaleRefreshBtn.Name = "_miscSaleRefreshBtn";
-            this._miscSaleRefreshBtn.Size = new System.Drawing.Size(70, 24);
-            this._miscSaleRefreshBtn.TabIndex = 1;
-            this._miscSaleRefreshBtn.Text = "Refresh";
             //
             // _logPanel
             //
@@ -4912,7 +4898,6 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Label _miscSaleStartValue;
         private System.Windows.Forms.Label _miscSaleEndLabel;
         private System.Windows.Forms.Label _miscSaleEndValue;
-        private System.Windows.Forms.Button _miscSaleRefreshBtn;
         // Popularity tab controls
         private System.Windows.Forms.TabPage _popularityPage;
         private System.Windows.Forms.TabPage _autoPage;

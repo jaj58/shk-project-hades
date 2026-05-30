@@ -5122,7 +5122,6 @@ namespace Kingdoms.Bot.UI
         {
             _miscCollectFreeCardsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             _miscDisableCannotPlayCardCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
-            _miscSaleRefreshBtn.Click += delegate { MiscRefreshSaleInfo(); };
             MiscRefreshSaleInfo();
         }
 
