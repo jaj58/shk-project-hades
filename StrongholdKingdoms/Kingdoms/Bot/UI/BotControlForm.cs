@@ -5659,9 +5659,10 @@ namespace Kingdoms.Bot.UI
 
             // Build module rows
             _autoModuleRows.Clear();
-            string[] moduleNames = { "Trade", "Recruiting", "VillageBuilder", "CastleRepair", "Popularity" };
-            string[] moduleLabels = { "Trade", "Recruiting", "Village Builder", "Castle Repair", "Popularity" };
-            int y = 2;
+            string[] moduleNames  = { "Trade", "Recruiting", "VillageBuilder", "CastleRepair", "Popularity", "Scout" };
+            string[] moduleLabels = { "Trade", "Recruiting", "Village Builder", "Castle Repair", "Popularity", "Scout" };
+            // Start at y=60 so rows clear any layout/scroll offset that hides the top of the panel
+            int y = 60;
             for (int i = 0; i < moduleNames.Length; i++)
             {
                 AutoModuleRow row = BuildModuleRow(moduleNames[i], moduleLabels[i], y);
