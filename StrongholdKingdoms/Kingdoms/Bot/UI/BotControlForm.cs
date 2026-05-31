@@ -5149,7 +5149,8 @@ namespace Kingdoms.Bot.UI
             MiscSettings s = BotEngine.Instance.Settings.Misc;
             s.CollectFreeCards = _miscCollectFreeCardsCheck.Checked;
             s.DisableCannotPlayCardPopup = _miscDisableCannotPlayCardCheck.Checked;
-            BotEngine.Instance.SaveSettings();
+            // Live only — consistent with every other tab. Persistence happens via the
+            // Save Settings button; Load Settings reverts to the last saved snapshot.
         }
 
         private void MiscRefreshSaleInfo()
