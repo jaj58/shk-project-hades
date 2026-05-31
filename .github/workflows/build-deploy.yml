@@ -106,6 +106,22 @@ jobs:
       - name: Build HadesUpdater
         run: msbuild HadesUpdater\HadesUpdater.csproj /p:Configuration=Release /p:Platform="AnyCPU" /v:quiet /nologo /clp:ErrorsOnly
 
+      - name: Download ConfuserEx
+        shell: pwsh
+        run: |
+          $version = "1.6.0"
+          $url     = "https://github.com/mkaring/ConfuserEx/releases/download/v$version/ConfuserEx-CLI.zip"
+          Invoke-WebRequest -Uri $url -OutFile "ConfuserEx-CLI.zip" -UseBasicParsing
+          Expand-Archive "ConfuserEx-CLI.zip" -DestinationPath "ConfuserEx"
+
+      - name: Obfuscate StrongholdKingdoms.exe
+        shell: pwsh
+        run: |
+          & ".\ConfuserEx\ConfuserEx.CLI.exe" -n confuserex.crproj
+          if ($LASTEXITCODE -ne 0) { throw "Obfuscation failed (exit $LASTEXITCODE)" }
+          Copy-Item "Obfuscated\StrongholdKingdoms.exe" "StrongholdKingdoms\bin\Release\StrongholdKingdoms.exe" -Force
+          Write-Host "Obfuscation applied." -ForegroundColor Green
+
       - name: Apply 4GB patch
         shell: pwsh
         run: .\4gb_patch.exe StrongholdKingdoms\bin\Release\StrongholdKingdoms.exe
