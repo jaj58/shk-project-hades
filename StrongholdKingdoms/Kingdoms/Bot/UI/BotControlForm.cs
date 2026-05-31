@@ -5491,6 +5491,7 @@ namespace Kingdoms.Bot.UI
             tierCombo.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             foreach (string t in def.Tiers) tierCombo.Items.Add(t);
             if (tierCombo.Items.Count > 0) tierCombo.SelectedIndex = 0;
+            tierCombo.SelectedIndexChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.TierCombo = tierCombo;
             panel.Controls.Add(tierCombo);
 
@@ -5512,6 +5513,7 @@ namespace Kingdoms.Bot.UI
             targetInput.BackColor = Color.FromArgb(40, 40, 55);
             targetInput.ForeColor = TextPri;
             targetInput.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            targetInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.TargetInput = targetInput;
             panel.Controls.Add(targetInput);
 
@@ -5533,6 +5535,7 @@ namespace Kingdoms.Bot.UI
             delayH.BackColor = Color.FromArgb(40, 40, 55);
             delayH.ForeColor = TextPri;
             delayH.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            delayH.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.DelayHInput = delayH;
             panel.Controls.Add(delayH);
 
@@ -5553,6 +5556,7 @@ namespace Kingdoms.Bot.UI
             delayM.BackColor = Color.FromArgb(40, 40, 55);
             delayM.ForeColor = TextPri;
             delayM.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            delayM.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.DelayMInput = delayM;
             panel.Controls.Add(delayM);
 
@@ -5726,6 +5730,7 @@ namespace Kingdoms.Bot.UI
                 cb.Location = new Point(120 + col * 32, rowY);
                 cb.Size = new Size(20, 18);
                 cb.BackColor = Color.Transparent;
+                cb.CheckedChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
                 row.HourChecks[h] = cb;
                 panel.Controls.Add(cb);
             }
@@ -5739,6 +5744,13 @@ namespace Kingdoms.Bot.UI
             clb.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             clb.CheckOnClick = true;
             clb.BorderStyle = BorderStyle.FixedSingle;
+            // ItemCheck fires before CheckedItems updates, so defer the save until the new state settles
+            clb.ItemCheck += delegate
+            {
+                if (_autoLoading) return;
+                if (IsHandleCreated)
+                    BeginInvoke((Action)(delegate { if (!_autoLoading) AutoWriteToSettings(); }));
+            };
             row.CardsListBox = clb;
             panel.Controls.Add(clb);
 
@@ -5751,6 +5763,7 @@ namespace Kingdoms.Bot.UI
             replayCard.ForeColor = TextPri;
             replayCard.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             replayCard.Checked = true;
+            replayCard.CheckedChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.ReplayCardCheck = replayCard;
             panel.Controls.Add(replayCard);
 
@@ -5762,6 +5775,7 @@ namespace Kingdoms.Bot.UI
             autoOff.BackColor = Color.Transparent;
             autoOff.ForeColor = TextPri;
             autoOff.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            autoOff.CheckedChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.AutoDisableCheck = autoOff;
             panel.Controls.Add(autoOff);
 
