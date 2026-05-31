@@ -918,6 +918,8 @@ namespace Kingdoms.Bot
     public class AutoSettings
     {
         public bool Enabled = false;
+        public int CardCheckIntervalSeconds = 30;    // how often AutoCardModule scans production goods
+        public int ModuleCheckIntervalSeconds = 60;  // how often AutoModuleSchedulerModule evaluates schedules
         public List<ProductionCardSettings> ProductionCards = new List<ProductionCardSettings>();
         public List<ModuleScheduleSettings> ModuleSchedules = new List<ModuleScheduleSettings>();
 

@@ -130,6 +130,9 @@ namespace Kingdoms.Bot.UI
         private Panel _autoProdScrollPanel;
         private Panel _autoModuleScrollPanel;
         private Label _autoServerTimeLabel;
+        private NumericUpDown _autoCardIntervalInput;
+        private NumericUpDown _autoModuleIntervalInput;
+        private bool _autoLoading;
         private List<PopularityVillageRow> _ppVillageRows = new List<PopularityVillageRow>();
 
         private int _trSelectedRouteIndex = -1;
@@ -5353,8 +5356,50 @@ namespace Kingdoms.Bot.UI
             _autoPage.ResumeLayout(false);
         }
 
+        // Builds a docked-top strip with "<label> [N] seconds" for a check-interval control.
+        private Panel BuildAutoIntervalBar(string labelText, out NumericUpDown input, int defaultVal, int min, int max)
+        {
+            Panel bar = new Panel();
+            bar.Dock = DockStyle.Top;
+            bar.Height = 28;
+            bar.BackColor = Color.FromArgb(24, 24, 32);
+
+            Label lbl = new Label();
+            lbl.Text = labelText;
+            lbl.Location = new Point(8, 6);
+            lbl.AutoSize = true;
+            lbl.ForeColor = TextSec;
+            lbl.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            bar.Controls.Add(lbl);
+
+            input = new NumericUpDown();
+            input.Minimum = min;
+            input.Maximum = max;
+            input.Value = Math.Max(min, Math.Min(max, defaultVal));
+            input.Location = new Point(200, 4);
+            input.Size = new Size(64, 20);
+            input.BackColor = Color.FromArgb(40, 40, 55);
+            input.ForeColor = TextPri;
+            bar.Controls.Add(input);
+
+            Label unit = new Label();
+            unit.Text = "seconds";
+            unit.Location = new Point(270, 6);
+            unit.AutoSize = true;
+            unit.ForeColor = TextSec;
+            unit.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            bar.Controls.Add(unit);
+
+            return bar;
+        }
+
         private void BuildProductionSubTab(TabPage page)
         {
+            // Interval strip — added FIRST so it docks at the very top, above the column header
+            Panel ivBar = BuildAutoIntervalBar("Check production cards every", out _autoCardIntervalInput, 30, 5, 3600);
+            _autoCardIntervalInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
+            page.Controls.Add(ivBar);
+
             // Header row
             Panel header = new Panel();
             header.Dock = DockStyle.Top;
@@ -5418,11 +5463,12 @@ namespace Kingdoms.Bot.UI
             panel.BackColor = Color.FromArgb(30, 30, 42);
             row.RowPanel = panel;
 
-            // Enabled checkbox
+            // Enabled checkbox — persist + apply immediately on toggle (other tabs behave the same)
             CheckBox enabled = new CheckBox();
             enabled.Location = new Point(6, 4);
             enabled.Size = new Size(18, 18);
             enabled.BackColor = Color.Transparent;
+            enabled.CheckedChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.EnabledCheck = enabled;
             panel.Controls.Add(enabled);
 
@@ -5547,6 +5593,11 @@ namespace Kingdoms.Bot.UI
 
         private void BuildModulesSubTab(TabPage page)
         {
+            // Interval strip — added FIRST so it docks at the very top
+            Panel ivBar = BuildAutoIntervalBar("Check module schedules every", out _autoModuleIntervalInput, 60, 10, 3600);
+            _autoModuleIntervalInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
+            page.Controls.Add(ivBar);
+
             // Server time label
             _autoServerTimeLabel = new Label();
             _autoServerTimeLabel.Text = "Server time: --:--";
@@ -5749,6 +5800,18 @@ namespace Kingdoms.Bot.UI
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
             AutoSettings s = BotEngine.Instance.Settings.Auto;
 
+            _autoLoading = true;   // suppress change handlers while we populate controls
+            try
+            {
+
+            // Interval inputs
+            if (_autoCardIntervalInput != null)
+                _autoCardIntervalInput.Value = Math.Max(_autoCardIntervalInput.Minimum,
+                    Math.Min(_autoCardIntervalInput.Maximum, s.CardCheckIntervalSeconds));
+            if (_autoModuleIntervalInput != null)
+                _autoModuleIntervalInput.Value = Math.Max(_autoModuleIntervalInput.Minimum,
+                    Math.Min(_autoModuleIntervalInput.Maximum, s.ModuleCheckIntervalSeconds));
+
             // Populate production rows from settings
             foreach (AutoProdRow row in _autoProdRows)
             {
@@ -5774,6 +5837,8 @@ namespace Kingdoms.Bot.UI
             }
 
             // Scroll reset is handled by moduleTab.Enter in BuildAutoTabUI — nothing to do here.
+            }
+            finally { _autoLoading = false; }
         }
 
         private void AutoPopulateModuleCardsListBox(CheckedListBox clb, System.Collections.Generic.List<int> selectedDefIds)
@@ -5803,6 +5868,11 @@ namespace Kingdoms.Bot.UI
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
             AutoSettings s = BotEngine.Instance.Settings.Auto;
+
+            if (_autoCardIntervalInput != null)
+                s.CardCheckIntervalSeconds = (int)_autoCardIntervalInput.Value;
+            if (_autoModuleIntervalInput != null)
+                s.ModuleCheckIntervalSeconds = (int)_autoModuleIntervalInput.Value;
 
             foreach (AutoProdRow row in _autoProdRows)
             {

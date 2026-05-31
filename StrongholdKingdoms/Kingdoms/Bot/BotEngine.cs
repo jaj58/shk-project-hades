@@ -109,7 +109,7 @@ namespace Kingdoms.Bot
                 else if (module is Modules.PopularityModule)
                     module.Enabled = _settings.Popularity.Enabled;
                 else if (module is Modules.AutoCardModule || module is Modules.AutoModuleSchedulerModule)
-                    module.Enabled = _settings.Auto.Enabled;
+                    module.Enabled = true; // Always enabled — gated internally per-good / per-schedule
                 else if (module is Modules.ScoutModule)
                     module.Enabled = _settings.Scout.Enabled;
             }
@@ -139,8 +139,7 @@ namespace Kingdoms.Bot
                     _settings.AutoBomb.Enabled = module.Enabled;
                 else if (module is Modules.PopularityModule)
                     _settings.Popularity.Enabled = module.Enabled;
-                else if (module is Modules.AutoCardModule || module is Modules.AutoModuleSchedulerModule)
-                    _settings.Auto.Enabled = module.Enabled;
+                // Auto modules are always enabled and gated internally — nothing to sync back.
                 else if (module is Modules.ScoutModule)
                     _settings.Scout.Enabled = module.Enabled;
             }

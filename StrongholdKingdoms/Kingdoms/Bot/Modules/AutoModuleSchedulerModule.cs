@@ -8,13 +8,25 @@ namespace Kingdoms.Bot.Modules
     public class AutoModuleSchedulerModule : BotModuleBase
     {
         public override string ModuleName { get { return "Auto Module Scheduler"; } }
-        public override TimeSpan Interval { get { return TimeSpan.FromSeconds(60); } }
+
+        // Interval is user-configurable via Auto.ModuleCheckIntervalSeconds (min 10s).
+        public override TimeSpan Interval
+        {
+            get
+            {
+                int s = 60;
+                if (Engine != null && Engine.Settings != null && Engine.Settings.Auto != null)
+                    s = Engine.Settings.Auto.ModuleCheckIntervalSeconds;
+                if (s < 10) s = 10;
+                return TimeSpan.FromSeconds(s);
+            }
+        }
 
         protected override void OnInitialize() { }
 
         protected override void OnTick()
         {
-            if (Engine == null || Engine.Settings == null || !Engine.Settings.Auto.Enabled)
+            if (Engine == null || Engine.Settings == null || Engine.Settings.Auto == null)
                 return;
 
             DateTime serverTime;
@@ -22,6 +34,13 @@ namespace Kingdoms.Bot.Modules
             catch { return; }
 
             int currentHour = serverTime.Hour;
+
+            int scheduledCount = 0;
+            foreach (ModuleScheduleSettings ms in Engine.Settings.Auto.ModuleSchedules)
+                if (ms.HourlySchedule != null && currentHour < ms.HourlySchedule.Length && ms.HourlySchedule[currentHour])
+                    scheduledCount++;
+            LogDebug("Tick — server hour " + currentHour + ": " + scheduledCount + " module(s) scheduled this hour of "
+                + Engine.Settings.Auto.ModuleSchedules.Count + " configured.");
 
             foreach (ModuleScheduleSettings entry in Engine.Settings.Auto.ModuleSchedules)
             {

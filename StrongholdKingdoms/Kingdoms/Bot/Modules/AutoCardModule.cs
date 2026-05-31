@@ -9,7 +9,19 @@ namespace Kingdoms.Bot.Modules
     public class AutoCardModule : BotModuleBase
     {
         public override string ModuleName { get { return "Auto Card"; } }
-        public override TimeSpan Interval { get { return TimeSpan.FromSeconds(30); } }
+
+        // Interval is user-configurable via Auto.CardCheckIntervalSeconds (min 5s).
+        public override TimeSpan Interval
+        {
+            get
+            {
+                int s = 30;
+                if (Engine != null && Engine.Settings != null && Engine.Settings.Auto != null)
+                    s = Engine.Settings.Auto.CardCheckIntervalSeconds;
+                if (s < 5) s = 5;
+                return TimeSpan.FromSeconds(s);
+            }
+        }
 
         // Grace period after playing a card before we trust an "inactive" reading. UserCardData
         // can lag a few seconds behind the play; without this we'd miscount cards as expired.
@@ -19,12 +31,18 @@ namespace Kingdoms.Bot.Modules
 
         protected override void OnTick()
         {
-            if (Engine == null || Engine.Settings == null || !Engine.Settings.Auto.Enabled)
+            if (Engine == null || Engine.Settings == null || Engine.Settings.Auto == null)
                 return;
 
             DateTime serverTime;
             try { serverTime = VillageMap.getCurrentServerTime(); }
             catch { return; }
+
+            int enabledGoods = 0;
+            foreach (ProductionCardSettings pc in Engine.Settings.Auto.ProductionCards)
+                if (pc.Enabled) enabledGoods++;
+            LogDebug("Tick — checking " + enabledGoods + " enabled good(s) of "
+                + Engine.Settings.Auto.ProductionCards.Count + " configured.");
 
             foreach (ProductionCardSettings p in Engine.Settings.Auto.ProductionCards)
             {
