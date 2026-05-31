@@ -5339,17 +5339,14 @@ namespace Kingdoms.Bot.UI
             TabPage prodTab = new TabPage("Production");
             prodTab.BackColor = Color.FromArgb(24, 24, 32);
             BuildProductionSubTab(prodTab);
+            // Reset scroll to top when the tab is entered. BeginInvoke defers it until AFTER
+            // WinForms' focus-into-view pass, which is what otherwise pushes the first row off.
+            prodTab.Enter += delegate { AutoResetScroll(_autoProdScrollPanel); };
 
             TabPage moduleTab = new TabPage("Modules");
             moduleTab.BackColor = Color.FromArgb(24, 24, 32);
             BuildModulesSubTab(moduleTab);
-            // Reset scroll to top every time the Modules tab is entered — this is the most
-            // reliable hook because it fires after WinForms has fully laid out the tab.
-            moduleTab.Enter += delegate
-            {
-                if (_autoModuleScrollPanel != null)
-                    _autoModuleScrollPanel.AutoScrollPosition = new System.Drawing.Point(0, 0);
-            };
+            moduleTab.Enter += delegate { AutoResetScroll(_autoModuleScrollPanel); };
 
             innerTabs.TabPages.Add(prodTab);
             innerTabs.TabPages.Add(moduleTab);
@@ -5357,51 +5354,100 @@ namespace Kingdoms.Bot.UI
             _autoPage.ResumeLayout(false);
         }
 
-        // Builds a docked-top strip with "<label> [N] seconds" for a check-interval control.
-        private Panel BuildAutoIntervalBar(string labelText, out NumericUpDown input, int defaultVal, int min, int max)
+        // Builds a docked-top "settings section": a titled strip with a "<label> [N] seconds"
+        // interval control, optionally with a server-time readout (Modules tab).
+        private Panel BuildAutoSettingsSection(string intervalLabel, out NumericUpDown intervalInput,
+            int defaultVal, int min, int max, bool includeServerTime)
         {
-            Panel bar = new Panel();
-            bar.Dock = DockStyle.Top;
-            bar.Height = 28;
-            bar.BackColor = Color.FromArgb(24, 24, 32);
+            Panel section = new Panel();
+            section.Dock = DockStyle.Top;
+            section.Height = includeServerTime ? 54 : 36;
+            section.BackColor = Color.FromArgb(30, 30, 42);
+
+            Label title = new Label();
+            title.Text = "Settings";
+            title.Location = new Point(8, 4);
+            title.AutoSize = true;
+            title.ForeColor = AccentCol;
+            title.Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold);
+            section.Controls.Add(title);
 
             Label lbl = new Label();
-            lbl.Text = labelText;
-            lbl.Location = new Point(8, 6);
+            lbl.Text = intervalLabel;
+            lbl.Location = new Point(80, 4);
             lbl.AutoSize = true;
             lbl.ForeColor = TextSec;
             lbl.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            bar.Controls.Add(lbl);
+            section.Controls.Add(lbl);
 
-            input = new NumericUpDown();
-            input.Minimum = min;
-            input.Maximum = max;
-            input.Value = Math.Max(min, Math.Min(max, defaultVal));
-            input.Location = new Point(200, 4);
-            input.Size = new Size(64, 20);
-            input.BackColor = Color.FromArgb(40, 40, 55);
-            input.ForeColor = TextPri;
-            bar.Controls.Add(input);
+            intervalInput = new NumericUpDown();
+            intervalInput.Minimum = min;
+            intervalInput.Maximum = max;
+            intervalInput.Value = Math.Max(min, Math.Min(max, defaultVal));
+            intervalInput.Location = new Point(270, 2);
+            intervalInput.Size = new Size(64, 20);
+            intervalInput.BackColor = Color.FromArgb(40, 40, 55);
+            intervalInput.ForeColor = TextPri;
+            section.Controls.Add(intervalInput);
 
             Label unit = new Label();
             unit.Text = "seconds";
-            unit.Location = new Point(270, 6);
+            unit.Location = new Point(340, 4);
             unit.AutoSize = true;
             unit.ForeColor = TextSec;
             unit.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            bar.Controls.Add(unit);
+            section.Controls.Add(unit);
 
-            return bar;
+            if (includeServerTime)
+            {
+                _autoServerTimeLabel = new Label();
+                _autoServerTimeLabel.Text = "Server time: --:--:--";
+                _autoServerTimeLabel.Location = new Point(8, 30);
+                _autoServerTimeLabel.AutoSize = true;
+                _autoServerTimeLabel.ForeColor = TextSec;
+                _autoServerTimeLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+                section.Controls.Add(_autoServerTimeLabel);
+                AutoUpdateServerTime();
+            }
+
+            // Thin bottom separator to set the section off from the list below
+            Panel sep = new Panel();
+            sep.Dock = DockStyle.Bottom;
+            sep.Height = 1;
+            sep.BackColor = Color.FromArgb(60, 60, 80);
+            section.Controls.Add(sep);
+
+            return section;
+        }
+
+        // Resets a scrollable rows panel back to the top. Deferred via BeginInvoke so it runs after
+        // WinForms scrolls a freshly-focused child into view (which is what hides the first row).
+        private void AutoResetScroll(Panel scrollPanel)
+        {
+            if (scrollPanel == null) return;
+            if (IsHandleCreated)
+                BeginInvoke((Action)(delegate
+                {
+                    if (scrollPanel != null)
+                        scrollPanel.AutoScrollPosition = new System.Drawing.Point(0, 0);
+                }));
+            else
+                scrollPanel.AutoScrollPosition = new System.Drawing.Point(0, 0);
         }
 
         private void BuildProductionSubTab(TabPage page)
         {
-            // Interval strip — added FIRST so it docks at the very top, above the column header
-            Panel ivBar = BuildAutoIntervalBar("Check production cards every", out _autoCardIntervalInput, 30, 5, 3600);
-            _autoCardIntervalInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
-            page.Controls.Add(ivBar);
+            // WinForms docks same-edge controls in reverse add-order: the Fill panel must be added
+            // FIRST (innermost), then Top sections, with the TOP-MOST section added LAST.
 
-            // Header row
+            // 1) Scrollable production rows panel (Fill) — added first
+            _autoProdScrollPanel = new Panel();
+            _autoProdScrollPanel.AutoScroll = true;
+            _autoProdScrollPanel.Dock = DockStyle.Fill;
+            _autoProdScrollPanel.BackColor = Color.FromArgb(24, 24, 32);
+            page.Controls.Add(_autoProdScrollPanel);
+
+            // 2) Column header (docks just under the settings section)
             Panel header = new Panel();
             header.Dock = DockStyle.Top;
             header.Height = 24;
@@ -5420,16 +5466,15 @@ namespace Kingdoms.Bot.UI
             }
             page.Controls.Add(header);
 
-            // Scrollable production rows panel
-            _autoProdScrollPanel = new Panel();
-            _autoProdScrollPanel.AutoScroll = true;
-            _autoProdScrollPanel.Dock = DockStyle.Fill;
-            _autoProdScrollPanel.BackColor = Color.FromArgb(24, 24, 32);
-            page.Controls.Add(_autoProdScrollPanel);
+            // 3) Global settings section (Top) — added LAST so it docks at the very top
+            Panel settings = BuildAutoSettingsSection("Check production cards every",
+                out _autoCardIntervalInput, 30, 5, 3600, false);
+            _autoCardIntervalInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
+            page.Controls.Add(settings);
 
             // Build rows
             _autoProdRows.Clear();
-            int y = 0;
+            int y = 4;
             string lastSection = null;
             foreach (ProductionGoodDef def in ProductionCardCatalog.Goods)
             {
@@ -5598,25 +5643,16 @@ namespace Kingdoms.Bot.UI
 
         private void BuildModulesSubTab(TabPage page)
         {
-            // Interval strip — added FIRST so it docks at the very top
-            Panel ivBar = BuildAutoIntervalBar("Check module schedules every", out _autoModuleIntervalInput, 60, 10, 3600);
-            _autoModuleIntervalInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
-            page.Controls.Add(ivBar);
+            // Same docking discipline as Production: Fill panel first, Top sections after, topmost last.
 
-            // Server time label
-            _autoServerTimeLabel = new Label();
-            _autoServerTimeLabel.Text = "Server time: --:--";
-            _autoServerTimeLabel.Dock = DockStyle.Top;
-            _autoServerTimeLabel.Height = 22;
-            _autoServerTimeLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            _autoServerTimeLabel.Padding = new Padding(8, 0, 0, 0);
-            _autoServerTimeLabel.BackColor = Color.FromArgb(32, 32, 44);
-            _autoServerTimeLabel.ForeColor = TextSec;
-            _autoServerTimeLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            page.Controls.Add(_autoServerTimeLabel);
-            AutoUpdateServerTime();
+            // 1) Scrollable module rows (Fill) — added first
+            _autoModuleScrollPanel = new Panel();
+            _autoModuleScrollPanel.AutoScroll = true;
+            _autoModuleScrollPanel.Dock = DockStyle.Fill;
+            _autoModuleScrollPanel.BackColor = Color.FromArgb(24, 24, 32);
+            page.Controls.Add(_autoModuleScrollPanel);
 
-            // Column header
+            // 2) Column header
             Panel header = new Panel();
             header.Dock = DockStyle.Top;
             header.Height = 36;
@@ -5680,19 +5716,17 @@ namespace Kingdoms.Bot.UI
 
             page.Controls.Add(header);
 
-            // Scrollable module rows
-            _autoModuleScrollPanel = new Panel();
-            _autoModuleScrollPanel.AutoScroll = true;
-            _autoModuleScrollPanel.Dock = DockStyle.Fill;
-            _autoModuleScrollPanel.BackColor = Color.FromArgb(24, 24, 32);
-            page.Controls.Add(_autoModuleScrollPanel);
+            // 3) Global settings section (Top) with server-time readout — added LAST so it's topmost
+            Panel settings = BuildAutoSettingsSection("Check module schedules every",
+                out _autoModuleIntervalInput, 60, 10, 3600, true);
+            _autoModuleIntervalInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
+            page.Controls.Add(settings);
 
             // Build module rows
             _autoModuleRows.Clear();
             string[] moduleNames  = { "Trade", "Recruiting", "VillageBuilder", "CastleRepair", "Popularity", "Scout" };
             string[] moduleLabels = { "Trade", "Recruiting", "Village Builder", "Castle Repair", "Popularity", "Scout" };
-            // Start at y=60 so rows clear any layout/scroll offset that hides the top of the panel
-            int y = 60;
+            int y = 4;
             for (int i = 0; i < moduleNames.Length; i++)
             {
                 AutoModuleRow row = BuildModuleRow(moduleNames[i], moduleLabels[i], y);
