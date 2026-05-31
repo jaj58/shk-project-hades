@@ -123,15 +123,11 @@ namespace Kingdoms.Bot.UI
         // Popularity tab runtime state
         private Timer _ppRefreshTimer;
 
-        // Auto tab runtime state
+        // Auto tab runtime state. The control fields (_autoProd*/_autoModule* panels, interval
+        // inputs and server-time label) are declared in BotControlForm.Designer.cs.
         private Timer _autoRefreshTimer;
         private List<AutoProdRow> _autoProdRows = new List<AutoProdRow>();
         private List<AutoModuleRow> _autoModuleRows = new List<AutoModuleRow>();
-        private Panel _autoProdScrollPanel;
-        private Panel _autoModuleScrollPanel;
-        private Label _autoServerTimeLabel;
-        private NumericUpDown _autoCardIntervalInput;
-        private NumericUpDown _autoModuleIntervalInput;
         private bool _autoLoading;
         private List<PopularityVillageRow> _ppVillageRows = new List<PopularityVillageRow>();
 
@@ -5332,81 +5328,52 @@ namespace Kingdoms.Bot.UI
             // data-driven content (settings sections, headers and the catalog/module-driven rows).
             _autoPage.SuspendLayout();
 
-            BuildProductionSubTab(_autoProdTab);
+            BuildProductionSubTab();
             // Reset scroll to top when the tab is entered. BeginInvoke defers it until AFTER
             // WinForms' focus-into-view pass, which is what otherwise pushes the first row off.
             _autoProdTab.Enter += delegate { AutoResetScroll(_autoProdScrollPanel); };
 
-            BuildModulesSubTab(_autoModuleTab);
+            BuildModulesSubTab();
             _autoModuleTab.Enter += delegate { AutoResetScroll(_autoModuleScrollPanel); };
 
             _autoPage.ResumeLayout(false);
         }
 
-        // Builds a docked-top "settings section": a titled strip with a "<label> [N] seconds"
-        // interval control, optionally with a server-time readout (Modules tab).
-        private Panel BuildAutoSettingsSection(string intervalLabel, out NumericUpDown intervalInput,
-            int defaultVal, int min, int max, bool includeServerTime)
+        // Populates a Designer-declared settings panel with its static text labels (the "Settings"
+        // title, the "<intervalLabel>" caption and the "seconds" suffix). The NumericUpDown and, on
+        // the Modules tab, the server-time label are Designer controls already on the panel.
+        private void AutoAddSettingsLabels(Panel panel, string intervalLabel)
         {
-            Panel section = new Panel();
-            section.Dock = DockStyle.Top;
-            section.Height = includeServerTime ? 54 : 36;
-            section.BackColor = Color.FromArgb(30, 30, 42);
-
             Label title = new Label();
             title.Text = "Settings";
-            title.Location = new Point(8, 4);
+            title.Location = new Point(8, 6);
             title.AutoSize = true;
             title.ForeColor = AccentCol;
             title.Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold);
-            section.Controls.Add(title);
+            panel.Controls.Add(title);
 
             Label lbl = new Label();
             lbl.Text = intervalLabel;
-            lbl.Location = new Point(80, 4);
+            lbl.Location = new Point(90, 8);
             lbl.AutoSize = true;
             lbl.ForeColor = TextSec;
             lbl.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            section.Controls.Add(lbl);
-
-            intervalInput = new NumericUpDown();
-            intervalInput.Minimum = min;
-            intervalInput.Maximum = max;
-            intervalInput.Value = Math.Max(min, Math.Min(max, defaultVal));
-            intervalInput.Location = new Point(270, 2);
-            intervalInput.Size = new Size(64, 20);
-            intervalInput.BackColor = Color.FromArgb(40, 40, 55);
-            intervalInput.ForeColor = TextPri;
-            section.Controls.Add(intervalInput);
+            panel.Controls.Add(lbl);
 
             Label unit = new Label();
             unit.Text = "seconds";
-            unit.Location = new Point(340, 4);
+            unit.Location = new Point(356, 8);
             unit.AutoSize = true;
             unit.ForeColor = TextSec;
             unit.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            section.Controls.Add(unit);
-
-            if (includeServerTime)
-            {
-                _autoServerTimeLabel = new Label();
-                _autoServerTimeLabel.Text = "Server time: --:--:--";
-                _autoServerTimeLabel.Location = new Point(8, 30);
-                _autoServerTimeLabel.AutoSize = true;
-                _autoServerTimeLabel.ForeColor = TextSec;
-                _autoServerTimeLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-                section.Controls.Add(_autoServerTimeLabel);
-                AutoUpdateServerTime();
-            }
+            panel.Controls.Add(unit);
 
             // Thin bottom separator to set the section off from the list below
             Panel sep = new Panel();
             sep.Dock = DockStyle.Bottom;
             sep.Height = 1;
             sep.BackColor = Color.FromArgb(60, 60, 80);
-            section.Controls.Add(sep);
-
-            return section;
+            panel.Controls.Add(sep);
         }
 
         // Resets a scrollable rows panel back to the top. Deferred via BeginInvoke so it runs after
@@ -5424,23 +5391,15 @@ namespace Kingdoms.Bot.UI
                 scrollPanel.AutoScrollPosition = new System.Drawing.Point(0, 0);
         }
 
-        private void BuildProductionSubTab(TabPage page)
+        private void BuildProductionSubTab()
         {
-            // WinForms docks same-edge controls in reverse add-order: the Fill panel must be added
-            // FIRST (innermost), then Top sections, with the TOP-MOST section added LAST.
+            // The settings / header / scroll panels and the interval input are declared in the
+            // Designer (and parented into _autoProdTab there). Here we only populate their labels,
+            // wire the interval input and build the catalog-driven rows.
+            AutoAddSettingsLabels(_autoProdSettingsPanel, "Check production cards every");
+            _autoCardIntervalInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
 
-            // 1) Scrollable production rows panel (Fill) — added first
-            _autoProdScrollPanel = new Panel();
-            _autoProdScrollPanel.AutoScroll = true;
-            _autoProdScrollPanel.Dock = DockStyle.Fill;
-            _autoProdScrollPanel.BackColor = Color.FromArgb(24, 24, 32);
-            page.Controls.Add(_autoProdScrollPanel);
-
-            // 2) Column header (docks just under the settings section)
-            Panel header = new Panel();
-            header.Dock = DockStyle.Top;
-            header.Height = 24;
-            header.BackColor = Color.FromArgb(32, 32, 44);
+            // Column header labels
             int[] hx = { 28, 95, 215, 310, 430, 540 };
             string[] hnames = { "", "Good", "Tier", "Target", "Start Delay", "Progress" };
             for (int i = 0; i < hnames.Length; i++)
@@ -5451,15 +5410,8 @@ namespace Kingdoms.Bot.UI
                 h.AutoSize = true;
                 h.ForeColor = TextSec;
                 h.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-                header.Controls.Add(h);
+                _autoProdHeaderPanel.Controls.Add(h);
             }
-            page.Controls.Add(header);
-
-            // 3) Global settings section (Top) — added LAST so it docks at the very top
-            Panel settings = BuildAutoSettingsSection("Check production cards every",
-                out _autoCardIntervalInput, 30, 5, 3600, false);
-            _autoCardIntervalInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
-            page.Controls.Add(settings);
 
             // Build rows
             _autoProdRows.Clear();
@@ -5630,30 +5582,22 @@ namespace Kingdoms.Bot.UI
             return row;
         }
 
-        private void BuildModulesSubTab(TabPage page)
+        private void BuildModulesSubTab()
         {
-            // Same docking discipline as Production: Fill panel first, Top sections after, topmost last.
+            // Panels + interval input + server-time label are Designer controls parented into
+            // _autoModuleTab. Here we populate labels, wire the interval input and build the rows.
+            AutoAddSettingsLabels(_autoModuleSettingsPanel, "Check module schedules every");
+            _autoModuleIntervalInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
+            AutoUpdateServerTime();
 
-            // 1) Scrollable module rows (Fill) — added first
-            _autoModuleScrollPanel = new Panel();
-            _autoModuleScrollPanel.AutoScroll = true;
-            _autoModuleScrollPanel.Dock = DockStyle.Fill;
-            _autoModuleScrollPanel.BackColor = Color.FromArgb(24, 24, 32);
-            page.Controls.Add(_autoModuleScrollPanel);
-
-            // 2) Column header
-            Panel header = new Panel();
-            header.Dock = DockStyle.Top;
-            header.Height = 36;
-            header.BackColor = Color.FromArgb(32, 32, 44);
-
+            // Column header labels (into the Designer header panel)
             Label hMod = new Label();
             hMod.Text = "Module";
             hMod.Location = new Point(8, 4);
             hMod.AutoSize = true;
             hMod.ForeColor = TextSec;
             hMod.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            header.Controls.Add(hMod);
+            _autoModuleHeaderPanel.Controls.Add(hMod);
 
             // Hour labels (two rows: 0-11 top, 12-23 bottom)
             for (int h = 0; h < 12; h++)
@@ -5665,7 +5609,7 @@ namespace Kingdoms.Bot.UI
                 lbl.ForeColor = TextSec;
                 lbl.Font = new System.Drawing.Font("Segoe UI", 6.5F);
                 lbl.TextAlign = System.Drawing.ContentAlignment.TopCenter;
-                header.Controls.Add(lbl);
+                _autoModuleHeaderPanel.Controls.Add(lbl);
             }
             for (int h = 12; h < 24; h++)
             {
@@ -5676,7 +5620,7 @@ namespace Kingdoms.Bot.UI
                 lbl.ForeColor = TextSec;
                 lbl.Font = new System.Drawing.Font("Segoe UI", 6.5F);
                 lbl.TextAlign = System.Drawing.ContentAlignment.TopCenter;
-                header.Controls.Add(lbl);
+                _autoModuleHeaderPanel.Controls.Add(lbl);
             }
 
             Label hCard = new Label();
@@ -5685,7 +5629,7 @@ namespace Kingdoms.Bot.UI
             hCard.AutoSize = true;
             hCard.ForeColor = TextSec;
             hCard.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            header.Controls.Add(hCard);
+            _autoModuleHeaderPanel.Controls.Add(hCard);
 
             Label hReplay = new Label();
             hReplay.Text = "Re-play";
@@ -5693,7 +5637,7 @@ namespace Kingdoms.Bot.UI
             hReplay.AutoSize = true;
             hReplay.ForeColor = TextSec;
             hReplay.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            header.Controls.Add(hReplay);
+            _autoModuleHeaderPanel.Controls.Add(hReplay);
 
             Label hAuto = new Label();
             hAuto.Text = "Auto-off";
@@ -5701,15 +5645,7 @@ namespace Kingdoms.Bot.UI
             hAuto.AutoSize = true;
             hAuto.ForeColor = TextSec;
             hAuto.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            header.Controls.Add(hAuto);
-
-            page.Controls.Add(header);
-
-            // 3) Global settings section (Top) with server-time readout — added LAST so it's topmost
-            Panel settings = BuildAutoSettingsSection("Check module schedules every",
-                out _autoModuleIntervalInput, 60, 10, 3600, true);
-            _autoModuleIntervalInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
-            page.Controls.Add(settings);
+            _autoModuleHeaderPanel.Controls.Add(hAuto);
 
             // Build module rows
             _autoModuleRows.Clear();

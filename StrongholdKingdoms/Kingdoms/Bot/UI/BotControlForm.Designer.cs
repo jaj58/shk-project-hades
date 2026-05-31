@@ -335,6 +335,15 @@ namespace Kingdoms.Bot.UI
             this._autoInnerTabs = new System.Windows.Forms.TabControl();
             this._autoProdTab = new System.Windows.Forms.TabPage();
             this._autoModuleTab = new System.Windows.Forms.TabPage();
+            this._autoProdSettingsPanel = new System.Windows.Forms.Panel();
+            this._autoProdHeaderPanel = new System.Windows.Forms.Panel();
+            this._autoProdScrollPanel = new System.Windows.Forms.Panel();
+            this._autoCardIntervalInput = new System.Windows.Forms.NumericUpDown();
+            this._autoModuleSettingsPanel = new System.Windows.Forms.Panel();
+            this._autoModuleHeaderPanel = new System.Windows.Forms.Panel();
+            this._autoModuleScrollPanel = new System.Windows.Forms.Panel();
+            this._autoModuleIntervalInput = new System.Windows.Forms.NumericUpDown();
+            this._autoServerTimeLabel = new System.Windows.Forms.Label();
             this._miscCollectFreeCardsCheck = new System.Windows.Forms.CheckBox();
             this._miscDisableCannotPlayCardCheck = new System.Windows.Forms.CheckBox();
             this._miscSaleHeaderLabel = new System.Windows.Forms.Label();
@@ -435,6 +444,12 @@ namespace Kingdoms.Bot.UI
             this._miscSettingsPanel.SuspendLayout();
             this._autoPage.SuspendLayout();
             this._autoInnerTabs.SuspendLayout();
+            this._autoProdTab.SuspendLayout();
+            this._autoProdSettingsPanel.SuspendLayout();
+            this._autoModuleTab.SuspendLayout();
+            this._autoModuleSettingsPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._autoCardIntervalInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._autoModuleIntervalInput)).BeginInit();
             this._logPanel.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -4626,22 +4641,127 @@ namespace Kingdoms.Bot.UI
             // _autoProdTab
             //
             this._autoProdTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._autoProdTab.Controls.Add(this._autoProdScrollPanel);
+            this._autoProdTab.Controls.Add(this._autoProdHeaderPanel);
+            this._autoProdTab.Controls.Add(this._autoProdSettingsPanel);
             this._autoProdTab.Location = new System.Drawing.Point(4, 26);
             this._autoProdTab.Name = "_autoProdTab";
             this._autoProdTab.Size = new System.Drawing.Size(1134, 467);
             this._autoProdTab.TabIndex = 0;
             this._autoProdTab.Text = "Production";
             //
+            // _autoProdScrollPanel
+            //
+            this._autoProdScrollPanel.AutoScroll = true;
+            this._autoProdScrollPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._autoProdScrollPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._autoProdScrollPanel.Location = new System.Drawing.Point(0, 60);
+            this._autoProdScrollPanel.Name = "_autoProdScrollPanel";
+            this._autoProdScrollPanel.Size = new System.Drawing.Size(1134, 407);
+            this._autoProdScrollPanel.TabIndex = 2;
+            //
+            // _autoProdHeaderPanel
+            //
+            this._autoProdHeaderPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(32)))), ((int)(((byte)(32)))), ((int)(((byte)(44)))));
+            this._autoProdHeaderPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._autoProdHeaderPanel.Location = new System.Drawing.Point(0, 36);
+            this._autoProdHeaderPanel.Name = "_autoProdHeaderPanel";
+            this._autoProdHeaderPanel.Size = new System.Drawing.Size(1134, 24);
+            this._autoProdHeaderPanel.TabIndex = 1;
+            //
+            // _autoProdSettingsPanel
+            //
+            this._autoProdSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(42)))));
+            this._autoProdSettingsPanel.Controls.Add(this._autoCardIntervalInput);
+            this._autoProdSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._autoProdSettingsPanel.Location = new System.Drawing.Point(0, 0);
+            this._autoProdSettingsPanel.Name = "_autoProdSettingsPanel";
+            this._autoProdSettingsPanel.Size = new System.Drawing.Size(1134, 36);
+            this._autoProdSettingsPanel.TabIndex = 0;
+            //
+            // _autoCardIntervalInput
+            //
+            this._autoCardIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._autoCardIntervalInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._autoCardIntervalInput.Location = new System.Drawing.Point(290, 6);
+            this._autoCardIntervalInput.Maximum = new decimal(new int[] { 3600, 0, 0, 0});
+            this._autoCardIntervalInput.Minimum = new decimal(new int[] { 5, 0, 0, 0});
+            this._autoCardIntervalInput.Name = "_autoCardIntervalInput";
+            this._autoCardIntervalInput.Size = new System.Drawing.Size(60, 20);
+            this._autoCardIntervalInput.TabIndex = 0;
+            this._autoCardIntervalInput.Value = new decimal(new int[] { 30, 0, 0, 0});
+            //
             // _autoModuleTab
             //
             this._autoModuleTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._autoModuleTab.Controls.Add(this._autoModuleScrollPanel);
+            this._autoModuleTab.Controls.Add(this._autoModuleHeaderPanel);
+            this._autoModuleTab.Controls.Add(this._autoModuleSettingsPanel);
             this._autoModuleTab.Location = new System.Drawing.Point(4, 26);
             this._autoModuleTab.Name = "_autoModuleTab";
             this._autoModuleTab.Size = new System.Drawing.Size(1134, 467);
             this._autoModuleTab.TabIndex = 1;
             this._autoModuleTab.Text = "Modules";
+            //
+            // _autoModuleScrollPanel
+            //
+            this._autoModuleScrollPanel.AutoScroll = true;
+            this._autoModuleScrollPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._autoModuleScrollPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._autoModuleScrollPanel.Location = new System.Drawing.Point(0, 90);
+            this._autoModuleScrollPanel.Name = "_autoModuleScrollPanel";
+            this._autoModuleScrollPanel.Size = new System.Drawing.Size(1134, 377);
+            this._autoModuleScrollPanel.TabIndex = 2;
+            //
+            // _autoModuleHeaderPanel
+            //
+            this._autoModuleHeaderPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(32)))), ((int)(((byte)(32)))), ((int)(((byte)(44)))));
+            this._autoModuleHeaderPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._autoModuleHeaderPanel.Location = new System.Drawing.Point(0, 54);
+            this._autoModuleHeaderPanel.Name = "_autoModuleHeaderPanel";
+            this._autoModuleHeaderPanel.Size = new System.Drawing.Size(1134, 36);
+            this._autoModuleHeaderPanel.TabIndex = 1;
+            //
+            // _autoModuleSettingsPanel
+            //
+            this._autoModuleSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(42)))));
+            this._autoModuleSettingsPanel.Controls.Add(this._autoServerTimeLabel);
+            this._autoModuleSettingsPanel.Controls.Add(this._autoModuleIntervalInput);
+            this._autoModuleSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._autoModuleSettingsPanel.Location = new System.Drawing.Point(0, 0);
+            this._autoModuleSettingsPanel.Name = "_autoModuleSettingsPanel";
+            this._autoModuleSettingsPanel.Size = new System.Drawing.Size(1134, 54);
+            this._autoModuleSettingsPanel.TabIndex = 0;
+            //
+            // _autoModuleIntervalInput
+            //
+            this._autoModuleIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._autoModuleIntervalInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._autoModuleIntervalInput.Location = new System.Drawing.Point(290, 6);
+            this._autoModuleIntervalInput.Maximum = new decimal(new int[] { 3600, 0, 0, 0});
+            this._autoModuleIntervalInput.Minimum = new decimal(new int[] { 10, 0, 0, 0});
+            this._autoModuleIntervalInput.Name = "_autoModuleIntervalInput";
+            this._autoModuleIntervalInput.Size = new System.Drawing.Size(60, 20);
+            this._autoModuleIntervalInput.TabIndex = 0;
+            this._autoModuleIntervalInput.Value = new decimal(new int[] { 60, 0, 0, 0});
+            //
+            // _autoServerTimeLabel
+            //
+            this._autoServerTimeLabel.AutoSize = true;
+            this._autoServerTimeLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoServerTimeLabel.Location = new System.Drawing.Point(8, 32);
+            this._autoServerTimeLabel.Name = "_autoServerTimeLabel";
+            this._autoServerTimeLabel.Size = new System.Drawing.Size(100, 13);
+            this._autoServerTimeLabel.TabIndex = 2;
+            this._autoServerTimeLabel.Text = "Server time: --:--:--";
             this._autoPage.ResumeLayout(false);
             this._autoInnerTabs.ResumeLayout(false);
+            this._autoProdTab.ResumeLayout(false);
+            this._autoProdSettingsPanel.ResumeLayout(false);
+            this._autoModuleTab.ResumeLayout(false);
+            this._autoModuleSettingsPanel.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this._autoCardIntervalInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._autoModuleIntervalInput)).EndInit();
             this._logPanel.ResumeLayout(false);
             this.ResumeLayout(false);
 
@@ -4943,6 +5063,17 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.TabControl _autoInnerTabs;
         private System.Windows.Forms.TabPage _autoProdTab;
         private System.Windows.Forms.TabPage _autoModuleTab;
+        // Production sub-tab sections (rows added at runtime)
+        private System.Windows.Forms.Panel _autoProdSettingsPanel;
+        private System.Windows.Forms.Panel _autoProdHeaderPanel;
+        private System.Windows.Forms.Panel _autoProdScrollPanel;
+        private System.Windows.Forms.NumericUpDown _autoCardIntervalInput;
+        // Modules sub-tab sections (rows added at runtime)
+        private System.Windows.Forms.Panel _autoModuleSettingsPanel;
+        private System.Windows.Forms.Panel _autoModuleHeaderPanel;
+        private System.Windows.Forms.Panel _autoModuleScrollPanel;
+        private System.Windows.Forms.NumericUpDown _autoModuleIntervalInput;
+        private System.Windows.Forms.Label _autoServerTimeLabel;
         private System.Windows.Forms.Panel _ppVillageListPanel;
         private System.Windows.Forms.Panel _ppColHeader;
         private System.Windows.Forms.Panel _ppSeparator;
