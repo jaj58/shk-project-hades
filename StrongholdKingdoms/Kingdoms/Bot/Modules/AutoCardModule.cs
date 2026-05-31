@@ -68,18 +68,31 @@ namespace Kingdoms.Bot.Modules
                 CardData cardData = GetCardData();
                 if (cardData == null) continue;
 
-                // Track the previously-played card through its lifecycle
+                // Resolve the exact card def ID for this good + tier from the catalog
+                int targetCardId = ProductionCardCatalog.GetCardId(p.GoodKey, p.TierIndex);
+                if (targetCardId == 0)
+                {
+                    LogWarning(p.GoodKey + " tier " + p.TierIndex + ": no catalog entry.");
+                    continue;
+                }
+
+                // Detect whether a card of this TYPE is in play. UserCardData.cards[] holds encoded
+                // in-play values (not ProfileCards instance keys), so we decode each with
+                // CardTypes.getCardType and compare the type — same approach as CardExpiryModule.
+                bool typeActive = CardTypeIsActive(cardData, targetCardId);
+
+                // Track the card we played through its lifecycle (LastPlayedInstanceId != 0 = in flight)
                 if (p.LastPlayedInstanceId != 0)
                 {
-                    if (CardInstanceIsActive(cardData, p.LastPlayedInstanceId))
+                    if (typeActive)
                     {
                         p.ConfirmedActive = true;
-                        continue; // card still running — nothing to do
+                        continue; // still running — nothing to do
                     }
 
                     if (p.ConfirmedActive)
                     {
-                        // We saw it active and now it's gone → genuinely expired
+                        // We saw the card active and now it's gone → genuinely expired
                         p.PlayedCount++;
                         p.LastPlayedInstanceId = 0;
                         p.ConfirmedActive = false;
@@ -94,25 +107,23 @@ namespace Kingdoms.Bot.Modules
                     }
                     else
                     {
-                        // Played but never observed active — almost certainly UserCardData refresh lag.
-                        // Wait out the grace period; if it still hasn't appeared, assume the play
-                        // failed and retry rather than stalling forever.
+                        // Played but the card type hasn't shown active yet — usually UserCardData
+                        // refresh lag. Wait out the grace period; only then assume the play didn't
+                        // take effect and retry, rather than stalling forever.
                         if ((serverTime - p.PlayAttemptTime).TotalMinutes < PlayConfirmGraceMinutes)
                             continue;
                         LogWarning(p.GoodKey + " card play not confirmed active within "
-                            + PlayConfirmGraceMinutes + " min — retrying.");
+                            + PlayConfirmGraceMinutes + " min — the play may have failed; retrying.");
                         p.LastPlayedInstanceId = 0;
                         // fall through to retry
                     }
                 }
 
-                // Resolve the exact card def ID for this good + tier from the catalog
-                int targetCardId = ProductionCardCatalog.GetCardId(p.GoodKey, p.TierIndex);
-                if (targetCardId == 0)
-                {
-                    LogWarning(p.GoodKey + " tier " + p.TierIndex + ": no catalog entry.");
+                // Don't play while a card of this type is already active — only one of a type can be
+                // active at once (the server rejects duplicates with "you do not have that card
+                // available"). Wait for it to clear before playing the next one.
+                if (typeActive)
                     continue;
-                }
 
                 int instanceId = FindCardInstanceByDefId(targetCardId, cardData);
                 if (instanceId == 0)
@@ -141,11 +152,18 @@ namespace Kingdoms.Bot.Modules
             catch { return null; }
         }
 
-        private static bool CardInstanceIsActive(CardData cardData, int instanceId)
+        // Returns true if any in-play card has the given definition ID (card type).
+        // UserCardData.cards[] stores encoded values, so decode each with getCardType — matching
+        // the proven approach in CardExpiryModule / AutoModuleSchedulerModule.
+        private static bool CardTypeIsActive(CardData cardData, int defId)
         {
             if (cardData == null || cardData.cards == null) return false;
             for (int i = 0; i < cardData.cards.Length; i++)
-                if (cardData.cards[i] == instanceId) return true;
+            {
+                if (cardData.cards[i] == 0) continue;
+                try { if (CardTypes.getCardType(cardData.cards[i]) == defId) return true; }
+                catch { }
+            }
             return false;
         }
 
