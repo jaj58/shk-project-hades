@@ -5327,30 +5327,19 @@ namespace Kingdoms.Bot.UI
 
         private void BuildAutoTabUI()
         {
+            // The inner tab control and the Production / Modules sub-tab pages are declared in the
+            // Designer (_autoInnerTabs / _autoProdTab / _autoModuleTab). Here we only populate their
+            // data-driven content (settings sections, headers and the catalog/module-driven rows).
             _autoPage.SuspendLayout();
-            _autoPage.Controls.Clear();
 
-            // Inner tab control with Production / Modules sub-tabs
-            TabControl innerTabs = new TabControl();
-            innerTabs.Dock = DockStyle.Fill;
-            innerTabs.Font = new System.Drawing.Font("Segoe UI", 8.5F, System.Drawing.FontStyle.Bold);
-            innerTabs.BackColor = Color.FromArgb(24, 24, 32);
-
-            TabPage prodTab = new TabPage("Production");
-            prodTab.BackColor = Color.FromArgb(24, 24, 32);
-            BuildProductionSubTab(prodTab);
+            BuildProductionSubTab(_autoProdTab);
             // Reset scroll to top when the tab is entered. BeginInvoke defers it until AFTER
             // WinForms' focus-into-view pass, which is what otherwise pushes the first row off.
-            prodTab.Enter += delegate { AutoResetScroll(_autoProdScrollPanel); };
+            _autoProdTab.Enter += delegate { AutoResetScroll(_autoProdScrollPanel); };
 
-            TabPage moduleTab = new TabPage("Modules");
-            moduleTab.BackColor = Color.FromArgb(24, 24, 32);
-            BuildModulesSubTab(moduleTab);
-            moduleTab.Enter += delegate { AutoResetScroll(_autoModuleScrollPanel); };
+            BuildModulesSubTab(_autoModuleTab);
+            _autoModuleTab.Enter += delegate { AutoResetScroll(_autoModuleScrollPanel); };
 
-            innerTabs.TabPages.Add(prodTab);
-            innerTabs.TabPages.Add(moduleTab);
-            _autoPage.Controls.Add(innerTabs);
             _autoPage.ResumeLayout(false);
         }
 

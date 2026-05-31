@@ -332,6 +332,9 @@ namespace Kingdoms.Bot.UI
             this._miscPage = new System.Windows.Forms.TabPage();
             this._miscSettingsPanel = new System.Windows.Forms.Panel();
             this._autoPage = new System.Windows.Forms.TabPage();
+            this._autoInnerTabs = new System.Windows.Forms.TabControl();
+            this._autoProdTab = new System.Windows.Forms.TabPage();
+            this._autoModuleTab = new System.Windows.Forms.TabPage();
             this._miscCollectFreeCardsCheck = new System.Windows.Forms.CheckBox();
             this._miscDisableCannotPlayCardCheck = new System.Windows.Forms.CheckBox();
             this._miscSaleHeaderLabel = new System.Windows.Forms.Label();
@@ -431,6 +434,7 @@ namespace Kingdoms.Bot.UI
             this._miscPage.SuspendLayout();
             this._miscSettingsPanel.SuspendLayout();
             this._autoPage.SuspendLayout();
+            this._autoInnerTabs.SuspendLayout();
             this._logPanel.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -4600,12 +4604,44 @@ namespace Kingdoms.Bot.UI
             // _autoPage
             //
             this._autoPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._autoPage.Controls.Add(this._autoInnerTabs);
             this._autoPage.Location = new System.Drawing.Point(4, 24);
             this._autoPage.Name = "_autoPage";
             this._autoPage.Size = new System.Drawing.Size(1142, 497);
             this._autoPage.TabIndex = 9;
             this._autoPage.Text = "Auto";
+            //
+            // _autoInnerTabs
+            //
+            this._autoInnerTabs.Controls.Add(this._autoProdTab);
+            this._autoInnerTabs.Controls.Add(this._autoModuleTab);
+            this._autoInnerTabs.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._autoInnerTabs.Font = new System.Drawing.Font("Segoe UI", 8.5F, System.Drawing.FontStyle.Bold);
+            this._autoInnerTabs.Location = new System.Drawing.Point(0, 0);
+            this._autoInnerTabs.Name = "_autoInnerTabs";
+            this._autoInnerTabs.SelectedIndex = 0;
+            this._autoInnerTabs.Size = new System.Drawing.Size(1142, 497);
+            this._autoInnerTabs.TabIndex = 0;
+            //
+            // _autoProdTab
+            //
+            this._autoProdTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._autoProdTab.Location = new System.Drawing.Point(4, 26);
+            this._autoProdTab.Name = "_autoProdTab";
+            this._autoProdTab.Size = new System.Drawing.Size(1134, 467);
+            this._autoProdTab.TabIndex = 0;
+            this._autoProdTab.Text = "Production";
+            //
+            // _autoModuleTab
+            //
+            this._autoModuleTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._autoModuleTab.Location = new System.Drawing.Point(4, 26);
+            this._autoModuleTab.Name = "_autoModuleTab";
+            this._autoModuleTab.Size = new System.Drawing.Size(1134, 467);
+            this._autoModuleTab.TabIndex = 1;
+            this._autoModuleTab.Text = "Modules";
             this._autoPage.ResumeLayout(false);
+            this._autoInnerTabs.ResumeLayout(false);
             this._logPanel.ResumeLayout(false);
             this.ResumeLayout(false);
 
@@ -4901,6 +4937,12 @@ namespace Kingdoms.Bot.UI
         // Popularity tab controls
         private System.Windows.Forms.TabPage _popularityPage;
         private System.Windows.Forms.TabPage _autoPage;
+        // Auto tab scaffolding (inner sub-tabs). The settings/header/scroll panels and all rows
+        // are data-driven and populated at runtime in BuildAutoTabUI / BuildProductionSubTab /
+        // BuildModulesSubTab.
+        private System.Windows.Forms.TabControl _autoInnerTabs;
+        private System.Windows.Forms.TabPage _autoProdTab;
+        private System.Windows.Forms.TabPage _autoModuleTab;
         private System.Windows.Forms.Panel _ppVillageListPanel;
         private System.Windows.Forms.Panel _ppColHeader;
         private System.Windows.Forms.Panel _ppSeparator;
