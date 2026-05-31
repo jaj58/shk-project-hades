@@ -5835,11 +5835,6 @@ namespace Kingdoms.Bot.UI
                 p.TargetCount = newTarget;
                 p.StartDelayMinutes = newDelay;
 
-                // Set filter ID from catalog
-                ProductionGoodDef def;
-                if (ProductionCardCatalog.TryGetDef(row.GoodKey, out def))
-                    p.CardFilterId = def.FilterId;
-
                 // Update progress display
                 row.ProgressLabel.Text = p.PlayedCount + "/" + p.TargetCount;
             }

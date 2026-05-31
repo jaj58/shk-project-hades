@@ -947,7 +947,6 @@ namespace Kingdoms.Bot
     {
         public string GoodKey = "";
         public bool Enabled = false;
-        public int CardFilterId = 0;     // cardFilter ID for this good type
         public int TierIndex = 0;        // 0=smallest (x3), 1=mid (x5), 2=largest (x10)
         public int TargetCount = 1;
         public int PlayedCount = 0;
@@ -958,6 +957,13 @@ namespace Kingdoms.Bot
         public int LastPlayedInstanceId = 0;
         [System.Xml.Serialization.XmlIgnore]
         public int PreviousTargetCount = -1;
+        // Set true once we've observed the played card become active — guards against counting a
+        // card as "expired" during the brief window before UserCardData refreshes after a play.
+        [System.Xml.Serialization.XmlIgnore]
+        public bool ConfirmedActive = false;
+        // Server time the current card was played, for the play-confirmation grace period.
+        [System.Xml.Serialization.XmlIgnore]
+        public DateTime PlayAttemptTime = DateTime.MinValue;
     }
 
     [Serializable]

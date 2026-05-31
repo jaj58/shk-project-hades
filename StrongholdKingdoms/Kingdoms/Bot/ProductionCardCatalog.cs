@@ -6,63 +6,64 @@ namespace Kingdoms.Bot
     {
         public string GoodKey;
         public string Section;
-        public int FilterId;
-        public string[] Tiers;
+        public int[] CardIds;     // explicit card definition IDs, one per tier (index 0 = smallest)
+        public string[] Tiers;    // tier labels, parallel to CardIds
 
-        public ProductionGoodDef(string goodKey, string section, int filterId, string[] tiers)
+        public ProductionGoodDef(string goodKey, string section, int[] cardIds, string[] tiers)
         {
             GoodKey = goodKey;
             Section = section;
-            FilterId = filterId;
+            CardIds = cardIds;
             Tiers = tiers;
         }
     }
 
     public static class ProductionCardCatalog
     {
-        // Card filter IDs sourced from ManageCardsPanel.cs addFilterButton calls.
-        // Sub-filter ordering within a group follows game order (matches ascending definition ID).
+        // Card definition IDs sourced directly from CommonTypes.dll's named production-card arrays
+        // (woodcutterProductionCards, appleProductionCards, etc.). Each good lists its three tiers
+        // basic / advanced / expert in ascending order. Matching is done by exact card def ID via
+        // CardTypes.getCardType — the cardFilter field is too coarse (all food share 3, all
+        // resources share 4) to distinguish individual goods.
         public static readonly ProductionGoodDef[] Goods = new ProductionGoodDef[]
         {
             // Resources
-            new ProductionGoodDef("Wood",        "Resources", 8193,  new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Stone",       "Resources", 8194,  new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Iron",        "Resources", 8195,  new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Pitch",       "Resources", 8196,  new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Wood",        "Resources", new[]{769, 770, 771}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Stone",       "Resources", new[]{772, 773, 774}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Iron",        "Resources", new[]{775, 776, 777}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Pitch",       "Resources", new[]{778, 779, 780}, new[]{"x3","x5","x10"}),
 
-            // Haul — in Specialist section; sub-filter index TBD (262145 is best guess)
-            new ProductionGoodDef("Haul",        "Haul",      262145, new[]{"x2","x3","x4"}),
+            // Haul (shared booster — boosts all resources). Tiers: Haulage / Heavy / Super.
+            new ProductionGoodDef("Haul",        "Haul",      new[]{781, 782, 783}, new[]{"x2","x3","x4"}),
 
             // Food
-            new ProductionGoodDef("Apple",       "Food",      4097,  new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Cheese",      "Food",      4098,  new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Meat",        "Food",      4099,  new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Bread",       "Food",      4100,  new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Vegetables",  "Food",      4101,  new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Fish",        "Food",      4102,  new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Ale",         "Food",      4103,  new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Apple",       "Food",      new[]{513, 514, 515}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Cheese",      "Food",      new[]{516, 517, 518}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Meat",        "Food",      new[]{519, 520, 521}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Bread",       "Food",      new[]{522, 523, 524}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Vegetables",  "Food",      new[]{528, 529, 530}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Fish",        "Food",      new[]{531, 532, 533}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Ale",         "Food",      new[]{537, 538, 539}, new[]{"x3","x5","x10"}),
 
-            // Farmer — in Specialist section; sub-filter index TBD (262146 is best guess)
-            new ProductionGoodDef("Farmer",      "Farmer",    262146, new[]{"x3","x5","x10"}),
+            // Farmer (shared booster — boosts all food). Tiers: Veteran / Retired / Ancient.
+            new ProductionGoodDef("Farmer",      "Farmer",    new[]{525, 526, 527}, new[]{"Veteran","Retired","Ancient"}),
 
-            // Banquet (standard)
-            new ProductionGoodDef("Venison",     "Banquet",   16385, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Chairs",      "Banquet",   16386, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Metalware",   "Banquet",   16387, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Clothes",     "Banquet",   16388, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Wine",        "Banquet",   16389, new[]{"x3","x5","x10"}),
-
-            // Banquet (premium)
-            new ProductionGoodDef("Salt",        "Banquet",   16390, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Spice",       "Banquet",   16391, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Silk",        "Banquet",   16392, new[]{"x3","x5","x10"}),
+            // Banquet
+            new ProductionGoodDef("Venison",     "Banquet",   new[]{1284, 1285, 1286}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Chairs",      "Banquet",   new[]{1287, 1288, 1289}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Metalware",   "Banquet",   new[]{1290, 1291, 1292}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Clothes",     "Banquet",   new[]{1293, 1294, 1295}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Wine",        "Banquet",   new[]{1296, 1297, 1298}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Salt",        "Banquet",   new[]{1299, 1300, 1301}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Spice",       "Banquet",   new[]{1302, 1303, 1304}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Silk",        "Banquet",   new[]{1305, 1306, 1307}, new[]{"x3","x5","x10"}),
 
             // Weapons
-            new ProductionGoodDef("Bows",        "Weapons",   32769, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Pike",        "Weapons",   32770, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Armour",      "Weapons",   32771, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Swords",      "Weapons",   32772, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Catapults",   "Weapons",   32773, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Bows",        "Weapons",   new[]{1025, 1026, 1027}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Pike",        "Weapons",   new[]{1028, 1029, 1030}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Armour",      "Weapons",   new[]{1034, 1035, 1036}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Swords",      "Weapons",   new[]{1031, 1032, 1033}, new[]{"x3","x5","x10"}),
+            new ProductionGoodDef("Catapults",   "Weapons",   new[]{1037, 1038, 1039}, new[]{"x3","x5","x10"}),
         };
 
         private static Dictionary<string, ProductionGoodDef> _byKey;
@@ -76,6 +77,16 @@ namespace Kingdoms.Bot
                     _byKey[g.GoodKey] = g;
             }
             return _byKey.TryGetValue(goodKey, out def);
+        }
+
+        /// <summary>Returns the card definition ID for the given good + tier, or 0 if not found.</summary>
+        public static int GetCardId(string goodKey, int tierIndex)
+        {
+            ProductionGoodDef def;
+            if (TryGetDef(goodKey, out def) && def.CardIds != null
+                && tierIndex >= 0 && tierIndex < def.CardIds.Length)
+                return def.CardIds[tierIndex];
+            return 0;
         }
     }
 }

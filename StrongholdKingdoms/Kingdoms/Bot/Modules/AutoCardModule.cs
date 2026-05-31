@@ -11,6 +11,10 @@ namespace Kingdoms.Bot.Modules
         public override string ModuleName { get { return "Auto Card"; } }
         public override TimeSpan Interval { get { return TimeSpan.FromSeconds(30); } }
 
+        // Grace period after playing a card before we trust an "inactive" reading. UserCardData
+        // can lag a few seconds behind the play; without this we'd miscount cards as expired.
+        private const int PlayConfirmGraceMinutes = 2;
+
         protected override void OnInitialize() { }
 
         protected override void OnTick()
@@ -46,36 +50,65 @@ namespace Kingdoms.Bot.Modules
                 CardData cardData = GetCardData();
                 if (cardData == null) continue;
 
-                // Check if the card we last played is still active
+                // Track the previously-played card through its lifecycle
                 if (p.LastPlayedInstanceId != 0)
                 {
                     if (CardInstanceIsActive(cardData, p.LastPlayedInstanceId))
-                        continue; // card still running — nothing to do
-
-                    // Card expired — count it
-                    p.PlayedCount++;
-                    p.LastPlayedInstanceId = 0;
-                    LogInfo(p.GoodKey + " card expired. Played " + p.PlayedCount + "/" + p.TargetCount + ".");
-
-                    if (p.PlayedCount >= p.TargetCount)
                     {
-                        LogInfo(p.GoodKey + " reached target of " + p.TargetCount + " cards played.");
-                        continue;
+                        p.ConfirmedActive = true;
+                        continue; // card still running — nothing to do
+                    }
+
+                    if (p.ConfirmedActive)
+                    {
+                        // We saw it active and now it's gone → genuinely expired
+                        p.PlayedCount++;
+                        p.LastPlayedInstanceId = 0;
+                        p.ConfirmedActive = false;
+                        LogInfo(p.GoodKey + " card expired. Played " + p.PlayedCount + "/" + p.TargetCount + ".");
+
+                        if (p.PlayedCount >= p.TargetCount)
+                        {
+                            LogInfo(p.GoodKey + " reached target of " + p.TargetCount + " cards played.");
+                            continue;
+                        }
+                        // else fall through to play the next one
+                    }
+                    else
+                    {
+                        // Played but never observed active — almost certainly UserCardData refresh lag.
+                        // Wait out the grace period; if it still hasn't appeared, assume the play
+                        // failed and retry rather than stalling forever.
+                        if ((serverTime - p.PlayAttemptTime).TotalMinutes < PlayConfirmGraceMinutes)
+                            continue;
+                        LogWarning(p.GoodKey + " card play not confirmed active within "
+                            + PlayConfirmGraceMinutes + " min — retrying.");
+                        p.LastPlayedInstanceId = 0;
+                        // fall through to retry
                     }
                 }
 
-                // Find and play the next card instance
-                int instanceId = FindCardInstance(p.CardFilterId, p.TierIndex, cardData);
+                // Resolve the exact card def ID for this good + tier from the catalog
+                int targetCardId = ProductionCardCatalog.GetCardId(p.GoodKey, p.TierIndex);
+                if (targetCardId == 0)
+                {
+                    LogWarning(p.GoodKey + " tier " + p.TierIndex + ": no catalog entry.");
+                    continue;
+                }
+
+                int instanceId = FindCardInstanceByDefId(targetCardId, cardData);
                 if (instanceId == 0)
                 {
-                    LogDebug(p.GoodKey + " tier " + p.TierIndex + ": no matching card in inventory.");
+                    LogDebug(p.GoodKey + " (card type " + targetCardId + "): none available in inventory.");
                     continue;
                 }
 
                 PlayCard(instanceId);
                 p.LastPlayedInstanceId = instanceId;
-                LogInfo("Playing " + p.GoodKey + " card (instance " + instanceId + "), " +
-                    (p.PlayedCount + 1) + "/" + p.TargetCount + ".");
+                p.PlayAttemptTime = serverTime;
+                p.ConfirmedActive = false;
+                LogInfo("Playing " + p.GoodKey + " card type " + targetCardId + " (instance " + instanceId + "), "
+                    + (p.PlayedCount + 1) + "/" + p.TargetCount + ".");
             }
         }
 
@@ -98,9 +131,9 @@ namespace Kingdoms.Bot.Modules
             return false;
         }
 
-        // Finds a card instance in ProfileCards matching the given filter ID and tier index.
-        // Cards within a filter group are sorted by definition ID ascending; tierIndex selects which.
-        private int FindCardInstance(int filterId, int tierIndex, CardData activeCardData)
+        // Finds an inventory card instance whose definition ID matches targetDefId and which is
+        // not already active. Returns the user instance ID, or 0 if none available.
+        private int FindCardInstanceByDefId(int targetDefId, CardData activeCardData)
         {
             try
             {
@@ -113,50 +146,14 @@ namespace Kingdoms.Bot.Modules
                     foreach (int c in activeCardData.cards)
                         if (c != 0) activeIds.Add(c);
 
-                // Collect candidates from ProfileCards matching filterId, grouped by definition ID
-                var byDefId = new SortedDictionary<int, List<int>>(); // defId → list of instanceIds
                 foreach (var kvp in mgr.ProfileCards)
                 {
-                    if (kvp.Value == null || kvp.Value.cardFilter != filterId) continue;
+                    if (kvp.Value == null || kvp.Value.id != targetDefId) continue;
                     if (activeIds.Contains(kvp.Key)) continue;
-                    List<int> list;
-                    if (!byDefId.TryGetValue(kvp.Value.id, out list))
-                    {
-                        list = new List<int>();
-                        byDefId[kvp.Value.id] = list;
-                    }
-                    list.Add(kvp.Key);
-                }
-
-                if (byDefId.Count == 0)
-                {
-                    // No match — log what filter IDs ARE present so the catalog can be corrected
-                    var presentFilters = new SortedDictionary<int, int>(); // filterId → count
-                    foreach (var kvp in mgr.ProfileCards)
-                    {
-                        if (kvp.Value == null || activeIds.Contains(kvp.Key)) continue;
-                        int f = kvp.Value.cardFilter;
-                        if (!presentFilters.ContainsKey(f)) presentFilters[f] = 0;
-                        presentFilters[f]++;
-                    }
-                    System.Text.StringBuilder sb = new System.Text.StringBuilder();
-                    foreach (var kv in presentFilters)
-                        sb.Append("filter=" + kv.Key + "(x" + kv.Value + ") ");
-                    LogWarning("No card for filterId=" + filterId + " tier=" + tierIndex
-                        + ". Filters in inventory: " + (sb.Length > 0 ? sb.ToString() : "(none)"));
-                    return 0;
-                }
-
-                // Sorted ascending by defId; tierIndex picks the tier
-                int idx = 0;
-                foreach (var entry in byDefId)
-                {
-                    if (idx == tierIndex && entry.Value.Count > 0)
-                        return entry.Value[0];
-                    idx++;
+                    return kvp.Key;
                 }
             }
-            catch (Exception ex) { LogWarning("FindCardInstance error: " + ex.Message); }
+            catch (Exception ex) { LogWarning("FindCardInstanceByDefId error: " + ex.Message); }
             return 0;
         }
 
