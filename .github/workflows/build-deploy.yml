@@ -128,7 +128,7 @@ jobs:
           Write-Host "Using CLI: $cli"
           & $cli -n confuserex.crproj
           if ($LASTEXITCODE -ne 0) { throw "Obfuscation failed (exit $LASTEXITCODE)" }
-          Copy-Item "Obfuscated\StrongholdKingdoms.exe" "StrongholdKingdoms\bin\Release\StrongholdKingdoms.exe" -Force
+          Copy-Item "StrongholdKingdoms\bin\Release\Obfuscated\StrongholdKingdoms.exe" "StrongholdKingdoms\bin\Release\StrongholdKingdoms.exe" -Force
           Write-Host "Obfuscation applied." -ForegroundColor Green
 
       - name: Apply 4GB patch
