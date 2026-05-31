@@ -5339,43 +5339,6 @@ namespace Kingdoms.Bot.UI
             _autoPage.ResumeLayout(false);
         }
 
-        // Populates a Designer-declared settings panel with its static text labels (the "Settings"
-        // title, the "<intervalLabel>" caption and the "seconds" suffix). The NumericUpDown and, on
-        // the Modules tab, the server-time label are Designer controls already on the panel.
-        private void AutoAddSettingsLabels(Panel panel, string intervalLabel)
-        {
-            Label title = new Label();
-            title.Text = "Settings";
-            title.Location = new Point(8, 6);
-            title.AutoSize = true;
-            title.ForeColor = AccentCol;
-            title.Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold);
-            panel.Controls.Add(title);
-
-            Label lbl = new Label();
-            lbl.Text = intervalLabel;
-            lbl.Location = new Point(90, 8);
-            lbl.AutoSize = true;
-            lbl.ForeColor = TextSec;
-            lbl.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            panel.Controls.Add(lbl);
-
-            Label unit = new Label();
-            unit.Text = "seconds";
-            unit.Location = new Point(356, 8);
-            unit.AutoSize = true;
-            unit.ForeColor = TextSec;
-            unit.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            panel.Controls.Add(unit);
-
-            // Thin bottom separator to set the section off from the list below
-            Panel sep = new Panel();
-            sep.Dock = DockStyle.Bottom;
-            sep.Height = 1;
-            sep.BackColor = Color.FromArgb(60, 60, 80);
-            panel.Controls.Add(sep);
-        }
-
         // Resets a scrollable rows panel back to the top. Deferred via BeginInvoke so it runs after
         // WinForms scrolls a freshly-focused child into view (which is what hides the first row).
         private void AutoResetScroll(Panel scrollPanel)
@@ -5393,25 +5356,9 @@ namespace Kingdoms.Bot.UI
 
         private void BuildProductionSubTab()
         {
-            // The settings / header / scroll panels and the interval input are declared in the
-            // Designer (and parented into _autoProdTab there). Here we only populate their labels,
-            // wire the interval input and build the catalog-driven rows.
-            AutoAddSettingsLabels(_autoProdSettingsPanel, "Check production cards every");
+            // The settings/header/scroll panels, the interval input and all captions are declared in
+            // the Designer. Here we only wire the interval input and build the catalog-driven rows.
             _autoCardIntervalInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
-
-            // Column header labels
-            int[] hx = { 28, 95, 215, 310, 430, 540 };
-            string[] hnames = { "", "Good", "Tier", "Target", "Start Delay", "Progress" };
-            for (int i = 0; i < hnames.Length; i++)
-            {
-                Label h = new Label();
-                h.Text = hnames[i];
-                h.Location = new Point(hx[i], 4);
-                h.AutoSize = true;
-                h.ForeColor = TextSec;
-                h.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-                _autoProdHeaderPanel.Controls.Add(h);
-            }
 
             // Build rows
             _autoProdRows.Clear();
@@ -5584,22 +5531,12 @@ namespace Kingdoms.Bot.UI
 
         private void BuildModulesSubTab()
         {
-            // Panels + interval input + server-time label are Designer controls parented into
-            // _autoModuleTab. Here we populate labels, wire the interval input and build the rows.
-            AutoAddSettingsLabels(_autoModuleSettingsPanel, "Check module schedules every");
+            // Panels, interval input, server-time label and the named column captions are Designer
+            // controls. Here we wire the interval input, populate the 24 hour labels and build rows.
             _autoModuleIntervalInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             AutoUpdateServerTime();
 
-            // Column header labels (into the Designer header panel)
-            Label hMod = new Label();
-            hMod.Text = "Module";
-            hMod.Location = new Point(8, 4);
-            hMod.AutoSize = true;
-            hMod.ForeColor = TextSec;
-            hMod.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            _autoModuleHeaderPanel.Controls.Add(hMod);
-
-            // Hour labels (two rows: 0-11 top, 12-23 bottom)
+            // Hour labels (two rows: 0-11 top, 12-23 bottom) — generated, so kept in code
             for (int h = 0; h < 12; h++)
             {
                 Label lbl = new Label();
@@ -5622,30 +5559,6 @@ namespace Kingdoms.Bot.UI
                 lbl.TextAlign = System.Drawing.ContentAlignment.TopCenter;
                 _autoModuleHeaderPanel.Controls.Add(lbl);
             }
-
-            Label hCard = new Label();
-            hCard.Text = "Cards to play (check all you want)";
-            hCard.Location = new Point(510, 4);
-            hCard.AutoSize = true;
-            hCard.ForeColor = TextSec;
-            hCard.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            _autoModuleHeaderPanel.Controls.Add(hCard);
-
-            Label hReplay = new Label();
-            hReplay.Text = "Re-play";
-            hReplay.Location = new Point(810, 4);
-            hReplay.AutoSize = true;
-            hReplay.ForeColor = TextSec;
-            hReplay.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            _autoModuleHeaderPanel.Controls.Add(hReplay);
-
-            Label hAuto = new Label();
-            hAuto.Text = "Auto-off";
-            hAuto.Location = new Point(900, 4);
-            hAuto.AutoSize = true;
-            hAuto.ForeColor = TextSec;
-            hAuto.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            _autoModuleHeaderPanel.Controls.Add(hAuto);
 
             // Build module rows
             _autoModuleRows.Clear();

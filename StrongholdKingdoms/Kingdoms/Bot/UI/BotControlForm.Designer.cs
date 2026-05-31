@@ -344,6 +344,23 @@ namespace Kingdoms.Bot.UI
             this._autoModuleScrollPanel = new System.Windows.Forms.Panel();
             this._autoModuleIntervalInput = new System.Windows.Forms.NumericUpDown();
             this._autoServerTimeLabel = new System.Windows.Forms.Label();
+            this._autoProdSettingsTitle = new System.Windows.Forms.Label();
+            this._autoProdIntervalLabel = new System.Windows.Forms.Label();
+            this._autoProdSecondsLabel = new System.Windows.Forms.Label();
+            this._autoProdSettingsSep = new System.Windows.Forms.Panel();
+            this._autoProdColGood = new System.Windows.Forms.Label();
+            this._autoProdColTier = new System.Windows.Forms.Label();
+            this._autoProdColTarget = new System.Windows.Forms.Label();
+            this._autoProdColDelay = new System.Windows.Forms.Label();
+            this._autoProdColProgress = new System.Windows.Forms.Label();
+            this._autoModuleSettingsTitle = new System.Windows.Forms.Label();
+            this._autoModuleIntervalLabel = new System.Windows.Forms.Label();
+            this._autoModuleSecondsLabel = new System.Windows.Forms.Label();
+            this._autoModuleSettingsSep = new System.Windows.Forms.Panel();
+            this._autoModuleColModule = new System.Windows.Forms.Label();
+            this._autoModuleColCards = new System.Windows.Forms.Label();
+            this._autoModuleColReplay = new System.Windows.Forms.Label();
+            this._autoModuleColAutoOff = new System.Windows.Forms.Label();
             this._miscCollectFreeCardsCheck = new System.Windows.Forms.CheckBox();
             this._miscDisableCannotPlayCardCheck = new System.Windows.Forms.CheckBox();
             this._miscSaleHeaderLabel = new System.Windows.Forms.Label();
@@ -4663,21 +4680,127 @@ namespace Kingdoms.Bot.UI
             // _autoProdHeaderPanel
             //
             this._autoProdHeaderPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(32)))), ((int)(((byte)(32)))), ((int)(((byte)(44)))));
+            this._autoProdHeaderPanel.Controls.Add(this._autoProdColGood);
+            this._autoProdHeaderPanel.Controls.Add(this._autoProdColTier);
+            this._autoProdHeaderPanel.Controls.Add(this._autoProdColTarget);
+            this._autoProdHeaderPanel.Controls.Add(this._autoProdColDelay);
+            this._autoProdHeaderPanel.Controls.Add(this._autoProdColProgress);
             this._autoProdHeaderPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._autoProdHeaderPanel.Location = new System.Drawing.Point(0, 36);
             this._autoProdHeaderPanel.Name = "_autoProdHeaderPanel";
             this._autoProdHeaderPanel.Size = new System.Drawing.Size(1134, 24);
             this._autoProdHeaderPanel.TabIndex = 1;
             //
+            // _autoProdColGood
+            //
+            this._autoProdColGood.AutoSize = true;
+            this._autoProdColGood.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._autoProdColGood.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoProdColGood.Location = new System.Drawing.Point(95, 4);
+            this._autoProdColGood.Name = "_autoProdColGood";
+            this._autoProdColGood.Size = new System.Drawing.Size(31, 13);
+            this._autoProdColGood.TabIndex = 0;
+            this._autoProdColGood.Text = "Good";
+            //
+            // _autoProdColTier
+            //
+            this._autoProdColTier.AutoSize = true;
+            this._autoProdColTier.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._autoProdColTier.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoProdColTier.Location = new System.Drawing.Point(215, 4);
+            this._autoProdColTier.Name = "_autoProdColTier";
+            this._autoProdColTier.Size = new System.Drawing.Size(24, 13);
+            this._autoProdColTier.TabIndex = 1;
+            this._autoProdColTier.Text = "Tier";
+            //
+            // _autoProdColTarget
+            //
+            this._autoProdColTarget.AutoSize = true;
+            this._autoProdColTarget.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._autoProdColTarget.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoProdColTarget.Location = new System.Drawing.Point(310, 4);
+            this._autoProdColTarget.Name = "_autoProdColTarget";
+            this._autoProdColTarget.Size = new System.Drawing.Size(38, 13);
+            this._autoProdColTarget.TabIndex = 2;
+            this._autoProdColTarget.Text = "Target";
+            //
+            // _autoProdColDelay
+            //
+            this._autoProdColDelay.AutoSize = true;
+            this._autoProdColDelay.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._autoProdColDelay.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoProdColDelay.Location = new System.Drawing.Point(430, 4);
+            this._autoProdColDelay.Name = "_autoProdColDelay";
+            this._autoProdColDelay.Size = new System.Drawing.Size(56, 13);
+            this._autoProdColDelay.TabIndex = 3;
+            this._autoProdColDelay.Text = "Start Delay";
+            //
+            // _autoProdColProgress
+            //
+            this._autoProdColProgress.AutoSize = true;
+            this._autoProdColProgress.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._autoProdColProgress.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoProdColProgress.Location = new System.Drawing.Point(540, 4);
+            this._autoProdColProgress.Name = "_autoProdColProgress";
+            this._autoProdColProgress.Size = new System.Drawing.Size(49, 13);
+            this._autoProdColProgress.TabIndex = 4;
+            this._autoProdColProgress.Text = "Progress";
+            //
             // _autoProdSettingsPanel
             //
             this._autoProdSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(42)))));
+            this._autoProdSettingsPanel.Controls.Add(this._autoProdSettingsTitle);
+            this._autoProdSettingsPanel.Controls.Add(this._autoProdIntervalLabel);
             this._autoProdSettingsPanel.Controls.Add(this._autoCardIntervalInput);
+            this._autoProdSettingsPanel.Controls.Add(this._autoProdSecondsLabel);
+            this._autoProdSettingsPanel.Controls.Add(this._autoProdSettingsSep);
             this._autoProdSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._autoProdSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._autoProdSettingsPanel.Name = "_autoProdSettingsPanel";
             this._autoProdSettingsPanel.Size = new System.Drawing.Size(1134, 36);
             this._autoProdSettingsPanel.TabIndex = 0;
+            //
+            // _autoProdSettingsTitle
+            //
+            this._autoProdSettingsTitle.AutoSize = true;
+            this._autoProdSettingsTitle.Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold);
+            this._autoProdSettingsTitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(160)))), ((int)(((byte)(255)))));
+            this._autoProdSettingsTitle.Location = new System.Drawing.Point(8, 6);
+            this._autoProdSettingsTitle.Name = "_autoProdSettingsTitle";
+            this._autoProdSettingsTitle.Size = new System.Drawing.Size(46, 13);
+            this._autoProdSettingsTitle.TabIndex = 1;
+            this._autoProdSettingsTitle.Text = "Settings";
+            //
+            // _autoProdIntervalLabel
+            //
+            this._autoProdIntervalLabel.AutoSize = true;
+            this._autoProdIntervalLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._autoProdIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoProdIntervalLabel.Location = new System.Drawing.Point(90, 8);
+            this._autoProdIntervalLabel.Name = "_autoProdIntervalLabel";
+            this._autoProdIntervalLabel.Size = new System.Drawing.Size(141, 13);
+            this._autoProdIntervalLabel.TabIndex = 2;
+            this._autoProdIntervalLabel.Text = "Check production cards every";
+            //
+            // _autoProdSecondsLabel
+            //
+            this._autoProdSecondsLabel.AutoSize = true;
+            this._autoProdSecondsLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._autoProdSecondsLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoProdSecondsLabel.Location = new System.Drawing.Point(356, 8);
+            this._autoProdSecondsLabel.Name = "_autoProdSecondsLabel";
+            this._autoProdSecondsLabel.Size = new System.Drawing.Size(46, 13);
+            this._autoProdSecondsLabel.TabIndex = 3;
+            this._autoProdSecondsLabel.Text = "seconds";
+            //
+            // _autoProdSettingsSep
+            //
+            this._autoProdSettingsSep.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(60)))), ((int)(((byte)(60)))), ((int)(((byte)(80)))));
+            this._autoProdSettingsSep.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this._autoProdSettingsSep.Location = new System.Drawing.Point(0, 35);
+            this._autoProdSettingsSep.Name = "_autoProdSettingsSep";
+            this._autoProdSettingsSep.Size = new System.Drawing.Size(1134, 1);
+            this._autoProdSettingsSep.TabIndex = 4;
             //
             // _autoCardIntervalInput
             //
@@ -4716,22 +4839,116 @@ namespace Kingdoms.Bot.UI
             // _autoModuleHeaderPanel
             //
             this._autoModuleHeaderPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(32)))), ((int)(((byte)(32)))), ((int)(((byte)(44)))));
+            this._autoModuleHeaderPanel.Controls.Add(this._autoModuleColModule);
+            this._autoModuleHeaderPanel.Controls.Add(this._autoModuleColCards);
+            this._autoModuleHeaderPanel.Controls.Add(this._autoModuleColReplay);
+            this._autoModuleHeaderPanel.Controls.Add(this._autoModuleColAutoOff);
             this._autoModuleHeaderPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._autoModuleHeaderPanel.Location = new System.Drawing.Point(0, 54);
             this._autoModuleHeaderPanel.Name = "_autoModuleHeaderPanel";
             this._autoModuleHeaderPanel.Size = new System.Drawing.Size(1134, 36);
             this._autoModuleHeaderPanel.TabIndex = 1;
             //
+            // _autoModuleColModule
+            //
+            this._autoModuleColModule.AutoSize = true;
+            this._autoModuleColModule.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._autoModuleColModule.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoModuleColModule.Location = new System.Drawing.Point(8, 4);
+            this._autoModuleColModule.Name = "_autoModuleColModule";
+            this._autoModuleColModule.Size = new System.Drawing.Size(44, 13);
+            this._autoModuleColModule.TabIndex = 0;
+            this._autoModuleColModule.Text = "Module";
+            //
+            // _autoModuleColCards
+            //
+            this._autoModuleColCards.AutoSize = true;
+            this._autoModuleColCards.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._autoModuleColCards.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoModuleColCards.Location = new System.Drawing.Point(510, 4);
+            this._autoModuleColCards.Name = "_autoModuleColCards";
+            this._autoModuleColCards.Size = new System.Drawing.Size(168, 13);
+            this._autoModuleColCards.TabIndex = 1;
+            this._autoModuleColCards.Text = "Cards to play (check all you want)";
+            //
+            // _autoModuleColReplay
+            //
+            this._autoModuleColReplay.AutoSize = true;
+            this._autoModuleColReplay.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._autoModuleColReplay.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoModuleColReplay.Location = new System.Drawing.Point(810, 4);
+            this._autoModuleColReplay.Name = "_autoModuleColReplay";
+            this._autoModuleColReplay.Size = new System.Drawing.Size(44, 13);
+            this._autoModuleColReplay.TabIndex = 2;
+            this._autoModuleColReplay.Text = "Re-play";
+            //
+            // _autoModuleColAutoOff
+            //
+            this._autoModuleColAutoOff.AutoSize = true;
+            this._autoModuleColAutoOff.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._autoModuleColAutoOff.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoModuleColAutoOff.Location = new System.Drawing.Point(900, 4);
+            this._autoModuleColAutoOff.Name = "_autoModuleColAutoOff";
+            this._autoModuleColAutoOff.Size = new System.Drawing.Size(46, 13);
+            this._autoModuleColAutoOff.TabIndex = 3;
+            this._autoModuleColAutoOff.Text = "Auto-off";
+            //
             // _autoModuleSettingsPanel
             //
             this._autoModuleSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(42)))));
+            this._autoModuleSettingsPanel.Controls.Add(this._autoModuleSettingsTitle);
+            this._autoModuleSettingsPanel.Controls.Add(this._autoModuleIntervalLabel);
             this._autoModuleSettingsPanel.Controls.Add(this._autoServerTimeLabel);
             this._autoModuleSettingsPanel.Controls.Add(this._autoModuleIntervalInput);
+            this._autoModuleSettingsPanel.Controls.Add(this._autoModuleSecondsLabel);
+            this._autoModuleSettingsPanel.Controls.Add(this._autoModuleSettingsSep);
             this._autoModuleSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._autoModuleSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._autoModuleSettingsPanel.Name = "_autoModuleSettingsPanel";
             this._autoModuleSettingsPanel.Size = new System.Drawing.Size(1134, 54);
             this._autoModuleSettingsPanel.TabIndex = 0;
+            //
+            // _autoModuleSettingsTitle
+            //
+            this._autoModuleSettingsTitle.AutoSize = true;
+            this._autoModuleSettingsTitle.Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold);
+            this._autoModuleSettingsTitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(160)))), ((int)(((byte)(255)))));
+            this._autoModuleSettingsTitle.Location = new System.Drawing.Point(8, 6);
+            this._autoModuleSettingsTitle.Name = "_autoModuleSettingsTitle";
+            this._autoModuleSettingsTitle.Size = new System.Drawing.Size(46, 13);
+            this._autoModuleSettingsTitle.TabIndex = 3;
+            this._autoModuleSettingsTitle.Text = "Settings";
+            //
+            // _autoModuleIntervalLabel
+            //
+            this._autoModuleIntervalLabel.AutoSize = true;
+            this._autoModuleIntervalLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._autoModuleIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoModuleIntervalLabel.Location = new System.Drawing.Point(90, 8);
+            this._autoModuleIntervalLabel.Name = "_autoModuleIntervalLabel";
+            this._autoModuleIntervalLabel.Size = new System.Drawing.Size(146, 13);
+            this._autoModuleIntervalLabel.TabIndex = 4;
+            this._autoModuleIntervalLabel.Text = "Check module schedules every";
+            //
+            // _autoModuleSecondsLabel
+            //
+            this._autoModuleSecondsLabel.AutoSize = true;
+            this._autoModuleSecondsLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._autoModuleSecondsLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._autoModuleSecondsLabel.Location = new System.Drawing.Point(356, 8);
+            this._autoModuleSecondsLabel.Name = "_autoModuleSecondsLabel";
+            this._autoModuleSecondsLabel.Size = new System.Drawing.Size(46, 13);
+            this._autoModuleSecondsLabel.TabIndex = 5;
+            this._autoModuleSecondsLabel.Text = "seconds";
+            //
+            // _autoModuleSettingsSep
+            //
+            this._autoModuleSettingsSep.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(60)))), ((int)(((byte)(60)))), ((int)(((byte)(80)))));
+            this._autoModuleSettingsSep.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this._autoModuleSettingsSep.Location = new System.Drawing.Point(0, 53);
+            this._autoModuleSettingsSep.Name = "_autoModuleSettingsSep";
+            this._autoModuleSettingsSep.Size = new System.Drawing.Size(1134, 1);
+            this._autoModuleSettingsSep.TabIndex = 6;
             //
             // _autoModuleIntervalInput
             //
@@ -4758,8 +4975,10 @@ namespace Kingdoms.Bot.UI
             this._autoInnerTabs.ResumeLayout(false);
             this._autoProdTab.ResumeLayout(false);
             this._autoProdSettingsPanel.ResumeLayout(false);
+            this._autoProdSettingsPanel.PerformLayout();
             this._autoModuleTab.ResumeLayout(false);
             this._autoModuleSettingsPanel.ResumeLayout(false);
+            this._autoModuleSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._autoCardIntervalInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._autoModuleIntervalInput)).EndInit();
             this._logPanel.ResumeLayout(false);
@@ -5074,6 +5293,24 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Panel _autoModuleScrollPanel;
         private System.Windows.Forms.NumericUpDown _autoModuleIntervalInput;
         private System.Windows.Forms.Label _autoServerTimeLabel;
+        // Auto tab static captions
+        private System.Windows.Forms.Label _autoProdSettingsTitle;
+        private System.Windows.Forms.Label _autoProdIntervalLabel;
+        private System.Windows.Forms.Label _autoProdSecondsLabel;
+        private System.Windows.Forms.Panel _autoProdSettingsSep;
+        private System.Windows.Forms.Label _autoProdColGood;
+        private System.Windows.Forms.Label _autoProdColTier;
+        private System.Windows.Forms.Label _autoProdColTarget;
+        private System.Windows.Forms.Label _autoProdColDelay;
+        private System.Windows.Forms.Label _autoProdColProgress;
+        private System.Windows.Forms.Label _autoModuleSettingsTitle;
+        private System.Windows.Forms.Label _autoModuleIntervalLabel;
+        private System.Windows.Forms.Label _autoModuleSecondsLabel;
+        private System.Windows.Forms.Panel _autoModuleSettingsSep;
+        private System.Windows.Forms.Label _autoModuleColModule;
+        private System.Windows.Forms.Label _autoModuleColCards;
+        private System.Windows.Forms.Label _autoModuleColReplay;
+        private System.Windows.Forms.Label _autoModuleColAutoOff;
         private System.Windows.Forms.Panel _ppVillageListPanel;
         private System.Windows.Forms.Panel _ppColHeader;
         private System.Windows.Forms.Panel _ppSeparator;
