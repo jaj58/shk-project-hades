@@ -5940,7 +5940,7 @@ namespace Kingdoms.Bot.UI
                 m.PlayCardOnStart = m.CardDefIds.Count > 0;
             }
 
-            // Enable the Auto modules if any production or module is active
+            // Informational aggregate: is anything configured/active.
             bool anyActive = false;
             foreach (ProductionCardSettings p in s.ProductionCards)
                 if (p.Enabled) { anyActive = true; break; }
@@ -5948,10 +5948,13 @@ namespace Kingdoms.Bot.UI
                 foreach (ModuleScheduleSettings m in s.ModuleSchedules)
                     foreach (bool h in m.HourlySchedule)
                         if (h) { anyActive = true; break; }
-
             s.Enabled = anyActive;
-            BotEngine.Instance.ApplySettings();
-            BotEngine.Instance.SaveSettings();
+
+            // LIVE ONLY: changes are written to the in-memory settings object, which the Auto
+            // modules read on every tick — so they take effect immediately. Persistence to disk
+            // happens ONLY via the explicit Save Settings button; Load Settings reverts to the
+            // last saved snapshot. (Deliberately no ApplySettings() here — it would re-sync every
+            // module's Enabled from settings and could override the scheduler's runtime toggles.)
         }
 
         private void AutoResetProgress(string goodKey)
@@ -5963,7 +5966,7 @@ namespace Kingdoms.Bot.UI
             p.LastPlayedInstanceId = 0;
             p.ScheduledStartTime = DateTime.MinValue;
             p.PreviousTargetCount = -1;
-            BotEngine.Instance.SaveSettings();
+            // Live only — not persisted until the user clicks Save Settings.
 
             foreach (AutoProdRow row in _autoProdRows)
             {
