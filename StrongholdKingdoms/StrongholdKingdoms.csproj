@@ -92,6 +92,7 @@
     <Compile Include="Kingdoms\Bot\BotModuleBase.cs" />
     <Compile Include="Kingdoms\Bot\BotSettings.cs" />
     <Compile Include="Kingdoms\Bot\ProductionCardCatalog.cs" />
+    <Compile Include="Kingdoms\Bot\ModuleCardCatalog.cs" />
     <Compile Include="Kingdoms\Bot\DiscordNotifier.cs" />
     <Compile Include="Kingdoms\Bot\IBotModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombModule.cs" />

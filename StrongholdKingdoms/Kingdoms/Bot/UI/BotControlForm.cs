@@ -5720,7 +5720,7 @@ namespace Kingdoms.Bot.UI
                     row.HourChecks[h].Checked = m.HourlySchedule != null && h < m.HourlySchedule.Length && m.HourlySchedule[h];
                 row.ReplayCardCheck.Checked = m.ReplayCardOnExpiry;
                 row.AutoDisableCheck.Checked = m.AutoDisableEnabled;
-                AutoPopulateModuleCardsListBox(row.CardsListBox, m.CardDefIds);
+                AutoPopulateModuleCardsListBox(row.ModuleName, row.CardsListBox, m.CardDefIds);
             }
 
             // Scroll reset is handled by moduleTab.Enter in BuildAutoTabUI — nothing to do here.
@@ -5728,27 +5728,16 @@ namespace Kingdoms.Bot.UI
             finally { _autoLoading = false; }
         }
 
-        private void AutoPopulateModuleCardsListBox(CheckedListBox clb, System.Collections.Generic.List<int> selectedDefIds)
+        // Populates a module's card checklist from the curated ModuleCardCatalog (only the cards
+        // relevant to that module, with friendly names), rather than every card the player owns.
+        private void AutoPopulateModuleCardsListBox(string moduleName, CheckedListBox clb, System.Collections.Generic.List<int> selectedDefIds)
         {
             clb.Items.Clear();
-            try
+            foreach (ModuleCardDef card in ModuleCardCatalog.GetCards(moduleName))
             {
-                var mgr = GameEngine.Instance != null ? GameEngine.Instance.cardsManager : null;
-                if (mgr != null && mgr.ProfileCards != null)
-                {
-                    var seen = new System.Collections.Generic.HashSet<int>();
-                    foreach (var kvp in mgr.ProfileCards)
-                    {
-                        if (kvp.Value == null) continue;
-                        if (!seen.Add(kvp.Value.id)) continue;
-                        string name = kvp.Value.name;
-                        if (string.IsNullOrEmpty(name)) name = "Card " + kvp.Value.id;
-                        bool isChecked = selectedDefIds != null && selectedDefIds.Contains(kvp.Value.id);
-                        clb.Items.Add(new AutoCardOption { DefId = kvp.Value.id, Name = name }, isChecked);
-                    }
-                }
+                bool isChecked = selectedDefIds != null && selectedDefIds.Contains(card.DefId);
+                clb.Items.Add(new AutoCardOption { DefId = card.DefId, Name = card.Name }, isChecked);
             }
-            catch { }
         }
 
         private void AutoWriteToSettings()
