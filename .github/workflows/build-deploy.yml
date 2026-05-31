@@ -109,9 +109,13 @@ jobs:
       - name: Download ConfuserEx
         shell: pwsh
         run: |
-          $version = "1.6.0"
-          $url     = "https://github.com/mkaring/ConfuserEx/releases/download/v$version/ConfuserEx-CLI.zip"
-          Invoke-WebRequest -Uri $url -OutFile "ConfuserEx-CLI.zip" -UseBasicParsing
+          $release = Invoke-RestMethod "https://api.github.com/repos/mkaring/ConfuserEx/releases/latest" -UseBasicParsing
+          Write-Host "Latest release: $($release.tag_name)"
+          Write-Host "Assets: $($release.assets.name -join ', ')"
+          $asset = $release.assets | Where-Object { $_.name -like "*CLI*" } | Select-Object -First 1
+          if (-not $asset) { throw "No CLI asset found in latest ConfuserEx release" }
+          Write-Host "Downloading: $($asset.browser_download_url)"
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "ConfuserEx-CLI.zip" -UseBasicParsing
           Expand-Archive "ConfuserEx-CLI.zip" -DestinationPath "ConfuserEx"
           Write-Host "Extracted contents:"
           Get-ChildItem -Recurse "ConfuserEx" | Select-Object FullName
