@@ -123,8 +123,8 @@ jobs:
       - name: Obfuscate StrongholdKingdoms.exe
         shell: pwsh
         run: |
-          $cli = Get-ChildItem -Recurse -Filter "ConfuserEx.CLI.exe" | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $cli) { throw "ConfuserEx.CLI.exe not found after extraction" }
+          $cli = Get-ChildItem -Recurse -Filter "Confuser.CLI.exe" | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $cli) { throw "Confuser.CLI.exe not found after extraction" }
           Write-Host "Using CLI: $cli"
           & $cli -n confuserex.crproj
           if ($LASTEXITCODE -ne 0) { throw "Obfuscation failed (exit $LASTEXITCODE)" }
