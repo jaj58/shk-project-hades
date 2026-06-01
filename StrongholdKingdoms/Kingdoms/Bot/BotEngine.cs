@@ -147,7 +147,7 @@ namespace Kingdoms.Bot
 
         public void ReloadSettings()
         {
-            _settings = BotSettings.Load();
+            _settings = BotSettings.Load(_worldId);
             ApplySettings();
             BotLogger.Log("BotEngine", BotLogLevel.Info, "Settings reloaded from disk.");
         }
