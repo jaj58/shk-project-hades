@@ -132,7 +132,7 @@ namespace Kingdoms
 
         this.troopLabels[i] = new CustomSelfDrawPanel.CSDLabel();
         this.troopLabels[i].Position = new Point(x + iconW + 2, y + 9);
-        this.troopLabels[i].Size = new Size(24, 16);
+        this.troopLabels[i].Size = new Size(26, 16);
         this.troopLabels[i].Font = FontManager.GetFont("Arial", 9.5f, FontStyle.Regular);   // 8 × 1.2
         this.troopLabels[i].Color = ARGBColors.Black;
         this.troopLabels[i].Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_LEFT;
