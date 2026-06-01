@@ -9,7 +9,7 @@ namespace Kingdoms.Bot
 
         private readonly List<IBotModule> _modules = new List<IBotModule>();
         private BotSettings _settings;
-        private bool _initialized;
+        private int _worldId;
 
         public BotSettings Settings
         {
@@ -26,13 +26,11 @@ namespace Kingdoms.Bot
             get { return _settings != null && _settings.BotEnabled; }
         }
 
-        public void Init()
+        public void Init(int worldId)
         {
-            if (_initialized)
-                return;
-
-            _settings = BotSettings.Load();
-            BotLogger.Log("BotEngine", BotLogLevel.Info, "Bot engine initializing...");
+            _worldId = worldId;
+            _settings = BotSettings.Load(worldId);
+            BotLogger.Log("BotEngine", BotLogLevel.Info, "Bot engine initializing for world " + worldId + "...");
 
             RegisterModule(new Modules.VillageSyncModule());
             RegisterModule(new Modules.RadarModule());
@@ -63,7 +61,6 @@ namespace Kingdoms.Bot
             }
 
             ApplySettings();
-            _initialized = true;
             BotLogger.Log("BotEngine", BotLogLevel.Info, "Bot engine initialized with " + _modules.Count + " module(s).");
         }
 

@@ -149,6 +149,15 @@ namespace Kingdoms.Bot.UI
             _instance.BringToFront();
         }
 
+        public static void CloseInstance()
+        {
+            if (_instance != null && !_instance.IsDisposed)
+            {
+                _instance.Close();
+                _instance = null;
+            }
+        }
+
         private bool IsDesignTime
         {
             get
