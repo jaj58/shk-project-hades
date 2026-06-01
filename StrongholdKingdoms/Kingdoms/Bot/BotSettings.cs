@@ -29,6 +29,7 @@ namespace Kingdoms.Bot
         public ScoutSettings Scout = new ScoutSettings();
         public MiscSettings Misc = new MiscSettings();
         public AutoSettings Auto = new AutoSettings();
+        public BanquetSettings Banquet = new BanquetSettings();
 
         private static string GetSettingsFilePath(int worldId)
         {
@@ -1081,5 +1082,31 @@ namespace Kingdoms.Bot
             foreach (int t in types)
                 ResourceTypesToScout.Add(t);
         }
+    }
+
+    [Serializable]
+    public class BanquetSettings
+    {
+        public bool Enabled = false;
+        public int CycleIntervalSeconds = 300;
+        public int DelayBetweenVillagesMs = 1500;
+        public List<VillageBanquetSettings> Villages = new List<VillageBanquetSettings>();
+
+        public VillageBanquetSettings GetVillageSettings(int villageId)
+        {
+            foreach (VillageBanquetSettings v in Villages)
+                if (v.VillageId == villageId) return v;
+            VillageBanquetSettings newV = new VillageBanquetSettings { VillageId = villageId };
+            Villages.Add(newV);
+            return newV;
+        }
+    }
+
+    [Serializable]
+    public class VillageBanquetSettings
+    {
+        public int VillageId;
+        // Indices 0-7: Venison, Furniture, Metalware, Clothes, Wine, Salt, Spices, Silk
+        public List<int> EnabledGoods = new List<int>();
     }
 }

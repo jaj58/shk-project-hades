@@ -323,6 +323,19 @@ namespace Kingdoms.Bot.UI
             this._ppIntervalLabel = new System.Windows.Forms.Label();
             this._ppStatusLabel = new System.Windows.Forms.Label();
             this._ppEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._bqPage = new System.Windows.Forms.TabPage();
+            this._bqVillageListPanel = new System.Windows.Forms.Panel();
+            this._bqColHeader = new System.Windows.Forms.Panel();
+            this._bqSeparator = new System.Windows.Forms.Panel();
+            this._bqSettingsPanel = new System.Windows.Forms.Panel();
+            this._bqRunNowBtn = new System.Windows.Forms.Button();
+            this._bqRefreshBtn = new System.Windows.Forms.Button();
+            this._bqDelayInput = new System.Windows.Forms.NumericUpDown();
+            this._bqDelayLabel = new System.Windows.Forms.Label();
+            this._bqIntervalInput = new System.Windows.Forms.NumericUpDown();
+            this._bqIntervalLabel = new System.Windows.Forms.Label();
+            this._bqStatusLabel = new System.Windows.Forms.Label();
+            this._bqEnabledCheck = new System.Windows.Forms.CheckBox();
             this._scoutPage = new System.Windows.Forms.TabPage();
             this._scSettingsPanel = new System.Windows.Forms.Panel();
             this._scVillagePanel = new System.Windows.Forms.Panel();
@@ -453,6 +466,10 @@ namespace Kingdoms.Bot.UI
             this._abmQueueSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._abmStackDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._abmQueueVidInput)).BeginInit();
+            this._bqPage.SuspendLayout();
+            this._bqSettingsPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._bqDelayInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._bqIntervalInput)).BeginInit();
             this._popularityPage.SuspendLayout();
             this._ppSettingsPanel.SuspendLayout();
             this._scoutPage.SuspendLayout();
@@ -653,6 +670,7 @@ namespace Kingdoms.Bot.UI
             this._tabControl.Controls.Add(this._scoutPage);
             this._tabControl.Controls.Add(this._miscPage);
             this._tabControl.Controls.Add(this._autoPage);
+            this._tabControl.Controls.Add(this._bqPage);
             this._tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this._tabControl.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._tabControl.Location = new System.Drawing.Point(0, 0);
@@ -4291,6 +4309,155 @@ namespace Kingdoms.Bot.UI
             this._ppEnabledCheck.TabIndex = 0;
             this._ppEnabledCheck.Text = "Enable Popularity";
             //
+            // _bqPage
+            //
+            this._bqPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._bqPage.Controls.Add(this._bqVillageListPanel);
+            this._bqPage.Controls.Add(this._bqColHeader);
+            this._bqPage.Controls.Add(this._bqSeparator);
+            this._bqPage.Controls.Add(this._bqSettingsPanel);
+            this._bqPage.Location = new System.Drawing.Point(4, 24);
+            this._bqPage.Name = "_bqPage";
+            this._bqPage.Size = new System.Drawing.Size(1142, 497);
+            this._bqPage.TabIndex = 12;
+            this._bqPage.Text = "Banquet";
+            //
+            // _bqVillageListPanel
+            //
+            this._bqVillageListPanel.AutoScroll = true;
+            this._bqVillageListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._bqVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._bqVillageListPanel.Location = new System.Drawing.Point(0, 22);
+            this._bqVillageListPanel.Name = "_bqVillageListPanel";
+            this._bqVillageListPanel.Size = new System.Drawing.Size(1142, 384);
+            this._bqVillageListPanel.TabIndex = 2;
+            //
+            // _bqColHeader
+            //
+            this._bqColHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._bqColHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this._bqColHeader.Location = new System.Drawing.Point(0, 0);
+            this._bqColHeader.Name = "_bqColHeader";
+            this._bqColHeader.Size = new System.Drawing.Size(1142, 22);
+            this._bqColHeader.TabIndex = 1;
+            //
+            // _bqSeparator
+            //
+            this._bqSeparator.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(55)))), ((int)(((byte)(70)))));
+            this._bqSeparator.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this._bqSeparator.Location = new System.Drawing.Point(0, 406);
+            this._bqSeparator.Name = "_bqSeparator";
+            this._bqSeparator.Size = new System.Drawing.Size(1142, 1);
+            this._bqSeparator.TabIndex = 3;
+            //
+            // _bqSettingsPanel
+            //
+            this._bqSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._bqSettingsPanel.Controls.Add(this._bqRunNowBtn);
+            this._bqSettingsPanel.Controls.Add(this._bqRefreshBtn);
+            this._bqSettingsPanel.Controls.Add(this._bqDelayInput);
+            this._bqSettingsPanel.Controls.Add(this._bqDelayLabel);
+            this._bqSettingsPanel.Controls.Add(this._bqIntervalInput);
+            this._bqSettingsPanel.Controls.Add(this._bqIntervalLabel);
+            this._bqSettingsPanel.Controls.Add(this._bqStatusLabel);
+            this._bqSettingsPanel.Controls.Add(this._bqEnabledCheck);
+            this._bqSettingsPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this._bqSettingsPanel.Location = new System.Drawing.Point(0, 407);
+            this._bqSettingsPanel.Name = "_bqSettingsPanel";
+            this._bqSettingsPanel.Size = new System.Drawing.Size(1142, 90);
+            this._bqSettingsPanel.TabIndex = 0;
+            //
+            // _bqRunNowBtn
+            //
+            this._bqRunNowBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(80)))), ((int)(((byte)(50)))));
+            this._bqRunNowBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bqRunNowBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._bqRunNowBtn.Location = new System.Drawing.Point(431, 39);
+            this._bqRunNowBtn.Name = "_bqRunNowBtn";
+            this._bqRunNowBtn.Size = new System.Drawing.Size(80, 26);
+            this._bqRunNowBtn.TabIndex = 7;
+            this._bqRunNowBtn.Text = "Run Now";
+            this._bqRunNowBtn.UseVisualStyleBackColor = false;
+            //
+            // _bqRefreshBtn
+            //
+            this._bqRefreshBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(50)))), ((int)(((byte)(70)))));
+            this._bqRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bqRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._bqRefreshBtn.Location = new System.Drawing.Point(346, 39);
+            this._bqRefreshBtn.Name = "_bqRefreshBtn";
+            this._bqRefreshBtn.Size = new System.Drawing.Size(75, 26);
+            this._bqRefreshBtn.TabIndex = 6;
+            this._bqRefreshBtn.Text = "Refresh";
+            this._bqRefreshBtn.UseVisualStyleBackColor = false;
+            //
+            // _bqDelayInput
+            //
+            this._bqDelayInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._bqDelayInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._bqDelayInput.Location = new System.Drawing.Point(256, 41);
+            this._bqDelayInput.Maximum = new decimal(new int[] { 30000, 0, 0, 0 });
+            this._bqDelayInput.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
+            this._bqDelayInput.Name = "_bqDelayInput";
+            this._bqDelayInput.Size = new System.Drawing.Size(75, 23);
+            this._bqDelayInput.TabIndex = 5;
+            this._bqDelayInput.Value = new decimal(new int[] { 1500, 0, 0, 0 });
+            //
+            // _bqDelayLabel
+            //
+            this._bqDelayLabel.AutoSize = true;
+            this._bqDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._bqDelayLabel.Location = new System.Drawing.Point(176, 44);
+            this._bqDelayLabel.Name = "_bqDelayLabel";
+            this._bqDelayLabel.Size = new System.Drawing.Size(68, 15);
+            this._bqDelayLabel.TabIndex = 4;
+            this._bqDelayLabel.Text = "Delay (ms):";
+            //
+            // _bqIntervalInput
+            //
+            this._bqIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._bqIntervalInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._bqIntervalInput.Location = new System.Drawing.Point(96, 41);
+            this._bqIntervalInput.Maximum = new decimal(new int[] { 86400, 0, 0, 0 });
+            this._bqIntervalInput.Minimum = new decimal(new int[] { 30, 0, 0, 0 });
+            this._bqIntervalInput.Name = "_bqIntervalInput";
+            this._bqIntervalInput.Size = new System.Drawing.Size(65, 23);
+            this._bqIntervalInput.TabIndex = 3;
+            this._bqIntervalInput.Value = new decimal(new int[] { 300, 0, 0, 0 });
+            //
+            // _bqIntervalLabel
+            //
+            this._bqIntervalLabel.AutoSize = true;
+            this._bqIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._bqIntervalLabel.Location = new System.Drawing.Point(16, 44);
+            this._bqIntervalLabel.Name = "_bqIntervalLabel";
+            this._bqIntervalLabel.Size = new System.Drawing.Size(70, 15);
+            this._bqIntervalLabel.TabIndex = 2;
+            this._bqIntervalLabel.Text = "Interval (s):";
+            //
+            // _bqStatusLabel
+            //
+            this._bqStatusLabel.AutoSize = true;
+            this._bqStatusLabel.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._bqStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
+            this._bqStatusLabel.Location = new System.Drawing.Point(186, 16);
+            this._bqStatusLabel.Name = "_bqStatusLabel";
+            this._bqStatusLabel.Size = new System.Drawing.Size(59, 13);
+            this._bqStatusLabel.TabIndex = 1;
+            this._bqStatusLabel.Text = "DISABLED";
+            //
+            // _bqEnabledCheck
+            //
+            this._bqEnabledCheck.AutoSize = true;
+            this._bqEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bqEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this._bqEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._bqEnabledCheck.Location = new System.Drawing.Point(16, 12);
+            this._bqEnabledCheck.Name = "_bqEnabledCheck";
+            this._bqEnabledCheck.Size = new System.Drawing.Size(143, 23);
+            this._bqEnabledCheck.TabIndex = 0;
+            this._bqEnabledCheck.Text = "Enable Banquet";
+            //
             // _scoutPage
             //
             this._scoutPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
@@ -4676,6 +4843,11 @@ namespace Kingdoms.Bot.UI
             this._abmQueueSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._abmStackDelayInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._abmQueueVidInput)).EndInit();
+            this._bqPage.ResumeLayout(false);
+            this._bqSettingsPanel.ResumeLayout(false);
+            this._bqSettingsPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._bqDelayInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._bqIntervalInput)).EndInit();
             this._popularityPage.ResumeLayout(false);
             this._ppSettingsPanel.ResumeLayout(false);
             this._ppSettingsPanel.PerformLayout();
@@ -5383,6 +5555,20 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _ppDelayInput;
         private System.Windows.Forms.Button _ppRefreshBtn;
         private System.Windows.Forms.Button _ppRunNowBtn;
+        // Banquet tab controls
+        private System.Windows.Forms.TabPage _bqPage;
+        private System.Windows.Forms.Panel _bqVillageListPanel;
+        private System.Windows.Forms.Panel _bqColHeader;
+        private System.Windows.Forms.Panel _bqSeparator;
+        private System.Windows.Forms.Panel _bqSettingsPanel;
+        private System.Windows.Forms.CheckBox _bqEnabledCheck;
+        private System.Windows.Forms.Label _bqStatusLabel;
+        private System.Windows.Forms.Label _bqIntervalLabel;
+        private System.Windows.Forms.NumericUpDown _bqIntervalInput;
+        private System.Windows.Forms.Label _bqDelayLabel;
+        private System.Windows.Forms.NumericUpDown _bqDelayInput;
+        private System.Windows.Forms.Button _bqRefreshBtn;
+        private System.Windows.Forms.Button _bqRunNowBtn;
         // Scout tab controls
         private System.Windows.Forms.TabPage _scoutPage;
         private System.Windows.Forms.Panel _scSettingsPanel;

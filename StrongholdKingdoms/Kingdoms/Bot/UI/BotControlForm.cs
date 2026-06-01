@@ -123,6 +123,9 @@ namespace Kingdoms.Bot.UI
         // Popularity tab runtime state
         private Timer _ppRefreshTimer;
 
+        // Banquet tab runtime state
+        private List<BanquetVillageRow> _bqVillageRows = new List<BanquetVillageRow>();
+
         // Auto tab runtime state. The control fields (_autoProd*/_autoModule* panels, interval
         // inputs and server-time label) are declared in BotControlForm.Designer.cs.
         private Timer _autoRefreshTimer;
@@ -200,6 +203,7 @@ namespace Kingdoms.Bot.UI
                 WireUpAutoBombMultiTab();
                 WireUpMiscTab();
                 WireUpPopularityTab();
+                WireUpBanquetTab();
                 WireUpAutoTab();
                 WireUpScoutTab();
                 SubscribeToLog();
@@ -220,6 +224,7 @@ namespace Kingdoms.Bot.UI
                 AbmLoadFromSettings();
                 MiscLoadFromSettings();
                 PpLoadFromSettings();
+                BqLoadFromSettings();
                 AutoLoadFromSettings();
                 ScLoadFromSettings();
             }
@@ -5335,6 +5340,152 @@ namespace Kingdoms.Bot.UI
         }
 
         // =====================================================================
+        // Banquet tab
+        // =====================================================================
+
+        private void WireUpBanquetTab()
+        {
+            _bqEnabledCheck.CheckedChanged += delegate { BqWriteToSettings(); };
+            _bqIntervalInput.ValueChanged += delegate { BqWriteToSettings(); };
+            _bqDelayInput.ValueChanged += delegate { BqWriteToSettings(); };
+            _bqRefreshBtn.Click += delegate { BqPopulateVillageList(); };
+            _bqRunNowBtn.Click += delegate { BqRunNow(); };
+
+            int[] colXs = { 8, 212, 302, 392, 482, 572, 660, 750, 838 };
+            string[] colNames = { "Village" };
+            Label vl = new Label();
+            vl.Text = colNames[0];
+            vl.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            vl.ForeColor = TextSec;
+            vl.AutoSize = true;
+            vl.Location = new Point(colXs[0], 4);
+            _bqColHeader.Controls.Add(vl);
+
+            for (int i = 0; i < Modules.BanquetModule.GoodNames.Length; i++)
+            {
+                Label cl = new Label();
+                cl.Text = Modules.BanquetModule.GoodNames[i];
+                cl.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+                cl.ForeColor = TextSec;
+                cl.AutoSize = true;
+                cl.Location = new Point(colXs[i + 1], 4);
+                _bqColHeader.Controls.Add(cl);
+            }
+        }
+
+        private void BqLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            BanquetSettings s = BotEngine.Instance.Settings.Banquet;
+            _bqEnabledCheck.Checked = s.Enabled;
+            _bqIntervalInput.Value = Math.Max(_bqIntervalInput.Minimum,
+                Math.Min(_bqIntervalInput.Maximum, s.CycleIntervalSeconds));
+            _bqDelayInput.Value = Math.Max(_bqDelayInput.Minimum,
+                Math.Min(_bqDelayInput.Maximum, s.DelayBetweenVillagesMs));
+
+            BqPopulateVillageList();
+        }
+
+        private void BqWriteToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            BanquetSettings s = BotEngine.Instance.Settings.Banquet;
+            s.Enabled = _bqEnabledCheck.Checked;
+            s.CycleIntervalSeconds = (int)_bqIntervalInput.Value;
+            s.DelayBetweenVillagesMs = (int)_bqDelayInput.Value;
+
+            foreach (IBotModule module in BotEngine.Instance.Modules)
+            {
+                if (module is Modules.BanquetModule)
+                    module.Enabled = s.Enabled;
+            }
+
+            BqUpdateStatusDisplay();
+        }
+
+        private void BqPopulateVillageList()
+        {
+            _bqVillageListPanel.SuspendLayout();
+            _bqVillageListPanel.Controls.Clear();
+            _bqVillageRows.Clear();
+
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+            {
+                _bqVillageListPanel.ResumeLayout();
+                return;
+            }
+
+            List<WorldMap.UserVillageData> villages = GameEngine.Instance.World.getUserVillageList();
+            if (villages == null)
+            {
+                _bqVillageListPanel.ResumeLayout();
+                return;
+            }
+
+            BanquetSettings settings = (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+                ? BotEngine.Instance.Settings.Banquet
+                : null;
+
+            int researchLevel = 0;
+            try { researchLevel = (int)GameEngine.Instance.World.UserResearchData.Research_Craftsmanship; } catch { }
+
+            int y = 2;
+            bool alternate = false;
+            foreach (WorldMap.UserVillageData uvd in villages)
+            {
+                VillageBanquetSettings vs = settings != null
+                    ? settings.GetVillageSettings(uvd.villageID)
+                    : new VillageBanquetSettings { VillageId = uvd.villageID };
+
+                BanquetVillageRow row = new BanquetVillageRow(uvd, vs, researchLevel, alternate);
+                row.Location = new Point(0, y);
+                row.Width = _bqVillageListPanel.ClientSize.Width;
+                row.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
+                row.GoodToggled += BqOnGoodToggled;
+                _bqVillageListPanel.Controls.Add(row);
+                _bqVillageRows.Add(row);
+                y += row.Height + 1;
+                alternate = !alternate;
+            }
+
+            _bqVillageListPanel.ResumeLayout();
+        }
+
+        private void BqOnGoodToggled(int villageId, int goodIdx, bool enabled)
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            VillageBanquetSettings vs = BotEngine.Instance.Settings.Banquet.GetVillageSettings(villageId);
+            if (enabled)
+            {
+                if (!vs.EnabledGoods.Contains(goodIdx))
+                    vs.EnabledGoods.Add(goodIdx);
+            }
+            else
+            {
+                vs.EnabledGoods.Remove(goodIdx);
+            }
+        }
+
+        private void BqRunNow()
+        {
+            if (BotEngine.Instance == null) return;
+            foreach (IBotModule module in BotEngine.Instance.Modules)
+            {
+                Modules.BanquetModule bm = module as Modules.BanquetModule;
+                if (bm != null) { bm.RunNow(); break; }
+            }
+        }
+
+        private void BqUpdateStatusDisplay()
+        {
+            bool enabled = _bqEnabledCheck.Checked;
+            _bqStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
+            _bqStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+        }
+
+        // =====================================================================
         // Auto tab
         // =====================================================================
 
@@ -6472,6 +6623,59 @@ namespace Kingdoms.Bot.UI
         public string Name;
         public override string ToString() { return Name; }
     }
+    internal class BanquetVillageRow : Panel
+    {
+        public event Action<int, int, bool> GoodToggled;
+        private readonly int _villageId;
+
+        private static readonly int[] ColXs = { 212, 302, 392, 482, 572, 660, 750, 838 };
+
+        public BanquetVillageRow(
+            WorldMap.UserVillageData uvd,
+            VillageBanquetSettings vs,
+            int researchLevel,
+            bool alternate)
+        {
+            _villageId = uvd.villageID;
+            Height = 28;
+            BackColor = alternate
+                ? Color.FromArgb(36, 38, 48)
+                : Color.FromArgb(30, 32, 40);
+
+            string vname = "";
+            try { vname = GameEngine.Instance.World.getVillageName(uvd.villageID); } catch { }
+            Label nameLabel = new Label();
+            nameLabel.Text = (string.IsNullOrEmpty(vname) ? "Village" : vname) + " (" + uvd.villageID + ")";
+            nameLabel.ForeColor = Color.FromArgb(230, 230, 240);
+            nameLabel.AutoSize = false;
+            nameLabel.Width = 200;
+            nameLabel.Location = new Point(8, 6);
+            Controls.Add(nameLabel);
+
+            for (int i = 0; i < Modules.BanquetModule.GoodNames.Length; i++)
+            {
+                bool unlocked = i < researchLevel;
+                CheckBox cb = new CheckBox();
+                cb.AutoSize = true;
+                cb.Location = new Point(ColXs[i], 6);
+                cb.BackColor = Color.Transparent;
+                cb.Checked = vs.EnabledGoods.Contains(i);
+                cb.Enabled = unlocked;
+                cb.ForeColor = unlocked
+                    ? Color.FromArgb(230, 230, 240)
+                    : Color.FromArgb(80, 85, 100);
+
+                int capturedIdx = i;
+                cb.CheckedChanged += delegate
+                {
+                    if (GoodToggled != null)
+                        GoodToggled(_villageId, capturedIdx, cb.Checked);
+                };
+                Controls.Add(cb);
+            }
+        }
+    }
+
     internal class ScoutVillageItem
     {
         public readonly int VillageId;

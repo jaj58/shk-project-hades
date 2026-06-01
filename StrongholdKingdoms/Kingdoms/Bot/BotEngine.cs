@@ -46,6 +46,7 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.FreeCardCollectorModule());
             RegisterModule(new Modules.AutoCardModule());
             RegisterModule(new Modules.AutoModuleSchedulerModule());
+            RegisterModule(new Modules.BanquetModule());
 
             foreach (IBotModule module in _modules)
             {
@@ -109,6 +110,8 @@ namespace Kingdoms.Bot
                     module.Enabled = true; // Always enabled — gated internally per-good / per-schedule
                 else if (module is Modules.ScoutModule)
                     module.Enabled = _settings.Scout.Enabled;
+                else if (module is Modules.BanquetModule)
+                    module.Enabled = _settings.Banquet.Enabled;
             }
         }
 
@@ -139,6 +142,8 @@ namespace Kingdoms.Bot
                 // Auto modules are always enabled and gated internally — nothing to sync back.
                 else if (module is Modules.ScoutModule)
                     _settings.Scout.Enabled = module.Enabled;
+                else if (module is Modules.BanquetModule)
+                    _settings.Banquet.Enabled = module.Enabled;
             }
 
             _settings.Save();
