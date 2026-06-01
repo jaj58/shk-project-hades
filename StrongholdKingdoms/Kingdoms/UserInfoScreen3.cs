@@ -5,6 +5,7 @@
 // Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.43.10\StrongholdKingdoms.exe
 
 using CommonTypes;
+using Kingdoms.Bot;
 using StatTracking;
 using System;
 using System.Collections.Generic;
@@ -1134,6 +1135,13 @@ namespace Kingdoms
         this.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.lineClicked));
         this.Size = new Size(360, 30);
         this.villageNameLabel.Text = GameEngine.Instance.World.getVillageName(villageID);
+        if (BotEngine.Instance?.Settings?.Misc?.ShowUserScreenInfo == true)
+        {
+          VillageData village = GameEngine.Instance.World.villageList[villageID];
+          this.villageNameLabel.Text += " [" + GameEngine.Instance.World.getVillageData(villageID).villageInfo + "]"
+            + (village.peaceTime > VillageMap.getCurrentServerTime() ? "[PEACE]" : "")
+            + (village.interdictionTime > VillageMap.getCurrentServerTime() ? "[ID]" : "");
+        }
         this.villageNameLabel.Color = ARGBColors.Black;
         this.villageNameLabel.RolloverColor = ARGBColors.White;
         this.villageNameLabel.Position = new Point(50, -10);

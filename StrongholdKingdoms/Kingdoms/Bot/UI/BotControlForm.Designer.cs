@@ -363,6 +363,10 @@ namespace Kingdoms.Bot.UI
             this._autoModuleColAutoOff = new System.Windows.Forms.Label();
             this._miscCollectFreeCardsCheck = new System.Windows.Forms.CheckBox();
             this._miscDisableCannotPlayCardCheck = new System.Windows.Forms.CheckBox();
+            this._miscShowOtherTraderInfoCheck = new System.Windows.Forms.CheckBox();
+            this._miscWorldMapParishBuildingCountCheck = new System.Windows.Forms.CheckBox();
+            this._miscShowUserScreenInfoCheck = new System.Windows.Forms.CheckBox();
+            this._miscMapAttackTypeIconsCheck = new System.Windows.Forms.CheckBox();
             this._miscSaleHeaderLabel = new System.Windows.Forms.Label();
             this._miscSalePctLabel = new System.Windows.Forms.Label();
             this._miscSalePctValue = new System.Windows.Forms.Label();
@@ -4372,6 +4376,10 @@ namespace Kingdoms.Bot.UI
             this._miscSettingsPanel.Controls.Add(this._miscSaleHeaderLabel);
             this._miscSettingsPanel.Controls.Add(this._miscCollectFreeCardsCheck);
             this._miscSettingsPanel.Controls.Add(this._miscDisableCannotPlayCardCheck);
+            this._miscSettingsPanel.Controls.Add(this._miscShowOtherTraderInfoCheck);
+            this._miscSettingsPanel.Controls.Add(this._miscWorldMapParishBuildingCountCheck);
+            this._miscSettingsPanel.Controls.Add(this._miscShowUserScreenInfoCheck);
+            this._miscSettingsPanel.Controls.Add(this._miscMapAttackTypeIconsCheck);
             this._miscSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._miscSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._miscSettingsPanel.Name = "_miscSettingsPanel";
@@ -4402,6 +4410,54 @@ namespace Kingdoms.Bot.UI
             this._miscDisableCannotPlayCardCheck.Size = new System.Drawing.Size(214, 23);
             this._miscDisableCannotPlayCardCheck.TabIndex = 2;
             this._miscDisableCannotPlayCardCheck.Text = "Disable can't play card popup";
+            //
+            // _miscShowOtherTraderInfoCheck
+            //
+            this._miscShowOtherTraderInfoCheck.AutoSize = true;
+            this._miscShowOtherTraderInfoCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._miscShowOtherTraderInfoCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._miscShowOtherTraderInfoCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscShowOtherTraderInfoCheck.Location = new System.Drawing.Point(16, 72);
+            this._miscShowOtherTraderInfoCheck.Name = "_miscShowOtherTraderInfoCheck";
+            this._miscShowOtherTraderInfoCheck.Size = new System.Drawing.Size(214, 23);
+            this._miscShowOtherTraderInfoCheck.TabIndex = 3;
+            this._miscShowOtherTraderInfoCheck.Text = "Show Other Trader Info";
+            //
+            // _miscWorldMapParishBuildingCountCheck
+            //
+            this._miscWorldMapParishBuildingCountCheck.AutoSize = true;
+            this._miscWorldMapParishBuildingCountCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._miscWorldMapParishBuildingCountCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._miscWorldMapParishBuildingCountCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscWorldMapParishBuildingCountCheck.Location = new System.Drawing.Point(16, 98);
+            this._miscWorldMapParishBuildingCountCheck.Name = "_miscWorldMapParishBuildingCountCheck";
+            this._miscWorldMapParishBuildingCountCheck.Size = new System.Drawing.Size(214, 23);
+            this._miscWorldMapParishBuildingCountCheck.TabIndex = 4;
+            this._miscWorldMapParishBuildingCountCheck.Text = "World Map Parish Building Count";
+            //
+            // _miscShowUserScreenInfoCheck
+            //
+            this._miscShowUserScreenInfoCheck.AutoSize = true;
+            this._miscShowUserScreenInfoCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._miscShowUserScreenInfoCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._miscShowUserScreenInfoCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscShowUserScreenInfoCheck.Location = new System.Drawing.Point(16, 124);
+            this._miscShowUserScreenInfoCheck.Name = "_miscShowUserScreenInfoCheck";
+            this._miscShowUserScreenInfoCheck.Size = new System.Drawing.Size(214, 23);
+            this._miscShowUserScreenInfoCheck.TabIndex = 5;
+            this._miscShowUserScreenInfoCheck.Text = "Show User Screen Info";
+            //
+            // _miscMapAttackTypeIconsCheck
+            //
+            this._miscMapAttackTypeIconsCheck.AutoSize = true;
+            this._miscMapAttackTypeIconsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._miscMapAttackTypeIconsCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._miscMapAttackTypeIconsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscMapAttackTypeIconsCheck.Location = new System.Drawing.Point(16, 150);
+            this._miscMapAttackTypeIconsCheck.Name = "_miscMapAttackTypeIconsCheck";
+            this._miscMapAttackTypeIconsCheck.Size = new System.Drawing.Size(214, 23);
+            this._miscMapAttackTypeIconsCheck.TabIndex = 6;
+            this._miscMapAttackTypeIconsCheck.Text = "Map Attack Type Icons";
             //
             // _miscSaleHeaderLabel
             //
@@ -5266,6 +5322,10 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Panel _miscSettingsPanel;
         private System.Windows.Forms.CheckBox _miscCollectFreeCardsCheck;
         private System.Windows.Forms.CheckBox _miscDisableCannotPlayCardCheck;
+        private System.Windows.Forms.CheckBox _miscShowOtherTraderInfoCheck;
+        private System.Windows.Forms.CheckBox _miscWorldMapParishBuildingCountCheck;
+        private System.Windows.Forms.CheckBox _miscShowUserScreenInfoCheck;
+        private System.Windows.Forms.CheckBox _miscMapAttackTypeIconsCheck;
         private System.Windows.Forms.Label _miscSaleHeaderLabel;
         private System.Windows.Forms.Label _miscSalePctLabel;
         private System.Windows.Forms.Label _miscSalePctValue;

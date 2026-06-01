@@ -5141,6 +5141,10 @@ namespace Kingdoms.Bot.UI
         {
             _miscCollectFreeCardsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             _miscDisableCannotPlayCardCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
+            _miscShowOtherTraderInfoCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
+            _miscWorldMapParishBuildingCountCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
+            _miscShowUserScreenInfoCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
+            _miscMapAttackTypeIconsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             MiscRefreshSaleInfo();
         }
 
@@ -5151,6 +5155,10 @@ namespace Kingdoms.Bot.UI
             MiscSettings s = BotEngine.Instance.Settings.Misc;
             _miscCollectFreeCardsCheck.Checked = s.CollectFreeCards;
             _miscDisableCannotPlayCardCheck.Checked = s.DisableCannotPlayCardPopup;
+            _miscShowOtherTraderInfoCheck.Checked = s.ShowOtherTraderInfo;
+            _miscWorldMapParishBuildingCountCheck.Checked = s.WorldMapParishBuildingCount;
+            _miscShowUserScreenInfoCheck.Checked = s.ShowUserScreenInfo;
+            _miscMapAttackTypeIconsCheck.Checked = s.MapAttackTypeIcons;
         }
 
         private void MiscWriteToSettings()
@@ -5160,6 +5168,10 @@ namespace Kingdoms.Bot.UI
             MiscSettings s = BotEngine.Instance.Settings.Misc;
             s.CollectFreeCards = _miscCollectFreeCardsCheck.Checked;
             s.DisableCannotPlayCardPopup = _miscDisableCannotPlayCardCheck.Checked;
+            s.ShowOtherTraderInfo = _miscShowOtherTraderInfoCheck.Checked;
+            s.WorldMapParishBuildingCount = _miscWorldMapParishBuildingCountCheck.Checked;
+            s.ShowUserScreenInfo = _miscShowUserScreenInfoCheck.Checked;
+            s.MapAttackTypeIcons = _miscMapAttackTypeIconsCheck.Checked;
             // Live only — consistent with every other tab. Persistence happens via the
             // Save Settings button; Load Settings reverts to the last saved snapshot.
         }

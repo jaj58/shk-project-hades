@@ -6,6 +6,7 @@
 
 using CommonTypes;
 using DXGraphics;
+using Kingdoms.Bot;
 using System;
 using System.Drawing;
 
@@ -409,6 +410,8 @@ namespace Kingdoms
         if (capitalName.Length <= 0)
           return;
         Color black = ARGBColors.Black;
+        if (BotEngine.Instance?.Settings?.Misc?.WorldMapParishBuildingCount == true)
+          capitalName = capitalName + " [" + village.villageInfo + "]";
         GameEngine.Instance.World.addText(capitalName, new PointF(this.villageSprite.PosX, this.villageSprite.PosY + 40f * origScale), black, true, 1, true);
       }
     }

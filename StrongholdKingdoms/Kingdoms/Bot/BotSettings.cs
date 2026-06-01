@@ -930,6 +930,10 @@ namespace Kingdoms.Bot
     {
         public bool CollectFreeCards = false;
         public bool DisableCannotPlayCardPopup = false;
+        public bool ShowOtherTraderInfo = false;
+        public bool WorldMapParishBuildingCount = false;
+        public bool ShowUserScreenInfo = false;
+        public bool MapAttackTypeIcons = false;
     }
 
     // =========================================================================
