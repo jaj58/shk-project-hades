@@ -123,6 +123,19 @@ namespace Kingdoms
     {
       this.startPos = (PointF) realStart;
       this.endPos = (PointF) realEnd;
+      // distThroughJourney comes from a division in the caller (elapsed / journeyTime).
+      // If journeyTime is zero or the cycle data is corrupt the division can produce NaN,
+      // ±Infinity, or a large negative — none of which are caught by >= 1.0 (NaN comparisons
+      // are always false). Snap those to safe values before any DateTime arithmetic.
+      if (double.IsNaN(distThroughJourney) || double.IsInfinity(distThroughJourney))
+      {
+        this.currentPos = this.endPos;
+        this.state = VillageMapPerson.VillagePeopleStates.STATIONARY;
+        return;
+      }
+      if (distThroughJourney < 0.0)
+        distThroughJourney = 0.0; // hasn't started yet — begin from scratch
+
       if (distThroughJourney >= 1.0)
       {
         this.currentPos = this.endPos;
