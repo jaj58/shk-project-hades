@@ -4316,6 +4316,9 @@ namespace Kingdoms.Bot.UI
             this._bqPage.Controls.Add(this._bqColHeader);
             this._bqPage.Controls.Add(this._bqSeparator);
             this._bqPage.Controls.Add(this._bqSettingsPanel);
+            // NOTE: Add order is intentional — last-added Top panel docks to the very top first.
+            // SettingsPanel (Top, last) → very top; Separator (Top) → just below it;
+            // ColHeader (Top) → below separator; VillageListPanel (Fill) → remaining area.
             this._bqPage.Location = new System.Drawing.Point(4, 24);
             this._bqPage.Name = "_bqPage";
             this._bqPage.Size = new System.Drawing.Size(1142, 497);
@@ -4344,8 +4347,8 @@ namespace Kingdoms.Bot.UI
             // _bqSeparator
             //
             this._bqSeparator.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(55)))), ((int)(((byte)(70)))));
-            this._bqSeparator.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this._bqSeparator.Location = new System.Drawing.Point(0, 406);
+            this._bqSeparator.Dock = System.Windows.Forms.DockStyle.Top;
+            this._bqSeparator.Location = new System.Drawing.Point(0, 90);
             this._bqSeparator.Name = "_bqSeparator";
             this._bqSeparator.Size = new System.Drawing.Size(1142, 1);
             this._bqSeparator.TabIndex = 3;
@@ -4361,8 +4364,8 @@ namespace Kingdoms.Bot.UI
             this._bqSettingsPanel.Controls.Add(this._bqIntervalLabel);
             this._bqSettingsPanel.Controls.Add(this._bqStatusLabel);
             this._bqSettingsPanel.Controls.Add(this._bqEnabledCheck);
-            this._bqSettingsPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this._bqSettingsPanel.Location = new System.Drawing.Point(0, 407);
+            this._bqSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._bqSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._bqSettingsPanel.Name = "_bqSettingsPanel";
             this._bqSettingsPanel.Size = new System.Drawing.Size(1142, 90);
             this._bqSettingsPanel.TabIndex = 0;
@@ -4631,7 +4634,7 @@ namespace Kingdoms.Bot.UI
             this._miscSaleHeaderLabel.AutoSize = true;
             this._miscSaleHeaderLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._miscSaleHeaderLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._miscSaleHeaderLabel.Location = new System.Drawing.Point(16, 84);
+            this._miscSaleHeaderLabel.Location = new System.Drawing.Point(300, 20);
             this._miscSaleHeaderLabel.Name = "_miscSaleHeaderLabel";
             this._miscSaleHeaderLabel.Text = "Sale Info";
             //
@@ -4640,7 +4643,7 @@ namespace Kingdoms.Bot.UI
             this._miscSalePctLabel.AutoSize = true;
             this._miscSalePctLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._miscSalePctLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._miscSalePctLabel.Location = new System.Drawing.Point(16, 106);
+            this._miscSalePctLabel.Location = new System.Drawing.Point(300, 46);
             this._miscSalePctLabel.Name = "_miscSalePctLabel";
             this._miscSalePctLabel.Text = "Sale %:";
             //
@@ -4649,7 +4652,7 @@ namespace Kingdoms.Bot.UI
             this._miscSalePctValue.AutoSize = true;
             this._miscSalePctValue.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._miscSalePctValue.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._miscSalePctValue.Location = new System.Drawing.Point(90, 106);
+            this._miscSalePctValue.Location = new System.Drawing.Point(380, 46);
             this._miscSalePctValue.Name = "_miscSalePctValue";
             this._miscSalePctValue.Text = "—";
             //
@@ -4658,7 +4661,7 @@ namespace Kingdoms.Bot.UI
             this._miscSaleStartLabel.AutoSize = true;
             this._miscSaleStartLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._miscSaleStartLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._miscSaleStartLabel.Location = new System.Drawing.Point(16, 128);
+            this._miscSaleStartLabel.Location = new System.Drawing.Point(300, 72);
             this._miscSaleStartLabel.Name = "_miscSaleStartLabel";
             this._miscSaleStartLabel.Text = "Start:";
             //
@@ -4667,7 +4670,7 @@ namespace Kingdoms.Bot.UI
             this._miscSaleStartValue.AutoSize = true;
             this._miscSaleStartValue.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._miscSaleStartValue.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._miscSaleStartValue.Location = new System.Drawing.Point(90, 128);
+            this._miscSaleStartValue.Location = new System.Drawing.Point(380, 72);
             this._miscSaleStartValue.Name = "_miscSaleStartValue";
             this._miscSaleStartValue.Text = "—";
             //
@@ -4676,7 +4679,7 @@ namespace Kingdoms.Bot.UI
             this._miscSaleEndLabel.AutoSize = true;
             this._miscSaleEndLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._miscSaleEndLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._miscSaleEndLabel.Location = new System.Drawing.Point(16, 150);
+            this._miscSaleEndLabel.Location = new System.Drawing.Point(300, 98);
             this._miscSaleEndLabel.Name = "_miscSaleEndLabel";
             this._miscSaleEndLabel.Text = "End:";
             //
@@ -4685,7 +4688,7 @@ namespace Kingdoms.Bot.UI
             this._miscSaleEndValue.AutoSize = true;
             this._miscSaleEndValue.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._miscSaleEndValue.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._miscSaleEndValue.Location = new System.Drawing.Point(90, 150);
+            this._miscSaleEndValue.Location = new System.Drawing.Point(380, 98);
             this._miscSaleEndValue.Name = "_miscSaleEndValue";
             this._miscSaleEndValue.Text = "—";
             //

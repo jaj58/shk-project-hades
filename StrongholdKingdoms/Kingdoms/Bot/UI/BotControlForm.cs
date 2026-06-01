@@ -119,6 +119,7 @@ namespace Kingdoms.Bot.UI
         private RadioButton _scPriorityRangeRadio;
         private CheckBox _scSendOneScoutCheck;
         private CheckBox _scSendOneOnNewCheck;
+        private Button _scCopySettingsBtn;
 
         // Popularity tab runtime state
         private Timer _ppRefreshTimer;
@@ -5444,6 +5445,7 @@ namespace Kingdoms.Bot.UI
                 row.Width = _bqVillageListPanel.ClientSize.Width;
                 row.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
                 row.GoodToggled += BqOnGoodToggled;
+                row.CopyToAll += BqOnCopyToAll;
                 _bqVillageListPanel.Controls.Add(row);
                 _bqVillageRows.Add(row);
                 y += row.Height + 1;
@@ -5466,6 +5468,38 @@ namespace Kingdoms.Bot.UI
             {
                 vs.EnabledGoods.Remove(goodIdx);
             }
+        }
+
+        private void BqOnCopyToAll(int sourceVillageId)
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            BanquetSettings settings = BotEngine.Instance.Settings.Banquet;
+            VillageBanquetSettings source = settings.GetVillageSettings(sourceVillageId);
+
+            List<WorldMap.UserVillageData> villages = null;
+            try
+            {
+                if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                    villages = GameEngine.Instance.World.getUserVillageList();
+            }
+            catch { }
+            if (villages == null) return;
+
+            int count = 0;
+            foreach (WorldMap.UserVillageData uvd in villages)
+            {
+                if (uvd.villageID == sourceVillageId) continue;
+                VillageBanquetSettings dest = settings.GetVillageSettings(uvd.villageID);
+                dest.EnabledGoods = new List<int>(source.EnabledGoods);
+                count++;
+            }
+
+            BotLogger.Log("Banquet", BotLogLevel.Info,
+                string.Format("Copied banquet settings from village {0} to {1} other village(s).", sourceVillageId, count));
+
+            // Refresh the rows so checkboxes reflect the copied state
+            BqPopulateVillageList();
         }
 
         private void BqRunNow()
@@ -6266,6 +6300,15 @@ namespace Kingdoms.Bot.UI
             _scMoveToScoutBtn.Size = new Size(50, 26);
             _scContentPanel.Controls.Add(_scMoveToScoutBtn);
 
+            _scCopySettingsBtn = new Button();
+            _scCopySettingsBtn.Text = "Copy to all villages";
+            _scCopySettingsBtn.FlatStyle = FlatStyle.Flat;
+            _scCopySettingsBtn.BackColor = Color.FromArgb(50, 70, 50);
+            _scCopySettingsBtn.ForeColor = textPri;
+            _scCopySettingsBtn.Location = new Point(10, 378);
+            _scCopySettingsBtn.Size = new Size(160, 26);
+            _scContentPanel.Controls.Add(_scCopySettingsBtn);
+
             // ── Wire events ──────────────────────────────────────────────────
             _scEnabledCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
             _scIntervalInput.ValueChanged += delegate { ScPushGlobalSettings(); };
@@ -6288,6 +6331,8 @@ namespace Kingdoms.Bot.UI
 
             _scScoutList.DoubleClick += delegate { ScMoveSelectedToIgnore(); };
             _scIgnoreList.DoubleClick += delegate { ScMoveSelectedToScout(); };
+
+            _scCopySettingsBtn.Click += delegate { ScCopySettingsToAll(); };
 
             // Drag-to-reorder within each list
             _scScoutList.MouseDown += ScListMouseDown;
@@ -6451,6 +6496,42 @@ namespace Kingdoms.Bot.UI
                 ScoutResourceItem ri = item as ScoutResourceItem;
                 if (ri != null) vs.ResourceTypesToIgnore.Add(ri.ResourceType);
             }
+        }
+
+        private void ScCopySettingsToAll()
+        {
+            if (_scSelectedVillageId < 0) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            // Persist whatever is currently shown in the UI first
+            ScSaveCurrentVillage();
+
+            ScoutSettings settings = BotEngine.Instance.Settings.Scout;
+            VillageScoutSettings source = settings.GetVillageSettings(_scSelectedVillageId);
+
+            List<WorldMap.UserVillageData> villages = null;
+            try
+            {
+                if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                    villages = GameEngine.Instance.World.getUserVillageList();
+            }
+            catch { }
+
+            if (villages == null) return;
+
+            int count = 0;
+            foreach (WorldMap.UserVillageData uvd in villages)
+            {
+                if (uvd.villageID == _scSelectedVillageId) continue;
+                VillageScoutSettings dest = settings.GetVillageSettings(uvd.villageID);
+                dest.ScoutingEnabled = source.ScoutingEnabled;
+                dest.ResourceTypesToScout = new List<int>(source.ResourceTypesToScout);
+                dest.ResourceTypesToIgnore = new List<int>(source.ResourceTypesToIgnore);
+                count++;
+            }
+
+            BotLogger.Log("Scout", BotLogLevel.Info,
+                "Copied settings from village " + _scSelectedVillageId + " to " + count + " other village(s).");
         }
 
         private void ScListMouseDown(object sender, MouseEventArgs e)
@@ -6626,6 +6707,7 @@ namespace Kingdoms.Bot.UI
     internal class BanquetVillageRow : Panel
     {
         public event Action<int, int, bool> GoodToggled;
+        public event Action<int> CopyToAll;
         private readonly int _villageId;
 
         private static readonly int[] ColXs = { 212, 302, 392, 482, 572, 660, 750, 838 };
@@ -6673,6 +6755,20 @@ namespace Kingdoms.Bot.UI
                 };
                 Controls.Add(cb);
             }
+
+            // "→ All" copy button — placed after the last good column
+            Button copyBtn = new Button();
+            copyBtn.Text = "→ All";
+            copyBtn.FlatStyle = FlatStyle.Flat;
+            copyBtn.BackColor = Color.FromArgb(45, 55, 70);
+            copyBtn.ForeColor = Color.FromArgb(160, 165, 180);
+            copyBtn.Font = new Font("Segoe UI", 7f);
+            copyBtn.Size = new Size(48, 20);
+            copyBtn.Location = new Point(ColXs[ColXs.Length - 1] + 50, 4);
+            copyBtn.FlatAppearance.BorderSize = 1;
+            copyBtn.FlatAppearance.BorderColor = Color.FromArgb(60, 65, 85);
+            copyBtn.Click += delegate { if (CopyToAll != null) CopyToAll(_villageId); };
+            Controls.Add(copyBtn);
         }
     }
 
