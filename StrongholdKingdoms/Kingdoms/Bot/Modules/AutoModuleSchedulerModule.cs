@@ -9,6 +9,10 @@ namespace Kingdoms.Bot.Modules
     {
         public override string ModuleName { get { return "Auto Module Scheduler"; } }
 
+        // After playing a card, wait this long before considering a replay, so we don't spam plays
+        // while UserCardData is still catching up from the previous play.
+        private const int CardPlayGraceSeconds = 90;
+
         // Interval is user-configurable via Auto.ModuleCheckIntervalSeconds (min 10s).
         public override TimeSpan Interval
         {
@@ -51,61 +55,144 @@ namespace Kingdoms.Bot.Modules
                     entry.HourlySchedule.Length > currentHour &&
                     entry.HourlySchedule[currentHour];
 
+                bool hasCards = entry.PlayCardOnStart && entry.CardDefIds.Count > 0;
+
                 if (inWindow)
                 {
-                    if (!targetModule.Enabled && !entry.ManuallyDisabledDuringWindow)
-                    {
-                        bool wasRunning = entry.WasAutoStarted;
-                        targetModule.Enabled = true;
-                        SyncModuleEnabledToSettings(entry.ModuleName, true);
-                        entry.WasAutoStarted = true;
-
-                        if (wasRunning)
-                            LogInfo("Module '" + entry.ModuleName + "' was disabled mid-window (card expiry?) — re-enabling.");
-                        else
-                            LogInfo("Auto-enabled module '" + entry.ModuleName + "' at hour " + currentHour + ".");
-
-                        bool shouldPlay = entry.PlayCardOnStart && entry.CardDefIds.Count > 0
-                            && (!wasRunning || entry.ReplayCardOnExpiry);
-                        if (shouldPlay)
-                            PlayAllCards(entry);
-                    }
-                    else if (entry.WasAutoStarted && entry.PlayCardOnStart && entry.ReplayCardOnExpiry
-                             && entry.CardDefIds.Count > 0)
-                    {
-                        // Re-play any card from the list that has expired mid-window
-                        CardData cd = GetCardData();
-                        if (cd != null)
-                            ReplayExpiredCards(entry, cd);
-                    }
+                    if (hasCards && entry.ReplayCardOnExpiry)
+                        HandleCardManagedWindow(entry, targetModule, serverTime);
+                    else
+                        HandleSimpleWindow(entry, targetModule, hasCards);
                 }
                 else
                 {
-                    entry.ManuallyDisabledDuringWindow = false;
-
-                    if (entry.WasAutoStarted && !targetModule.Enabled)
-                    {
-                        entry.ManuallyDisabledDuringWindow = true;
-                        entry.WasAutoStarted = false;
-                        entry.LastPlayedCardInstanceIds.Clear();
-                        LogInfo("Module '" + entry.ModuleName + "' was manually disabled — respecting override.");
-                    }
-                    else if (entry.WasAutoStarted && targetModule.Enabled && entry.AutoDisableEnabled)
-                    {
-                        targetModule.Enabled = false;
-                        SyncModuleEnabledToSettings(entry.ModuleName, false);
-                        entry.WasAutoStarted = false;
-                        entry.LastPlayedCardInstanceIds.Clear();
-                        LogInfo("Auto-disabled module '" + entry.ModuleName + "' at end of window (hour " + currentHour + ").");
-                    }
+                    HandleOutOfWindow(entry, targetModule);
                 }
             }
         }
 
-        /// <summary>Play every card in the entry's CardDefIds list and track the instance IDs.</summary>
+        // Managed mode (ReplayCardOnExpiry on): keep the invariant "module is enabled only while ALL
+        // configured cards are active". When a card expires, the module is PAUSED, the missing cards
+        // are replayed, and the module is re-enabled only once they're confirmed active — so it can
+        // never act (e.g. send traders) without its cards live.
+        private void HandleCardManagedWindow(ModuleScheduleSettings entry, IBotModule targetModule, DateTime serverTime)
+        {
+            entry.WasAutoStarted = true;                 // we're managing it within this window
+            entry.ManuallyDisabledDuringWindow = false;  // managed mode owns the module state
+
+            CardData cd = GetCardData();
+            if (cd == null) return; // can't read card state this tick — do nothing
+
+            if (AllConfiguredCardsActive(entry, cd))
+            {
+                if (!targetModule.Enabled)
+                {
+                    targetModule.Enabled = true;
+                    SyncModuleEnabledToSettings(entry.ModuleName, true);
+                    LogInfo("'" + entry.ModuleName + "': all cards active — module enabled.");
+                }
+                return;
+            }
+
+            // One or more cards not active → pause the module so it can't run without them.
+            if (targetModule.Enabled)
+            {
+                targetModule.Enabled = false;
+                SyncModuleEnabledToSettings(entry.ModuleName, false);
+                LogInfo("'" + entry.ModuleName + "': card(s) expired/inactive — module paused until replayed.");
+            }
+
+            // Replay the missing cards, but only once per grace period (UserCardData lags a play).
+            if ((serverTime - entry.LastCardPlayTime).TotalSeconds >= CardPlayGraceSeconds)
+            {
+                int played = PlayMissingCards(entry, cd);
+                entry.LastCardPlayTime = serverTime;
+                if (played > 0)
+                    LogInfo("'" + entry.ModuleName + "': played " + played + " card(s); module stays paused until they're active.");
+                else
+                    LogWarning("'" + entry.ModuleName + "': card(s) inactive and none available in inventory — module stays paused.");
+            }
+        }
+
+        // Simple mode (no cards, or ReplayCardOnExpiry off): enable for the window, play configured
+        // cards once on first start, keep running. Respects the user manually disabling it mid-window.
+        private void HandleSimpleWindow(ModuleScheduleSettings entry, IBotModule targetModule, bool hasCards)
+        {
+            if (entry.ManuallyDisabledDuringWindow) return;
+            if (targetModule.Enabled) return; // already running
+
+            if (entry.WasAutoStarted)
+            {
+                // We enabled it earlier and it's now off, but we didn't disable it → the user did.
+                entry.ManuallyDisabledDuringWindow = true;
+                LogInfo("'" + entry.ModuleName + "': manually disabled during window — leaving off until next window.");
+                return;
+            }
+
+            targetModule.Enabled = true;
+            SyncModuleEnabledToSettings(entry.ModuleName, true);
+            entry.WasAutoStarted = true;
+            LogInfo("'" + entry.ModuleName + "': enabled for window.");
+            if (hasCards)
+                PlayAllCards(entry);
+        }
+
+        private void HandleOutOfWindow(ModuleScheduleSettings entry, IBotModule targetModule)
+        {
+            entry.ManuallyDisabledDuringWindow = false; // reset for the next window
+            if (!entry.WasAutoStarted) return;
+
+            if (targetModule.Enabled && entry.AutoDisableEnabled)
+            {
+                targetModule.Enabled = false;
+                SyncModuleEnabledToSettings(entry.ModuleName, false);
+                LogInfo("'" + entry.ModuleName + "': end of window — auto-disabled.");
+            }
+            entry.WasAutoStarted = false;
+            entry.LastPlayedCardInstanceIds.Clear();
+            entry.LastCardPlayTime = DateTime.MinValue;
+        }
+
+        /// <summary>True only if every configured card def ID currently has an active card of that type.</summary>
+        private static bool AllConfiguredCardsActive(ModuleScheduleSettings entry, CardData cd)
+        {
+            for (int i = 0; i < entry.CardDefIds.Count; i++)
+            {
+                int defId = entry.CardDefIds[i];
+                if (defId == 0) continue;
+                if (!CardDefTypeIsActive(cd, defId)) return false;
+            }
+            return true;
+        }
+
+        /// <summary>Plays each configured card whose type is not currently active. Returns count played.</summary>
+        private int PlayMissingCards(ModuleScheduleSettings entry, CardData cd)
+        {
+            int played = 0;
+            for (int i = 0; i < entry.CardDefIds.Count; i++)
+            {
+                int defId = entry.CardDefIds[i];
+                if (defId == 0) continue;
+                if (CardDefTypeIsActive(cd, defId)) continue; // already active
+
+                int instanceId = FindCardInstanceByDefId(defId);
+                if (instanceId != 0)
+                {
+                    PlayCard(instanceId);
+                    played++;
+                    LogInfo("'" + entry.ModuleName + "': playing card (def " + defId + ", instance " + instanceId + ").");
+                }
+                else
+                {
+                    LogWarning("'" + entry.ModuleName + "': card (def " + defId + ") inactive and none in inventory.");
+                }
+            }
+            return played;
+        }
+
+        /// <summary>Plays every card in the entry's list (used for the one-shot simple-mode start).</summary>
         private void PlayAllCards(ModuleScheduleSettings entry)
         {
-            entry.LastPlayedCardInstanceIds.Clear();
             for (int i = 0; i < entry.CardDefIds.Count; i++)
             {
                 int defId = entry.CardDefIds[i];
@@ -114,44 +201,12 @@ namespace Kingdoms.Bot.Modules
                 if (instanceId != 0)
                 {
                     PlayCard(instanceId);
-                    entry.LastPlayedCardInstanceIds.Add(instanceId);
-                    LogInfo("Playing card " + (i + 1) + "/" + entry.CardDefIds.Count
-                        + " (def " + defId + ", instance " + instanceId + ") for module '" + entry.ModuleName + "'.");
+                    LogInfo("'" + entry.ModuleName + "': playing card " + (i + 1) + "/" + entry.CardDefIds.Count
+                        + " (def " + defId + ", instance " + instanceId + ").");
                 }
                 else
                 {
-                    entry.LastPlayedCardInstanceIds.Add(0); // placeholder so indices stay aligned
-                    LogWarning("Card " + (i + 1) + " (def " + defId + ") not found in inventory for module '" + entry.ModuleName + "'.");
-                }
-            }
-        }
-
-        /// <summary>Re-play any card from the list whose definition type is no longer active.</summary>
-        private void ReplayExpiredCards(ModuleScheduleSettings entry, CardData cd)
-        {
-            // Ensure tracking list is same length as CardDefIds
-            while (entry.LastPlayedCardInstanceIds.Count < entry.CardDefIds.Count)
-                entry.LastPlayedCardInstanceIds.Add(0);
-
-            for (int i = 0; i < entry.CardDefIds.Count; i++)
-            {
-                int defId = entry.CardDefIds[i];
-                if (defId == 0) continue;
-
-                // Check by definition TYPE rather than exact instance ID.
-                // UserCardData may not be refreshed immediately after PlayCard(), so checking
-                // the tracked instance ID directly would always return false (triggering
-                // replays every scheduler tick). Checking the type correctly handles lag.
-                if (CardDefTypeIsActive(cd, defId))
-                    continue; // card of this type is still active
-
-                int instanceId = FindCardInstanceByDefId(defId);
-                if (instanceId != 0)
-                {
-                    PlayCard(instanceId);
-                    entry.LastPlayedCardInstanceIds[i] = instanceId;
-                    LogInfo("Re-playing card " + (i + 1) + " (def " + defId + ") for module '"
-                        + entry.ModuleName + "' after expiry.");
+                    LogWarning("'" + entry.ModuleName + "': card " + (i + 1) + " (def " + defId + ") not found in inventory.");
                 }
             }
         }
@@ -218,14 +273,6 @@ namespace Kingdoms.Bot.Modules
                 return GameEngine.Instance.cardsManager.UserCardData;
             }
             catch { return null; }
-        }
-
-        private static bool CardInstanceIsActive(CardData cardData, int instanceId)
-        {
-            if (cardData == null || cardData.cards == null) return false;
-            for (int i = 0; i < cardData.cards.Length; i++)
-                if (cardData.cards[i] == instanceId) return true;
-            return false;
         }
 
         private static int FindCardInstanceByDefId(int defId)

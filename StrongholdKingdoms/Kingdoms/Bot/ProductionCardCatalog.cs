@@ -58,12 +58,12 @@ namespace Kingdoms.Bot
             new ProductionGoodDef("Spice",       "Banquet",   new[]{1302, 1303, 1304}, new[]{"x3","x5","x10"}),
             new ProductionGoodDef("Silk",        "Banquet",   new[]{1305, 1306, 1307}, new[]{"x3","x5","x10"}),
 
-            // Weapons
-            new ProductionGoodDef("Bows",        "Weapons",   new[]{1025, 1026, 1027}, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Pike",        "Weapons",   new[]{1028, 1029, 1030}, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Armour",      "Weapons",   new[]{1034, 1035, 1036}, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Swords",      "Weapons",   new[]{1031, 1032, 1033}, new[]{"x3","x5","x10"}),
-            new ProductionGoodDef("Catapults",   "Weapons",   new[]{1037, 1038, 1039}, new[]{"x3","x5","x10"}),
+            // Weapons (multipliers are x4 / x6 / x12, not x3/x5/x10)
+            new ProductionGoodDef("Bows",        "Weapons",   new[]{1025, 1026, 1027}, new[]{"x4","x6","x12"}),
+            new ProductionGoodDef("Pike",        "Weapons",   new[]{1028, 1029, 1030}, new[]{"x4","x6","x12"}),
+            new ProductionGoodDef("Armour",      "Weapons",   new[]{1034, 1035, 1036}, new[]{"x4","x6","x12"}),
+            new ProductionGoodDef("Swords",      "Weapons",   new[]{1031, 1032, 1033}, new[]{"x4","x6","x12"}),
+            new ProductionGoodDef("Catapults",   "Weapons",   new[]{1037, 1038, 1039}, new[]{"x4","x6","x12"}),
         };
 
         private static Dictionary<string, ProductionGoodDef> _byKey;

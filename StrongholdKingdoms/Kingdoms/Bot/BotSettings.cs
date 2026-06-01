@@ -14,6 +14,9 @@ namespace Kingdoms.Bot
 
         [System.Xml.Serialization.XmlIgnore]
         public bool BotEnabled;
+        [System.Xml.Serialization.XmlIgnore]
+        private int _worldId;
+
         public VillageSyncSettings VillageSync = new VillageSyncSettings();
         public RadarSettings Radar = new RadarSettings();
         public RecruitingSettings Recruiting = new RecruitingSettings();
@@ -27,15 +30,15 @@ namespace Kingdoms.Bot
         public MiscSettings Misc = new MiscSettings();
         public AutoSettings Auto = new AutoSettings();
 
-        private static string GetSettingsFilePath()
+        private static string GetSettingsFilePath(int worldId)
         {
             string dir = GameEngine.getSettingsPath(true);
-            return Path.Combine(dir, "bot_settings.xml");
+            string file = worldId > 0 ? "bot_settings_" + worldId + ".xml" : "bot_settings.xml";
+            return Path.Combine(dir, file);
         }
 
-        public static BotSettings Load()
+        private static BotSettings DeserializeFrom(string path)
         {
-            string path = GetSettingsFilePath();
             try
             {
                 if (File.Exists(path))
@@ -51,14 +54,28 @@ namespace Kingdoms.Bot
             }
             catch (Exception ex)
             {
-                BotLogger.Log("BotSettings", BotLogLevel.Error, "Failed to load settings: " + ex.Message);
+                BotLogger.Log("BotSettings", BotLogLevel.Error, "Failed to load settings from '" + path + "': " + ex.Message);
             }
-            return new BotSettings();
+            return null;
         }
 
-        public void Save()
+        public static BotSettings Load(int worldId)
         {
-            string path = GetSettingsFilePath();
+            BotSettings s = DeserializeFrom(GetSettingsFilePath(worldId));
+            if (s == null && worldId > 0)
+            {
+                // New world — start fresh; copy LicenseKey from the legacy global file if it exists
+                s = new BotSettings();
+                BotSettings global = DeserializeFrom(GetSettingsFilePath(0));
+                if (global != null) s.LicenseKey = global.LicenseKey;
+            }
+            if (s == null) s = new BotSettings();
+            s._worldId = worldId;
+            return s;
+        }
+
+        private void SerializeTo(string path)
+        {
             try
             {
                 XmlSerializer serializer = new XmlSerializer(typeof(BotSettings));
@@ -74,6 +91,11 @@ namespace Kingdoms.Bot
                 if (ex.InnerException?.InnerException != null) msg += " | Inner2: " + ex.InnerException.InnerException.Message;
                 BotLogger.Log("BotSettings", BotLogLevel.Error, "Failed to save settings: " + msg);
             }
+        }
+
+        public void Save()
+        {
+            SerializeTo(GetSettingsFilePath(_worldId));
         }
     }
 
@@ -986,6 +1008,9 @@ namespace Kingdoms.Bot
         // Runtime-only tracking of active card instance IDs (not persisted)
         [System.Xml.Serialization.XmlIgnore]
         public List<int> LastPlayedCardInstanceIds = new List<int>();
+        // Server time of the last card play, used to grace-gate replays against UserCardData lag.
+        [System.Xml.Serialization.XmlIgnore]
+        public DateTime LastCardPlayTime = DateTime.MinValue;
     }
 
     // =========================================================================
