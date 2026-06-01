@@ -120,16 +120,24 @@ jobs:
           Write-Host "Extracted contents:"
           Get-ChildItem -Recurse "ConfuserEx" | Select-Object FullName
 
-      - name: Obfuscate StrongholdKingdoms.exe
+      - name: Obfuscate executables
         shell: pwsh
         run: |
           $cli = Get-ChildItem -Recurse -Filter "Confuser.CLI.exe" | Select-Object -First 1 -ExpandProperty FullName
           if (-not $cli) { throw "Confuser.CLI.exe not found after extraction" }
           Write-Host "Using CLI: $cli"
+
+          Write-Host "Obfuscating StrongholdKingdoms.exe..."
           & $cli -n confuserex.crproj
-          if ($LASTEXITCODE -ne 0) { throw "Obfuscation failed (exit $LASTEXITCODE)" }
+          if ($LASTEXITCODE -ne 0) { throw "StrongholdKingdoms obfuscation failed (exit $LASTEXITCODE)" }
           Copy-Item "StrongholdKingdoms\bin\Release\Obfuscated\StrongholdKingdoms.exe" "StrongholdKingdoms\bin\Release\StrongholdKingdoms.exe" -Force
-          Write-Host "Obfuscation applied." -ForegroundColor Green
+          Write-Host "StrongholdKingdoms.exe obfuscated." -ForegroundColor Green
+
+          Write-Host "Obfuscating HadesUpdater.exe..."
+          & $cli -n confuserex-updater.crproj
+          if ($LASTEXITCODE -ne 0) { throw "HadesUpdater obfuscation failed (exit $LASTEXITCODE)" }
+          Copy-Item "HadesUpdater\bin\Release\Obfuscated\HadesUpdater.exe" "HadesUpdater\bin\Release\HadesUpdater.exe" -Force
+          Write-Host "HadesUpdater.exe obfuscated." -ForegroundColor Green
 
       - name: Apply 4GB patch
         shell: pwsh
