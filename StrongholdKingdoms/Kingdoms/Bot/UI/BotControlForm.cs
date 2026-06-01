@@ -149,13 +149,19 @@ namespace Kingdoms.Bot.UI
             _instance.BringToFront();
         }
 
-        public static void CloseInstance()
+        /// <summary>
+        /// Closes the current instance (if any) and returns whether it was visible,
+        /// so callers can reopen it after a world reinit.
+        /// </summary>
+        public static bool CloseInstance()
         {
+            bool wasVisible = _instance != null && !_instance.IsDisposed && _instance.Visible;
             if (_instance != null && !_instance.IsDisposed)
             {
                 _instance.Close();
                 _instance = null;
             }
+            return wasVisible;
         }
 
         private bool IsDesignTime

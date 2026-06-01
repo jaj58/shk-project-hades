@@ -449,10 +449,12 @@ namespace Kingdoms
     {
       if (Bot.BotEngine.Instance != null)
         Bot.BotEngine.Instance.Shutdown();
-      Bot.UI.BotControlForm.CloseInstance();
+      bool botFormWasOpen = Bot.UI.BotControlForm.CloseInstance();
       int worldId = this.World.GetGlobalWorldID();
       Bot.BotEngine.Instance = new Bot.BotEngine();
       Bot.BotEngine.Instance.Init(worldId);
+      if (botFormWasOpen)
+        Bot.UI.BotControlForm.ShowInstance();
 
       InterfaceMgr.Instance.setUserName(RemoteServices.Instance.UserName);
       this.world.setCurrentZoom((float) this.World.WorldZoom);
