@@ -131,6 +131,17 @@ namespace Kingdoms
       else
       {
         TimeSpan timeSpan = VillageBuildingsData.calcTravelTime(GameEngine.Instance.LocalWorldData, realStart, realEnd);
+        // Defensive guard: a corrupt world-speed/location value can make calcTravelTime return an
+        // enormous or invalid span. DateTime.Now.Add(timeSpan) (and the AddSeconds calls below)
+        // would then throw ArgumentOutOfRangeException and crash the render loop. A villager walk
+        // is only ever a few seconds, so if the span isn't sane just snap to the destination.
+        double secs = timeSpan.TotalSeconds;
+        if (double.IsNaN(secs) || double.IsInfinity(secs) || secs < 0.0 || timeSpan.TotalDays > 1.0)
+        {
+          this.currentPos = this.endPos;
+          this.state = VillageMapPerson.VillagePeopleStates.STATIONARY;
+          return;
+        }
         this.startTime = DateTime.Now;
         this.endTime = DateTime.Now.Add(timeSpan);
         if (distThroughJourney != 0.0)
