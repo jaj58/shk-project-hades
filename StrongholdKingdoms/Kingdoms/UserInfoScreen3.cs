@@ -1137,10 +1137,11 @@ namespace Kingdoms
         this.villageNameLabel.Text = GameEngine.Instance.World.getVillageName(villageID);
         if (BotEngine.Instance?.Settings?.Misc?.ShowUserScreenInfo == true)
         {
-          VillageData village = GameEngine.Instance.World.villageList[villageID];
-          this.villageNameLabel.Text += " [" + GameEngine.Instance.World.getVillageData(villageID).villageInfo + "]"
-            + (village.peaceTime > VillageMap.getCurrentServerTime() ? "[PEACE]" : "")
-            + (village.interdictionTime > VillageMap.getCurrentServerTime() ? "[ID]" : "");
+          VillageData village = GameEngine.Instance.World.getVillageData(villageID);
+          if (village != null)
+            this.villageNameLabel.Text += " [" + village.villageInfo + "]"
+              + (village.peaceTime > VillageMap.getCurrentServerTime() ? "[PEACE]" : "")
+              + (village.interdictionTime > VillageMap.getCurrentServerTime() ? "[ID]" : "");
         }
         this.villageNameLabel.Color = ARGBColors.Black;
         this.villageNameLabel.RolloverColor = ARGBColors.White;
