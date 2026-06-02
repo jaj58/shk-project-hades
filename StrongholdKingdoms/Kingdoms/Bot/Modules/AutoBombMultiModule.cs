@@ -1073,20 +1073,40 @@ namespace Kingdoms.Bot.Modules
                 catch { }
             }
 
-            // Time floor: armies cannot be home before they've traveled back the distance they covered.
-            // ScheduledSendTime ≈ actual send time. Time in flight at recall = Now - sendTime.
-            // After recall the army needs the same duration to return.
+            // Check whether any army is past the recall window.
+            // If so, armies will complete the full journey (hit target, then return),
+            // so the return time estimate uses ScheduledSendTime + 2×TravelTime.
+            // If all armies were recalled, the estimate uses time-in-flight×2 (midpoint turn-around).
+            bool pastRecallWindow = false;
+            foreach (var e in sentAttacks)
+            {
+                if (!e.Sent || e.ScheduledSendTime == DateTime.MaxValue) continue;
+                if ((DateTime.Now - e.ScheduledSendTime).TotalSeconds >= 300)
+                    { pastRecallWindow = true; break; }
+            }
+
             DateTime floorReturnTime = DateTime.MinValue;
             foreach (var e in sentAttacks)
             {
                 if (!e.Sent || e.ScheduledSendTime == DateTime.MaxValue) continue;
-                TimeSpan inFlight = DateTime.Now - e.ScheduledSendTime;
-                if (inFlight < TimeSpan.Zero) inFlight = TimeSpan.Zero;
-                DateTime estReturn = DateTime.Now.Add(inFlight).AddSeconds(15); // 15s margin
+                DateTime estReturn;
+                if (pastRecallWindow)
+                {
+                    // Army will travel to target and back: depart + 2×TravelTime + 30s margin
+                    estReturn = e.ScheduledSendTime.AddSeconds(e.TravelTimeSeconds * 2 + 30);
+                }
+                else
+                {
+                    // Army recalled midway: time already in flight + same again + 15s margin
+                    TimeSpan inFlight = DateTime.Now - e.ScheduledSendTime;
+                    if (inFlight < TimeSpan.Zero) inFlight = TimeSpan.Zero;
+                    estReturn = DateTime.Now.Add(inFlight).AddSeconds(15);
+                }
                 if (estReturn > floorReturnTime) floorReturnTime = estReturn;
             }
             if (floorReturnTime == DateTime.MinValue) floorReturnTime = DateTime.Now;
-            LogInfo("[Queue] Army return floor: " + floorReturnTime.ToString("HH:mm:ss"));
+            LogInfo("[Queue] Army return floor: " + floorReturnTime.ToString("HH:mm:ss") +
+                (pastRecallWindow ? " (armies proceeding to target — past recall window)" : " (armies recalled)"));
 
             LogInfo("[Queue] Waiting for all players' armies to return home...");
 
@@ -1143,7 +1163,7 @@ namespace Kingdoms.Bot.Modules
                                         outbound.Add(army);
                                 }
                             }
-                            if (outbound.Count > 0)
+                            if (outbound.Count > 0 && !pastRecallWindow)
                             {
                                 RemoteServices.Instance.set_CancelCastleAttack_UserCallBack(null);
                                 foreach (var army in outbound)
@@ -2085,11 +2105,40 @@ namespace Kingdoms.Bot.Modules
 
         // ── Helpers ───────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Returns true if any of this player's sent armies have been in flight for 5 or more minutes
+        /// (i.e. past the server's recall window). In that case we let all sent armies proceed —
+        /// a partial recall where some armies hit and some return would be worse than a full attack.
+        /// </summary>
+        private bool AnyArmyPastRecallWindow()
+        {
+            lock (_attacksLock)
+            {
+                foreach (var e in _myAttacks)
+                {
+                    if (!e.Sent || e.ScheduledSendTime == DateTime.MaxValue) continue;
+                    if ((DateTime.Now - e.ScheduledSendTime).TotalSeconds >= 300)
+                        return true;
+                }
+            }
+            return false;
+        }
+
         private void RecallAll(AutoBombMultiSettings settings)
         {
             try
             {
                 if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+
+                // If any sent army has been out for 5+ minutes it can no longer be recalled.
+                // Rather than a partial recall (some turn back, some hit), let them all go.
+                if (AnyArmyPastRecallWindow())
+                {
+                    LogWarning("[Recall] One or more armies past the 5-minute recall window — " +
+                        "letting all sent armies proceed to target.");
+                    return;
+                }
+
                 int targetVid = _currentTargetVillageId;
                 RemoteServices.Instance.set_CancelCastleAttack_UserCallBack(null);
                 int recalled = 0;
