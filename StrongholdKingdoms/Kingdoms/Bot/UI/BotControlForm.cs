@@ -207,6 +207,7 @@ namespace Kingdoms.Bot.UI
                 WireUpBanquetTab();
                 WireUpAutoTab();
                 WireUpScoutTab();
+                WireUpDefenderTab();
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -228,6 +229,7 @@ namespace Kingdoms.Bot.UI
                 BqLoadFromSettings();
                 AutoLoadFromSettings();
                 ScLoadFromSettings();
+                DfLoadFromSettings();
             }
         }
 
@@ -5351,6 +5353,7 @@ namespace Kingdoms.Bot.UI
             _bqDelayInput.ValueChanged += delegate { BqWriteToSettings(); };
             _bqRefreshBtn.Click += delegate { BqPopulateVillageList(); };
             _bqRunNowBtn.Click += delegate { BqRunNow(); };
+            _bqCopySettingsBtn.Click += delegate { BqCopySettingsClick(); };
 
             int[] colXs = { 8, 212, 302, 392, 482, 572, 660, 750, 838 };
             string[] colNames = { "Village" };
@@ -5436,6 +5439,9 @@ namespace Kingdoms.Bot.UI
             bool alternate = false;
             foreach (WorldMap.UserVillageData uvd in villages)
             {
+                // Only show regular villages — banquets cannot be held in parish/county/etc. capitals
+                if (GameEngine.Instance.World.isCapital(uvd.villageID)) continue;
+
                 VillageBanquetSettings vs = settings != null
                     ? settings.GetVillageSettings(uvd.villageID)
                     : new VillageBanquetSettings { VillageId = uvd.villageID };
@@ -5445,7 +5451,6 @@ namespace Kingdoms.Bot.UI
                 row.Width = _bqVillageListPanel.ClientSize.Width;
                 row.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
                 row.GoodToggled += BqOnGoodToggled;
-                row.CopyToAll += BqOnCopyToAll;
                 _bqVillageListPanel.Controls.Add(row);
                 _bqVillageRows.Add(row);
                 y += row.Height + 1;
@@ -5470,36 +5475,12 @@ namespace Kingdoms.Bot.UI
             }
         }
 
-        private void BqOnCopyToAll(int sourceVillageId)
+        private void BqCopySettingsClick()
         {
-            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
-
-            BanquetSettings settings = BotEngine.Instance.Settings.Banquet;
-            VillageBanquetSettings source = settings.GetVillageSettings(sourceVillageId);
-
-            List<WorldMap.UserVillageData> villages = null;
-            try
-            {
-                if (GameEngine.Instance != null && GameEngine.Instance.World != null)
-                    villages = GameEngine.Instance.World.getUserVillageList();
-            }
-            catch { }
-            if (villages == null) return;
-
-            int count = 0;
-            foreach (WorldMap.UserVillageData uvd in villages)
-            {
-                if (uvd.villageID == sourceVillageId) continue;
-                VillageBanquetSettings dest = settings.GetVillageSettings(uvd.villageID);
-                dest.EnabledGoods = new List<int>(source.EnabledGoods);
-                count++;
-            }
-
-            BotLogger.Log("Banquet", BotLogLevel.Info,
-                string.Format("Copied banquet settings from village {0} to {1} other village(s).", sourceVillageId, count));
-
-            // Refresh the rows so checkboxes reflect the copied state
-            BqPopulateVillageList();
+            CopyBanquetSettingsForm form = new CopyBanquetSettingsForm();
+            form.ShowDialog(this);
+            if (form.Copied)
+                BqPopulateVillageList();
         }
 
         private void BqRunNow()
@@ -6707,7 +6688,6 @@ namespace Kingdoms.Bot.UI
     internal class BanquetVillageRow : Panel
     {
         public event Action<int, int, bool> GoodToggled;
-        public event Action<int> CopyToAll;
         private readonly int _villageId;
 
         private static readonly int[] ColXs = { 212, 302, 392, 482, 572, 660, 750, 838 };
@@ -6755,20 +6735,6 @@ namespace Kingdoms.Bot.UI
                 };
                 Controls.Add(cb);
             }
-
-            // "→ All" copy button — placed after the last good column
-            Button copyBtn = new Button();
-            copyBtn.Text = "→ All";
-            copyBtn.FlatStyle = FlatStyle.Flat;
-            copyBtn.BackColor = Color.FromArgb(45, 55, 70);
-            copyBtn.ForeColor = Color.FromArgb(160, 165, 180);
-            copyBtn.Font = new Font("Segoe UI", 7f);
-            copyBtn.Size = new Size(48, 20);
-            copyBtn.Location = new Point(ColXs[ColXs.Length - 1] + 50, 4);
-            copyBtn.FlatAppearance.BorderSize = 1;
-            copyBtn.FlatAppearance.BorderColor = Color.FromArgb(60, 65, 85);
-            copyBtn.Click += delegate { if (CopyToAll != null) CopyToAll(_villageId); };
-            Controls.Add(copyBtn);
         }
     }
 
@@ -6798,5 +6764,437 @@ namespace Kingdoms.Bot.UI
         }
 
         public override string ToString() { return _display; }
+    }
+
+    // =====================================================================
+    // Defender tab
+    // =====================================================================
+
+    public partial class BotControlForm
+    {
+        private static readonly Color DfBgDark = Color.FromArgb(24, 24, 32);
+        private static readonly Color DfBgCard = Color.FromArgb(40, 42, 54);
+        private static readonly Color DfBgInput = Color.FromArgb(50, 52, 64);
+        private static readonly Color DfTextPrimary = Color.FromArgb(230, 230, 240);
+        private static readonly Color DfTextSecondary = Color.FromArgb(160, 165, 180);
+        private static readonly Color DfAccent = Color.FromArgb(80, 160, 255);
+        private static readonly Color DfSuccess = Color.FromArgb(80, 200, 120);
+        private static readonly Color DfError = Color.FromArgb(240, 80, 80);
+        private static readonly Color DfWarning = Color.FromArgb(220, 160, 40);
+        private static readonly Color DfBorder = Color.FromArgb(55, 58, 72);
+
+        private CheckBox _dfEnabledCheck;
+        private Label _dfStatusLabel;
+        private NumericUpDown _dfDurationInput;
+        private ComboBox _dfVillageCombo;
+        private Button _dfVillageRefreshBtn;
+        private Button _dfStartBtn;
+        private Button _dfStopBtn;
+        private Label _dfCountdownLabel;
+        private ComboBox _dfKnightsCombo;
+        private ComboBox _dfLastStandCombo;
+        private CheckBox _dfDesperateCheck;
+        private CheckBox _dfAutoRepairCheck;
+        private CheckBox _dfRestoreTroopsCheck;
+        private CheckBox _dfRestoreInfraCheck;
+        private Timer _dfRefreshTimer;
+
+        private void WireUpDefenderTab()
+        {
+            BuildDefenderUI();
+
+            _dfRefreshTimer = new Timer();
+            _dfRefreshTimer.Interval = 500;
+            _dfRefreshTimer.Tick += delegate { DfUpdateCountdown(); };
+            _dfRefreshTimer.Start();
+
+            _dfEnabledCheck.CheckedChanged += delegate { DfWriteToSettings(); };
+            _dfDurationInput.ValueChanged += delegate { DfWriteToSettings(); };
+            _dfKnightsCombo.SelectedIndexChanged += delegate { DfWriteToSettings(); };
+            _dfLastStandCombo.SelectedIndexChanged += delegate { DfWriteToSettings(); };
+            _dfDesperateCheck.CheckedChanged += delegate { DfWriteToSettings(); };
+            _dfAutoRepairCheck.CheckedChanged += delegate { DfWriteToSettings(); };
+            _dfRestoreTroopsCheck.CheckedChanged += delegate { DfWriteToSettings(); };
+            _dfRestoreInfraCheck.CheckedChanged += delegate { DfWriteToSettings(); };
+
+            _dfVillageRefreshBtn.Click += delegate { DfPopulateVillages(); };
+            _dfStartBtn.Click += delegate { DfStartSpam(); };
+            _dfStopBtn.Click += delegate { DfStopSpam(); };
+        }
+
+        private void BuildDefenderUI()
+        {
+            // ---- Settings panel (top) ----
+            Panel settingsPanel = new Panel();
+            settingsPanel.Dock = DockStyle.Top;
+            settingsPanel.Height = 108;
+            settingsPanel.BackColor = DfBgCard;
+            settingsPanel.Padding = new Padding(16, 10, 16, 8);
+
+            _dfEnabledCheck = DfMakeCheck("Module Enabled", new Point(16, 10));
+            settingsPanel.Controls.Add(_dfEnabledCheck);
+
+            _dfStatusLabel = DfMakeLabel("DISABLED", new Point(180, 13));
+            _dfStatusLabel.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            _dfStatusLabel.ForeColor = DfError;
+            settingsPanel.Controls.Add(_dfStatusLabel);
+
+            settingsPanel.Controls.Add(DfMakeLabel("Duration (s):", new Point(16, 38)));
+            _dfDurationInput = DfMakeNumeric(new Point(110, 36), 60, 5, 300, 20);
+            settingsPanel.Controls.Add(_dfDurationInput);
+
+            settingsPanel.Controls.Add(DfMakeLabel("Target village:", new Point(190, 38)));
+            _dfVillageCombo = DfMakeCombo(new Point(300, 35), 300);
+            settingsPanel.Controls.Add(_dfVillageCombo);
+
+            _dfVillageRefreshBtn = DfMakeButton("Refresh", DfAccent, new Point(608, 34), new Size(70, 22));
+            settingsPanel.Controls.Add(_dfVillageRefreshBtn);
+
+            _dfStartBtn = DfMakeButton("Start Spam", DfSuccess, new Point(16, 70), new Size(100, 26));
+            settingsPanel.Controls.Add(_dfStartBtn);
+
+            _dfStopBtn = DfMakeButton("Stop", DfError, new Point(126, 70), new Size(70, 26));
+            settingsPanel.Controls.Add(_dfStopBtn);
+
+            settingsPanel.Controls.Add(DfMakeLabel("Countdown:", new Point(210, 75)));
+            _dfCountdownLabel = DfMakeLabel("--", new Point(290, 75));
+            _dfCountdownLabel.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            _dfCountdownLabel.ForeColor = DfAccent;
+            settingsPanel.Controls.Add(_dfCountdownLabel);
+
+            _defenderPage.Controls.Add(settingsPanel);
+
+            // ---- Separator ----
+            Panel sep1 = DfMakeSeparator();
+            _defenderPage.Controls.Add(sep1);
+
+            // ---- Cards section ----
+            Panel cardsPanel = new Panel();
+            cardsPanel.Dock = DockStyle.Top;
+            cardsPanel.Height = 96;
+            cardsPanel.BackColor = DfBgCard;
+            cardsPanel.Padding = new Padding(16, 8, 16, 8);
+
+            Label cardsTitle = DfMakeLabel("Cards (Spam Cards)", new Point(16, 8));
+            cardsTitle.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            cardsTitle.ForeColor = DfTextPrimary;
+            cardsPanel.Controls.Add(cardsTitle);
+
+            cardsPanel.Controls.Add(DfMakeLabel("Knights card:", new Point(16, 34)));
+            _dfKnightsCombo = DfMakeCombo(new Point(120, 31), 200);
+            _dfKnightsCombo.Items.Add(new DfCardItem("None", 0));
+            _dfKnightsCombo.Items.Add(new DfCardItem("Surprise Attack (2)", 265));
+            _dfKnightsCombo.Items.Add(new DfCardItem("Surprise Attack (5)", 269));
+            _dfKnightsCombo.Items.Add(new DfCardItem("Surprise Attack (12)", 270));
+            _dfKnightsCombo.SelectedIndex = 0;
+            cardsPanel.Controls.Add(_dfKnightsCombo);
+
+            cardsPanel.Controls.Add(DfMakeLabel("Last Stand card:", new Point(340, 34)));
+            _dfLastStandCombo = DfMakeCombo(new Point(450, 31), 200);
+            _dfLastStandCombo.Items.Add(new DfCardItem("None", 0));
+            _dfLastStandCombo.Items.Add(new DfCardItem("Last Stand (5)", 266));
+            _dfLastStandCombo.Items.Add(new DfCardItem("Last Stand (10)", 271));
+            _dfLastStandCombo.Items.Add(new DfCardItem("Last Stand (20)", 272));
+            _dfLastStandCombo.SelectedIndex = 0;
+            cardsPanel.Controls.Add(_dfLastStandCombo);
+
+            _dfDesperateCheck = DfMakeCheck("Spam Desperate Defence (card 263)", new Point(16, 64));
+            cardsPanel.Controls.Add(_dfDesperateCheck);
+
+            _defenderPage.Controls.Add(cardsPanel);
+
+            // ---- Separator ----
+            Panel sep2 = DfMakeSeparator();
+            _defenderPage.Controls.Add(sep2);
+
+            // ---- Castle actions section ----
+            Panel actionsPanel = new Panel();
+            actionsPanel.Dock = DockStyle.Top;
+            actionsPanel.Height = 72;
+            actionsPanel.BackColor = DfBgCard;
+            actionsPanel.Padding = new Padding(16, 8, 16, 8);
+
+            Label actionsTitle = DfMakeLabel("Castle Actions (applied to target village)", new Point(16, 8));
+            actionsTitle.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            actionsTitle.ForeColor = DfTextPrimary;
+            actionsPanel.Controls.Add(actionsTitle);
+
+            _dfAutoRepairCheck = DfMakeCheck("Auto Repair", new Point(16, 38));
+            _dfAutoRepairCheck.Checked = true;
+            actionsPanel.Controls.Add(_dfAutoRepairCheck);
+
+            _dfRestoreTroopsCheck = DfMakeCheck("Restore Troops (local layout)", new Point(140, 38));
+            _dfRestoreTroopsCheck.Checked = true;
+            actionsPanel.Controls.Add(_dfRestoreTroopsCheck);
+
+            _dfRestoreInfraCheck = DfMakeCheck("Restore Infrastructure (local layout)", new Point(360, 38));
+            actionsPanel.Controls.Add(_dfRestoreInfraCheck);
+
+            _defenderPage.Controls.Add(actionsPanel);
+
+            // Fix z-order — last added = top-most in docking
+            _defenderPage.Controls.SetChildIndex(actionsPanel, 0);
+            _defenderPage.Controls.SetChildIndex(sep2, 1);
+            _defenderPage.Controls.SetChildIndex(cardsPanel, 2);
+            _defenderPage.Controls.SetChildIndex(sep1, 3);
+            _defenderPage.Controls.SetChildIndex(settingsPanel, 4);
+
+            DfPopulateVillages();
+        }
+
+        private void DfPopulateVillages()
+        {
+            int currentId = 0;
+            DfVillageItem current = _dfVillageCombo.SelectedItem as DfVillageItem;
+            if (current != null) currentId = current.VillageId;
+
+            _dfVillageCombo.Items.Clear();
+
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+
+            List<int> ids = GameEngine.Instance.World.getUserVillageIDList();
+            if (ids == null) return;
+
+            DfVillageItem toSelect = null;
+            foreach (int id in ids)
+            {
+                string name = GameEngine.Instance.World.getVillageName(id);
+                DfVillageItem item = new DfVillageItem(id, "[" + id + "] " + name);
+                _dfVillageCombo.Items.Add(item);
+                if (id == currentId) toSelect = item;
+            }
+
+            if (toSelect != null)
+                _dfVillageCombo.SelectedItem = toSelect;
+            else if (_dfVillageCombo.Items.Count > 0)
+                _dfVillageCombo.SelectedIndex = 0;
+        }
+
+        private void DfStartSpam()
+        {
+            DfWriteToSettings();
+            Kingdoms.Bot.Modules.DefenderModule mod = GetDefenderModule();
+            if (mod == null) return;
+
+            DfVillageItem item = _dfVillageCombo.SelectedItem as DfVillageItem;
+            if (item == null)
+            {
+                BotLogger.Log("Defender", BotLogLevel.Warning, "No target village selected.");
+                return;
+            }
+
+            int duration = (int)_dfDurationInput.Value;
+            mod.StartSpam(duration, item.VillageId);
+        }
+
+        private void DfStopSpam()
+        {
+            Kingdoms.Bot.Modules.DefenderModule mod = GetDefenderModule();
+            if (mod != null) mod.StopSpam();
+        }
+
+        private void DfUpdateCountdown()
+        {
+            if (_dfCountdownLabel == null) return;
+
+            bool enabled = _dfEnabledCheck != null && _dfEnabledCheck.Checked;
+            if (_dfStatusLabel != null)
+            {
+                _dfStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
+                _dfStatusLabel.ForeColor = enabled ? DfSuccess : DfError;
+            }
+
+            Kingdoms.Bot.Modules.DefenderModule mod = GetDefenderModule();
+            if (mod == null) { _dfCountdownLabel.Text = "--"; return; }
+
+            if (mod.IsSpamActive)
+            {
+                int secs = mod.SecondsRemaining;
+                _dfCountdownLabel.Text = secs + "s";
+                _dfCountdownLabel.ForeColor = DfWarning;
+            }
+            else
+            {
+                _dfCountdownLabel.Text = "--";
+                _dfCountdownLabel.ForeColor = DfAccent;
+            }
+        }
+
+        private void DfLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            DefenderSettings s = BotEngine.Instance.Settings.Defender;
+
+            _dfEnabledCheck.Checked = s.Enabled;
+            _dfDurationInput.Value = Math.Max(_dfDurationInput.Minimum,
+                Math.Min(_dfDurationInput.Maximum, s.SpamDurationSeconds));
+            _dfDesperateCheck.Checked = s.SpamDesperateDefence;
+            _dfAutoRepairCheck.Checked = s.AutoRepair;
+            _dfRestoreTroopsCheck.Checked = s.RestoreTroops;
+            _dfRestoreInfraCheck.Checked = s.RestoreInfrastructure;
+
+            DfSelectComboByDefId(_dfKnightsCombo, s.KnightsCardDefId);
+            DfSelectComboByDefId(_dfLastStandCombo, s.LastStandCardDefId);
+
+            if (s.TargetVillageId > 0)
+            {
+                foreach (object item in _dfVillageCombo.Items)
+                {
+                    DfVillageItem vi = item as DfVillageItem;
+                    if (vi != null && vi.VillageId == s.TargetVillageId)
+                    {
+                        _dfVillageCombo.SelectedItem = vi;
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void DfWriteToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            DefenderSettings s = BotEngine.Instance.Settings.Defender;
+
+            s.Enabled = _dfEnabledCheck.Checked;
+            s.SpamDurationSeconds = (int)_dfDurationInput.Value;
+            s.SpamDesperateDefence = _dfDesperateCheck.Checked;
+            s.AutoRepair = _dfAutoRepairCheck.Checked;
+            s.RestoreTroops = _dfRestoreTroopsCheck.Checked;
+            s.RestoreInfrastructure = _dfRestoreInfraCheck.Checked;
+
+            DfCardItem ki = _dfKnightsCombo.SelectedItem as DfCardItem;
+            s.KnightsCardDefId = ki != null ? ki.DefId : 0;
+
+            DfCardItem li = _dfLastStandCombo.SelectedItem as DfCardItem;
+            s.LastStandCardDefId = li != null ? li.DefId : 0;
+
+            DfVillageItem vi = _dfVillageCombo.SelectedItem as DfVillageItem;
+            s.TargetVillageId = vi != null ? vi.VillageId : 0;
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                if (m is Kingdoms.Bot.Modules.DefenderModule)
+                    m.Enabled = s.Enabled;
+            }
+
+            BotEngine.Instance.Settings.Save();
+        }
+
+        private static void DfSelectComboByDefId(ComboBox combo, int defId)
+        {
+            foreach (object item in combo.Items)
+            {
+                DfCardItem ci = item as DfCardItem;
+                if (ci != null && ci.DefId == defId)
+                {
+                    combo.SelectedItem = item;
+                    return;
+                }
+            }
+            if (combo.Items.Count > 0) combo.SelectedIndex = 0;
+        }
+
+        private Kingdoms.Bot.Modules.DefenderModule GetDefenderModule()
+        {
+            if (BotEngine.Instance == null) return null;
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                Kingdoms.Bot.Modules.DefenderModule mod = m as Kingdoms.Bot.Modules.DefenderModule;
+                if (mod != null) return mod;
+            }
+            return null;
+        }
+
+        // ---- UI helpers ----
+
+        private static CheckBox DfMakeCheck(string text, Point loc)
+        {
+            CheckBox cb = new CheckBox();
+            cb.Text = text;
+            cb.Font = new Font("Segoe UI", 8.5f);
+            cb.ForeColor = Color.FromArgb(230, 230, 240);
+            cb.AutoSize = true;
+            cb.FlatStyle = FlatStyle.Flat;
+            cb.Location = loc;
+            return cb;
+        }
+
+        private static Label DfMakeLabel(string text, Point loc)
+        {
+            Label lbl = new Label();
+            lbl.Text = text;
+            lbl.Font = new Font("Segoe UI", 8.5f);
+            lbl.ForeColor = Color.FromArgb(160, 165, 180);
+            lbl.AutoSize = true;
+            lbl.Location = loc;
+            return lbl;
+        }
+
+        private static NumericUpDown DfMakeNumeric(Point loc, int w, int min, int max, int val)
+        {
+            NumericUpDown nud = new NumericUpDown();
+            nud.BackColor = Color.FromArgb(50, 52, 64);
+            nud.ForeColor = Color.FromArgb(230, 230, 240);
+            nud.BorderStyle = BorderStyle.FixedSingle;
+            nud.Location = loc;
+            nud.Size = new Size(w, 22);
+            nud.Minimum = min;
+            nud.Maximum = max;
+            nud.Value = Math.Max(min, Math.Min(max, val));
+            return nud;
+        }
+
+        private static ComboBox DfMakeCombo(Point loc, int w)
+        {
+            ComboBox cb = new ComboBox();
+            cb.BackColor = Color.FromArgb(50, 52, 64);
+            cb.ForeColor = Color.FromArgb(230, 230, 240);
+            cb.DropDownStyle = ComboBoxStyle.DropDownList;
+            cb.FlatStyle = FlatStyle.Flat;
+            cb.Font = new Font("Segoe UI", 8f);
+            cb.Location = loc;
+            cb.Size = new Size(w, 22);
+            return cb;
+        }
+
+        private static Button DfMakeButton(string text, Color bg, Point loc, Size size)
+        {
+            Button btn = new Button();
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.BackColor = bg;
+            btn.ForeColor = Color.White;
+            btn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            btn.Text = text;
+            btn.Cursor = Cursors.Hand;
+            btn.Location = loc;
+            btn.Size = size;
+            return btn;
+        }
+
+        private static Panel DfMakeSeparator()
+        {
+            Panel p = new Panel();
+            p.Dock = DockStyle.Top;
+            p.Height = 1;
+            p.BackColor = Color.FromArgb(55, 58, 72);
+            return p;
+        }
+
+        private class DfCardItem
+        {
+            public readonly int DefId;
+            private readonly string _label;
+            public DfCardItem(string label, int defId) { _label = label; DefId = defId; }
+            public override string ToString() { return _label; }
+        }
+
+        private class DfVillageItem
+        {
+            public readonly int VillageId;
+            private readonly string _label;
+            public DfVillageItem(int id, string label) { VillageId = id; _label = label; }
+            public override string ToString() { return _label; }
+        }
     }
 }

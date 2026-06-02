@@ -30,6 +30,7 @@ namespace Kingdoms.Bot
         public MiscSettings Misc = new MiscSettings();
         public AutoSettings Auto = new AutoSettings();
         public BanquetSettings Banquet = new BanquetSettings();
+        public DefenderSettings Defender = new DefenderSettings();
 
         private static string GetSettingsFilePath(int worldId)
         {
@@ -1108,5 +1109,23 @@ namespace Kingdoms.Bot
         public int VillageId;
         // Indices 0-7: Venison, Furniture, Metalware, Clothes, Wine, Salt, Spices, Silk
         public List<int> EnabledGoods = new List<int>();
+    }
+
+    // =========================================================================
+    // Defender Module Settings
+    // =========================================================================
+
+    [Serializable]
+    public class DefenderSettings
+    {
+        public bool Enabled = false;
+        public int SpamDurationSeconds = 20;
+        public int TargetVillageId = 0;
+        public int KnightsCardDefId = 0;       // 0=None, 265=SA(2), 269=SA(5), 270=SA(12)
+        public int LastStandCardDefId = 0;     // 0=None, 266=LS(5), 271=LS(10), 272=LS(20)
+        public bool SpamDesperateDefence = false;
+        public bool AutoRepair = true;
+        public bool RestoreTroops = true;
+        public bool RestoreInfrastructure = false;
     }
 }

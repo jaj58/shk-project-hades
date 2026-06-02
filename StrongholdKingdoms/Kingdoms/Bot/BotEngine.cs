@@ -47,6 +47,7 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.AutoCardModule());
             RegisterModule(new Modules.AutoModuleSchedulerModule());
             RegisterModule(new Modules.BanquetModule());
+            RegisterModule(new Modules.DefenderModule());
 
             foreach (IBotModule module in _modules)
             {

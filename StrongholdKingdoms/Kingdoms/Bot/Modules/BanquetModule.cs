@@ -26,6 +26,9 @@ namespace Kingdoms.Bot.Modules
             bool first = true;
             foreach (WorldMap.UserVillageData uvd in villages)
             {
+                // Banquets can only be held in regular villages, not capitals
+                if (GameEngine.Instance.World.isCapital(uvd.villageID)) continue;
+
                 VillageBanquetSettings vs = settings.GetVillageSettings(uvd.villageID);
                 if (vs.EnabledGoods.Count == 0) continue;
 

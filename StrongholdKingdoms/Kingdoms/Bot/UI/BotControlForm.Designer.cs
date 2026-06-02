@@ -324,10 +324,12 @@ namespace Kingdoms.Bot.UI
             this._ppStatusLabel = new System.Windows.Forms.Label();
             this._ppEnabledCheck = new System.Windows.Forms.CheckBox();
             this._bqPage = new System.Windows.Forms.TabPage();
+            this._defenderPage = new System.Windows.Forms.TabPage();
             this._bqVillageListPanel = new System.Windows.Forms.Panel();
             this._bqColHeader = new System.Windows.Forms.Panel();
             this._bqSeparator = new System.Windows.Forms.Panel();
             this._bqSettingsPanel = new System.Windows.Forms.Panel();
+            this._bqCopySettingsBtn = new System.Windows.Forms.Button();
             this._bqRunNowBtn = new System.Windows.Forms.Button();
             this._bqRefreshBtn = new System.Windows.Forms.Button();
             this._bqDelayInput = new System.Windows.Forms.NumericUpDown();
@@ -467,6 +469,7 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._abmStackDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._abmQueueVidInput)).BeginInit();
             this._bqPage.SuspendLayout();
+            this._defenderPage.SuspendLayout();
             this._bqSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._bqDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._bqIntervalInput)).BeginInit();
@@ -671,6 +674,7 @@ namespace Kingdoms.Bot.UI
             this._tabControl.Controls.Add(this._miscPage);
             this._tabControl.Controls.Add(this._autoPage);
             this._tabControl.Controls.Add(this._bqPage);
+            this._tabControl.Controls.Add(this._defenderPage);
             this._tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this._tabControl.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._tabControl.Location = new System.Drawing.Point(0, 0);
@@ -4325,6 +4329,15 @@ namespace Kingdoms.Bot.UI
             this._bqPage.TabIndex = 12;
             this._bqPage.Text = "Banquet";
             //
+            // _defenderPage
+            //
+            this._defenderPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._defenderPage.Location = new System.Drawing.Point(4, 24);
+            this._defenderPage.Name = "_defenderPage";
+            this._defenderPage.Size = new System.Drawing.Size(1142, 497);
+            this._defenderPage.TabIndex = 13;
+            this._defenderPage.Text = "Defender";
+            //
             // _bqVillageListPanel
             //
             this._bqVillageListPanel.AutoScroll = true;
@@ -4356,6 +4369,7 @@ namespace Kingdoms.Bot.UI
             // _bqSettingsPanel
             //
             this._bqSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._bqSettingsPanel.Controls.Add(this._bqCopySettingsBtn);
             this._bqSettingsPanel.Controls.Add(this._bqRunNowBtn);
             this._bqSettingsPanel.Controls.Add(this._bqRefreshBtn);
             this._bqSettingsPanel.Controls.Add(this._bqDelayInput);
@@ -4369,6 +4383,18 @@ namespace Kingdoms.Bot.UI
             this._bqSettingsPanel.Name = "_bqSettingsPanel";
             this._bqSettingsPanel.Size = new System.Drawing.Size(1142, 90);
             this._bqSettingsPanel.TabIndex = 0;
+            //
+            // _bqCopySettingsBtn
+            //
+            this._bqCopySettingsBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(55)))), ((int)(((byte)(80)))));
+            this._bqCopySettingsBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bqCopySettingsBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._bqCopySettingsBtn.Location = new System.Drawing.Point(521, 39);
+            this._bqCopySettingsBtn.Name = "_bqCopySettingsBtn";
+            this._bqCopySettingsBtn.Size = new System.Drawing.Size(100, 26);
+            this._bqCopySettingsBtn.TabIndex = 8;
+            this._bqCopySettingsBtn.Text = "Copy Settings";
+            this._bqCopySettingsBtn.UseVisualStyleBackColor = false;
             //
             // _bqRunNowBtn
             //
@@ -4847,6 +4873,7 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._abmStackDelayInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._abmQueueVidInput)).EndInit();
             this._bqPage.ResumeLayout(false);
+            this._defenderPage.ResumeLayout(false);
             this._bqSettingsPanel.ResumeLayout(false);
             this._bqSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._bqDelayInput)).EndInit();
@@ -5572,6 +5599,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _bqDelayInput;
         private System.Windows.Forms.Button _bqRefreshBtn;
         private System.Windows.Forms.Button _bqRunNowBtn;
+        private System.Windows.Forms.Button _bqCopySettingsBtn;
         // Scout tab controls
         private System.Windows.Forms.TabPage _scoutPage;
         private System.Windows.Forms.Panel _scSettingsPanel;
@@ -5579,5 +5607,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Panel _scVillagePanel;
         private System.Windows.Forms.Panel _scDivider;
         private System.Windows.Forms.Panel _scContentPanel;
+        // Defender tab controls
+        private System.Windows.Forms.TabPage _defenderPage;
     }
 }
