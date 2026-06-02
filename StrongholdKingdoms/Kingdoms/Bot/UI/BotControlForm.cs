@@ -2857,6 +2857,7 @@ namespace Kingdoms.Bot.UI
                 Math.Min(_trAutoHireLimitInput.Maximum, s.AutoHireMerchantsLimit));
             _trIgnoreTransactionsCheck.Checked = s.IgnoreCurrentTransactions;
             _trDisableOnCardExpiryCheck.Checked = s.DisableOnTradeCardExpiry;
+            _trAutoSaveRouteProgressCheck.Checked = s.AutoSavePlayerRouteProgress;
 
             TrRefreshMarkets();
             TrBuildRoutesList();
@@ -2881,6 +2882,7 @@ namespace Kingdoms.Bot.UI
             if (_trPriorityCombo.SelectedIndex >= 0)
                 s.Priority = (TradePriority)_trPriorityCombo.SelectedIndex;
             s.DisableOnTradeCardExpiry = _trDisableOnCardExpiryCheck.Checked;
+            s.AutoSavePlayerRouteProgress = _trAutoSaveRouteProgressCheck.Checked;
 
             // Save currently displayed village's resource grid
             TrSaveCurrentVillage();

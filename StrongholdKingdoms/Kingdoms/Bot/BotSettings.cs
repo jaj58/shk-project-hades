@@ -410,6 +410,7 @@ namespace Kingdoms.Bot
         public TradePriority Priority = TradePriority.MarketSellFirst;
         public bool DisableOnTradeCardExpiry = false;
         public bool TradeCardsWereActive = false;
+        public bool AutoSavePlayerRouteProgress = true;
         public List<VillageMarketTradeInfo> VillageMarketSettings = new List<VillageMarketTradeInfo>();
         public List<TradeRouteSettings> Routes = new List<TradeRouteSettings>();
         public List<PlayerTradeRouteSettings> PlayerRoutes = new List<PlayerTradeRouteSettings>();

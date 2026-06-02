@@ -985,6 +985,10 @@ namespace Kingdoms.Bot.Modules
                             LogInfo("[Player Route '" + route.Name + "'] All resources delivered! Route auto-disabled.");
                         }
 
+                        // Persist progress immediately so a map swap / relog doesn't reset AmountSent
+                        if (settings.AutoSavePlayerRouteProgress)
+                            Engine.SaveSettings();
+
                         return true; // One send per village per tick
                     }
                     else

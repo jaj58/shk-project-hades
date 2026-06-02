@@ -184,6 +184,7 @@ namespace Kingdoms.Bot.UI
             this._trStatsTab = new System.Windows.Forms.TabPage();
             this._trSettingsPanel = new System.Windows.Forms.Panel();
             this._trDisableOnCardExpiryCheck = new System.Windows.Forms.CheckBox();
+            this._trAutoSaveRouteProgressCheck = new System.Windows.Forms.CheckBox();
             this._trPriorityCombo = new System.Windows.Forms.ComboBox();
             this._trPriorityLabel = new System.Windows.Forms.Label();
             this._trIgnoreTransactionsCheck = new System.Windows.Forms.CheckBox();
@@ -2396,6 +2397,7 @@ namespace Kingdoms.Bot.UI
             // _trSettingsPanel
             //
             this._trSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
+            this._trSettingsPanel.Controls.Add(this._trAutoSaveRouteProgressCheck);
             this._trSettingsPanel.Controls.Add(this._trDisableOnCardExpiryCheck);
             this._trSettingsPanel.Controls.Add(this._trPriorityCombo);
             this._trSettingsPanel.Controls.Add(this._trPriorityLabel);
@@ -2421,9 +2423,22 @@ namespace Kingdoms.Bot.UI
             this._trSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
             this._trSettingsPanel.Size = new System.Drawing.Size(1142, 100);
             this._trSettingsPanel.TabIndex = 0;
-            // 
+            //
+            // _trAutoSaveRouteProgressCheck
+            //
+            this._trAutoSaveRouteProgressCheck.AutoSize = true;
+            this._trAutoSaveRouteProgressCheck.Checked = true;
+            this._trAutoSaveRouteProgressCheck.CheckState = System.Windows.Forms.CheckState.Checked;
+            this._trAutoSaveRouteProgressCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._trAutoSaveRouteProgressCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trAutoSaveRouteProgressCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._trAutoSaveRouteProgressCheck.Location = new System.Drawing.Point(928, 70);
+            this._trAutoSaveRouteProgressCheck.Name = "_trAutoSaveRouteProgressCheck";
+            this._trAutoSaveRouteProgressCheck.TabIndex = 18;
+            this._trAutoSaveRouteProgressCheck.Text = "Auto-save route progress";
+            //
             // _trDisableOnCardExpiryCheck
-            // 
+            //
             this._trDisableOnCardExpiryCheck.AutoSize = true;
             this._trDisableOnCardExpiryCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._trDisableOnCardExpiryCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
@@ -5786,6 +5801,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Label _trPriorityLabel;
         private System.Windows.Forms.TabPage _trStatsTab;
         private System.Windows.Forms.CheckBox _trDisableOnCardExpiryCheck;
+        private System.Windows.Forms.CheckBox _trAutoSaveRouteProgressCheck;
         private System.Windows.Forms.Panel _trMarketVillageListPanel;
         private System.Windows.Forms.Button _trMarketRefreshBtn;
         private System.Windows.Forms.Button _trAddMarketsBtn;
