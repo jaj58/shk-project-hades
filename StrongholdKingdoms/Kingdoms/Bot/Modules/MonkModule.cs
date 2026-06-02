@@ -72,6 +72,24 @@ namespace Kingdoms.Bot.Modules
                 }
             }
 
+            // For SendXMonksEach, check upfront if all targets are already complete
+            if (route.StopCondition == MonkStopCondition.SendXMonksEach
+                && route.ToTargets.Count > 0)
+            {
+                bool allDone = true;
+                foreach (int tid in route.ToTargets)
+                {
+                    if (route.GetProgress(tid) < route.ExtraParameter)
+                    { allDone = false; break; }
+                }
+                if (allDone)
+                {
+                    LogInfo("All targets complete — disabling route: " + route.Name);
+                    route.Enabled = false;
+                    return;
+                }
+            }
+
             HashSet<int> processedTargets = new HashSet<int>();
 
             foreach (int fromId in route.FromVillages)

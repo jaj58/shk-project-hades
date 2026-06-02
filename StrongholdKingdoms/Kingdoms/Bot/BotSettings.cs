@@ -1220,13 +1220,15 @@ namespace Kingdoms.Bot
         public string GetProgressSummary()
         {
             int total = GetTotalProgress();
-            if (total == 0) return "-";
-            if (StopCondition == MonkStopCondition.SendXMonksEach && ToTargets.Count > 0)
+            if (StopCondition == MonkStopCondition.SendXMonksEach)
             {
+                // Always show "sent / needed" so the target is visible even before anything runs
+                if (ToTargets.Count == 0) return "-";
                 int cap = ExtraParameter * ToTargets.Count;
                 return total + " / " + cap;
             }
-            return total.ToString();
+            // QuestCompletion / RunOnCondition — show total monks dispatched
+            return total == 0 ? "-" : total + " sent";
         }
 
         public MonkRouteSettings Clone()

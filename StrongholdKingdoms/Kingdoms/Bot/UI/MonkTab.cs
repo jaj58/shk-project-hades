@@ -30,9 +30,10 @@ namespace Kingdoms.Bot.UI
         private readonly Label _progressLabel;
         private bool _selected;
 
-        public event Action<int, bool> EnabledToggled;  // (routeIndex, enabled)
-        public event Action<int>       EditRequested;   // (routeIndex)
-        public event Action<int>       DeleteRequested; // (routeIndex)
+        public event Action<int, bool> EnabledToggled;     // (routeIndex, enabled)
+        public event Action<int>       SelectionRequested; // (routeIndex) — row or any label clicked
+        public event Action<int>       DeleteRequested;    // (routeIndex) — ✕ button only
+        private Color _normalBg;
 
         public int  RouteIndex { get { return _routeIndex; } }
         public bool Selected
@@ -41,17 +42,19 @@ namespace Kingdoms.Bot.UI
             set
             {
                 _selected = value;
-                this.BackColor = _selected ? SelBg : (_routeIndex % 2 == 0 ? BgEven : BgOdd);
+                this.BackColor = _selected ? SelBg : _normalBg;
             }
         }
 
         public MonkRouteRow(int routeIndex, MonkRouteSettings route, bool alternate)
         {
             _routeIndex = routeIndex;
-            this.BackColor = alternate ? BgOdd : BgEven;
+            _normalBg   = alternate ? BgOdd : BgEven;
+            this.BackColor = _normalBg;
             this.Height    = 26;
             this.Cursor    = Cursors.Hand;
-            this.Click    += (s, e) => EditRequested?.Invoke(_routeIndex);
+            // Panel body click → select
+            this.Click += (s, e) => SelectionRequested?.Invoke(_routeIndex);
 
             _enabledCheck = new CheckBox();
             _enabledCheck.FlatStyle = FlatStyle.Flat;
@@ -61,14 +64,15 @@ namespace Kingdoms.Bot.UI
             _enabledCheck.Click    += (s, e) => EnabledToggled?.Invoke(_routeIndex, _enabledCheck.Checked);
             this.Controls.Add(_enabledCheck);
 
+            // Each label also fires selection so clicking on text works reliably
             _nameLabel     = MkLabel(route.Name,                         28,  140, FontStyle.Bold);
             _cmdLabel      = MkLabel(route.Command.ToString(),           174,  90, FontStyle.Regular);
             _fromLabel     = MkLabel(route.FromVillages.Count + " from", 270,  65, FontStyle.Regular);
             _toLabel       = MkLabel(route.ToTargets.Count   + " to",    340,  65, FontStyle.Regular);
             _stopLabel     = MkLabel(StopCondLabel(route),               410, 130, FontStyle.Regular);
             _paramLabel    = MkLabel(ParamLabel(route),                  546,  75, FontStyle.Regular);
-            _progressLabel = MkLabel(route.GetProgressSummary(),         630, 160, FontStyle.Regular);
-            _progressLabel.ForeColor = Color.FromArgb(120, 190, 120); // soft green
+            _progressLabel = MkLabel(route.GetProgressSummary(),         630, 160, FontStyle.Bold);
+            _progressLabel.ForeColor = Color.FromArgb(100, 220, 130); // bright green, visible on dark bg
 
             Button delBtn = new Button();
             delBtn.Text      = "✕";
@@ -136,6 +140,8 @@ namespace Kingdoms.Bot.UI
             l.ForeColor = TextPri;
             l.Location  = new Point(x, 5);
             l.Size      = new Size(w, 16);
+            // Forward label clicks to the row's selection so clicking on text works
+            l.Click    += (s, e) => SelectionRequested?.Invoke(_routeIndex);
             return l;
         }
     }

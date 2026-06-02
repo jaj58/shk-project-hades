@@ -7216,9 +7216,34 @@ namespace Kingdoms.Bot.UI
             _mkAutoRecruitInput.ValueChanged   += delegate { MkWriteToSettings(); };
             _mkRefreshBtn.Click    += delegate { MkPopulateRouteList(); };
             _mkRunNowBtn.Click     += delegate { MkRunNow(); };
-            _mkAddRouteBtn.Click   += delegate { MkAddRoute(); };
-            _mkEditRouteBtn.Click  += delegate { if (_mkSelectedRouteIndex >= 0) MkEditRoute(_mkSelectedRouteIndex); };
-            _mkDeleteRouteBtn.Click += delegate { if (_mkSelectedRouteIndex >= 0) MkDeleteRoute(_mkSelectedRouteIndex); };
+            _mkAddRouteBtn.Click    += delegate { MkAddRoute(); };
+            _mkEditRouteBtn.Click   += delegate { MkEditSelected(); };
+            _mkDeleteRouteBtn.Click += delegate { MkDeleteSelected(); };
+
+            // Duplicate and Reset Progress — added programmatically to match Trade tab style
+            Button dupBtn = new Button();
+            dupBtn.Text      = "Duplicate";
+            dupBtn.BackColor = Color.FromArgb(40, 75, 40);
+            dupBtn.ForeColor = Color.FromArgb(230, 230, 240);
+            dupBtn.FlatStyle = FlatStyle.Flat;
+            dupBtn.Font      = new Font("Segoe UI", 8.5f);
+            dupBtn.Size      = new Size(90, 26);
+            dupBtn.Location  = new Point(270, 4);
+            dupBtn.UseVisualStyleBackColor = false;
+            dupBtn.Click += delegate { MkDuplicateSelected(); };
+            _mkRouteButtonPanel.Controls.Add(dupBtn);
+
+            Button resetBtn = new Button();
+            resetBtn.Text      = "Reset Progress";
+            resetBtn.BackColor = Color.FromArgb(90, 65, 20);
+            resetBtn.ForeColor = Color.FromArgb(230, 230, 240);
+            resetBtn.FlatStyle = FlatStyle.Flat;
+            resetBtn.Font      = new Font("Segoe UI", 8.5f);
+            resetBtn.Size      = new Size(115, 26);
+            resetBtn.Location  = new Point(368, 4);
+            resetBtn.UseVisualStyleBackColor = false;
+            resetBtn.Click += delegate { MkResetSelectedProgress(); };
+            _mkRouteButtonPanel.Controls.Add(resetBtn);
 
             // Populate the static column-header panel (defined in Designer so docking order is correct)
             int[] colXs    = { 28, 174, 270, 340, 410, 546, 630 };
@@ -7308,10 +7333,9 @@ namespace Kingdoms.Bot.UI
                 row.Anchor   = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
 
                 int capturedIdx = i;
-                row.EnabledToggled  += (idx, en) => MkOnEnabledToggled(idx, en);
-                row.EditRequested   += (idx) => MkEditRoute(idx);
-                row.DeleteRequested += (idx) => MkDeleteRoute(idx);
-                row.Click           += (s, e) => MkSelectRoute(capturedIdx);
+                row.EnabledToggled     += (idx, en) => MkOnEnabledToggled(idx, en);
+                row.SelectionRequested += (idx) => MkSelectRoute(idx);
+                row.DeleteRequested    += (idx) => MkDeleteRoute(idx);
 
                 _mkRouteListPanel.Controls.Add(row);
                 _mkRouteRows.Add(row);
@@ -7327,6 +7351,52 @@ namespace Kingdoms.Bot.UI
             _mkSelectedRouteIndex = idx;
             for (int i = 0; i < _mkRouteRows.Count; i++)
                 _mkRouteRows[i].Selected = (i == idx);
+        }
+
+        // Returns the index of the first selected route row, or -1 if none.
+        private int MkGetSelectedIndex()
+        {
+            for (int i = 0; i < _mkRouteRows.Count; i++)
+                if (_mkRouteRows[i].Selected) return i;
+            return -1;
+        }
+
+        private void MkEditSelected()
+        {
+            int idx = MkGetSelectedIndex();
+            if (idx >= 0) MkEditRoute(idx);
+        }
+
+        private void MkDeleteSelected()
+        {
+            int idx = MkGetSelectedIndex();
+            if (idx >= 0) MkDeleteRoute(idx);
+        }
+
+        private void MkDuplicateSelected()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            int idx = MkGetSelectedIndex();
+            if (idx < 0) return;
+            MonkSettings s = BotEngine.Instance.Settings.Monk;
+            if (idx >= s.Routes.Count) return;
+            MonkRouteSettings clone = s.Routes[idx].Clone();
+            s.Routes.Add(clone);
+            MkPopulateRouteList();
+        }
+
+        private void MkResetSelectedProgress()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            int idx = MkGetSelectedIndex();
+            if (idx < 0) return;
+            MonkSettings s = BotEngine.Instance.Settings.Monk;
+            if (idx >= s.Routes.Count) return;
+            MonkRouteSettings route = s.Routes[idx];
+            route.ResetProgress();
+            // Re-enable route in case it was auto-disabled on completion
+            route.Enabled = true;
+            MkPopulateRouteList();
         }
 
         private void MkOnEnabledToggled(int idx, bool enabled)
