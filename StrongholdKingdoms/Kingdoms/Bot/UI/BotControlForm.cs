@@ -127,6 +127,10 @@ namespace Kingdoms.Bot.UI
         // Banquet tab runtime state
         private List<BanquetVillageRow> _bqVillageRows = new List<BanquetVillageRow>();
 
+        // Monk tab runtime state
+        private List<MonkRouteRow> _mkRouteRows = new List<MonkRouteRow>();
+        private int _mkSelectedRouteIndex = -1;
+
         // Auto tab runtime state. The control fields (_autoProd*/_autoModule* panels, interval
         // inputs and server-time label) are declared in BotControlForm.Designer.cs.
         private Timer _autoRefreshTimer;
@@ -208,6 +212,7 @@ namespace Kingdoms.Bot.UI
                 WireUpAutoTab();
                 WireUpScoutTab();
                 WireUpDefenderTab();
+                WireUpMonkTab();
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -7195,6 +7200,198 @@ namespace Kingdoms.Bot.UI
             private readonly string _label;
             public DfVillageItem(int id, string label) { VillageId = id; _label = label; }
             public override string ToString() { return _label; }
+        }
+
+        // =====================================================================
+        // Monk tab
+        // =====================================================================
+
+        private void WireUpMonkTab()
+        {
+            _mkEnabledCheck.CheckedChanged += delegate { MkWriteToSettings(); };
+            _mkIntervalInput.ValueChanged  += delegate { MkWriteToSettings(); };
+            _mkDelayInput.ValueChanged     += delegate { MkWriteToSettings(); };
+            _mkMonksToKeepInput.ValueChanged += delegate { MkWriteToSettings(); };
+            _mkRefreshBtn.Click    += delegate { MkPopulateRouteList(); };
+            _mkRunNowBtn.Click     += delegate { MkRunNow(); };
+            _mkAddRouteBtn.Click   += delegate { MkAddRoute(); };
+            _mkEditRouteBtn.Click  += delegate { if (_mkSelectedRouteIndex >= 0) MkEditRoute(_mkSelectedRouteIndex); };
+            _mkDeleteRouteBtn.Click += delegate { if (_mkSelectedRouteIndex >= 0) MkDeleteRoute(_mkSelectedRouteIndex); };
+
+            // Column header labels
+            int[] colXs = { 28, 174, 270, 340, 410, 546 };
+            string[] colNames = { "Route Name", "Command", "From", "To", "Stop Condition", "Param" };
+            Panel header = new Panel();
+            header.BackColor = Color.FromArgb(30, 30, 40);
+            header.Dock      = DockStyle.Top;
+            header.Height    = 22;
+            for (int i = 0; i < colNames.Length; i++)
+            {
+                Label lbl = new Label();
+                lbl.Text      = colNames[i];
+                lbl.Font      = new Font("Segoe UI", 7f, FontStyle.Bold);
+                lbl.ForeColor = TextSec;
+                lbl.AutoSize  = true;
+                lbl.Location  = new Point(colXs[i], 4);
+                header.Controls.Add(lbl);
+            }
+            _mkPage.Controls.Add(header);
+            _mkPage.Controls.SetChildIndex(header, 0);
+
+            MkLoadFromSettings();
+        }
+
+        private void MkLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            MonkSettings s = BotEngine.Instance.Settings.Monk;
+            _mkEnabledCheck.Checked = s.Enabled;
+            _mkIntervalInput.Value  = Math.Max(_mkIntervalInput.Minimum,
+                Math.Min(_mkIntervalInput.Maximum, s.CycleIntervalSeconds));
+            _mkDelayInput.Value     = Math.Max(_mkDelayInput.Minimum,
+                Math.Min(_mkDelayInput.Maximum, s.DelayBetweenRoutesMs));
+            _mkMonksToKeepInput.Value = Math.Max(_mkMonksToKeepInput.Minimum,
+                Math.Min(_mkMonksToKeepInput.Maximum, s.MonksToKeep));
+
+            MkPopulateRouteList();
+            MkUpdateStatusDisplay();
+        }
+
+        private void MkWriteToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            MonkSettings s = BotEngine.Instance.Settings.Monk;
+            s.Enabled               = _mkEnabledCheck.Checked;
+            s.CycleIntervalSeconds  = (int)_mkIntervalInput.Value;
+            s.DelayBetweenRoutesMs  = (int)_mkDelayInput.Value;
+            s.MonksToKeep           = (int)_mkMonksToKeepInput.Value;
+
+            foreach (IBotModule module in BotEngine.Instance.Modules)
+            {
+                if (module is Modules.MonkModule)
+                    module.Enabled = s.Enabled;
+            }
+
+            MkUpdateStatusDisplay();
+        }
+
+        private void MkPopulateRouteList()
+        {
+            _mkRouteListPanel.SuspendLayout();
+            _mkRouteListPanel.Controls.Clear();
+            _mkRouteRows.Clear();
+            _mkSelectedRouteIndex = -1;
+
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+            {
+                _mkRouteListPanel.ResumeLayout();
+                return;
+            }
+
+            MonkSettings settings = BotEngine.Instance.Settings.Monk;
+            int y = 2;
+            bool alternate = false;
+            for (int i = 0; i < settings.Routes.Count; i++)
+            {
+                MonkRouteSettings route = settings.Routes[i];
+                MonkRouteRow row = new MonkRouteRow(i, route, alternate);
+                row.Location = new Point(0, y);
+                row.Width    = _mkRouteListPanel.ClientSize.Width;
+                row.Anchor   = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
+
+                int capturedIdx = i;
+                row.EnabledToggled  += (idx, en) => MkOnEnabledToggled(idx, en);
+                row.EditRequested   += (idx) => MkEditRoute(idx);
+                row.DeleteRequested += (idx) => MkDeleteRoute(idx);
+                row.Click           += (s, e) => MkSelectRoute(capturedIdx);
+
+                _mkRouteListPanel.Controls.Add(row);
+                _mkRouteRows.Add(row);
+                y += row.Height + 1;
+                alternate = !alternate;
+            }
+
+            _mkRouteListPanel.ResumeLayout();
+        }
+
+        private void MkSelectRoute(int idx)
+        {
+            _mkSelectedRouteIndex = idx;
+            for (int i = 0; i < _mkRouteRows.Count; i++)
+                _mkRouteRows[i].Selected = (i == idx);
+        }
+
+        private void MkOnEnabledToggled(int idx, bool enabled)
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            MonkSettings s = BotEngine.Instance.Settings.Monk;
+            if (idx >= 0 && idx < s.Routes.Count)
+                s.Routes[idx].Enabled = enabled;
+        }
+
+        private void MkAddRoute()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+
+            MonkRouteSettings newRoute = new MonkRouteSettings();
+            newRoute.Name = "New Monk Route";
+            MonkRouteEditorForm editor = new MonkRouteEditorForm(newRoute, "Add Monk Route");
+            editor.ShowDialog(this);
+
+            if (editor.Saved)
+            {
+                BotEngine.Instance.Settings.Monk.Routes.Add(newRoute);
+                MkPopulateRouteList();
+            }
+        }
+
+        private void MkEditRoute(int idx)
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            MonkSettings s = BotEngine.Instance.Settings.Monk;
+            if (idx < 0 || idx >= s.Routes.Count) return;
+
+            MonkRouteEditorForm editor = new MonkRouteEditorForm(s.Routes[idx], "Edit Monk Route");
+            editor.ShowDialog(this);
+
+            if (editor.Saved)
+                MkPopulateRouteList();
+        }
+
+        private void MkDeleteRoute(int idx)
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            MonkSettings s = BotEngine.Instance.Settings.Monk;
+            if (idx < 0 || idx >= s.Routes.Count) return;
+
+            if (MessageBox.Show(this,
+                "Delete route \"" + s.Routes[idx].Name + "\"?",
+                "Confirm Delete",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                s.Routes.RemoveAt(idx);
+                MkPopulateRouteList();
+            }
+        }
+
+        private void MkRunNow()
+        {
+            if (BotEngine.Instance == null) return;
+            foreach (IBotModule module in BotEngine.Instance.Modules)
+            {
+                Modules.MonkModule mm = module as Modules.MonkModule;
+                if (mm != null) { mm.RunNow(); break; }
+            }
+        }
+
+        private void MkUpdateStatusDisplay()
+        {
+            bool enabled = _mkEnabledCheck.Checked;
+            _mkStatusLabel.Text      = enabled ? "ENABLED" : "DISABLED";
+            _mkStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
         }
     }
 }

@@ -100,6 +100,7 @@
     <Compile Include="Kingdoms\Bot\Modules\AutoCardModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\BanquetModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\DefenderModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\MonkModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoModuleSchedulerModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\CardExpiryModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\CastleRepairModule.cs" />
@@ -130,6 +131,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Kingdoms\Bot\UI\RecruitVillagePanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\MonkTab.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Kingdoms\Bot\UI\TradeTab.cs">

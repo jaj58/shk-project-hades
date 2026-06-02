@@ -31,6 +31,7 @@ namespace Kingdoms.Bot
         public AutoSettings Auto = new AutoSettings();
         public BanquetSettings Banquet = new BanquetSettings();
         public DefenderSettings Defender = new DefenderSettings();
+        public MonkSettings Monk = new MonkSettings();
 
         private static string GetSettingsFilePath(int worldId)
         {
@@ -1127,5 +1128,111 @@ namespace Kingdoms.Bot
         public bool AutoRepair = true;
         public bool RestoreTroops = true;
         public bool RestoreInfrastructure = false;
+    }
+
+    // =========================================================================
+    // Monk Module Settings
+    // =========================================================================
+
+    public enum MonkCommand
+    {
+        Blessing        = 1,   // parishes only
+        Inquisition     = 3,   // parishes only
+        Interdiction    = 4,   // villages + parish/county capitals
+        Restoration     = 5,   // parishes only (heals disease)
+        Absolution      = 6,   // villages only (removes excommunication)
+        Excommunication = 7,   // villages only
+        // TODO: verify the correct integer for influence/envoy monks
+        Influence       = 2,
+    }
+
+    public enum MonkStopCondition
+    {
+        QuestCompletion = 0,   // sends until the active quest for this command is satisfied
+        SendXMonksEach  = 1,   // sends ExtraParameter monks to each target then stops
+        RunOnCondition  = 2,   // maintains a condition (hours of interdict, disease level, etc.)
+    }
+
+    [Serializable]
+    public class MonkProgressEntry
+    {
+        public int TargetId;
+        public int MonksSent;
+    }
+
+    [Serializable]
+    public class MonkRouteSettings
+    {
+        public string Name = "";
+        public bool Enabled;
+        public MonkCommand Command = MonkCommand.Blessing;
+        public List<int> FromVillages = new List<int>();
+        public List<int> ToTargets = new List<int>();
+        public MonkStopCondition StopCondition = MonkStopCondition.SendXMonksEach;
+        // ExtraParameter meaning:
+        //   SendXMonksEach            — monks to send per target
+        //   RunOnCondition/Interdiction     — maintain at least X hours of interdict
+        //   RunOnCondition/Restoration      — heal until disease <= X (0 = fully healed)
+        //   RunOnCondition/Blessing         — maintain X blessing level (1–100)
+        //   RunOnCondition/Inquisition      — maintain X inquisition level (1–100)
+        //   RunOnCondition/Absolution       — absolve if target has > X hours of excomm
+        //   RunOnCondition/Excommunication  — excommunicate until target has > X hours
+        //   QuestCompletion           — unused (0)
+        public int ExtraParameter = 5;
+        public bool IsDistanceLimited;
+        public int DistanceLimit = 100;
+        // Influence-specific settings
+        public bool InfluencePositive = true;
+        public int InfluenceTargetUserId = -1;
+        // Per-target progress for SendXMonksEach — persisted so it survives restarts
+        public List<MonkProgressEntry> Progress = new List<MonkProgressEntry>();
+
+        public int GetProgress(int targetId)
+        {
+            foreach (MonkProgressEntry e in Progress)
+                if (e.TargetId == targetId) return e.MonksSent;
+            return 0;
+        }
+
+        public void AddProgress(int targetId, int amount)
+        {
+            foreach (MonkProgressEntry e in Progress)
+            {
+                if (e.TargetId == targetId) { e.MonksSent += amount; return; }
+            }
+            Progress.Add(new MonkProgressEntry { TargetId = targetId, MonksSent = amount });
+        }
+
+        public void ResetProgress()
+        {
+            Progress.Clear();
+        }
+
+        public MonkRouteSettings Clone()
+        {
+            MonkRouteSettings r = new MonkRouteSettings();
+            r.Name = this.Name + " (Copy)";
+            r.Enabled = false;
+            r.Command = this.Command;
+            r.FromVillages = new List<int>(this.FromVillages);
+            r.ToTargets = new List<int>(this.ToTargets);
+            r.StopCondition = this.StopCondition;
+            r.ExtraParameter = this.ExtraParameter;
+            r.IsDistanceLimited = this.IsDistanceLimited;
+            r.DistanceLimit = this.DistanceLimit;
+            r.InfluencePositive = this.InfluencePositive;
+            r.InfluenceTargetUserId = this.InfluenceTargetUserId;
+            return r;
+        }
+    }
+
+    [Serializable]
+    public class MonkSettings
+    {
+        public bool Enabled = false;
+        public int CycleIntervalSeconds = 120;
+        public int DelayBetweenRoutesMs = 2000;
+        public int MonksToKeep = 0;
+        public List<MonkRouteSettings> Routes = new List<MonkRouteSettings>();
     }
 }

@@ -325,6 +325,23 @@ namespace Kingdoms.Bot.UI
             this._ppEnabledCheck = new System.Windows.Forms.CheckBox();
             this._bqPage = new System.Windows.Forms.TabPage();
             this._defenderPage = new System.Windows.Forms.TabPage();
+            this._mkPage = new System.Windows.Forms.TabPage();
+            this._mkSettingsPanel = new System.Windows.Forms.Panel();
+            this._mkRouteListPanel = new System.Windows.Forms.Panel();
+            this._mkRouteButtonPanel = new System.Windows.Forms.Panel();
+            this._mkEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._mkStatusLabel = new System.Windows.Forms.Label();
+            this._mkIntervalLabel = new System.Windows.Forms.Label();
+            this._mkIntervalInput = new System.Windows.Forms.NumericUpDown();
+            this._mkDelayLabel = new System.Windows.Forms.Label();
+            this._mkDelayInput = new System.Windows.Forms.NumericUpDown();
+            this._mkKeepLabel = new System.Windows.Forms.Label();
+            this._mkMonksToKeepInput = new System.Windows.Forms.NumericUpDown();
+            this._mkRefreshBtn = new System.Windows.Forms.Button();
+            this._mkRunNowBtn = new System.Windows.Forms.Button();
+            this._mkAddRouteBtn = new System.Windows.Forms.Button();
+            this._mkEditRouteBtn = new System.Windows.Forms.Button();
+            this._mkDeleteRouteBtn = new System.Windows.Forms.Button();
             this._bqVillageListPanel = new System.Windows.Forms.Panel();
             this._bqColHeader = new System.Windows.Forms.Panel();
             this._bqSeparator = new System.Windows.Forms.Panel();
@@ -470,6 +487,12 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._abmQueueVidInput)).BeginInit();
             this._bqPage.SuspendLayout();
             this._defenderPage.SuspendLayout();
+            this._mkPage.SuspendLayout();
+            this._mkSettingsPanel.SuspendLayout();
+            this._mkRouteButtonPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._mkIntervalInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._mkDelayInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._mkMonksToKeepInput)).BeginInit();
             this._bqSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._bqDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._bqIntervalInput)).BeginInit();
@@ -675,6 +698,7 @@ namespace Kingdoms.Bot.UI
             this._tabControl.Controls.Add(this._autoPage);
             this._tabControl.Controls.Add(this._bqPage);
             this._tabControl.Controls.Add(this._defenderPage);
+            this._tabControl.Controls.Add(this._mkPage);
             this._tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this._tabControl.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._tabControl.Location = new System.Drawing.Point(0, 0);
@@ -4338,6 +4362,208 @@ namespace Kingdoms.Bot.UI
             this._defenderPage.TabIndex = 13;
             this._defenderPage.Text = "Defender";
             //
+            // _mkPage
+            //
+            this._mkPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._mkPage.Controls.Add(this._mkRouteListPanel);
+            this._mkPage.Controls.Add(this._mkRouteButtonPanel);
+            this._mkPage.Controls.Add(this._mkSettingsPanel);
+            this._mkPage.Location = new System.Drawing.Point(4, 24);
+            this._mkPage.Name = "_mkPage";
+            this._mkPage.Size = new System.Drawing.Size(1142, 497);
+            this._mkPage.TabIndex = 14;
+            this._mkPage.Text = "Monks";
+            //
+            // _mkSettingsPanel
+            //
+            this._mkSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._mkSettingsPanel.Controls.Add(this._mkEnabledCheck);
+            this._mkSettingsPanel.Controls.Add(this._mkStatusLabel);
+            this._mkSettingsPanel.Controls.Add(this._mkIntervalLabel);
+            this._mkSettingsPanel.Controls.Add(this._mkIntervalInput);
+            this._mkSettingsPanel.Controls.Add(this._mkDelayLabel);
+            this._mkSettingsPanel.Controls.Add(this._mkDelayInput);
+            this._mkSettingsPanel.Controls.Add(this._mkKeepLabel);
+            this._mkSettingsPanel.Controls.Add(this._mkMonksToKeepInput);
+            this._mkSettingsPanel.Controls.Add(this._mkRefreshBtn);
+            this._mkSettingsPanel.Controls.Add(this._mkRunNowBtn);
+            this._mkSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._mkSettingsPanel.Location = new System.Drawing.Point(0, 0);
+            this._mkSettingsPanel.Name = "_mkSettingsPanel";
+            this._mkSettingsPanel.Size = new System.Drawing.Size(1142, 68);
+            this._mkSettingsPanel.TabIndex = 0;
+            //
+            // _mkEnabledCheck
+            //
+            this._mkEnabledCheck.AutoSize = true;
+            this._mkEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._mkEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this._mkEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._mkEnabledCheck.Location = new System.Drawing.Point(16, 12);
+            this._mkEnabledCheck.Name = "_mkEnabledCheck";
+            this._mkEnabledCheck.Size = new System.Drawing.Size(130, 23);
+            this._mkEnabledCheck.TabIndex = 0;
+            this._mkEnabledCheck.Text = "Enable Monks";
+            //
+            // _mkStatusLabel
+            //
+            this._mkStatusLabel.AutoSize = true;
+            this._mkStatusLabel.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._mkStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
+            this._mkStatusLabel.Location = new System.Drawing.Point(160, 16);
+            this._mkStatusLabel.Name = "_mkStatusLabel";
+            this._mkStatusLabel.Size = new System.Drawing.Size(59, 13);
+            this._mkStatusLabel.TabIndex = 1;
+            this._mkStatusLabel.Text = "DISABLED";
+            //
+            // _mkIntervalLabel
+            //
+            this._mkIntervalLabel.AutoSize = true;
+            this._mkIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._mkIntervalLabel.Location = new System.Drawing.Point(16, 44);
+            this._mkIntervalLabel.Name = "_mkIntervalLabel";
+            this._mkIntervalLabel.Size = new System.Drawing.Size(70, 13);
+            this._mkIntervalLabel.TabIndex = 2;
+            this._mkIntervalLabel.Text = "Interval (s):";
+            //
+            // _mkIntervalInput
+            //
+            this._mkIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._mkIntervalInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._mkIntervalInput.Location = new System.Drawing.Point(92, 41);
+            this._mkIntervalInput.Maximum = new decimal(new int[] { 86400, 0, 0, 0 });
+            this._mkIntervalInput.Minimum = new decimal(new int[] { 30, 0, 0, 0 });
+            this._mkIntervalInput.Name = "_mkIntervalInput";
+            this._mkIntervalInput.Size = new System.Drawing.Size(65, 23);
+            this._mkIntervalInput.TabIndex = 3;
+            this._mkIntervalInput.Value = new decimal(new int[] { 120, 0, 0, 0 });
+            //
+            // _mkDelayLabel
+            //
+            this._mkDelayLabel.AutoSize = true;
+            this._mkDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._mkDelayLabel.Location = new System.Drawing.Point(174, 44);
+            this._mkDelayLabel.Name = "_mkDelayLabel";
+            this._mkDelayLabel.Size = new System.Drawing.Size(65, 13);
+            this._mkDelayLabel.TabIndex = 4;
+            this._mkDelayLabel.Text = "Delay (ms):";
+            //
+            // _mkDelayInput
+            //
+            this._mkDelayInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._mkDelayInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._mkDelayInput.Location = new System.Drawing.Point(246, 41);
+            this._mkDelayInput.Maximum = new decimal(new int[] { 30000, 0, 0, 0 });
+            this._mkDelayInput.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
+            this._mkDelayInput.Name = "_mkDelayInput";
+            this._mkDelayInput.Size = new System.Drawing.Size(75, 23);
+            this._mkDelayInput.TabIndex = 5;
+            this._mkDelayInput.Value = new decimal(new int[] { 2000, 0, 0, 0 });
+            //
+            // _mkKeepLabel
+            //
+            this._mkKeepLabel.AutoSize = true;
+            this._mkKeepLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._mkKeepLabel.Location = new System.Drawing.Point(338, 44);
+            this._mkKeepLabel.Name = "_mkKeepLabel";
+            this._mkKeepLabel.Size = new System.Drawing.Size(75, 13);
+            this._mkKeepLabel.TabIndex = 6;
+            this._mkKeepLabel.Text = "Keep monks:";
+            //
+            // _mkMonksToKeepInput
+            //
+            this._mkMonksToKeepInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._mkMonksToKeepInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._mkMonksToKeepInput.Location = new System.Drawing.Point(420, 41);
+            this._mkMonksToKeepInput.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
+            this._mkMonksToKeepInput.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
+            this._mkMonksToKeepInput.Name = "_mkMonksToKeepInput";
+            this._mkMonksToKeepInput.Size = new System.Drawing.Size(55, 23);
+            this._mkMonksToKeepInput.TabIndex = 7;
+            this._mkMonksToKeepInput.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            //
+            // _mkRefreshBtn
+            //
+            this._mkRefreshBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(50)))), ((int)(((byte)(70)))));
+            this._mkRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._mkRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._mkRefreshBtn.Location = new System.Drawing.Point(492, 39);
+            this._mkRefreshBtn.Name = "_mkRefreshBtn";
+            this._mkRefreshBtn.Size = new System.Drawing.Size(75, 26);
+            this._mkRefreshBtn.TabIndex = 8;
+            this._mkRefreshBtn.Text = "Refresh";
+            this._mkRefreshBtn.UseVisualStyleBackColor = false;
+            //
+            // _mkRunNowBtn
+            //
+            this._mkRunNowBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(80)))), ((int)(((byte)(50)))));
+            this._mkRunNowBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._mkRunNowBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._mkRunNowBtn.Location = new System.Drawing.Point(578, 39);
+            this._mkRunNowBtn.Name = "_mkRunNowBtn";
+            this._mkRunNowBtn.Size = new System.Drawing.Size(80, 26);
+            this._mkRunNowBtn.TabIndex = 9;
+            this._mkRunNowBtn.Text = "Run Now";
+            this._mkRunNowBtn.UseVisualStyleBackColor = false;
+            //
+            // _mkRouteListPanel
+            //
+            this._mkRouteListPanel.AutoScroll = true;
+            this._mkRouteListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._mkRouteListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._mkRouteListPanel.Location = new System.Drawing.Point(0, 68);
+            this._mkRouteListPanel.Name = "_mkRouteListPanel";
+            this._mkRouteListPanel.Size = new System.Drawing.Size(1142, 395);
+            this._mkRouteListPanel.TabIndex = 1;
+            //
+            // _mkRouteButtonPanel
+            //
+            this._mkRouteButtonPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._mkRouteButtonPanel.Controls.Add(this._mkAddRouteBtn);
+            this._mkRouteButtonPanel.Controls.Add(this._mkEditRouteBtn);
+            this._mkRouteButtonPanel.Controls.Add(this._mkDeleteRouteBtn);
+            this._mkRouteButtonPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this._mkRouteButtonPanel.Location = new System.Drawing.Point(0, 463);
+            this._mkRouteButtonPanel.Name = "_mkRouteButtonPanel";
+            this._mkRouteButtonPanel.Size = new System.Drawing.Size(1142, 34);
+            this._mkRouteButtonPanel.TabIndex = 2;
+            //
+            // _mkAddRouteBtn
+            //
+            this._mkAddRouteBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(70)))), ((int)(((byte)(40)))));
+            this._mkAddRouteBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._mkAddRouteBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._mkAddRouteBtn.Location = new System.Drawing.Point(8, 4);
+            this._mkAddRouteBtn.Name = "_mkAddRouteBtn";
+            this._mkAddRouteBtn.Size = new System.Drawing.Size(90, 26);
+            this._mkAddRouteBtn.TabIndex = 0;
+            this._mkAddRouteBtn.Text = "Add Route";
+            this._mkAddRouteBtn.UseVisualStyleBackColor = false;
+            //
+            // _mkEditRouteBtn
+            //
+            this._mkEditRouteBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(55)))), ((int)(((byte)(80)))));
+            this._mkEditRouteBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._mkEditRouteBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._mkEditRouteBtn.Location = new System.Drawing.Point(106, 4);
+            this._mkEditRouteBtn.Name = "_mkEditRouteBtn";
+            this._mkEditRouteBtn.Size = new System.Drawing.Size(75, 26);
+            this._mkEditRouteBtn.TabIndex = 1;
+            this._mkEditRouteBtn.Text = "Edit";
+            this._mkEditRouteBtn.UseVisualStyleBackColor = false;
+            //
+            // _mkDeleteRouteBtn
+            //
+            this._mkDeleteRouteBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
+            this._mkDeleteRouteBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._mkDeleteRouteBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._mkDeleteRouteBtn.Location = new System.Drawing.Point(188, 4);
+            this._mkDeleteRouteBtn.Name = "_mkDeleteRouteBtn";
+            this._mkDeleteRouteBtn.Size = new System.Drawing.Size(75, 26);
+            this._mkDeleteRouteBtn.TabIndex = 2;
+            this._mkDeleteRouteBtn.Text = "Delete";
+            this._mkDeleteRouteBtn.UseVisualStyleBackColor = false;
+            //
             // _bqVillageListPanel
             //
             this._bqVillageListPanel.AutoScroll = true;
@@ -4874,6 +5100,13 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._abmQueueVidInput)).EndInit();
             this._bqPage.ResumeLayout(false);
             this._defenderPage.ResumeLayout(false);
+            this._mkPage.ResumeLayout(false);
+            this._mkSettingsPanel.ResumeLayout(false);
+            this._mkSettingsPanel.PerformLayout();
+            this._mkRouteButtonPanel.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this._mkIntervalInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._mkDelayInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._mkMonksToKeepInput)).EndInit();
             this._bqSettingsPanel.ResumeLayout(false);
             this._bqSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._bqDelayInput)).EndInit();
@@ -5609,5 +5842,23 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Panel _scContentPanel;
         // Defender tab controls
         private System.Windows.Forms.TabPage _defenderPage;
+        // Monk tab controls
+        private System.Windows.Forms.TabPage _mkPage;
+        private System.Windows.Forms.Panel _mkSettingsPanel;
+        private System.Windows.Forms.Panel _mkRouteListPanel;
+        private System.Windows.Forms.Panel _mkRouteButtonPanel;
+        private System.Windows.Forms.CheckBox _mkEnabledCheck;
+        private System.Windows.Forms.Label _mkStatusLabel;
+        private System.Windows.Forms.Label _mkIntervalLabel;
+        private System.Windows.Forms.NumericUpDown _mkIntervalInput;
+        private System.Windows.Forms.Label _mkDelayLabel;
+        private System.Windows.Forms.NumericUpDown _mkDelayInput;
+        private System.Windows.Forms.Label _mkKeepLabel;
+        private System.Windows.Forms.NumericUpDown _mkMonksToKeepInput;
+        private System.Windows.Forms.Button _mkRefreshBtn;
+        private System.Windows.Forms.Button _mkRunNowBtn;
+        private System.Windows.Forms.Button _mkAddRouteBtn;
+        private System.Windows.Forms.Button _mkEditRouteBtn;
+        private System.Windows.Forms.Button _mkDeleteRouteBtn;
     }
 }

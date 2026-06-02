@@ -48,6 +48,7 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.AutoModuleSchedulerModule());
             RegisterModule(new Modules.BanquetModule());
             RegisterModule(new Modules.DefenderModule());
+            RegisterModule(new Modules.MonkModule());
 
             foreach (IBotModule module in _modules)
             {
@@ -113,6 +114,8 @@ namespace Kingdoms.Bot
                     module.Enabled = _settings.Scout.Enabled;
                 else if (module is Modules.BanquetModule)
                     module.Enabled = _settings.Banquet.Enabled;
+                else if (module is Modules.MonkModule)
+                    module.Enabled = _settings.Monk.Enabled;
             }
         }
 
@@ -145,6 +148,8 @@ namespace Kingdoms.Bot
                     _settings.Scout.Enabled = module.Enabled;
                 else if (module is Modules.BanquetModule)
                     _settings.Banquet.Enabled = module.Enabled;
+                else if (module is Modules.MonkModule)
+                    _settings.Monk.Enabled = module.Enabled;
             }
 
             _settings.Save();
