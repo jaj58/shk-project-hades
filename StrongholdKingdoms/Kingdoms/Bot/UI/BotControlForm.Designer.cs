@@ -327,6 +327,7 @@ namespace Kingdoms.Bot.UI
             this._defenderPage = new System.Windows.Forms.TabPage();
             this._mkPage = new System.Windows.Forms.TabPage();
             this._mkSettingsPanel = new System.Windows.Forms.Panel();
+            this._mkColHeader = new System.Windows.Forms.Panel();
             this._mkRouteListPanel = new System.Windows.Forms.Panel();
             this._mkRouteButtonPanel = new System.Windows.Forms.Panel();
             this._mkEnabledCheck = new System.Windows.Forms.CheckBox();
@@ -337,6 +338,8 @@ namespace Kingdoms.Bot.UI
             this._mkDelayInput = new System.Windows.Forms.NumericUpDown();
             this._mkKeepLabel = new System.Windows.Forms.Label();
             this._mkMonksToKeepInput = new System.Windows.Forms.NumericUpDown();
+            this._mkAutoRecruitLabel = new System.Windows.Forms.Label();
+            this._mkAutoRecruitInput = new System.Windows.Forms.NumericUpDown();
             this._mkRefreshBtn = new System.Windows.Forms.Button();
             this._mkRunNowBtn = new System.Windows.Forms.Button();
             this._mkAddRouteBtn = new System.Windows.Forms.Button();
@@ -488,11 +491,13 @@ namespace Kingdoms.Bot.UI
             this._bqPage.SuspendLayout();
             this._defenderPage.SuspendLayout();
             this._mkPage.SuspendLayout();
+            this._mkColHeader.SuspendLayout();
             this._mkSettingsPanel.SuspendLayout();
             this._mkRouteButtonPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._mkIntervalInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._mkDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._mkMonksToKeepInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._mkAutoRecruitInput)).BeginInit();
             this._bqSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._bqDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._bqIntervalInput)).BeginInit();
@@ -4365,8 +4370,12 @@ namespace Kingdoms.Bot.UI
             // _mkPage
             //
             this._mkPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            // Add order is intentional: last-added Top panel docks to the very top first.
+            // RouteListPanel (Fill) → remaining area; RouteButtonPanel (Bottom) → very bottom;
+            // ColHeader (Top) → below separator; SettingsPanel (Top, last) → very top.
             this._mkPage.Controls.Add(this._mkRouteListPanel);
             this._mkPage.Controls.Add(this._mkRouteButtonPanel);
+            this._mkPage.Controls.Add(this._mkColHeader);
             this._mkPage.Controls.Add(this._mkSettingsPanel);
             this._mkPage.Location = new System.Drawing.Point(4, 24);
             this._mkPage.Name = "_mkPage";
@@ -4385,6 +4394,8 @@ namespace Kingdoms.Bot.UI
             this._mkSettingsPanel.Controls.Add(this._mkDelayInput);
             this._mkSettingsPanel.Controls.Add(this._mkKeepLabel);
             this._mkSettingsPanel.Controls.Add(this._mkMonksToKeepInput);
+            this._mkSettingsPanel.Controls.Add(this._mkAutoRecruitLabel);
+            this._mkSettingsPanel.Controls.Add(this._mkAutoRecruitInput);
             this._mkSettingsPanel.Controls.Add(this._mkRefreshBtn);
             this._mkSettingsPanel.Controls.Add(this._mkRunNowBtn);
             this._mkSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
@@ -4505,6 +4516,36 @@ namespace Kingdoms.Bot.UI
             this._mkRunNowBtn.TabIndex = 9;
             this._mkRunNowBtn.Text = "Run Now";
             this._mkRunNowBtn.UseVisualStyleBackColor = false;
+            //
+            // _mkAutoRecruitLabel
+            //
+            this._mkAutoRecruitLabel.AutoSize = true;
+            this._mkAutoRecruitLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._mkAutoRecruitLabel.Location = new System.Drawing.Point(668, 44);
+            this._mkAutoRecruitLabel.Name = "_mkAutoRecruitLabel";
+            this._mkAutoRecruitLabel.TabIndex = 10;
+            this._mkAutoRecruitLabel.Text = "Auto recruit:";
+            //
+            // _mkAutoRecruitInput
+            //
+            this._mkAutoRecruitInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._mkAutoRecruitInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._mkAutoRecruitInput.Location = new System.Drawing.Point(753, 41);
+            this._mkAutoRecruitInput.Maximum = new decimal(new int[] { 8, 0, 0, 0 });
+            this._mkAutoRecruitInput.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
+            this._mkAutoRecruitInput.Name = "_mkAutoRecruitInput";
+            this._mkAutoRecruitInput.Size = new System.Drawing.Size(45, 23);
+            this._mkAutoRecruitInput.TabIndex = 11;
+            this._mkAutoRecruitInput.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            //
+            // _mkColHeader
+            //
+            this._mkColHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._mkColHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this._mkColHeader.Location = new System.Drawing.Point(0, 0);
+            this._mkColHeader.Name = "_mkColHeader";
+            this._mkColHeader.Size = new System.Drawing.Size(1142, 22);
+            this._mkColHeader.TabIndex = 3;
             //
             // _mkRouteListPanel
             //
@@ -5101,12 +5142,14 @@ namespace Kingdoms.Bot.UI
             this._bqPage.ResumeLayout(false);
             this._defenderPage.ResumeLayout(false);
             this._mkPage.ResumeLayout(false);
+            this._mkColHeader.ResumeLayout(false);
             this._mkSettingsPanel.ResumeLayout(false);
             this._mkSettingsPanel.PerformLayout();
             this._mkRouteButtonPanel.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this._mkIntervalInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._mkDelayInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._mkMonksToKeepInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._mkAutoRecruitInput)).EndInit();
             this._bqSettingsPanel.ResumeLayout(false);
             this._bqSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._bqDelayInput)).EndInit();
@@ -5845,6 +5888,7 @@ namespace Kingdoms.Bot.UI
         // Monk tab controls
         private System.Windows.Forms.TabPage _mkPage;
         private System.Windows.Forms.Panel _mkSettingsPanel;
+        private System.Windows.Forms.Panel _mkColHeader;
         private System.Windows.Forms.Panel _mkRouteListPanel;
         private System.Windows.Forms.Panel _mkRouteButtonPanel;
         private System.Windows.Forms.CheckBox _mkEnabledCheck;
@@ -5855,6 +5899,8 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _mkDelayInput;
         private System.Windows.Forms.Label _mkKeepLabel;
         private System.Windows.Forms.NumericUpDown _mkMonksToKeepInput;
+        private System.Windows.Forms.Label _mkAutoRecruitLabel;
+        private System.Windows.Forms.NumericUpDown _mkAutoRecruitInput;
         private System.Windows.Forms.Button _mkRefreshBtn;
         private System.Windows.Forms.Button _mkRunNowBtn;
         private System.Windows.Forms.Button _mkAddRouteBtn;

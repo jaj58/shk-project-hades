@@ -7211,20 +7211,17 @@ namespace Kingdoms.Bot.UI
             _mkEnabledCheck.CheckedChanged += delegate { MkWriteToSettings(); };
             _mkIntervalInput.ValueChanged  += delegate { MkWriteToSettings(); };
             _mkDelayInput.ValueChanged     += delegate { MkWriteToSettings(); };
-            _mkMonksToKeepInput.ValueChanged += delegate { MkWriteToSettings(); };
+            _mkMonksToKeepInput.ValueChanged  += delegate { MkWriteToSettings(); };
+            _mkAutoRecruitInput.ValueChanged   += delegate { MkWriteToSettings(); };
             _mkRefreshBtn.Click    += delegate { MkPopulateRouteList(); };
             _mkRunNowBtn.Click     += delegate { MkRunNow(); };
             _mkAddRouteBtn.Click   += delegate { MkAddRoute(); };
             _mkEditRouteBtn.Click  += delegate { if (_mkSelectedRouteIndex >= 0) MkEditRoute(_mkSelectedRouteIndex); };
             _mkDeleteRouteBtn.Click += delegate { if (_mkSelectedRouteIndex >= 0) MkDeleteRoute(_mkSelectedRouteIndex); };
 
-            // Column header labels
-            int[] colXs = { 28, 174, 270, 340, 410, 546 };
+            // Populate the static column-header panel (defined in Designer so docking order is correct)
+            int[] colXs    = { 28, 174, 270, 340, 410, 546 };
             string[] colNames = { "Route Name", "Command", "From", "To", "Stop Condition", "Param" };
-            Panel header = new Panel();
-            header.BackColor = Color.FromArgb(30, 30, 40);
-            header.Dock      = DockStyle.Top;
-            header.Height    = 22;
             for (int i = 0; i < colNames.Length; i++)
             {
                 Label lbl = new Label();
@@ -7233,10 +7230,8 @@ namespace Kingdoms.Bot.UI
                 lbl.ForeColor = TextSec;
                 lbl.AutoSize  = true;
                 lbl.Location  = new Point(colXs[i], 4);
-                header.Controls.Add(lbl);
+                _mkColHeader.Controls.Add(lbl);
             }
-            _mkPage.Controls.Add(header);
-            _mkPage.Controls.SetChildIndex(header, 0);
 
             MkLoadFromSettings();
         }
@@ -7253,6 +7248,8 @@ namespace Kingdoms.Bot.UI
                 Math.Min(_mkDelayInput.Maximum, s.DelayBetweenRoutesMs));
             _mkMonksToKeepInput.Value = Math.Max(_mkMonksToKeepInput.Minimum,
                 Math.Min(_mkMonksToKeepInput.Maximum, s.MonksToKeep));
+            _mkAutoRecruitInput.Value = Math.Max(_mkAutoRecruitInput.Minimum,
+                Math.Min(_mkAutoRecruitInput.Maximum, s.AutoRecruitMonks));
 
             MkPopulateRouteList();
             MkUpdateStatusDisplay();
@@ -7267,6 +7264,7 @@ namespace Kingdoms.Bot.UI
             s.CycleIntervalSeconds  = (int)_mkIntervalInput.Value;
             s.DelayBetweenRoutesMs  = (int)_mkDelayInput.Value;
             s.MonksToKeep           = (int)_mkMonksToKeepInput.Value;
+            s.AutoRecruitMonks      = (int)_mkAutoRecruitInput.Value;
 
             foreach (IBotModule module in BotEngine.Instance.Modules)
             {

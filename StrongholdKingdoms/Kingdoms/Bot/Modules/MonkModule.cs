@@ -369,12 +369,67 @@ namespace Kingdoms.Bot.Modules
         private int PrepareMonks(int fromVillageId, int needed, MonkSettings settings)
         {
             LogInfo("Preparing monks at " + fromVillageId + ", need " + needed);
+
+            // Auto-recruit monks up to the configured target before checking availability
+            if (settings.AutoRecruitMonks > 0)
+                MakeMonks(fromVillageId, settings.AutoRecruitMonks);
+
             int atHome = 0;
             GameEngine.Instance.World.countVillagePeople(fromVillageId, 4, ref atHome);
             int available = atHome - settings.MonksToKeep;
             LogInfo("At home: " + atHome + ", keep: " + settings.MonksToKeep + ", available: " + available);
             if (available <= 0) return 0;
             return Math.Min(available, needed);
+        }
+
+        // Recruits monks at the village up to `target` total at-home count.
+        // Respects ordination research cap, spare-worker limit, and unit space.
+        // Returns the number actually recruited.
+        private int MakeMonks(int villageId, int target)
+        {
+            try
+            {
+                if (GameEngine.Instance.World.UserResearchData.Research_Ordination == 0)
+                    return 0;
+
+                int researchCap = ResearchData.ordinationResearchMonkLevels[
+                    (int)GameEngine.Instance.World.UserResearchData.Research_Ordination];
+                int wantTotal = Math.Min(target, researchCap);
+
+                int atHome = 0;
+                int totalMonks = GameEngine.Instance.World.countVillagePeople(villageId, 4, ref atHome);
+                int canMake = Math.Min(wantTotal - totalMonks, researchCap - totalMonks);
+                if (canMake <= 0) return 0;
+
+                VillageMap village = GameEngine.Instance.getVillage(villageId);
+                if (village == null) return 0;
+
+                // Spare worker limit
+                int spareWorkers = village.m_spareWorkers;
+                canMake = Math.Min(canMake, spareWorkers);
+
+                // Unit-space limit
+                int unitSizeMonk = GameEngine.Instance.LocalWorldData.UnitSize_Priests;
+                int unitCapacity  = GameEngine.Instance.LocalWorldData.Village_UnitCapacity;
+                int freeSpace     = unitCapacity - village.calcUnitUsages();
+                if (unitSizeMonk > 0)
+                    canMake = Math.Min(canMake, freeSpace / unitSizeMonk);
+
+                if (canMake <= 0) return 0;
+
+                LogInfo("MakeMonks: recruiting " + canMake + " monk(s) at " + villageId);
+                if (canMake == 1)
+                    village.makePeople(4);
+                else
+                    village.makePeople(1000 + canMake);
+
+                return canMake;
+            }
+            catch (Exception ex)
+            {
+                LogError("MakeMonks failed: " + ex.Message);
+                return 0;
+            }
         }
 
         private List<int> BuildSortedTargets(int fromId, MonkRouteSettings route)

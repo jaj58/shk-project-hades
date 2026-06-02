@@ -232,6 +232,38 @@ namespace Kingdoms.Bot.UI
 
             // ── Row 2: from-villages + to-targets ──
             this.Controls.Add(MkLabel("From Villages (own):", 14, y));
+
+            // Select All / None micro-buttons beside the from-list label
+            Button selAllBtn = new Button();
+            selAllBtn.Text      = "All";
+            selAllBtn.FlatStyle = FlatStyle.Flat;
+            selAllBtn.ForeColor = TextSec;
+            selAllBtn.BackColor = Color.FromArgb(44, 46, 58);
+            selAllBtn.Font      = new Font("Segoe UI", 7f);
+            selAllBtn.Size      = new Size(32, 18);
+            selAllBtn.Location  = new Point(160, y - 1);
+            selAllBtn.Click    += delegate
+            {
+                for (int i = 0; i < _fromList.Items.Count; i++)
+                    _fromList.SetItemChecked(i, true);
+            };
+            this.Controls.Add(selAllBtn);
+
+            Button selNoneBtn = new Button();
+            selNoneBtn.Text      = "None";
+            selNoneBtn.FlatStyle = FlatStyle.Flat;
+            selNoneBtn.ForeColor = TextSec;
+            selNoneBtn.BackColor = Color.FromArgb(44, 46, 58);
+            selNoneBtn.Font      = new Font("Segoe UI", 7f);
+            selNoneBtn.Size      = new Size(38, 18);
+            selNoneBtn.Location  = new Point(196, y - 1);
+            selNoneBtn.Click    += delegate
+            {
+                for (int i = 0; i < _fromList.Items.Count; i++)
+                    _fromList.SetItemChecked(i, false);
+            };
+            this.Controls.Add(selNoneBtn);
+
             this.Controls.Add(MkLabel("To Targets (IDs):", 300, y));
 
             y += 18;
@@ -284,27 +316,28 @@ namespace Kingdoms.Bot.UI
             this.Controls.Add(_removeTargetBtn);
 
             // ── Parish quick-add row (sits just below the to-targets list) ──
+            // All elements confined to x=300..750 (450px) so nothing clips the form edge.
             int qy = y + 156;   // ~6px gap below the 150-high to-list
 
-            Label quickLbl = MkLabel("Parish tools:", 300, qy + 4);
-            this.Controls.Add(quickLbl);
-
-            Label rangeLbl = MkLabel("Range:", 386, qy + 4);
+            Label rangeLbl = MkLabel("Range:", 300, qy + 5);
             this.Controls.Add(rangeLbl);
 
-            _parishRangeInput = MkNumeric(426, qy + 2, 1, 9999, 32);
+            _parishRangeInput = MkNumeric(346, qy + 3, 1, 9999, 32);
             _parishRangeInput.Size = new Size(55, 22);
             this.Controls.Add(_parishRangeInput);
 
-            _addInRangeBtn = MkButton("Add In Range", Color.FromArgb(45, 65, 95), 487, qy, 115);
+            // x=406 → 406+110=516
+            _addInRangeBtn = MkButton("Add In Range", Color.FromArgb(45, 65, 95), 406, qy, 110);
             _addInRangeBtn.Click += delegate { AddParishesInRange((int)_parishRangeInput.Value); };
             this.Controls.Add(_addInRangeBtn);
 
-            _addMyParishesBtn = MkButton("My Parishes", Color.FromArgb(50, 75, 50), 609, qy, 105);
+            // x=521 → 521+105=626
+            _addMyParishesBtn = MkButton("My Parishes", Color.FromArgb(50, 75, 50), 521, qy, 105);
             _addMyParishesBtn.Click += delegate { AddMyParishes(); };
             this.Controls.Add(_addMyParishesBtn);
 
-            _addOwnedParishesBtn = MkButton("Owned Parishes", Color.FromArgb(75, 55, 90), 720, qy, 128);
+            // x=631 → 631+119=750
+            _addOwnedParishesBtn = MkButton("Owned Parishes", Color.FromArgb(75, 55, 90), 631, qy, 119);
             _addOwnedParishesBtn.Click += delegate { AddOwnedParishes(); };
             this.Controls.Add(_addOwnedParishesBtn);
 

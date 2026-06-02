@@ -1233,6 +1233,9 @@ namespace Kingdoms.Bot
         public int CycleIntervalSeconds = 120;
         public int DelayBetweenRoutesMs = 2000;
         public int MonksToKeep = 0;
+        // 0 = disabled; 1-8 = recruit monks at each from-village up to this count
+        // before sending. Capped by ordination research level at runtime.
+        public int AutoRecruitMonks = 0;
         public List<MonkRouteSettings> Routes = new List<MonkRouteSettings>();
     }
 }
