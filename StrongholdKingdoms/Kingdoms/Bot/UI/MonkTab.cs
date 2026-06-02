@@ -153,6 +153,11 @@ namespace Kingdoms.Bot.UI
         private Button        _addTargetBtn;
         private Button        _addOwnVillageBtn;
         private Button        _removeTargetBtn;
+        // Parish quick-add
+        private NumericUpDown _parishRangeInput;
+        private Button        _addInRangeBtn;
+        private Button        _addMyParishesBtn;
+        private Button        _addOwnedParishesBtn;
 
         // Stop condition + param
         private ComboBox      _stopCondCombo;
@@ -186,7 +191,7 @@ namespace Kingdoms.Bot.UI
             this.BackColor        = FormBg;
             this.ForeColor        = TextPri;
             this.Font             = new Font("Segoe UI", 9f);
-            this.ClientSize       = new Size(760, 500);
+            this.ClientSize       = new Size(760, 540);
             this.FormBorderStyle  = FormBorderStyle.FixedDialog;
             this.MaximizeBox      = false;
             this.MinimizeBox      = false;
@@ -278,7 +283,32 @@ namespace Kingdoms.Bot.UI
             _removeTargetBtn.Click += delegate { RemoveSelectedTarget(); };
             this.Controls.Add(_removeTargetBtn);
 
-            y += 160;
+            // ── Parish quick-add row (sits just below the to-targets list) ──
+            int qy = y + 156;   // ~6px gap below the 150-high to-list
+
+            Label quickLbl = MkLabel("Parish tools:", 300, qy + 4);
+            this.Controls.Add(quickLbl);
+
+            Label rangeLbl = MkLabel("Range:", 386, qy + 4);
+            this.Controls.Add(rangeLbl);
+
+            _parishRangeInput = MkNumeric(426, qy + 2, 1, 9999, 32);
+            _parishRangeInput.Size = new Size(55, 22);
+            this.Controls.Add(_parishRangeInput);
+
+            _addInRangeBtn = MkButton("Add In Range", Color.FromArgb(45, 65, 95), 487, qy, 115);
+            _addInRangeBtn.Click += delegate { AddParishesInRange((int)_parishRangeInput.Value); };
+            this.Controls.Add(_addInRangeBtn);
+
+            _addMyParishesBtn = MkButton("My Parishes", Color.FromArgb(50, 75, 50), 609, qy, 105);
+            _addMyParishesBtn.Click += delegate { AddMyParishes(); };
+            this.Controls.Add(_addMyParishesBtn);
+
+            _addOwnedParishesBtn = MkButton("Owned Parishes", Color.FromArgb(75, 55, 90), 720, qy, 128);
+            _addOwnedParishesBtn.Click += delegate { AddOwnedParishes(); };
+            this.Controls.Add(_addOwnedParishesBtn);
+
+            y += 196;   // 160 original + 36 for the quick-add row
 
             // ── Row 3: stop condition + extra parameter ──
             this.Controls.Add(MkLabel("Stop Condition:", 14, y + 2));
@@ -480,6 +510,101 @@ namespace Kingdoms.Bot.UI
         {
             while (_toList.SelectedIndices.Count > 0)
                 _toList.Items.RemoveAt(_toList.SelectedIndices[0]);
+        }
+
+        // Adds parish capitals of all parishes within `range` tiles of any checked
+        // from-village (or any own village if nothing is checked).
+        private void AddParishesInRange(int range)
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+
+            List<int> fromIds = GetCheckedFromIds();
+
+            int rangeSq = range * range;
+            int numParishes = GameEngine.Instance.World.getNumParishes();
+
+            for (int parishId = 0; parishId < numParishes; parishId++)
+            {
+                int capitalId = GameEngine.Instance.World.getParishCapital(parishId);
+                if (capitalId < 0) continue;
+
+                bool inRange = false;
+                foreach (int fromId in fromIds)
+                {
+                    if (GameEngine.Instance.World.getSquareDistance(fromId, capitalId) <= rangeSq)
+                    { inRange = true; break; }
+                }
+                if (!inRange) continue;
+
+                AddToListIfAbsent(capitalId);
+            }
+        }
+
+        // Adds the parish capital of every parish that contains at least one of
+        // the player's own villages.
+        private void AddMyParishes()
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+
+            List<WorldMap.UserVillageData> uvds = GameEngine.Instance.World.getUserVillageList();
+            if (uvds == null) return;
+
+            HashSet<int> seen = new HashSet<int>();
+            foreach (WorldMap.UserVillageData uvd in uvds)
+            {
+                int parishId = GameEngine.Instance.World.getParishFromVillageID(uvd.villageID);
+                if (parishId < 0 || seen.Contains(parishId)) continue;
+                seen.Add(parishId);
+
+                int capitalId = GameEngine.Instance.World.getParishCapital(parishId);
+                if (capitalId >= 0)
+                    AddToListIfAbsent(capitalId);
+            }
+        }
+
+        // Adds every parish capital that the player owns (i.e. their UserVillageData
+        // entry has parishCapital == true, meaning they hold that capital village).
+        private void AddOwnedParishes()
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+
+            List<WorldMap.UserVillageData> uvds = GameEngine.Instance.World.getUserVillageList();
+            if (uvds == null) return;
+
+            foreach (WorldMap.UserVillageData uvd in uvds)
+            {
+                if (uvd.parishCapital)
+                    AddToListIfAbsent(uvd.villageID);
+            }
+        }
+
+        // Returns IDs of checked from-villages, falling back to all own villages.
+        private List<int> GetCheckedFromIds()
+        {
+            List<int> ids = new List<int>();
+            foreach (int i in _fromList.CheckedIndices)
+                ids.Add(((VillageItem)_fromList.Items[i]).VillageId);
+
+            if (ids.Count == 0)
+            {
+                try
+                {
+                    List<WorldMap.UserVillageData> uvds = GameEngine.Instance.World.getUserVillageList();
+                    if (uvds != null)
+                        foreach (WorldMap.UserVillageData uvd in uvds)
+                            ids.Add(uvd.villageID);
+                }
+                catch { }
+            }
+            return ids;
+        }
+
+        // Adds `id` to the to-list only if not already present.
+        private void AddToListIfAbsent(int id)
+        {
+            foreach (object item in _toList.Items)
+                if (((TargetItem)item).VillageId == id) return;
+            _toList.Items.Add(new TargetItem(id));
         }
 
         private void SaveAndClose()
