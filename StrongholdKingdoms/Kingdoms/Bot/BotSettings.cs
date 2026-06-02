@@ -1164,7 +1164,7 @@ namespace Kingdoms.Bot
     public class MonkRouteSettings
     {
         public string Name = "";
-        public bool Enabled;
+        public bool Enabled = true;
         public MonkCommand Command = MonkCommand.Blessing;
         public List<int> FromVillages = new List<int>();
         public List<int> ToTargets = new List<int>();
@@ -1206,6 +1206,27 @@ namespace Kingdoms.Bot
         public void ResetProgress()
         {
             Progress.Clear();
+        }
+
+        public int GetTotalProgress()
+        {
+            int total = 0;
+            foreach (MonkProgressEntry e in Progress)
+                total += e.MonksSent;
+            return total;
+        }
+
+        /// <summary>Returns a concise progress string for display in the route list row.</summary>
+        public string GetProgressSummary()
+        {
+            int total = GetTotalProgress();
+            if (total == 0) return "-";
+            if (StopCondition == MonkStopCondition.SendXMonksEach && ToTargets.Count > 0)
+            {
+                int cap = ExtraParameter * ToTargets.Count;
+                return total + " / " + cap;
+            }
+            return total.ToString();
         }
 
         public MonkRouteSettings Clone()

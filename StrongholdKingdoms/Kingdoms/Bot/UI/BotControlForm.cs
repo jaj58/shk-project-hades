@@ -130,6 +130,7 @@ namespace Kingdoms.Bot.UI
         // Monk tab runtime state
         private List<MonkRouteRow> _mkRouteRows = new List<MonkRouteRow>();
         private int _mkSelectedRouteIndex = -1;
+        private Timer _mkSyncTimer;
 
         // Auto tab runtime state. The control fields (_autoProd*/_autoModule* panels, interval
         // inputs and server-time label) are declared in BotControlForm.Designer.cs.
@@ -7220,8 +7221,8 @@ namespace Kingdoms.Bot.UI
             _mkDeleteRouteBtn.Click += delegate { if (_mkSelectedRouteIndex >= 0) MkDeleteRoute(_mkSelectedRouteIndex); };
 
             // Populate the static column-header panel (defined in Designer so docking order is correct)
-            int[] colXs    = { 28, 174, 270, 340, 410, 546 };
-            string[] colNames = { "Route Name", "Command", "From", "To", "Stop Condition", "Param" };
+            int[] colXs    = { 28, 174, 270, 340, 410, 546, 630 };
+            string[] colNames = { "Route Name", "Command", "From", "To", "Stop Condition", "Param", "Progress" };
             for (int i = 0; i < colNames.Length; i++)
             {
                 Label lbl = new Label();
@@ -7232,6 +7233,13 @@ namespace Kingdoms.Bot.UI
                 lbl.Location  = new Point(colXs[i], 4);
                 _mkColHeader.Controls.Add(lbl);
             }
+
+            // Periodic sync: reflects module-side route.Enabled changes (e.g. auto-disable
+            // on quest complete) back to the UI checkboxes without a full list rebuild.
+            _mkSyncTimer = new Timer();
+            _mkSyncTimer.Interval = 1500;
+            _mkSyncTimer.Tick += delegate { MkSyncRouteStates(); };
+            _mkSyncTimer.Start();
 
             MkLoadFromSettings();
         }
@@ -7390,6 +7398,17 @@ namespace Kingdoms.Bot.UI
             bool enabled = _mkEnabledCheck.Checked;
             _mkStatusLabel.Text      = enabled ? "ENABLED" : "DISABLED";
             _mkStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+        }
+
+        // Lightweight periodic sync: updates each route row's enabled checkbox to match
+        // the live settings value, so module-side auto-disables (quest done, not researched)
+        // are reflected in the UI without rebuilding the whole list.
+        private void MkSyncRouteStates()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            MonkSettings s = BotEngine.Instance.Settings.Monk;
+            for (int i = 0; i < _mkRouteRows.Count && i < s.Routes.Count; i++)
+                _mkRouteRows[i].SyncState(s.Routes[i]);
         }
     }
 }

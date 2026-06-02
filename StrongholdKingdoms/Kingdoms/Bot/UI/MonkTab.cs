@@ -27,6 +27,7 @@ namespace Kingdoms.Bot.UI
         private readonly Label _toLabel;
         private readonly Label _stopLabel;
         private readonly Label _paramLabel;
+        private readonly Label _progressLabel;
         private bool _selected;
 
         public event Action<int, bool> EnabledToggled;  // (routeIndex, enabled)
@@ -60,12 +61,14 @@ namespace Kingdoms.Bot.UI
             _enabledCheck.Click    += (s, e) => EnabledToggled?.Invoke(_routeIndex, _enabledCheck.Checked);
             this.Controls.Add(_enabledCheck);
 
-            _nameLabel  = MkLabel(route.Name,                        28,  140, FontStyle.Bold);
-            _cmdLabel   = MkLabel(route.Command.ToString(),          174,  90, FontStyle.Regular);
-            _fromLabel  = MkLabel(route.FromVillages.Count + " from", 270, 65, FontStyle.Regular);
-            _toLabel    = MkLabel(route.ToTargets.Count   + " to",    340, 65, FontStyle.Regular);
-            _stopLabel  = MkLabel(StopCondLabel(route),               410, 130, FontStyle.Regular);
-            _paramLabel = MkLabel(ParamLabel(route),                  546,  80, FontStyle.Regular);
+            _nameLabel     = MkLabel(route.Name,                         28,  140, FontStyle.Bold);
+            _cmdLabel      = MkLabel(route.Command.ToString(),           174,  90, FontStyle.Regular);
+            _fromLabel     = MkLabel(route.FromVillages.Count + " from", 270,  65, FontStyle.Regular);
+            _toLabel       = MkLabel(route.ToTargets.Count   + " to",    340,  65, FontStyle.Regular);
+            _stopLabel     = MkLabel(StopCondLabel(route),               410, 130, FontStyle.Regular);
+            _paramLabel    = MkLabel(ParamLabel(route),                  546,  75, FontStyle.Regular);
+            _progressLabel = MkLabel(route.GetProgressSummary(),         630, 160, FontStyle.Regular);
+            _progressLabel.ForeColor = Color.FromArgb(120, 190, 120); // soft green
 
             Button delBtn = new Button();
             delBtn.Text      = "✕";
@@ -74,7 +77,7 @@ namespace Kingdoms.Bot.UI
             delBtn.BackColor = Color.Transparent;
             delBtn.Font      = new Font("Segoe UI", 7.5f);
             delBtn.Size      = new Size(22, 20);
-            delBtn.Location  = new Point(636, 3);
+            delBtn.Location  = new Point(796, 3);
             delBtn.Click    += (s, e) => DeleteRequested?.Invoke(_routeIndex);
             this.Controls.Add(delBtn);
 
@@ -84,17 +87,28 @@ namespace Kingdoms.Bot.UI
             this.Controls.Add(_toLabel);
             this.Controls.Add(_stopLabel);
             this.Controls.Add(_paramLabel);
+            this.Controls.Add(_progressLabel);
+        }
+
+        // Called from the 1.5s UI sync timer — updates enabled checkbox and progress
+        // without a full list rebuild.
+        public void SyncState(MonkRouteSettings route)
+        {
+            if (_enabledCheck.Checked != route.Enabled)
+                _enabledCheck.Checked = route.Enabled;
+            _progressLabel.Text = route.GetProgressSummary();
         }
 
         public void Refresh(MonkRouteSettings route)
         {
-            _enabledCheck.Checked = route.Enabled;
-            _nameLabel.Text       = route.Name;
-            _cmdLabel.Text        = route.Command.ToString();
-            _fromLabel.Text       = route.FromVillages.Count + " from";
-            _toLabel.Text         = route.ToTargets.Count + " to";
-            _stopLabel.Text       = StopCondLabel(route);
-            _paramLabel.Text      = ParamLabel(route);
+            _enabledCheck.Checked  = route.Enabled;
+            _nameLabel.Text        = route.Name;
+            _cmdLabel.Text         = route.Command.ToString();
+            _fromLabel.Text        = route.FromVillages.Count + " from";
+            _toLabel.Text          = route.ToTargets.Count + " to";
+            _stopLabel.Text        = StopCondLabel(route);
+            _paramLabel.Text       = ParamLabel(route);
+            _progressLabel.Text    = route.GetProgressSummary();
         }
 
         private static string StopCondLabel(MonkRouteSettings r)

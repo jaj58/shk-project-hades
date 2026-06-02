@@ -11,9 +11,21 @@ namespace Kingdoms.Bot.Modules
 
         public override string ModuleName => "Monk";
 
-        public override TimeSpan Interval => TimeSpan.FromSeconds(
-            Engine.Settings.Monk.CycleIntervalSeconds > 0
-                ? Engine.Settings.Monk.CycleIntervalSeconds : 120);
+        public override TimeSpan Interval
+        {
+            get
+            {
+                try
+                {
+                    int secs = Engine.Settings.Monk.CycleIntervalSeconds;
+                    return TimeSpan.FromSeconds(secs > 0 ? secs : 120);
+                }
+                catch
+                {
+                    return TimeSpan.FromSeconds(120);
+                }
+            }
+        }
 
         public void RunNow() { Tick(); }
 
@@ -43,7 +55,7 @@ namespace Kingdoms.Bot.Modules
 
             if (!IsCommandResearched(route.Command))
             {
-                LogWarning("Command not researched, disabling route: " + route.Name);
+                LogWarning("Command not researched — disabling route: " + route.Name);
                 route.Enabled = false;
                 return;
             }
@@ -54,7 +66,7 @@ namespace Kingdoms.Bot.Modules
                 questMonksNeeded = GetQuestMonksNeeded(route.Command);
                 if (questMonksNeeded <= 0)
                 {
-                    LogInfo("Quest complete, disabling route: " + route.Name);
+                    LogInfo("Quest complete — disabling route: " + route.Name);
                     route.Enabled = false;
                     return;
                 }
@@ -120,16 +132,31 @@ namespace Kingdoms.Bot.Modules
 
                     LogInfo(fromId + " sent " + toSend + " " + route.Command + " monks to " + targetId);
 
-                    if (route.StopCondition == MonkStopCondition.SendXMonksEach)
-                        route.AddProgress(targetId, toSend);
+                    // Always record the send so progress totals are visible regardless of mode
+                    route.AddProgress(targetId, toSend);
 
                     if (route.StopCondition == MonkStopCondition.QuestCompletion)
                     {
                         questMonksNeeded -= toSend;
                         if (questMonksNeeded <= 0) return;
+                        // Block other villages from re-sending to this target this tick —
+                        // villages spread efficiently across different targets.
+                        processedTargets.Add(targetId);
+                    }
+                    else if (route.StopCondition == MonkStopCondition.SendXMonksEach)
+                    {
+                        // Only block once this target is fully satisfied so that multiple
+                        // from-villages can each contribute monks to the same target.
+                        if (route.GetProgress(targetId) >= route.ExtraParameter)
+                            processedTargets.Add(targetId);
+                    }
+                    else // RunOnCondition
+                    {
+                        // Block re-sends within this tick to avoid over-sending since
+                        // in-transit monks are not yet reflected in the condition check.
+                        processedTargets.Add(targetId);
                     }
 
-                    processedTargets.Add(targetId);
                     Thread.Sleep(500);
                 }
             }
