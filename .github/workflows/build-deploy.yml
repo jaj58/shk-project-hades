@@ -18,6 +18,9 @@ on:
           - release
           - dev
 
+env:
+  CONFUSER_VERSION: v1.6.0   # bump this to upgrade ConfuserEx
+
 jobs:
   build-and-deploy:
     runs-on: windows-latest
@@ -106,16 +109,20 @@ jobs:
       - name: Build HadesUpdater
         run: msbuild HadesUpdater\HadesUpdater.csproj /p:Configuration=Release /p:Platform="AnyCPU" /v:quiet /nologo /clp:ErrorsOnly
 
+      - name: Cache ConfuserEx
+        id: cache-confuserex
+        uses: actions/cache@v4
+        with:
+          path: ConfuserEx
+          key: confuserex-${{ env.CONFUSER_VERSION }}
+
       - name: Download ConfuserEx
+        if: steps.cache-confuserex.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
-          $release = Invoke-RestMethod "https://api.github.com/repos/mkaring/ConfuserEx/releases/latest" -UseBasicParsing
-          Write-Host "Latest release: $($release.tag_name)"
-          Write-Host "Assets: $($release.assets.name -join ', ')"
-          $asset = $release.assets | Where-Object { $_.name -like "*CLI*" } | Select-Object -First 1
-          if (-not $asset) { throw "No CLI asset found in latest ConfuserEx release" }
-          Write-Host "Downloading: $($asset.browser_download_url)"
-          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "ConfuserEx-CLI.zip" -UseBasicParsing
+          $url = "https://github.com/mkaring/ConfuserEx/releases/download/$env:CONFUSER_VERSION/ConfuserEx-CLI.zip"
+          Write-Host "Downloading ConfuserEx $env:CONFUSER_VERSION..."
+          Invoke-WebRequest -Uri $url -OutFile "ConfuserEx-CLI.zip" -UseBasicParsing
           Expand-Archive "ConfuserEx-CLI.zip" -DestinationPath "ConfuserEx"
           Write-Host "Extracted contents:"
           Get-ChildItem -Recurse "ConfuserEx" | Select-Object FullName
