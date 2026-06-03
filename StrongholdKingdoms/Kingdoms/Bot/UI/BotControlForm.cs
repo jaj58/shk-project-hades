@@ -5220,6 +5220,7 @@ namespace Kingdoms.Bot.UI
             _ppDelayInput.ValueChanged += delegate { PpWriteToSettings(); };
             _ppRefreshBtn.Click += delegate { PpPopulateVillageList(); };
             _ppRunNowBtn.Click += delegate { PpRunNow(); };
+            _ppCopySettingsBtn.Click += delegate { PpCopySettingsClick(); };
 
             // Add column header labels dynamically
             string[] colNames = { "Village", "Mode" };
@@ -5341,6 +5342,14 @@ namespace Kingdoms.Bot.UI
                     break;
                 }
             }
+        }
+
+        private void PpCopySettingsClick()
+        {
+            CopyPopularitySettingsForm form = new CopyPopularitySettingsForm();
+            form.ShowDialog(this);
+            if (form.Copied)
+                PpPopulateVillageList();
         }
 
         private void PpUpdateStatusDisplay()

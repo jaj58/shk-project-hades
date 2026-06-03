@@ -317,6 +317,7 @@ namespace Kingdoms.Bot.UI
             this._ppSeparator = new System.Windows.Forms.Panel();
             this._ppSettingsPanel = new System.Windows.Forms.Panel();
             this._ppRunNowBtn = new System.Windows.Forms.Button();
+            this._ppCopySettingsBtn = new System.Windows.Forms.Button();
             this._ppRefreshBtn = new System.Windows.Forms.Button();
             this._ppDelayInput = new System.Windows.Forms.NumericUpDown();
             this._ppDelayLabel = new System.Windows.Forms.Label();
@@ -4229,6 +4230,7 @@ namespace Kingdoms.Bot.UI
             // 
             this._ppSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
             this._ppSettingsPanel.Controls.Add(this._ppRunNowBtn);
+            this._ppSettingsPanel.Controls.Add(this._ppCopySettingsBtn);
             this._ppSettingsPanel.Controls.Add(this._ppRefreshBtn);
             this._ppSettingsPanel.Controls.Add(this._ppDelayInput);
             this._ppSettingsPanel.Controls.Add(this._ppDelayLabel);
@@ -4253,7 +4255,19 @@ namespace Kingdoms.Bot.UI
             this._ppRunNowBtn.TabIndex = 7;
             this._ppRunNowBtn.Text = "Run Now";
             this._ppRunNowBtn.UseVisualStyleBackColor = false;
-            // 
+            //
+            // _ppCopySettingsBtn
+            //
+            this._ppCopySettingsBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(55)))), ((int)(((byte)(80)))));
+            this._ppCopySettingsBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._ppCopySettingsBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._ppCopySettingsBtn.Location = new System.Drawing.Point(521, 39);
+            this._ppCopySettingsBtn.Name = "_ppCopySettingsBtn";
+            this._ppCopySettingsBtn.Size = new System.Drawing.Size(100, 26);
+            this._ppCopySettingsBtn.TabIndex = 8;
+            this._ppCopySettingsBtn.Text = "Copy Settings";
+            this._ppCopySettingsBtn.UseVisualStyleBackColor = false;
+            //
             // _ppRefreshBtn
             // 
             this._ppRefreshBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(50)))), ((int)(((byte)(70)))));
@@ -5877,6 +5891,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _ppDelayInput;
         private System.Windows.Forms.Button _ppRefreshBtn;
         private System.Windows.Forms.Button _ppRunNowBtn;
+        private System.Windows.Forms.Button _ppCopySettingsBtn;
         // Banquet tab controls
         private System.Windows.Forms.TabPage _bqPage;
         private System.Windows.Forms.Panel _bqVillageListPanel;
