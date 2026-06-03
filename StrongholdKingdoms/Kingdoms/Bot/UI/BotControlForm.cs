@@ -257,7 +257,7 @@ namespace Kingdoms.Bot.UI
 
             _vsRefreshTimer = new Timer();
             _vsRefreshTimer.Interval = 2000;
-            _vsRefreshTimer.Tick += delegate { VsUpdateStatusDisplay(); };
+            _vsRefreshTimer.Tick += delegate { try { VsUpdateStatusDisplay(); } catch { } };
             _vsRefreshTimer.Start();
         }
 
@@ -509,7 +509,7 @@ namespace Kingdoms.Bot.UI
 
             _rdRefreshTimer = new Timer();
             _rdRefreshTimer.Interval = 2000;
-            _rdRefreshTimer.Tick += delegate { RdUpdateStatusDisplay(); };
+            _rdRefreshTimer.Tick += delegate { try { RdUpdateStatusDisplay(); } catch { } };
             _rdRefreshTimer.Start();
 
             BuildInnerRadarTabs();
@@ -1246,7 +1246,7 @@ namespace Kingdoms.Bot.UI
 
             _rcRefreshTimer = new Timer();
             _rcRefreshTimer.Interval = 2000;
-            _rcRefreshTimer.Tick += delegate { RcUpdateStatusDisplay(); };
+            _rcRefreshTimer.Tick += delegate { try { RcUpdateStatusDisplay(); } catch { } };
             _rcRefreshTimer.Start();
         }
 
@@ -1528,7 +1528,7 @@ namespace Kingdoms.Bot.UI
 
             _crRefreshTimer = new Timer();
             _crRefreshTimer.Interval = 2000;
-            _crRefreshTimer.Tick += delegate { CrUpdateStatusDisplay(); };
+            _crRefreshTimer.Tick += delegate { try { CrUpdateStatusDisplay(); } catch { } };
             _crRefreshTimer.Start();
         }
 
@@ -2207,7 +2207,7 @@ namespace Kingdoms.Bot.UI
 
             _trRefreshTimer = new Timer();
             _trRefreshTimer.Interval = 2000;
-            _trRefreshTimer.Tick += delegate { TrUpdateStatusDisplay(); };
+            _trRefreshTimer.Tick += delegate { try { TrUpdateStatusDisplay(); } catch { } };
             _trRefreshTimer.Start();
         }
 
@@ -3214,7 +3214,7 @@ namespace Kingdoms.Bot.UI
             // Refresh timer
             _bldRefreshTimer = new Timer();
             _bldRefreshTimer.Interval = 2000;
-            _bldRefreshTimer.Tick += delegate { BldUpdateStatusDisplay(); };
+            _bldRefreshTimer.Tick += delegate { try { BldUpdateStatusDisplay(); } catch { } };
             _bldRefreshTimer.Start();
         }
 
@@ -3598,7 +3598,7 @@ namespace Kingdoms.Bot.UI
             // Refresh timer
             _abRefreshTimer = new Timer();
             _abRefreshTimer.Interval = 1000;
-            _abRefreshTimer.Tick += delegate { AbUpdateDisplay(); };
+            _abRefreshTimer.Tick += delegate { try { AbUpdateDisplay(); } catch { } };
             _abRefreshTimer.Start();
         }
 
@@ -3731,7 +3731,7 @@ namespace Kingdoms.Bot.UI
             // ── Refresh timer ─────────────────────────────────────────────────
             _abmRefreshTimer = new Timer();
             _abmRefreshTimer.Interval = 1500;
-            _abmRefreshTimer.Tick += delegate { AbmRefreshDisplay(); };
+            _abmRefreshTimer.Tick += delegate { try { AbmRefreshDisplay(); } catch { } };
             _abmRefreshTimer.Start();
         }
 
@@ -5237,7 +5237,7 @@ namespace Kingdoms.Bot.UI
 
             _ppRefreshTimer = new Timer();
             _ppRefreshTimer.Interval = 2000;
-            _ppRefreshTimer.Tick += delegate { PpUpdateStatusDisplay(); };
+            _ppRefreshTimer.Tick += delegate { try { PpUpdateStatusDisplay(); } catch { } };
             _ppRefreshTimer.Start();
         }
 
@@ -5518,7 +5518,7 @@ namespace Kingdoms.Bot.UI
 
             _autoRefreshTimer = new Timer();
             _autoRefreshTimer.Interval = 30000;
-            _autoRefreshTimer.Tick += delegate { AutoUpdateServerTime(); };
+            _autoRefreshTimer.Tick += delegate { try { AutoUpdateServerTime(); } catch { } };
             _autoRefreshTimer.Start();
         }
 
@@ -6337,9 +6337,13 @@ namespace Kingdoms.Bot.UI
             _scRefreshTimer.Interval = 2000;
             _scRefreshTimer.Tick += delegate
             {
-                ScUpdateStatusLabel();
-                if (_scVillageListBox.Items.Count == 0)
-                    ScPopulateVillageList();
+                try
+                {
+                    ScUpdateStatusLabel();
+                    if (_scVillageListBox.Items.Count == 0)
+                        ScPopulateVillageList();
+                }
+                catch { }
             };
             _scRefreshTimer.Start();
         }
@@ -6791,6 +6795,7 @@ namespace Kingdoms.Bot.UI
         private static readonly Color DfWarning = Color.FromArgb(220, 160, 40);
         private static readonly Color DfBorder = Color.FromArgb(55, 58, 72);
 
+        private bool _dfLoading;
         private CheckBox _dfEnabledCheck;
         private Label _dfStatusLabel;
         private NumericUpDown _dfDurationInput;
@@ -6813,7 +6818,11 @@ namespace Kingdoms.Bot.UI
 
             _dfRefreshTimer = new Timer();
             _dfRefreshTimer.Interval = 500;
-            _dfRefreshTimer.Tick += delegate { DfUpdateCountdown(); };
+            _dfRefreshTimer.Tick += delegate
+            {
+                try { DfUpdateCountdown(); }
+                catch { /* swallow — timer must not propagate exceptions */ }
+            };
             _dfRefreshTimer.Start();
 
             _dfEnabledCheck.CheckedChanged += delegate { DfWriteToSettings(); };
@@ -7031,6 +7040,9 @@ namespace Kingdoms.Bot.UI
         private void DfLoadFromSettings()
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            _dfLoading = true;
+            try
+            {
             DefenderSettings s = BotEngine.Instance.Settings.Defender;
 
             _dfEnabledCheck.Checked = s.Enabled;
@@ -7056,10 +7068,13 @@ namespace Kingdoms.Bot.UI
                     }
                 }
             }
+            }
+            finally { _dfLoading = false; }
         }
 
         private void DfWriteToSettings()
         {
+            if (_dfLoading) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
             DefenderSettings s = BotEngine.Instance.Settings.Defender;
 
@@ -7265,7 +7280,7 @@ namespace Kingdoms.Bot.UI
             // on quest complete) back to the UI checkboxes without a full list rebuild.
             _mkSyncTimer = new Timer();
             _mkSyncTimer.Interval = 1500;
-            _mkSyncTimer.Tick += delegate { MkSyncRouteStates(); };
+            _mkSyncTimer.Tick += delegate { try { MkSyncRouteStates(); } catch { } };
             _mkSyncTimer.Start();
 
             MkLoadFromSettings();
