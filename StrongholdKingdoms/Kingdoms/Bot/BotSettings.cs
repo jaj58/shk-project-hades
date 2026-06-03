@@ -33,6 +33,12 @@ namespace Kingdoms.Bot
         public DefenderSettings Defender = new DefenderSettings();
         public MonkSettings Monk = new MonkSettings();
 
+        // XmlSerializer generates and compiles a dynamic serialization assembly the first time
+        // it is constructed for a given type. For a complex type like BotSettings this takes
+        // several seconds in .NET Framework. Caching it statically means we pay that cost once
+        // on first use (typically game startup) rather than on every world switch.
+        private static readonly XmlSerializer _serializer = new XmlSerializer(typeof(BotSettings));
+
         private static string GetSettingsFilePath(int worldId)
         {
             string dir = GameEngine.getSettingsPath(true);
@@ -46,10 +52,9 @@ namespace Kingdoms.Bot
             {
                 if (File.Exists(path))
                 {
-                    XmlSerializer serializer = new XmlSerializer(typeof(BotSettings));
                     using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
                     {
-                        BotSettings settings = (BotSettings)serializer.Deserialize(fs);
+                        BotSettings settings = (BotSettings)_serializer.Deserialize(fs);
                         if (settings != null)
                             return settings;
                     }
@@ -81,10 +86,9 @@ namespace Kingdoms.Bot
         {
             try
             {
-                XmlSerializer serializer = new XmlSerializer(typeof(BotSettings));
                 using (FileStream fs = new FileStream(path, FileMode.Create, FileAccess.Write))
                 {
-                    serializer.Serialize(fs, this);
+                    _serializer.Serialize(fs, this);
                 }
             }
             catch (Exception ex)
