@@ -172,9 +172,12 @@ namespace Kingdoms.Bot.UI
             _cardCombo.Location = new Point(x, 1);
             _cardCombo.Size = new Size(64, 20);
             _cardCombo.Items.Add("None");
-            _cardCombo.Items.Add("x2 Bas");
-            _cardCombo.Items.Add("x4 Adv");
-            _cardCombo.Items.Add("x6 Exp");
+            _cardCombo.Items.Add("x2 Dis");   // card_type 1 — Basic Discipline    (3h)
+            _cardCombo.Items.Add("x4 Dis");   // card_type 2 — Advanced Discipline  (3h)
+            _cardCombo.Items.Add("x6 Dis");   // card_type 3 — Expert Discipline    (3h)
+            _cardCombo.Items.Add("x2 Log");   // card_type 4 — Basic Logistics      (1use)
+            _cardCombo.Items.Add("x3 Log");   // card_type 5 — Advanced Logistics   (1use)
+            _cardCombo.Items.Add("x5 Log");   // card_type 6 — Expert Logistics     (1use)
             _cardCombo.SelectedIndex = 0;
             _cardCombo.Enabled = isCoordinator;
             this.Controls.Add(_cardCombo);
