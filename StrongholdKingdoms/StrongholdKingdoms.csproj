@@ -91,16 +91,24 @@
     <Compile Include="Kingdoms\Bot\BotLogger.cs" />
     <Compile Include="Kingdoms\Bot\BotModuleBase.cs" />
     <Compile Include="Kingdoms\Bot\BotSettings.cs" />
+    <Compile Include="Kingdoms\Bot\ProductionCardCatalog.cs" />
+    <Compile Include="Kingdoms\Bot\ModuleCardCatalog.cs" />
     <Compile Include="Kingdoms\Bot\DiscordNotifier.cs" />
     <Compile Include="Kingdoms\Bot\IBotModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombMultiModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\AutoCardModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\BanquetModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\DefenderModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\MonkModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\AutoModuleSchedulerModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\CardExpiryModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\CastleRepairModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\FreeCardCollectorModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\PopularityModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\RadarModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\RecruitingModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\ScoutModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\TradeModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\VillageBuilderModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\VillageSyncModule.cs" />
@@ -123,6 +131,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Kingdoms\Bot\UI\RecruitVillagePanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\MonkTab.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Kingdoms\Bot\UI\TradeTab.cs">

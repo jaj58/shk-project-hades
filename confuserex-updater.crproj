@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<project outputDir="Obfuscated" baseDir="HadesUpdater\bin\Release" xmlns="http://confuser.codeplex.com">
+  <module path="HadesUpdater.exe">
+    <rule pattern="true" inherit="false">
+      <protection id="rename">
+        <argument name="renPublic" value="false" />
+      </protection>
+      <protection id="ctrl flow" />
+      <protection id="ref proxy" />
+      <protection id="anti dump" />
+    </rule>
+  </module>
+</project>

@@ -6,6 +6,7 @@
 
 using CommonTypes;
 using DXGraphics;
+using Kingdoms.Bot;
 using System;
 using System.ComponentModel;
 using System.Drawing;
@@ -144,7 +145,7 @@ namespace Kingdoms
         if (this.lastState == 1 || this.lastState == 3 || this.lastState == 6)
         {
           this.backGround.updatePanelText(SK.Text("SelectArmyPanel_Trading", "Trading"));
-          if (GameEngine.Instance.World.isUserVillage(this.m_trader.trader.homeVillageID))
+          if (GameEngine.Instance.World.isUserVillage(this.m_trader.trader.homeVillageID) || (BotEngine.Instance?.Settings?.Misc?.ShowOtherTraderInfo == true))
           {
             this.resourceImage.Image = (Image) GFXLibrary.getCommodity32DSImage(this.m_trader.trader.resource);
             this.resourceImage.Visible = true;

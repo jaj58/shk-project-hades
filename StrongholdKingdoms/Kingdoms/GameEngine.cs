@@ -437,8 +437,6 @@ namespace Kingdoms
       InterfaceMgr.Instance.ignoreStopDraw = false;
       this.firstCall = false;
       this.lastFullTickRegisterTime = this.lastFullTickTime = DXTimer.GetCurrentMilliseconds();
-      Bot.BotEngine.Instance = new Bot.BotEngine();
-      Bot.BotEngine.Instance.Init();
       return true;
     }
 
@@ -449,6 +447,15 @@ namespace Kingdoms
 
     public void lateStart()
     {
+      if (Bot.BotEngine.Instance != null)
+        Bot.BotEngine.Instance.Shutdown();
+      bool botFormWasOpen = Bot.UI.BotControlForm.CloseInstance();
+      int worldId = this.World.GetGlobalWorldID();
+      Bot.BotEngine.Instance = new Bot.BotEngine();
+      Bot.BotEngine.Instance.Init(worldId);
+      if (botFormWasOpen)
+        Bot.UI.BotControlForm.ShowInstance();
+
       InterfaceMgr.Instance.setUserName(RemoteServices.Instance.UserName);
       this.world.setCurrentZoom((float) this.World.WorldZoom);
       this.world.setScreenSize(InterfaceMgr.Instance.getDXBasePanel().Width, InterfaceMgr.Instance.getDXBasePanel().Height);

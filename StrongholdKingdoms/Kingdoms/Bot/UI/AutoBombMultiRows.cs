@@ -23,6 +23,8 @@ namespace Kingdoms.Bot.UI
 
         public string OwnerPlayerName;
         public int SourceVillageId;
+        public int ParentVillageId;
+        public bool IsVassal;
         public bool IsLocalPlayer;
         public double BaseTravelTimeArmy;
         public double BaseTravelTimeCaptain;
@@ -123,10 +125,13 @@ namespace Kingdoms.Bot.UI
         public MultiBombVillageRow(string ownerPlayerName, int sourceVillageId, string villageName,
             double travelArmy, double travelCaptain,
             int peasants, int archers, int pikemen, int swordsmen, int catapults, int captains,
-            List<string> formationNames, bool isLocalPlayer, int index, bool isCoordinator)
+            List<string> formationNames, bool isLocalPlayer, int index, bool isCoordinator,
+            bool isVassal = false, int parentVillageId = 0)
         {
             OwnerPlayerName       = ownerPlayerName;
             SourceVillageId       = sourceVillageId;
+            IsVassal              = isVassal;
+            ParentVillageId       = parentVillageId;
             IsLocalPlayer         = isLocalPlayer;
             BaseTravelTimeArmy    = travelArmy;
             BaseTravelTimeCaptain = travelCaptain;
@@ -149,7 +154,9 @@ namespace Kingdoms.Bot.UI
             x += 22;
 
             Label villLabel = MakeLabel("[" + sourceVillageId + "] " + villageName, x, 170);
-            villLabel.ForeColor = isRemote ? TextRemote : TextPri;
+            villLabel.ForeColor = isVassal
+                ? Color.FromArgb(190, 160, 230)
+                : (isRemote ? TextRemote : TextPri);
             x += 176;
 
             TimeSpan ts = TimeSpan.FromSeconds(travelArmy);
@@ -165,9 +172,12 @@ namespace Kingdoms.Bot.UI
             _cardCombo.Location = new Point(x, 1);
             _cardCombo.Size = new Size(64, 20);
             _cardCombo.Items.Add("None");
-            _cardCombo.Items.Add("x2 Bas");
-            _cardCombo.Items.Add("x4 Adv");
-            _cardCombo.Items.Add("x6 Exp");
+            _cardCombo.Items.Add("x2 Dis");   // card_type 1 — Basic Discipline    (3h)
+            _cardCombo.Items.Add("x4 Dis");   // card_type 2 — Advanced Discipline  (3h)
+            _cardCombo.Items.Add("x6 Dis");   // card_type 3 — Expert Discipline    (3h)
+            _cardCombo.Items.Add("x2 Log");   // card_type 4 — Basic Logistics      (1use)
+            _cardCombo.Items.Add("x3 Log");   // card_type 5 — Advanced Logistics   (1use)
+            _cardCombo.Items.Add("x5 Log");   // card_type 6 — Expert Logistics     (1use)
             _cardCombo.SelectedIndex = 0;
             _cardCombo.Enabled = isCoordinator;
             this.Controls.Add(_cardCombo);

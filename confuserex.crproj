@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<project outputDir="Obfuscated" baseDir="StrongholdKingdoms\bin\Release" xmlns="http://confuser.codeplex.com">
+  <module path="StrongholdKingdoms.exe">
+    <!--
+      Safe baseline for a WinForms app:
+        - rename:    internal/private symbols only (renPublic=false avoids WinForms resource-loading breaks)
+        - ctrl flow: scrambles IL control flow
+        - ref proxy: hides method call targets
+        - anti dump: prevents in-memory assembly dumping
+
+      To add later (test first):
+        - anti tamper: detects patched assemblies (can conflict with 4GB patch on some runtimes)
+        - str encryptor: encrypts string literals (small startup cost)
+    -->
+    <rule pattern="true" inherit="false">
+      <protection id="rename">
+        <argument name="renPublic" value="false" />
+      </protection>
+      <protection id="ctrl flow" />
+      <protection id="ref proxy" />
+      <protection id="anti dump" />
+    </rule>
+  </module>
+</project>

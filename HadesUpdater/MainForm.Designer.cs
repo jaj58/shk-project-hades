@@ -24,6 +24,7 @@ namespace HadesUpdater
             this.btnBrowse      = new System.Windows.Forms.Button();
             this.progressBar    = new System.Windows.Forms.ProgressBar();
             this.lblStatus      = new System.Windows.Forms.Label();
+            this.lblVersion     = new System.Windows.Forms.Label();
             this.btnAction      = new System.Windows.Forms.Button();
             this.SuspendLayout();
 
@@ -93,6 +94,16 @@ namespace HadesUpdater
             this.lblStatus.Size      = new System.Drawing.Size(466, 20);
             this.lblStatus.Text      = "Ready.";
 
+            // lblVersion
+            this.lblVersion.Anchor    = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
+            this.lblVersion.AutoSize  = false;
+            this.lblVersion.ForeColor = System.Drawing.Color.FromArgb(100, 100, 100);
+            this.lblVersion.Font      = new System.Drawing.Font("Consolas", 8.5F);
+            this.lblVersion.Location  = new System.Drawing.Point(16, 258);
+            this.lblVersion.Size      = new System.Drawing.Size(330, 20);
+            this.lblVersion.Text      = "";
+            this.lblVersion.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+
             // btnAction
             this.btnAction.Anchor    = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
             this.btnAction.BackColor = System.Drawing.Color.FromArgb(200, 168, 0);
@@ -119,6 +130,7 @@ namespace HadesUpdater
             this.Controls.Add(this.btnBrowse);
             this.Controls.Add(this.progressBar);
             this.Controls.Add(this.lblStatus);
+            this.Controls.Add(this.lblVersion);
             this.Controls.Add(this.btnAction);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox     = false;
@@ -141,6 +153,7 @@ namespace HadesUpdater
         private System.Windows.Forms.Button    btnBrowse;
         private System.Windows.Forms.ProgressBar progressBar;
         private System.Windows.Forms.Label     lblStatus;
+        private System.Windows.Forms.Label     lblVersion;
         private System.Windows.Forms.Button    btnAction;
     }
 }

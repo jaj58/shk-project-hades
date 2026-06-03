@@ -7731,6 +7731,70 @@ namespace Kingdoms
         this.villageSprite.Update();
         this.doDraw(this.villageSprite);
       }
+      if (BotEngine.Instance?.Settings?.Misc?.MapAttackTypeIcons == true)
+      {
+        bool flagIcons = true;
+        if (army.aiPlayer >= 0)
+        {
+          if (army.lootType < 0)
+          {
+            this.villageSprite.TextureID = GFXLibrary.Instance.PeasantRedAnimTexID;
+          }
+          else
+          {
+            this.villageSprite.TextureID = GFXLibrary.Instance.CastleSpritesTexID;
+            this.villageSprite.SpriteNo = 466;
+            flagIcons = false;
+          }
+        }
+        else
+        {
+          switch (army.attackType)
+          {
+            case 1:
+              this.villageSprite.TextureID = GFXLibrary.Instance.CaptainAnimTexID;
+              break;
+            case 2:
+              this.villageSprite.TextureID = GFXLibrary.Instance.PikemanCarryAnimTexID;
+              break;
+            case 3:
+              this.villageSprite.TextureID = GFXLibrary.Instance.SwordsmanRedAnimTexID;
+              break;
+            case 4:
+              this.villageSprite.TextureID = GFXLibrary.Instance.PikemanAnimTexID;
+              break;
+            case 5:
+              this.villageSprite.TextureID = GFXLibrary.Instance.PikemanGreenAnimTexID;
+              break;
+            case 6:
+              this.villageSprite.TextureID = GFXLibrary.Instance.PikemanAnimTexID;
+              break;
+            case 7:
+              this.villageSprite.TextureID = GFXLibrary.Instance.PikemanRedAnimTexID;
+              break;
+            case 9:
+              this.villageSprite.TextureID = GFXLibrary.Instance.ManOnFireTexID;
+              break;
+            case 11:
+              this.villageSprite.TextureID = GFXLibrary.Instance.SwordsmanAnimTexID;
+              break;
+            case 12:
+              this.villageSprite.TextureID = GFXLibrary.Instance.CatapultAnimTexID;
+              break;
+            default:
+              flagIcons = false;
+              break;
+          }
+        }
+        if (flagIcons)
+        {
+          this.villageSprite.Center = new PointF(44f, 59f);
+          this.villageSprite.Scale = localScale;
+          this.villageSprite.SpriteNo = (int) Math.Floor((double) SpriteWrapper.getFacing(army.BasePoint(), army.TargetPoint()) / 45.0);
+          this.villageSprite.Update();
+          this.doDraw(this.villageSprite);
+        }
+      }
       return true;
     }
 
@@ -14130,6 +14194,8 @@ namespace Kingdoms
     public long CurrentVillageFactionsPos => this.storedVillageFactionsPos;
 
     public VillageData GetVllageByID(int id) => this.villageList[id];
+
+    public VillageData[] getWorldVillageList() => this.villageList;
 
     public bool SecondAgeWorld
     {

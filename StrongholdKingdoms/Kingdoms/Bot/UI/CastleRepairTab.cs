@@ -19,6 +19,7 @@ namespace Kingdoms.Bot.UI
         private static readonly Color Success = Color.FromArgb(80, 200, 120);
         private static readonly Color ErrorCol = Color.FromArgb(240, 80, 80);
         private static readonly Color Border = Color.FromArgb(55, 58, 72);
+        private static readonly Color MemoriseCol = Color.FromArgb(55, 130, 80);
 
         private CheckBox _enabledCheck;
         private Label _statusLabel;
@@ -48,7 +49,7 @@ namespace Kingdoms.Bot.UI
             // Settings panel
             Panel settingsPanel = new Panel();
             settingsPanel.Dock = DockStyle.Top;
-            settingsPanel.Height = 100;
+            settingsPanel.Height = 130;
             settingsPanel.BackColor = BgCard;
             settingsPanel.Padding = new Padding(16, 12, 16, 8);
 
@@ -104,6 +105,14 @@ namespace Kingdoms.Bot.UI
             Button copyBtn = MakeButton("Copy Settings", AccentDim, new Point(284, 70), new Size(110, 24));
             copyBtn.Click += delegate { CopySettingsClick(); };
             settingsPanel.Controls.Add(copyBtn);
+
+            Button memoriseInfraBtn = MakeButton("Memorise All Infra", MemoriseCol, new Point(16, 98), new Size(140, 24));
+            memoriseInfraBtn.Click += delegate { MemoriseInfraClick(); };
+            settingsPanel.Controls.Add(memoriseInfraBtn);
+
+            Button memoriseTroopsBtn = MakeButton("Memorise All Troops", MemoriseCol, new Point(168, 98), new Size(140, 24));
+            memoriseTroopsBtn.Click += delegate { MemoriseTroopsClick(); };
+            settingsPanel.Controls.Add(memoriseTroopsBtn);
 
             this.Controls.Add(settingsPanel);
 
@@ -231,17 +240,20 @@ namespace Kingdoms.Bot.UI
             _villageListPanel.ResumeLayout();
         }
 
+        private CastleRepairModule GetModule()
+        {
+            if (BotEngine.Instance == null) return null;
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                CastleRepairModule mod = m as CastleRepairModule;
+                if (mod != null) return mod;
+            }
+            return null;
+        }
+
         private void RepairAllNowClick()
         {
-            CastleRepairModule module = null;
-            if (BotEngine.Instance != null)
-            {
-                foreach (IBotModule m in BotEngine.Instance.Modules)
-                {
-                    module = m as CastleRepairModule;
-                    if (module != null) break;
-                }
-            }
+            CastleRepairModule module = GetModule();
             if (module != null)
             {
                 WriteToSettings();
@@ -251,6 +263,24 @@ namespace Kingdoms.Bot.UI
             {
                 BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Module not found.");
             }
+        }
+
+        private void MemoriseInfraClick()
+        {
+            CastleRepairModule module = GetModule();
+            if (module != null)
+                module.MemoriseAllInfrastructure();
+            else
+                BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Module not found.");
+        }
+
+        private void MemoriseTroopsClick()
+        {
+            CastleRepairModule module = GetModule();
+            if (module != null)
+                module.MemoriseAllTroops();
+            else
+                BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Module not found.");
         }
 
         private void CopySettingsClick()

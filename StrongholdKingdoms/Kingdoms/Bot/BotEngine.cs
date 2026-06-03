@@ -9,7 +9,7 @@ namespace Kingdoms.Bot
 
         private readonly List<IBotModule> _modules = new List<IBotModule>();
         private BotSettings _settings;
-        private bool _initialized;
+        private int _worldId;
 
         public BotSettings Settings
         {
@@ -26,13 +26,11 @@ namespace Kingdoms.Bot
             get { return _settings != null && _settings.BotEnabled; }
         }
 
-        public void Init()
+        public void Init(int worldId)
         {
-            if (_initialized)
-                return;
-
-            _settings = BotSettings.Load();
-            BotLogger.Log("BotEngine", BotLogLevel.Info, "Bot engine initializing...");
+            _worldId = worldId;
+            _settings = BotSettings.Load(worldId);
+            BotLogger.Log("BotEngine", BotLogLevel.Info, "Bot engine initializing for world " + worldId + "...");
 
             RegisterModule(new Modules.VillageSyncModule());
             RegisterModule(new Modules.RadarModule());
@@ -44,7 +42,13 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.AutoBombModule());
             RegisterModule(new Modules.AutoBombMultiModule());
             RegisterModule(new Modules.PopularityModule());
+            RegisterModule(new Modules.ScoutModule());
             RegisterModule(new Modules.FreeCardCollectorModule());
+            RegisterModule(new Modules.AutoCardModule());
+            RegisterModule(new Modules.AutoModuleSchedulerModule());
+            RegisterModule(new Modules.BanquetModule());
+            RegisterModule(new Modules.DefenderModule());
+            RegisterModule(new Modules.MonkModule());
 
             foreach (IBotModule module in _modules)
             {
@@ -60,7 +64,6 @@ namespace Kingdoms.Bot
             }
 
             ApplySettings();
-            _initialized = true;
             BotLogger.Log("BotEngine", BotLogLevel.Info, "Bot engine initialized with " + _modules.Count + " module(s).");
         }
 
@@ -105,6 +108,14 @@ namespace Kingdoms.Bot
                     module.Enabled = _settings.AutoBombMulti.Enabled;
                 else if (module is Modules.PopularityModule)
                     module.Enabled = _settings.Popularity.Enabled;
+                else if (module is Modules.AutoCardModule || module is Modules.AutoModuleSchedulerModule)
+                    module.Enabled = true; // Always enabled — gated internally per-good / per-schedule
+                else if (module is Modules.ScoutModule)
+                    module.Enabled = _settings.Scout.Enabled;
+                else if (module is Modules.BanquetModule)
+                    module.Enabled = _settings.Banquet.Enabled;
+                else if (module is Modules.MonkModule)
+                    module.Enabled = _settings.Monk.Enabled;
             }
         }
 
@@ -132,6 +143,13 @@ namespace Kingdoms.Bot
                     _settings.AutoBomb.Enabled = module.Enabled;
                 else if (module is Modules.PopularityModule)
                     _settings.Popularity.Enabled = module.Enabled;
+                // Auto modules are always enabled and gated internally — nothing to sync back.
+                else if (module is Modules.ScoutModule)
+                    _settings.Scout.Enabled = module.Enabled;
+                else if (module is Modules.BanquetModule)
+                    _settings.Banquet.Enabled = module.Enabled;
+                else if (module is Modules.MonkModule)
+                    _settings.Monk.Enabled = module.Enabled;
             }
 
             _settings.Save();
@@ -140,7 +158,7 @@ namespace Kingdoms.Bot
 
         public void ReloadSettings()
         {
-            _settings = BotSettings.Load();
+            _settings = BotSettings.Load(_worldId);
             ApplySettings();
             BotLogger.Log("BotEngine", BotLogLevel.Info, "Settings reloaded from disk.");
         }

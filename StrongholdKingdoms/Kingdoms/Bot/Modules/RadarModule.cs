@@ -1075,7 +1075,7 @@ namespace Kingdoms.Bot.Modules
                 LogInfo("Auto-interdict: recruiting " + (numberOfMonks - athome) + " monk(s) for village " + villageId);
                 int made = MakeMonks(villageId, numberOfMonks - athome, village);
                 if (made > 0)
-                    athome = village.calcTotalMonksAtHome();
+                    athome += made;
             }
 
             if (athome <= 0)

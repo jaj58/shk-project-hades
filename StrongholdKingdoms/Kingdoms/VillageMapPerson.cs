@@ -123,6 +123,19 @@ namespace Kingdoms
     {
       this.startPos = (PointF) realStart;
       this.endPos = (PointF) realEnd;
+      // distThroughJourney comes from a division in the caller (elapsed / journeyTime).
+      // If journeyTime is zero or the cycle data is corrupt the division can produce NaN,
+      // ±Infinity, or a large negative — none of which are caught by >= 1.0 (NaN comparisons
+      // are always false). Snap those to safe values before any DateTime arithmetic.
+      if (double.IsNaN(distThroughJourney) || double.IsInfinity(distThroughJourney))
+      {
+        this.currentPos = this.endPos;
+        this.state = VillageMapPerson.VillagePeopleStates.STATIONARY;
+        return;
+      }
+      if (distThroughJourney < 0.0)
+        distThroughJourney = 0.0; // hasn't started yet — begin from scratch
+
       if (distThroughJourney >= 1.0)
       {
         this.currentPos = this.endPos;
@@ -131,6 +144,17 @@ namespace Kingdoms
       else
       {
         TimeSpan timeSpan = VillageBuildingsData.calcTravelTime(GameEngine.Instance.LocalWorldData, realStart, realEnd);
+        // Defensive guard: a corrupt world-speed/location value can make calcTravelTime return an
+        // enormous or invalid span. DateTime.Now.Add(timeSpan) (and the AddSeconds calls below)
+        // would then throw ArgumentOutOfRangeException and crash the render loop. A villager walk
+        // is only ever a few seconds, so if the span isn't sane just snap to the destination.
+        double secs = timeSpan.TotalSeconds;
+        if (double.IsNaN(secs) || double.IsInfinity(secs) || secs < 0.0 || timeSpan.TotalDays > 1.0)
+        {
+          this.currentPos = this.endPos;
+          this.state = VillageMapPerson.VillagePeopleStates.STATIONARY;
+          return;
+        }
         this.startTime = DateTime.Now;
         this.endTime = DateTime.Now.Add(timeSpan);
         if (distThroughJourney != 0.0)

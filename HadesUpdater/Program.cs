@@ -32,10 +32,17 @@ namespace HadesUpdater
 
         /// <summary>
         /// Returns true if <paramref name="serverVersion"/> is newer than <paramref name="localVersion"/>.
-        /// Both strings must be in x.y.z format.
+        /// Handles standard x.y.z semver and dev builds (dev-&lt;sha&gt;) — any SHA change triggers an update.
         /// </summary>
         public static bool IsNewerVersion(string serverVersion, string localVersion)
         {
+            // Dev builds use a non-semver label — any change in the string means a new build
+            if (serverVersion.StartsWith("dev-", StringComparison.OrdinalIgnoreCase) ||
+                localVersion.StartsWith("dev-", StringComparison.OrdinalIgnoreCase))
+            {
+                return !string.Equals(serverVersion, localVersion, StringComparison.OrdinalIgnoreCase);
+            }
+
             try
             {
                 Version server = new Version(serverVersion);

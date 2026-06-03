@@ -14,6 +14,9 @@ namespace Kingdoms.Bot
 
         [System.Xml.Serialization.XmlIgnore]
         public bool BotEnabled;
+        [System.Xml.Serialization.XmlIgnore]
+        private int _worldId;
+
         public VillageSyncSettings VillageSync = new VillageSyncSettings();
         public RadarSettings Radar = new RadarSettings();
         public RecruitingSettings Recruiting = new RecruitingSettings();
@@ -23,25 +26,35 @@ namespace Kingdoms.Bot
         public AutoBombSettings AutoBomb = new AutoBombSettings();
         public AutoBombMultiSettings AutoBombMulti = new AutoBombMultiSettings();
         public PopularitySettings Popularity = new PopularitySettings();
+        public ScoutSettings Scout = new ScoutSettings();
         public MiscSettings Misc = new MiscSettings();
+        public AutoSettings Auto = new AutoSettings();
+        public BanquetSettings Banquet = new BanquetSettings();
+        public DefenderSettings Defender = new DefenderSettings();
+        public MonkSettings Monk = new MonkSettings();
 
-        private static string GetSettingsFilePath()
+        // XmlSerializer generates and compiles a dynamic serialization assembly the first time
+        // it is constructed for a given type. For a complex type like BotSettings this takes
+        // several seconds in .NET Framework. Caching it statically means we pay that cost once
+        // on first use (typically game startup) rather than on every world switch.
+        private static readonly XmlSerializer _serializer = new XmlSerializer(typeof(BotSettings));
+
+        private static string GetSettingsFilePath(int worldId)
         {
             string dir = GameEngine.getSettingsPath(true);
-            return Path.Combine(dir, "bot_settings.xml");
+            string file = worldId > 0 ? "bot_settings_" + worldId + ".xml" : "bot_settings.xml";
+            return Path.Combine(dir, file);
         }
 
-        public static BotSettings Load()
+        private static BotSettings DeserializeFrom(string path)
         {
-            string path = GetSettingsFilePath();
             try
             {
                 if (File.Exists(path))
                 {
-                    XmlSerializer serializer = new XmlSerializer(typeof(BotSettings));
                     using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
                     {
-                        BotSettings settings = (BotSettings)serializer.Deserialize(fs);
+                        BotSettings settings = (BotSettings)_serializer.Deserialize(fs);
                         if (settings != null)
                             return settings;
                     }
@@ -49,26 +62,47 @@ namespace Kingdoms.Bot
             }
             catch (Exception ex)
             {
-                BotLogger.Log("BotSettings", BotLogLevel.Error, "Failed to load settings: " + ex.Message);
+                BotLogger.Log("BotSettings", BotLogLevel.Error, "Failed to load settings from '" + path + "': " + ex.Message);
             }
-            return new BotSettings();
+            return null;
         }
 
-        public void Save()
+        public static BotSettings Load(int worldId)
         {
-            string path = GetSettingsFilePath();
+            BotSettings s = DeserializeFrom(GetSettingsFilePath(worldId));
+            if (s == null && worldId > 0)
+            {
+                // New world — start fresh; copy LicenseKey from the legacy global file if it exists
+                s = new BotSettings();
+                BotSettings global = DeserializeFrom(GetSettingsFilePath(0));
+                if (global != null) s.LicenseKey = global.LicenseKey;
+            }
+            if (s == null) s = new BotSettings();
+            s._worldId = worldId;
+            return s;
+        }
+
+        private void SerializeTo(string path)
+        {
             try
             {
-                XmlSerializer serializer = new XmlSerializer(typeof(BotSettings));
                 using (FileStream fs = new FileStream(path, FileMode.Create, FileAccess.Write))
                 {
-                    serializer.Serialize(fs, this);
+                    _serializer.Serialize(fs, this);
                 }
             }
             catch (Exception ex)
             {
-                BotLogger.Log("BotSettings", BotLogLevel.Error, "Failed to save settings: " + ex.Message);
+                string msg = ex.Message;
+                if (ex.InnerException != null) msg += " | Inner: " + ex.InnerException.Message;
+                if (ex.InnerException?.InnerException != null) msg += " | Inner2: " + ex.InnerException.InnerException.Message;
+                BotLogger.Log("BotSettings", BotLogLevel.Error, "Failed to save settings: " + msg);
             }
+        }
+
+        public void Save()
+        {
+            SerializeTo(GetSettingsFilePath(_worldId));
         }
     }
 
@@ -357,6 +391,14 @@ namespace Kingdoms.Bot
         public int Priority = 1;
     }
 
+    public enum TradePriority
+    {
+        MarketSellFirst = 0,   // Market first: sell before buy
+        MarketBuyFirst  = 1,   // Market first: buy before sell
+        VillageRoutes   = 2,   // Village routes first
+        PlayerRoutes    = 3    // Player routes first
+    }
+
     [Serializable]
     public class TradeSettings
     {
@@ -369,9 +411,10 @@ namespace Kingdoms.Bot
         public bool AutoHireMerchants = false;
         public int AutoHireMerchantsLimit = 50;
         public bool IgnoreCurrentTransactions = false;
-        public bool PrioritiseMarkets = true; // true = markets first, false = village routes first
+        public TradePriority Priority = TradePriority.MarketSellFirst;
         public bool DisableOnTradeCardExpiry = false;
         public bool TradeCardsWereActive = false;
+        public bool AutoSavePlayerRouteProgress = true;
         public List<VillageMarketTradeInfo> VillageMarketSettings = new List<VillageMarketTradeInfo>();
         public List<TradeRouteSettings> Routes = new List<TradeRouteSettings>();
         public List<PlayerTradeRouteSettings> PlayerRoutes = new List<PlayerTradeRouteSettings>();
@@ -471,6 +514,22 @@ namespace Kingdoms.Bot
         public int SendMaximum = 5000;
         public bool IsDistanceLimited;
         public int DistanceLimit = 100;
+
+        public TradeRouteSettings Clone()
+        {
+            TradeRouteSettings r = new TradeRouteSettings();
+            r.Name = this.Name + " (Copy)";
+            r.Enabled = false;
+            r.FromVillages = new List<int>(this.FromVillages);
+            r.ToVillages = new List<int>(this.ToVillages);
+            r.Resources = new List<int>(this.Resources);
+            r.KeepMinimum = this.KeepMinimum;
+            r.MaxMerchantsPerTransaction = this.MaxMerchantsPerTransaction;
+            r.SendMaximum = this.SendMaximum;
+            r.IsDistanceLimited = this.IsDistanceLimited;
+            r.DistanceLimit = this.DistanceLimit;
+            return r;
+        }
     }
 
     [Serializable]
@@ -507,6 +566,20 @@ namespace Kingdoms.Bot
             foreach (PlayerTradeResourceEntry e in Resources)
                 e.AmountSent = 0;
         }
+
+        public PlayerTradeRouteSettings Clone()
+        {
+            PlayerTradeRouteSettings r = new PlayerTradeRouteSettings();
+            r.Name = this.Name + " (Copy)";
+            r.Enabled = false;
+            r.FromVillages = new List<int>(this.FromVillages);
+            r.TargetVillageId = this.TargetVillageId;
+            r.KeepMinimum = this.KeepMinimum;
+            r.MaxMerchantsPerTransaction = this.MaxMerchantsPerTransaction;
+            foreach (PlayerTradeResourceEntry e in this.Resources)
+                r.Resources.Add(e.Clone());
+            return r;
+        }
     }
 
     [Serializable]
@@ -519,6 +592,16 @@ namespace Kingdoms.Bot
         public int Remaining
         {
             get { return Math.Max(0, TotalAmount - AmountSent); }
+        }
+
+        public PlayerTradeResourceEntry Clone()
+        {
+            return new PlayerTradeResourceEntry
+            {
+                ResourceId = this.ResourceId,
+                TotalAmount = this.TotalAmount,
+                AmountSent = 0
+            };
         }
     }
 
@@ -691,6 +774,8 @@ namespace Kingdoms.Bot
         [System.Xml.Serialization.XmlIgnore]
         public DateTime EstimatedArrivalTime = DateTime.MaxValue;
         [System.Xml.Serialization.XmlIgnore]
+        public int ParentVillageId; // 0 = own village; lord village ID for vassal attacks
+        [System.Xml.Serialization.XmlIgnore]
         public bool Sent;
         [System.Xml.Serialization.XmlIgnore]
         public bool Cancelled;
@@ -745,6 +830,8 @@ namespace Kingdoms.Bot
         public int NumCaptains;
         public double TravelTimeArmy;
         public double TravelTimeCaptain;
+        public bool IsVassal;
+        public int ParentVillageId;
         // Attack assignment set by coordinator (stored in API, mirrored here for display)
         [System.Xml.Serialization.XmlIgnore]
         public string FormationName = "";
@@ -786,6 +873,7 @@ namespace Kingdoms.Bot
         public bool TargetQueueEnabled;
         // Force-refresh each attacking village ~5s before prepare to reduce server callback errors
         public bool PreRefreshVillages = true;
+        public bool IncludeVassals;
         // Automatically play the correct speed card at T-3s before each attack send
         public bool PlayCards = false;
         // Cancel a wrong active speed card before playing the desired one
@@ -849,5 +937,333 @@ namespace Kingdoms.Bot
     public class MiscSettings
     {
         public bool CollectFreeCards = false;
+        public bool DisableCannotPlayCardPopup = false;
+        public bool ShowOtherTraderInfo = false;
+        public bool WorldMapParishBuildingCount = false;
+        public bool ShowUserScreenInfo = false;
+        public bool MapAttackTypeIcons = false;
+    }
+
+    // =========================================================================
+    // Auto Tab Settings
+    // =========================================================================
+
+    [Serializable]
+    public class AutoSettings
+    {
+        public bool Enabled = false;
+        public int CardCheckIntervalSeconds = 30;    // how often AutoCardModule scans production goods
+        public int ModuleCheckIntervalSeconds = 60;  // how often AutoModuleSchedulerModule evaluates schedules
+        public List<ProductionCardSettings> ProductionCards = new List<ProductionCardSettings>();
+        public List<ModuleScheduleSettings> ModuleSchedules = new List<ModuleScheduleSettings>();
+
+        public ProductionCardSettings GetProduction(string goodKey)
+        {
+            foreach (ProductionCardSettings p in ProductionCards)
+                if (p.GoodKey == goodKey) return p;
+            ProductionCardSettings newP = new ProductionCardSettings();
+            newP.GoodKey = goodKey;
+            ProductionCards.Add(newP);
+            return newP;
+        }
+
+        public ModuleScheduleSettings GetModuleSchedule(string moduleName)
+        {
+            foreach (ModuleScheduleSettings m in ModuleSchedules)
+                if (m.ModuleName == moduleName) return m;
+            ModuleScheduleSettings newM = new ModuleScheduleSettings();
+            newM.ModuleName = moduleName;
+            ModuleSchedules.Add(newM);
+            return newM;
+        }
+    }
+
+    [Serializable]
+    public class ProductionCardSettings
+    {
+        public string GoodKey = "";
+        public bool Enabled = false;
+        public int TierIndex = 0;        // 0=smallest (x3), 1=mid (x5), 2=largest (x10)
+        public int TargetCount = 1;
+        public int PlayedCount = 0;
+        public int StartDelayMinutes = 0;
+        public DateTime ScheduledStartTime = DateTime.MinValue;
+
+        [System.Xml.Serialization.XmlIgnore]
+        public int LastPlayedInstanceId = 0;
+        [System.Xml.Serialization.XmlIgnore]
+        public int PreviousTargetCount = -1;
+        // Set true once we've observed the played card become active — guards against counting a
+        // card as "expired" during the brief window before UserCardData refreshes after a play.
+        [System.Xml.Serialization.XmlIgnore]
+        public bool ConfirmedActive = false;
+        // Server time the current card was played, for the play-confirmation grace period.
+        [System.Xml.Serialization.XmlIgnore]
+        public DateTime PlayAttemptTime = DateTime.MinValue;
+    }
+
+    [Serializable]
+    public class ModuleScheduleSettings
+    {
+        public string ModuleName = "";
+        public bool[] HourlySchedule = new bool[24];
+        public bool AutoDisableEnabled = false;
+        public bool PlayCardOnStart = false;
+        public bool ReplayCardOnExpiry = true;
+        // Multi-select card list — replaces the old single/dual CardDefId fields
+        public List<int> CardDefIds = new List<int>();
+        // Legacy single/dual fields kept as XmlIgnore so old XML round-trips safely
+        [System.Xml.Serialization.XmlIgnore] public int CardDefId  = 0;
+        [System.Xml.Serialization.XmlIgnore] public int CardDefId2 = 0;
+        public bool WasAutoStarted = false;
+        public bool ManuallyDisabledDuringWindow = false;
+        // Runtime-only tracking of active card instance IDs (not persisted)
+        [System.Xml.Serialization.XmlIgnore]
+        public List<int> LastPlayedCardInstanceIds = new List<int>();
+        // Server time of the last card play, used to grace-gate replays against UserCardData lag.
+        [System.Xml.Serialization.XmlIgnore]
+        public DateTime LastCardPlayTime = DateTime.MinValue;
+    }
+
+    // =========================================================================
+    // Scout Module Settings
+    // =========================================================================
+
+    public enum ScoutPriority
+    {
+        ResourcePriority = 0,  // type order in scout list first, distance as tiebreak
+        RangePriority    = 1   // nearest stash first, regardless of type order
+    }
+
+    [Serializable]
+    public class ScoutSettings
+    {
+        public bool Enabled = false;
+        public int CycleIntervalSeconds = 60;
+        public int MaxScoutTimeSeconds = 1200;
+        public int AutoHireScouts = 0;          // 0 = disabled; 1-8 = target count (capped by Research_Scouts)
+        public int DelayBetweenSendsMs = 3000;
+        public bool DisableOnScoutCardExpiry = false;
+        public bool ScoutCardsWereActive = false;
+        public ScoutPriority Priority = ScoutPriority.ResourcePriority;
+        public bool SendOneScout = false;
+        public bool SendOneOnNewStash = true;
+        public List<VillageScoutSettings> Villages = new List<VillageScoutSettings>();
+
+        public VillageScoutSettings GetVillageSettings(int villageId)
+        {
+            foreach (VillageScoutSettings v in Villages)
+            {
+                if (v.VillageId == villageId) return v;
+            }
+            VillageScoutSettings newV = new VillageScoutSettings();
+            newV.VillageId = villageId;
+            newV.InitDefaults();
+            Villages.Add(newV);
+            return newV;
+        }
+    }
+
+    [Serializable]
+    public class VillageScoutSettings
+    {
+        public int VillageId;
+        public bool ScoutingEnabled = true;
+        public List<int> ResourceTypesToScout = new List<int>();
+        public List<int> ResourceTypesToIgnore = new List<int>();
+
+        public void InitDefaults()
+        {
+            if (ResourceTypesToScout.Count > 0) return;
+            // Valid stash special IDs: TradeTypeIds + 100, plus 100 (new stash)
+            int[] types = new int[]
+            {
+                100,                         // New Stash
+                106, 107, 108, 109,          // Wood, Stone, Iron, Pitch
+                112, 113, 114, 115,          // Ale, Apples, Bread, Vegetables
+                116, 117, 118, 122,          // Meat, Cheese, Fish, Venison
+                121, 126, 119, 133,          // Furniture, Metalware, Clothes, Wine
+                123, 124, 125,               // Salt, Spices, Silk
+                129, 128, 131, 130, 132      // Bows, Pikes, Armour, Swords, Catapults
+            };
+            foreach (int t in types)
+                ResourceTypesToScout.Add(t);
+        }
+    }
+
+    [Serializable]
+    public class BanquetSettings
+    {
+        public bool Enabled = false;
+        public int CycleIntervalSeconds = 300;
+        public int DelayBetweenVillagesMs = 1500;
+        public List<VillageBanquetSettings> Villages = new List<VillageBanquetSettings>();
+
+        public VillageBanquetSettings GetVillageSettings(int villageId)
+        {
+            foreach (VillageBanquetSettings v in Villages)
+                if (v.VillageId == villageId) return v;
+            VillageBanquetSettings newV = new VillageBanquetSettings { VillageId = villageId };
+            Villages.Add(newV);
+            return newV;
+        }
+    }
+
+    [Serializable]
+    public class VillageBanquetSettings
+    {
+        public int VillageId;
+        // Indices 0-7: Venison, Furniture, Metalware, Clothes, Wine, Salt, Spices, Silk
+        public List<int> EnabledGoods = new List<int>();
+    }
+
+    // =========================================================================
+    // Defender Module Settings
+    // =========================================================================
+
+    [Serializable]
+    public class DefenderSettings
+    {
+        public bool Enabled = false;
+        public int SpamDurationSeconds = 20;
+        public int TargetVillageId = 0;
+        public int KnightsCardDefId = 0;       // 0=None, 265=SA(2), 269=SA(5), 270=SA(12)
+        public int LastStandCardDefId = 0;     // 0=None, 266=LS(5), 271=LS(10), 272=LS(20)
+        public bool SpamDesperateDefence = false;
+        public bool AutoRepair = true;
+        public bool RestoreTroops = true;
+        public bool RestoreInfrastructure = false;
+    }
+
+    // =========================================================================
+    // Monk Module Settings
+    // =========================================================================
+
+    public enum MonkCommand
+    {
+        Blessing        = 1,   // parishes only
+        Inquisition     = 3,   // parishes only
+        Interdiction    = 4,   // villages + parish/county capitals
+        Restoration     = 5,   // parishes only (heals disease)
+        Absolution      = 6,   // villages only (removes excommunication)
+        Excommunication = 7,   // villages only
+        // TODO: verify the correct integer for influence/envoy monks
+        Influence       = 2,
+    }
+
+    public enum MonkStopCondition
+    {
+        QuestCompletion = 0,   // sends until the active quest for this command is satisfied
+        SendXMonksEach  = 1,   // sends ExtraParameter monks to each target then stops
+        RunOnCondition  = 2,   // maintains a condition (hours of interdict, disease level, etc.)
+    }
+
+    [Serializable]
+    public class MonkProgressEntry
+    {
+        public int TargetId;
+        public int MonksSent;
+    }
+
+    [Serializable]
+    public class MonkRouteSettings
+    {
+        public string Name = "";
+        public bool Enabled = true;
+        public MonkCommand Command = MonkCommand.Blessing;
+        public List<int> FromVillages = new List<int>();
+        public List<int> ToTargets = new List<int>();
+        public MonkStopCondition StopCondition = MonkStopCondition.SendXMonksEach;
+        // ExtraParameter meaning:
+        //   SendXMonksEach            — monks to send per target
+        //   RunOnCondition/Interdiction     — maintain at least X hours of interdict
+        //   RunOnCondition/Restoration      — heal until disease <= X (0 = fully healed)
+        //   RunOnCondition/Blessing         — maintain X blessing level (1–100)
+        //   RunOnCondition/Inquisition      — maintain X inquisition level (1–100)
+        //   RunOnCondition/Absolution       — absolve if target has > X hours of excomm
+        //   RunOnCondition/Excommunication  — excommunicate until target has > X hours
+        //   QuestCompletion           — unused (0)
+        public int ExtraParameter = 5;
+        public bool IsDistanceLimited;
+        public int DistanceLimit = 100;
+        // Influence-specific settings
+        public bool InfluencePositive = true;
+        public int InfluenceTargetUserId = -1;
+        // Per-target progress for SendXMonksEach — persisted so it survives restarts
+        public List<MonkProgressEntry> Progress = new List<MonkProgressEntry>();
+
+        public int GetProgress(int targetId)
+        {
+            foreach (MonkProgressEntry e in Progress)
+                if (e.TargetId == targetId) return e.MonksSent;
+            return 0;
+        }
+
+        public void AddProgress(int targetId, int amount)
+        {
+            foreach (MonkProgressEntry e in Progress)
+            {
+                if (e.TargetId == targetId) { e.MonksSent += amount; return; }
+            }
+            Progress.Add(new MonkProgressEntry { TargetId = targetId, MonksSent = amount });
+        }
+
+        public void ResetProgress()
+        {
+            Progress.Clear();
+        }
+
+        public int GetTotalProgress()
+        {
+            int total = 0;
+            foreach (MonkProgressEntry e in Progress)
+                total += e.MonksSent;
+            return total;
+        }
+
+        /// <summary>Returns a concise progress string for display in the route list row.</summary>
+        public string GetProgressSummary()
+        {
+            int total = GetTotalProgress();
+            if (StopCondition == MonkStopCondition.SendXMonksEach)
+            {
+                // Always show "sent / needed" so the target is visible even before anything runs
+                if (ToTargets.Count == 0) return "-";
+                int cap = ExtraParameter * ToTargets.Count;
+                return total + " / " + cap;
+            }
+            // QuestCompletion / RunOnCondition — show total monks dispatched
+            return total == 0 ? "-" : total + " sent";
+        }
+
+        public MonkRouteSettings Clone()
+        {
+            MonkRouteSettings r = new MonkRouteSettings();
+            r.Name = this.Name + " (Copy)";
+            r.Enabled = false;
+            r.Command = this.Command;
+            r.FromVillages = new List<int>(this.FromVillages);
+            r.ToTargets = new List<int>(this.ToTargets);
+            r.StopCondition = this.StopCondition;
+            r.ExtraParameter = this.ExtraParameter;
+            r.IsDistanceLimited = this.IsDistanceLimited;
+            r.DistanceLimit = this.DistanceLimit;
+            r.InfluencePositive = this.InfluencePositive;
+            r.InfluenceTargetUserId = this.InfluenceTargetUserId;
+            return r;
+        }
+    }
+
+    [Serializable]
+    public class MonkSettings
+    {
+        public bool Enabled = false;
+        public int CycleIntervalSeconds = 120;
+        public int DelayBetweenRoutesMs = 2000;
+        public int MonksToKeep = 0;
+        // 0 = disabled; 1-8 = recruit monks at each from-village up to this count
+        // before sending. Capped by ordination research level at runtime.
+        public int AutoRecruitMonks = 0;
+        public List<MonkRouteSettings> Routes = new List<MonkRouteSettings>();
     }
 }

@@ -22,4 +22,4 @@ jobs:
         run: nuget restore StrongholdKingdoms\StrongholdKingdoms.sln
 
       - name: Build Release
-        run: msbuild StrongholdKingdoms\StrongholdKingdoms.sln /p:Configuration=Release /p:Platform="Any CPU" /v:quiet /nologo
+        run: msbuild StrongholdKingdoms\StrongholdKingdoms.sln /p:Configuration=Release /p:Platform="Any CPU" /v:quiet /nologo /clp:ErrorsOnly
