@@ -148,7 +148,7 @@ namespace Kingdoms.Bot.UI
             _selectCheck.Location = new Point(x, 3);
             _selectCheck.Size = new Size(16, 18);
             _selectCheck.FlatStyle = FlatStyle.Flat;
-            _selectCheck.Checked = true;
+            _selectCheck.Checked = false;
             _selectCheck.Enabled = isCoordinator;
             this.Controls.Add(_selectCheck);
             x += 22;

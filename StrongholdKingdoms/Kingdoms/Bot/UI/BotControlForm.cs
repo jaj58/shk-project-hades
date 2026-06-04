@@ -3902,7 +3902,8 @@ namespace Kingdoms.Bot.UI
                         row.SelectedCardType.ToString(),
                         row.UseCaptains ? "1" : "0",
                         row.StackOrder.ToString(),
-                        attackTypeIndex.ToString()
+                        attackTypeIndex.ToString(),
+                        row.Selected ? "1" : "0"
                     }));
                 }
                 System.IO.File.WriteAllText(AbmSetupFilePath(), lines.ToString(),
@@ -3942,7 +3943,11 @@ namespace Kingdoms.Bot.UI
                     useCaptains = p[3] == "1";
                     int.TryParse(p[4], out stack);
                     int.TryParse(p[5], out attackTypeIndex);
+                    // Field 7 (index 6) is selected. If absent (old save), default true —
+                    // the village was in a saved config so it was intended to be active.
+                    bool selected = p.Length < 7 || p[6] != "0";
                     row.ApplyConfig(formation, cardIndex, useCaptains, stack, attackTypeIndex);
+                    row.Selected = selected;
                 }
             }
             catch { }
