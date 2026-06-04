@@ -55,6 +55,12 @@ namespace Kingdoms.Bot.Modules
         private volatile bool _armyReturnReported;
         private HashSet<int> _sentSourceVillages = new HashSet<int>();
 
+        // Instance IDs of logistics cards already played this batch.
+        // Logistics cards are consumed on send, so their instance ID becomes invalid the moment
+        // the attack fires. ProfileCards won't reflect this until the client syncs, so we track
+        // played IDs locally to avoid re-playing the same (now-consumed) instance on the next village.
+        private readonly HashSet<int> _playedCardInstanceIds = new HashSet<int>();
+
         public override string ModuleName { get { return "Auto Bomb Multi"; } }
         public override TimeSpan Interval { get { return TimeSpan.FromMilliseconds(500); } }
 
@@ -764,6 +770,7 @@ namespace Kingdoms.Bot.Modules
 
             _interdictDetected = false;
             _fakeSendTriggered = false;
+            _playedCardInstanceIds.Clear();
             DisposeFakeSendTimer();
 
             StopLaunchThread();
@@ -1016,6 +1023,7 @@ namespace Kingdoms.Bot.Modules
                     _interdictDetected = false;
                     _fakeSendTriggered = false;
                     _prepareErrorCancel = false;
+                    _playedCardInstanceIds.Clear();
                     cancelled = false; // allow next iteration to fire
                 }
             }
@@ -1939,7 +1947,9 @@ namespace Kingdoms.Bot.Modules
                 var mgr = GameEngine.Instance != null ? GameEngine.Instance.cardsManager : null;
                 if (mgr == null) return 0;
 
-                // Exclude instance IDs already active to avoid double-playing
+                // Exclude instance IDs already active or already played this batch.
+                // Logistics cards are consumed on send — ProfileCards won't reflect this until
+                // the client syncs, so _playedCardInstanceIds tracks consumed instances locally.
                 CardData cd = mgr.UserCardData;
                 var activeIds = new System.Collections.Generic.HashSet<int>();
                 if (cd != null && cd.cards != null)
@@ -1951,6 +1961,7 @@ namespace Kingdoms.Bot.Modules
                     if (kvp.Value == null) continue;
                     if (kvp.Value.id != targetDefId) continue;
                     if (activeIds.Contains(kvp.Key)) continue;
+                    if (_playedCardInstanceIds.Contains(kvp.Key)) continue;
 
                     LogDebug("[Card] FindInventoryCard: cardType=" + cardType +
                         " defId=" + targetDefId + " → instanceId=" + kvp.Key);
@@ -2030,6 +2041,10 @@ namespace Kingdoms.Bot.Modules
                     LogError("[Card] Card type " + cardType + " not found in inventory — cancelling batch.");
                     return false;
                 }
+
+                // Record before playing so if this is a logistics card it won't be picked
+                // again by the next village even before ProfileCards is updated server-side.
+                _playedCardInstanceIds.Add(instanceId);
 
                 LogInfo("[Card] Playing card_type=" + cardType + " (instanceId=" + instanceId + ").");
                 XmlRpcCardsProvider provider = XmlRpcCardsProvider.CreateForEndpoint(
