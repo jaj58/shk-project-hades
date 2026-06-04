@@ -46,6 +46,17 @@ namespace Kingdoms.Bot.UI
 
         private void InitializeComponent()
         {
+            this._vsVillageListPanelPlaceholder = new System.Windows.Forms.Label();
+            this._rdActionListPanelPlaceholder = new System.Windows.Forms.Label();
+            this._rcVillageListPanelPlaceholder = new System.Windows.Forms.Label();
+            this._rcCapitalsListPanelPlaceholder = new System.Windows.Forms.Label();
+            this._crVillageListPanelPlaceholder = new System.Windows.Forms.Label();
+            this._bldBuildingListPanelPlaceholder = new System.Windows.Forms.Label();
+            this._ppVillageListPanelPlaceholder = new System.Windows.Forms.Label();
+            this._bqVillageListPanelPlaceholder = new System.Windows.Forms.Label();
+            this._mkRouteListPanelPlaceholder = new System.Windows.Forms.Label();
+            this._autoProdScrollPanelPlaceholder = new System.Windows.Forms.Label();
+            this._autoModuleScrollPanelPlaceholder = new System.Windows.Forms.Label();
             this._footerPanel = new System.Windows.Forms.Panel();
             this._versionLabel = new System.Windows.Forms.Label();
             this._clearLogBtn = new System.Windows.Forms.Button();
@@ -327,6 +338,33 @@ namespace Kingdoms.Bot.UI
             this._ppEnabledCheck = new System.Windows.Forms.CheckBox();
             this._bqPage = new System.Windows.Forms.TabPage();
             this._defenderPage = new System.Windows.Forms.TabPage();
+            // Defender tab child controls
+            this._dfSettingsPanel = new System.Windows.Forms.Panel();
+            this._dfEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._dfStatusLabel = new System.Windows.Forms.Label();
+            this._dfDurationLabel = new System.Windows.Forms.Label();
+            this._dfDurationInput = new System.Windows.Forms.NumericUpDown();
+            this._dfVillageLabel = new System.Windows.Forms.Label();
+            this._dfVillageCombo = new System.Windows.Forms.ComboBox();
+            this._dfVillageRefreshBtn = new System.Windows.Forms.Button();
+            this._dfStartBtn = new System.Windows.Forms.Button();
+            this._dfStopBtn = new System.Windows.Forms.Button();
+            this._dfCountdownPrefixLabel = new System.Windows.Forms.Label();
+            this._dfCountdownLabel = new System.Windows.Forms.Label();
+            this._dfSep1 = new System.Windows.Forms.Panel();
+            this._dfCardsPanel = new System.Windows.Forms.Panel();
+            this._dfCardsTitle = new System.Windows.Forms.Label();
+            this._dfKnightsLabel = new System.Windows.Forms.Label();
+            this._dfKnightsCombo = new System.Windows.Forms.ComboBox();
+            this._dfLastStandLabel = new System.Windows.Forms.Label();
+            this._dfLastStandCombo = new System.Windows.Forms.ComboBox();
+            this._dfDesperateCheck = new System.Windows.Forms.CheckBox();
+            this._dfSep2 = new System.Windows.Forms.Panel();
+            this._dfActionsPanel = new System.Windows.Forms.Panel();
+            this._dfActionsTitle = new System.Windows.Forms.Label();
+            this._dfAutoRepairCheck = new System.Windows.Forms.CheckBox();
+            this._dfRestoreTroopsCheck = new System.Windows.Forms.CheckBox();
+            this._dfRestoreInfraCheck = new System.Windows.Forms.CheckBox();
             this._mkPage = new System.Windows.Forms.TabPage();
             this._mkSettingsPanel = new System.Windows.Forms.Panel();
             this._mkColHeader = new System.Windows.Forms.Panel();
@@ -366,6 +404,35 @@ namespace Kingdoms.Bot.UI
             this._scDivider = new System.Windows.Forms.Panel();
             this._scContentPanel = new System.Windows.Forms.Panel();
             this._scSeparator = new System.Windows.Forms.Panel();
+            // Scout tab child controls
+            this._scEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._scStatusLabel = new System.Windows.Forms.Label();
+            this._scIntervalLabel = new System.Windows.Forms.Label();
+            this._scIntervalInput = new System.Windows.Forms.NumericUpDown();
+            this._scMaxTimeLabel = new System.Windows.Forms.Label();
+            this._scMaxTimeInput = new System.Windows.Forms.NumericUpDown();
+            this._scAutoHireLabel = new System.Windows.Forms.Label();
+            this._scAutoHireInput = new System.Windows.Forms.NumericUpDown();
+            this._scDelayLabel = new System.Windows.Forms.Label();
+            this._scDelayInput = new System.Windows.Forms.NumericUpDown();
+            this._scDisableOnCardExpiryCheck = new System.Windows.Forms.CheckBox();
+            this._scPriorityLabel = new System.Windows.Forms.Label();
+            this._scPriorityResourceRadio = new System.Windows.Forms.RadioButton();
+            this._scPriorityRangeRadio = new System.Windows.Forms.RadioButton();
+            this._scSendOneScoutCheck = new System.Windows.Forms.CheckBox();
+            this._scSendOneOnNewCheck = new System.Windows.Forms.CheckBox();
+            this._scVillageListBox = new System.Windows.Forms.ListBox();
+            this._scVillageHeaderLabel = new System.Windows.Forms.Label();
+            this._scVillageEnabledCheck = new System.Windows.Forms.CheckBox();
+            this._scScoutListLabel = new System.Windows.Forms.Label();
+            this._scIgnoreListLabel = new System.Windows.Forms.Label();
+            this._scScoutList = new System.Windows.Forms.ListBox();
+            this._scIgnoreList = new System.Windows.Forms.ListBox();
+            this._scMoveUpBtn = new System.Windows.Forms.Button();
+            this._scMoveDownBtn = new System.Windows.Forms.Button();
+            this._scMoveToIgnoreBtn = new System.Windows.Forms.Button();
+            this._scMoveToScoutBtn = new System.Windows.Forms.Button();
+            this._scCopySettingsBtn = new System.Windows.Forms.Button();
             this._miscPage = new System.Windows.Forms.TabPage();
             this._miscSettingsPanel = new System.Windows.Forms.Panel();
             this._autoPage = new System.Windows.Forms.TabPage();
@@ -492,6 +559,10 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._abmQueueVidInput)).BeginInit();
             this._bqPage.SuspendLayout();
             this._defenderPage.SuspendLayout();
+            this._dfSettingsPanel.SuspendLayout();
+            this._dfCardsPanel.SuspendLayout();
+            this._dfActionsPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._dfDurationInput)).BeginInit();
             this._mkPage.SuspendLayout();
             this._mkColHeader.SuspendLayout();
             this._mkSettingsPanel.SuspendLayout();
@@ -509,6 +580,10 @@ namespace Kingdoms.Bot.UI
             this._scSettingsPanel.SuspendLayout();
             this._scVillagePanel.SuspendLayout();
             this._scContentPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._scIntervalInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._scMaxTimeInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._scAutoHireInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._scDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._ppDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).BeginInit();
             this._miscPage.SuspendLayout();
@@ -729,15 +804,27 @@ namespace Kingdoms.Bot.UI
             this._villageSyncPage.Text = "Village Sync";
             // 
             // _vsVillageListPanel
-            // 
+            //
             this._vsVillageListPanel.AutoScroll = true;
             this._vsVillageListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._vsVillageListPanel.Controls.Add(this._vsVillageListPanelPlaceholder);
             this._vsVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._vsVillageListPanel.Location = new System.Drawing.Point(0, 149);
             this._vsVillageListPanel.Name = "_vsVillageListPanel";
             this._vsVillageListPanel.Size = new System.Drawing.Size(1142, 348);
             this._vsVillageListPanel.TabIndex = 4;
-            // 
+            //
+            // _vsVillageListPanelPlaceholder
+            //
+            this._vsVillageListPanelPlaceholder.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._vsVillageListPanelPlaceholder.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this._vsVillageListPanelPlaceholder.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(75)))), ((int)(((byte)(95)))));
+            this._vsVillageListPanelPlaceholder.Name = "_vsVillageListPanelPlaceholder";
+            this._vsVillageListPanelPlaceholder.TabIndex = 99;
+            this._vsVillageListPanelPlaceholder.Text = "〈 Village rows — one per owned village, populated when world loads 〉";
+            this._vsVillageListPanelPlaceholder.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this._vsVillageListPanelPlaceholder.Visible = false;
+            //
             // _vsColHeader
             // 
             this._vsColHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(32)))), ((int)(((byte)(40)))));
@@ -1055,15 +1142,27 @@ namespace Kingdoms.Bot.UI
             this._radarPage.Text = "Radar";
             // 
             // _rdActionListPanel
-            // 
+            //
             this._rdActionListPanel.AutoScroll = true;
             this._rdActionListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._rdActionListPanel.Controls.Add(this._rdActionListPanelPlaceholder);
             this._rdActionListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._rdActionListPanel.Location = new System.Drawing.Point(0, 200);
             this._rdActionListPanel.Name = "_rdActionListPanel";
             this._rdActionListPanel.Size = new System.Drawing.Size(1142, 297);
             this._rdActionListPanel.TabIndex = 3;
-            // 
+            //
+            // _rdActionListPanelPlaceholder
+            //
+            this._rdActionListPanelPlaceholder.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._rdActionListPanelPlaceholder.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this._rdActionListPanelPlaceholder.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(75)))), ((int)(((byte)(95)))));
+            this._rdActionListPanelPlaceholder.Name = "_rdActionListPanelPlaceholder";
+            this._rdActionListPanelPlaceholder.TabIndex = 99;
+            this._rdActionListPanelPlaceholder.Text = "〈 Radar action rows — one per alert type (Attack, Raze, Interdict…) 〉";
+            this._rdActionListPanelPlaceholder.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this._rdActionListPanelPlaceholder.Visible = false;
+            //
             // _rdColHeader
             // 
             this._rdColHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(32)))), ((int)(((byte)(40)))));
@@ -1520,15 +1619,27 @@ namespace Kingdoms.Bot.UI
             this._rcVillagesTab.Text = "Villages";
             // 
             // _rcVillageListPanel
-            // 
+            //
             this._rcVillageListPanel.AutoScroll = true;
             this._rcVillageListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._rcVillageListPanel.Controls.Add(this._rcVillageListPanelPlaceholder);
             this._rcVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._rcVillageListPanel.Location = new System.Drawing.Point(0, 24);
             this._rcVillageListPanel.Name = "_rcVillageListPanel";
             this._rcVillageListPanel.Size = new System.Drawing.Size(1134, 346);
             this._rcVillageListPanel.TabIndex = 1;
-            // 
+            //
+            // _rcVillageListPanelPlaceholder
+            //
+            this._rcVillageListPanelPlaceholder.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._rcVillageListPanelPlaceholder.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this._rcVillageListPanelPlaceholder.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(75)))), ((int)(((byte)(95)))));
+            this._rcVillageListPanelPlaceholder.Name = "_rcVillageListPanelPlaceholder";
+            this._rcVillageListPanelPlaceholder.TabIndex = 99;
+            this._rcVillageListPanelPlaceholder.Text = "〈 Village recruit panels — one per village, populated when world loads 〉";
+            this._rcVillageListPanelPlaceholder.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this._rcVillageListPanelPlaceholder.Visible = false;
+            //
             // _rcColHeaderVillages
             // 
             this._rcColHeaderVillages.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(32)))), ((int)(((byte)(34)))), ((int)(((byte)(44)))));
@@ -1550,15 +1661,27 @@ namespace Kingdoms.Bot.UI
             this._rcCapitalsTab.Text = "Capitals";
             // 
             // _rcCapitalsListPanel
-            // 
+            //
             this._rcCapitalsListPanel.AutoScroll = true;
             this._rcCapitalsListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._rcCapitalsListPanel.Controls.Add(this._rcCapitalsListPanelPlaceholder);
             this._rcCapitalsListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._rcCapitalsListPanel.Location = new System.Drawing.Point(0, 24);
             this._rcCapitalsListPanel.Name = "_rcCapitalsListPanel";
             this._rcCapitalsListPanel.Size = new System.Drawing.Size(1134, 346);
             this._rcCapitalsListPanel.TabIndex = 1;
-            // 
+            //
+            // _rcCapitalsListPanelPlaceholder
+            //
+            this._rcCapitalsListPanelPlaceholder.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._rcCapitalsListPanelPlaceholder.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this._rcCapitalsListPanelPlaceholder.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(75)))), ((int)(((byte)(95)))));
+            this._rcCapitalsListPanelPlaceholder.Name = "_rcCapitalsListPanelPlaceholder";
+            this._rcCapitalsListPanelPlaceholder.TabIndex = 99;
+            this._rcCapitalsListPanelPlaceholder.Text = "〈 Capital recruit panels — one per capital, populated when world loads 〉";
+            this._rcCapitalsListPanelPlaceholder.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this._rcCapitalsListPanelPlaceholder.Visible = false;
+            //
             // _rcColHeaderCapitals
             // 
             this._rcColHeaderCapitals.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(32)))), ((int)(((byte)(34)))), ((int)(((byte)(44)))));
@@ -1940,15 +2063,27 @@ namespace Kingdoms.Bot.UI
             this._crPage.Text = "Castle Repair";
             // 
             // _crVillageListPanel
-            // 
+            //
             this._crVillageListPanel.AutoScroll = true;
             this._crVillageListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._crVillageListPanel.Controls.Add(this._crVillageListPanelPlaceholder);
             this._crVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._crVillageListPanel.Location = new System.Drawing.Point(0, 175);
             this._crVillageListPanel.Name = "_crVillageListPanel";
             this._crVillageListPanel.Size = new System.Drawing.Size(1142, 322);
             this._crVillageListPanel.TabIndex = 3;
-            // 
+            //
+            // _crVillageListPanelPlaceholder
+            //
+            this._crVillageListPanelPlaceholder.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._crVillageListPanelPlaceholder.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this._crVillageListPanelPlaceholder.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(75)))), ((int)(((byte)(95)))));
+            this._crVillageListPanelPlaceholder.Name = "_crVillageListPanelPlaceholder";
+            this._crVillageListPanelPlaceholder.TabIndex = 99;
+            this._crVillageListPanelPlaceholder.Text = "〈 Castle repair rows — one per village, populated when world loads 〉";
+            this._crVillageListPanelPlaceholder.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this._crVillageListPanelPlaceholder.Visible = false;
+            //
             // _crColHeader
             // 
             this._crColHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(32)))), ((int)(((byte)(40)))));
@@ -2755,15 +2890,27 @@ namespace Kingdoms.Bot.UI
             this._builderPage.Text = "Village Builder";
             // 
             // _bldBuildingListPanel
-            // 
+            //
             this._bldBuildingListPanel.AutoScroll = true;
             this._bldBuildingListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._bldBuildingListPanel.Controls.Add(this._bldBuildingListPanelPlaceholder);
             this._bldBuildingListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._bldBuildingListPanel.Location = new System.Drawing.Point(0, 158);
             this._bldBuildingListPanel.Name = "_bldBuildingListPanel";
             this._bldBuildingListPanel.Size = new System.Drawing.Size(1142, 339);
             this._bldBuildingListPanel.TabIndex = 3;
-            // 
+            //
+            // _bldBuildingListPanelPlaceholder
+            //
+            this._bldBuildingListPanelPlaceholder.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._bldBuildingListPanelPlaceholder.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this._bldBuildingListPanelPlaceholder.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(75)))), ((int)(((byte)(95)))));
+            this._bldBuildingListPanelPlaceholder.Name = "_bldBuildingListPanelPlaceholder";
+            this._bldBuildingListPanelPlaceholder.TabIndex = 99;
+            this._bldBuildingListPanelPlaceholder.Text = "〈 Building queue rows — populated from selected village layout 〉";
+            this._bldBuildingListPanelPlaceholder.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this._bldBuildingListPanelPlaceholder.Visible = false;
+            //
             // _bldColHeader
             // 
             this._bldColHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(36)))), ((int)(((byte)(38)))), ((int)(((byte)(50)))));
@@ -4199,15 +4346,27 @@ namespace Kingdoms.Bot.UI
             this._popularityPage.Text = "Popularity";
             // 
             // _ppVillageListPanel
-            // 
+            //
             this._ppVillageListPanel.AutoScroll = true;
             this._ppVillageListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._ppVillageListPanel.Controls.Add(this._ppVillageListPanelPlaceholder);
             this._ppVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._ppVillageListPanel.Location = new System.Drawing.Point(0, 22);
             this._ppVillageListPanel.Name = "_ppVillageListPanel";
             this._ppVillageListPanel.Size = new System.Drawing.Size(1142, 384);
             this._ppVillageListPanel.TabIndex = 2;
-            // 
+            //
+            // _ppVillageListPanelPlaceholder
+            //
+            this._ppVillageListPanelPlaceholder.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._ppVillageListPanelPlaceholder.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this._ppVillageListPanelPlaceholder.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(75)))), ((int)(((byte)(95)))));
+            this._ppVillageListPanelPlaceholder.Name = "_ppVillageListPanelPlaceholder";
+            this._ppVillageListPanelPlaceholder.TabIndex = 99;
+            this._ppVillageListPanelPlaceholder.Text = "〈 Village popularity rows — one per village, populated when world loads 〉";
+            this._ppVillageListPanelPlaceholder.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this._ppVillageListPanelPlaceholder.Visible = false;
+            //
             // _ppColHeader
             // 
             this._ppColHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
@@ -4390,11 +4549,339 @@ namespace Kingdoms.Bot.UI
             // _defenderPage
             //
             this._defenderPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._defenderPage.Controls.Add(this._dfActionsPanel);
+            this._defenderPage.Controls.Add(this._dfSep2);
+            this._defenderPage.Controls.Add(this._dfCardsPanel);
+            this._defenderPage.Controls.Add(this._dfSep1);
+            this._defenderPage.Controls.Add(this._dfSettingsPanel);
             this._defenderPage.Location = new System.Drawing.Point(4, 24);
             this._defenderPage.Name = "_defenderPage";
             this._defenderPage.Size = new System.Drawing.Size(1142, 497);
             this._defenderPage.TabIndex = 13;
             this._defenderPage.Text = "Defender";
+            //
+            // _dfSettingsPanel
+            //
+            this._dfSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
+            this._dfSettingsPanel.Controls.Add(this._dfEnabledCheck);
+            this._dfSettingsPanel.Controls.Add(this._dfStatusLabel);
+            this._dfSettingsPanel.Controls.Add(this._dfDurationLabel);
+            this._dfSettingsPanel.Controls.Add(this._dfDurationInput);
+            this._dfSettingsPanel.Controls.Add(this._dfVillageLabel);
+            this._dfSettingsPanel.Controls.Add(this._dfVillageCombo);
+            this._dfSettingsPanel.Controls.Add(this._dfVillageRefreshBtn);
+            this._dfSettingsPanel.Controls.Add(this._dfStartBtn);
+            this._dfSettingsPanel.Controls.Add(this._dfStopBtn);
+            this._dfSettingsPanel.Controls.Add(this._dfCountdownPrefixLabel);
+            this._dfSettingsPanel.Controls.Add(this._dfCountdownLabel);
+            this._dfSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._dfSettingsPanel.Height = 108;
+            this._dfSettingsPanel.Name = "_dfSettingsPanel";
+            this._dfSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 10, 16, 8);
+            this._dfSettingsPanel.Size = new System.Drawing.Size(1142, 108);
+            this._dfSettingsPanel.TabIndex = 0;
+            //
+            // _dfEnabledCheck
+            //
+            this._dfEnabledCheck.AutoSize = true;
+            this._dfEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._dfEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._dfEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._dfEnabledCheck.Location = new System.Drawing.Point(16, 10);
+            this._dfEnabledCheck.Name = "_dfEnabledCheck";
+            this._dfEnabledCheck.Size = new System.Drawing.Size(130, 19);
+            this._dfEnabledCheck.TabIndex = 0;
+            this._dfEnabledCheck.Text = "Module Enabled";
+            //
+            // _dfStatusLabel
+            //
+            this._dfStatusLabel.AutoSize = true;
+            this._dfStatusLabel.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._dfStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
+            this._dfStatusLabel.Location = new System.Drawing.Point(180, 13);
+            this._dfStatusLabel.Name = "_dfStatusLabel";
+            this._dfStatusLabel.Size = new System.Drawing.Size(60, 13);
+            this._dfStatusLabel.TabIndex = 1;
+            this._dfStatusLabel.Text = "DISABLED";
+            //
+            // _dfDurationLabel
+            //
+            this._dfDurationLabel.AutoSize = true;
+            this._dfDurationLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._dfDurationLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._dfDurationLabel.Location = new System.Drawing.Point(16, 38);
+            this._dfDurationLabel.Name = "_dfDurationLabel";
+            this._dfDurationLabel.Size = new System.Drawing.Size(75, 15);
+            this._dfDurationLabel.TabIndex = 2;
+            this._dfDurationLabel.Text = "Duration (s):";
+            //
+            // _dfDurationInput
+            //
+            this._dfDurationInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._dfDurationInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._dfDurationInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._dfDurationInput.Location = new System.Drawing.Point(110, 36);
+            this._dfDurationInput.Maximum = new decimal(new int[] { 300, 0, 0, 0 });
+            this._dfDurationInput.Minimum = new decimal(new int[] { 5, 0, 0, 0 });
+            this._dfDurationInput.Name = "_dfDurationInput";
+            this._dfDurationInput.Size = new System.Drawing.Size(60, 22);
+            this._dfDurationInput.TabIndex = 3;
+            this._dfDurationInput.Value = new decimal(new int[] { 60, 0, 0, 0 });
+            //
+            // _dfVillageLabel
+            //
+            this._dfVillageLabel.AutoSize = true;
+            this._dfVillageLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._dfVillageLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._dfVillageLabel.Location = new System.Drawing.Point(190, 38);
+            this._dfVillageLabel.Name = "_dfVillageLabel";
+            this._dfVillageLabel.Size = new System.Drawing.Size(95, 15);
+            this._dfVillageLabel.TabIndex = 4;
+            this._dfVillageLabel.Text = "Target village:";
+            //
+            // _dfVillageCombo
+            //
+            this._dfVillageCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._dfVillageCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._dfVillageCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._dfVillageCombo.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._dfVillageCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._dfVillageCombo.Location = new System.Drawing.Point(300, 35);
+            this._dfVillageCombo.Name = "_dfVillageCombo";
+            this._dfVillageCombo.Size = new System.Drawing.Size(300, 22);
+            this._dfVillageCombo.TabIndex = 5;
+            //
+            // _dfVillageRefreshBtn
+            //
+            this._dfVillageRefreshBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(160)))), ((int)(((byte)(255)))));
+            this._dfVillageRefreshBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._dfVillageRefreshBtn.FlatAppearance.BorderSize = 0;
+            this._dfVillageRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._dfVillageRefreshBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._dfVillageRefreshBtn.ForeColor = System.Drawing.Color.White;
+            this._dfVillageRefreshBtn.Location = new System.Drawing.Point(608, 34);
+            this._dfVillageRefreshBtn.Name = "_dfVillageRefreshBtn";
+            this._dfVillageRefreshBtn.Size = new System.Drawing.Size(70, 22);
+            this._dfVillageRefreshBtn.TabIndex = 6;
+            this._dfVillageRefreshBtn.Text = "Refresh";
+            //
+            // _dfStartBtn
+            //
+            this._dfStartBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(200)))), ((int)(((byte)(120)))));
+            this._dfStartBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._dfStartBtn.FlatAppearance.BorderSize = 0;
+            this._dfStartBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._dfStartBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._dfStartBtn.ForeColor = System.Drawing.Color.White;
+            this._dfStartBtn.Location = new System.Drawing.Point(16, 70);
+            this._dfStartBtn.Name = "_dfStartBtn";
+            this._dfStartBtn.Size = new System.Drawing.Size(100, 26);
+            this._dfStartBtn.TabIndex = 7;
+            this._dfStartBtn.Text = "Start Spam";
+            //
+            // _dfStopBtn
+            //
+            this._dfStopBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
+            this._dfStopBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._dfStopBtn.FlatAppearance.BorderSize = 0;
+            this._dfStopBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._dfStopBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._dfStopBtn.ForeColor = System.Drawing.Color.White;
+            this._dfStopBtn.Location = new System.Drawing.Point(126, 70);
+            this._dfStopBtn.Name = "_dfStopBtn";
+            this._dfStopBtn.Size = new System.Drawing.Size(70, 26);
+            this._dfStopBtn.TabIndex = 8;
+            this._dfStopBtn.Text = "Stop";
+            //
+            // _dfCountdownPrefixLabel
+            //
+            this._dfCountdownPrefixLabel.AutoSize = true;
+            this._dfCountdownPrefixLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._dfCountdownPrefixLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._dfCountdownPrefixLabel.Location = new System.Drawing.Point(210, 75);
+            this._dfCountdownPrefixLabel.Name = "_dfCountdownPrefixLabel";
+            this._dfCountdownPrefixLabel.Size = new System.Drawing.Size(68, 15);
+            this._dfCountdownPrefixLabel.TabIndex = 9;
+            this._dfCountdownPrefixLabel.Text = "Countdown:";
+            //
+            // _dfCountdownLabel
+            //
+            this._dfCountdownLabel.AutoSize = true;
+            this._dfCountdownLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._dfCountdownLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(160)))), ((int)(((byte)(255)))));
+            this._dfCountdownLabel.Location = new System.Drawing.Point(290, 75);
+            this._dfCountdownLabel.Name = "_dfCountdownLabel";
+            this._dfCountdownLabel.Size = new System.Drawing.Size(20, 15);
+            this._dfCountdownLabel.TabIndex = 10;
+            this._dfCountdownLabel.Text = "--";
+            //
+            // _dfSep1
+            //
+            this._dfSep1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._dfSep1.Dock = System.Windows.Forms.DockStyle.Top;
+            this._dfSep1.Height = 1;
+            this._dfSep1.Name = "_dfSep1";
+            this._dfSep1.Size = new System.Drawing.Size(1142, 1);
+            this._dfSep1.TabIndex = 1;
+            //
+            // _dfCardsPanel
+            //
+            this._dfCardsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
+            this._dfCardsPanel.Controls.Add(this._dfCardsTitle);
+            this._dfCardsPanel.Controls.Add(this._dfKnightsLabel);
+            this._dfCardsPanel.Controls.Add(this._dfKnightsCombo);
+            this._dfCardsPanel.Controls.Add(this._dfLastStandLabel);
+            this._dfCardsPanel.Controls.Add(this._dfLastStandCombo);
+            this._dfCardsPanel.Controls.Add(this._dfDesperateCheck);
+            this._dfCardsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._dfCardsPanel.Height = 96;
+            this._dfCardsPanel.Name = "_dfCardsPanel";
+            this._dfCardsPanel.Padding = new System.Windows.Forms.Padding(16, 8, 16, 8);
+            this._dfCardsPanel.Size = new System.Drawing.Size(1142, 96);
+            this._dfCardsPanel.TabIndex = 2;
+            //
+            // _dfCardsTitle
+            //
+            this._dfCardsTitle.AutoSize = true;
+            this._dfCardsTitle.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._dfCardsTitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._dfCardsTitle.Location = new System.Drawing.Point(16, 8);
+            this._dfCardsTitle.Name = "_dfCardsTitle";
+            this._dfCardsTitle.Size = new System.Drawing.Size(140, 15);
+            this._dfCardsTitle.TabIndex = 0;
+            this._dfCardsTitle.Text = "Cards (Spam Cards)";
+            //
+            // _dfKnightsLabel
+            //
+            this._dfKnightsLabel.AutoSize = true;
+            this._dfKnightsLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._dfKnightsLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._dfKnightsLabel.Location = new System.Drawing.Point(16, 34);
+            this._dfKnightsLabel.Name = "_dfKnightsLabel";
+            this._dfKnightsLabel.Size = new System.Drawing.Size(85, 15);
+            this._dfKnightsLabel.TabIndex = 1;
+            this._dfKnightsLabel.Text = "Knights card:";
+            //
+            // _dfKnightsCombo
+            //
+            this._dfKnightsCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._dfKnightsCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._dfKnightsCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._dfKnightsCombo.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._dfKnightsCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._dfKnightsCombo.Location = new System.Drawing.Point(120, 31);
+            this._dfKnightsCombo.Name = "_dfKnightsCombo";
+            this._dfKnightsCombo.Size = new System.Drawing.Size(200, 22);
+            this._dfKnightsCombo.TabIndex = 2;
+            //
+            // _dfLastStandLabel
+            //
+            this._dfLastStandLabel.AutoSize = true;
+            this._dfLastStandLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._dfLastStandLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._dfLastStandLabel.Location = new System.Drawing.Point(340, 34);
+            this._dfLastStandLabel.Name = "_dfLastStandLabel";
+            this._dfLastStandLabel.Size = new System.Drawing.Size(100, 15);
+            this._dfLastStandLabel.TabIndex = 3;
+            this._dfLastStandLabel.Text = "Last Stand card:";
+            //
+            // _dfLastStandCombo
+            //
+            this._dfLastStandCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._dfLastStandCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._dfLastStandCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._dfLastStandCombo.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._dfLastStandCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._dfLastStandCombo.Location = new System.Drawing.Point(450, 31);
+            this._dfLastStandCombo.Name = "_dfLastStandCombo";
+            this._dfLastStandCombo.Size = new System.Drawing.Size(200, 22);
+            this._dfLastStandCombo.TabIndex = 4;
+            //
+            // _dfDesperateCheck
+            //
+            this._dfDesperateCheck.AutoSize = true;
+            this._dfDesperateCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._dfDesperateCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._dfDesperateCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._dfDesperateCheck.Location = new System.Drawing.Point(16, 64);
+            this._dfDesperateCheck.Name = "_dfDesperateCheck";
+            this._dfDesperateCheck.Size = new System.Drawing.Size(260, 19);
+            this._dfDesperateCheck.TabIndex = 5;
+            this._dfDesperateCheck.Text = "Spam Desperate Defence (card 263)";
+            //
+            // _dfSep2
+            //
+            this._dfSep2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(58)))), ((int)(((byte)(72)))));
+            this._dfSep2.Dock = System.Windows.Forms.DockStyle.Top;
+            this._dfSep2.Height = 1;
+            this._dfSep2.Name = "_dfSep2";
+            this._dfSep2.Size = new System.Drawing.Size(1142, 1);
+            this._dfSep2.TabIndex = 3;
+            //
+            // _dfActionsPanel
+            //
+            this._dfActionsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
+            this._dfActionsPanel.Controls.Add(this._dfActionsTitle);
+            this._dfActionsPanel.Controls.Add(this._dfAutoRepairCheck);
+            this._dfActionsPanel.Controls.Add(this._dfRestoreTroopsCheck);
+            this._dfActionsPanel.Controls.Add(this._dfRestoreInfraCheck);
+            this._dfActionsPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._dfActionsPanel.Height = 72;
+            this._dfActionsPanel.Name = "_dfActionsPanel";
+            this._dfActionsPanel.Padding = new System.Windows.Forms.Padding(16, 8, 16, 8);
+            this._dfActionsPanel.Size = new System.Drawing.Size(1142, 72);
+            this._dfActionsPanel.TabIndex = 4;
+            //
+            // _dfActionsTitle
+            //
+            this._dfActionsTitle.AutoSize = true;
+            this._dfActionsTitle.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._dfActionsTitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._dfActionsTitle.Location = new System.Drawing.Point(16, 8);
+            this._dfActionsTitle.Name = "_dfActionsTitle";
+            this._dfActionsTitle.Size = new System.Drawing.Size(290, 15);
+            this._dfActionsTitle.TabIndex = 0;
+            this._dfActionsTitle.Text = "Castle Actions (applied to target village)";
+            //
+            // _dfAutoRepairCheck
+            //
+            this._dfAutoRepairCheck.AutoSize = true;
+            this._dfAutoRepairCheck.Checked = true;
+            this._dfAutoRepairCheck.CheckState = System.Windows.Forms.CheckState.Checked;
+            this._dfAutoRepairCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._dfAutoRepairCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._dfAutoRepairCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._dfAutoRepairCheck.Location = new System.Drawing.Point(16, 38);
+            this._dfAutoRepairCheck.Name = "_dfAutoRepairCheck";
+            this._dfAutoRepairCheck.Size = new System.Drawing.Size(100, 19);
+            this._dfAutoRepairCheck.TabIndex = 1;
+            this._dfAutoRepairCheck.Text = "Auto Repair";
+            //
+            // _dfRestoreTroopsCheck
+            //
+            this._dfRestoreTroopsCheck.AutoSize = true;
+            this._dfRestoreTroopsCheck.Checked = true;
+            this._dfRestoreTroopsCheck.CheckState = System.Windows.Forms.CheckState.Checked;
+            this._dfRestoreTroopsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._dfRestoreTroopsCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._dfRestoreTroopsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._dfRestoreTroopsCheck.Location = new System.Drawing.Point(140, 38);
+            this._dfRestoreTroopsCheck.Name = "_dfRestoreTroopsCheck";
+            this._dfRestoreTroopsCheck.Size = new System.Drawing.Size(210, 19);
+            this._dfRestoreTroopsCheck.TabIndex = 2;
+            this._dfRestoreTroopsCheck.Text = "Restore Troops (local layout)";
+            //
+            // _dfRestoreInfraCheck
+            //
+            this._dfRestoreInfraCheck.AutoSize = true;
+            this._dfRestoreInfraCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._dfRestoreInfraCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._dfRestoreInfraCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._dfRestoreInfraCheck.Location = new System.Drawing.Point(360, 38);
+            this._dfRestoreInfraCheck.Name = "_dfRestoreInfraCheck";
+            this._dfRestoreInfraCheck.Size = new System.Drawing.Size(270, 19);
+            this._dfRestoreInfraCheck.TabIndex = 3;
+            this._dfRestoreInfraCheck.Text = "Restore Infrastructure (local layout)";
             //
             // _mkPage
             //
@@ -4580,11 +5067,23 @@ namespace Kingdoms.Bot.UI
             //
             this._mkRouteListPanel.AutoScroll = true;
             this._mkRouteListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._mkRouteListPanel.Controls.Add(this._mkRouteListPanelPlaceholder);
             this._mkRouteListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._mkRouteListPanel.Location = new System.Drawing.Point(0, 68);
             this._mkRouteListPanel.Name = "_mkRouteListPanel";
             this._mkRouteListPanel.Size = new System.Drawing.Size(1142, 395);
             this._mkRouteListPanel.TabIndex = 1;
+            //
+            // _mkRouteListPanelPlaceholder
+            //
+            this._mkRouteListPanelPlaceholder.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._mkRouteListPanelPlaceholder.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this._mkRouteListPanelPlaceholder.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(75)))), ((int)(((byte)(95)))));
+            this._mkRouteListPanelPlaceholder.Name = "_mkRouteListPanelPlaceholder";
+            this._mkRouteListPanelPlaceholder.TabIndex = 99;
+            this._mkRouteListPanelPlaceholder.Text = "〈 Monk route rows — one per route saved in settings 〉";
+            this._mkRouteListPanelPlaceholder.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this._mkRouteListPanelPlaceholder.Visible = false;
             //
             // _mkRouteButtonPanel
             //
@@ -4638,11 +5137,23 @@ namespace Kingdoms.Bot.UI
             //
             this._bqVillageListPanel.AutoScroll = true;
             this._bqVillageListPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._bqVillageListPanel.Controls.Add(this._bqVillageListPanelPlaceholder);
             this._bqVillageListPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._bqVillageListPanel.Location = new System.Drawing.Point(0, 22);
             this._bqVillageListPanel.Name = "_bqVillageListPanel";
             this._bqVillageListPanel.Size = new System.Drawing.Size(1142, 384);
             this._bqVillageListPanel.TabIndex = 2;
+            //
+            // _bqVillageListPanelPlaceholder
+            //
+            this._bqVillageListPanelPlaceholder.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._bqVillageListPanelPlaceholder.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this._bqVillageListPanelPlaceholder.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(75)))), ((int)(((byte)(95)))));
+            this._bqVillageListPanelPlaceholder.Name = "_bqVillageListPanelPlaceholder";
+            this._bqVillageListPanelPlaceholder.TabIndex = 99;
+            this._bqVillageListPanelPlaceholder.Text = "〈 Village banquet rows — one per village, populated when world loads 〉";
+            this._bqVillageListPanelPlaceholder.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this._bqVillageListPanelPlaceholder.Visible = false;
             //
             // _bqColHeader
             //
@@ -4803,12 +5314,206 @@ namespace Kingdoms.Bot.UI
             // _scSettingsPanel  (docked Top — last added so docks to the very top first)
             //
             this._scSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._scSettingsPanel.Controls.Add(this._scEnabledCheck);
+            this._scSettingsPanel.Controls.Add(this._scStatusLabel);
+            this._scSettingsPanel.Controls.Add(this._scIntervalLabel);
+            this._scSettingsPanel.Controls.Add(this._scIntervalInput);
+            this._scSettingsPanel.Controls.Add(this._scMaxTimeLabel);
+            this._scSettingsPanel.Controls.Add(this._scMaxTimeInput);
+            this._scSettingsPanel.Controls.Add(this._scAutoHireLabel);
+            this._scSettingsPanel.Controls.Add(this._scAutoHireInput);
+            this._scSettingsPanel.Controls.Add(this._scDelayLabel);
+            this._scSettingsPanel.Controls.Add(this._scDelayInput);
+            this._scSettingsPanel.Controls.Add(this._scDisableOnCardExpiryCheck);
+            this._scSettingsPanel.Controls.Add(this._scPriorityLabel);
+            this._scSettingsPanel.Controls.Add(this._scPriorityResourceRadio);
+            this._scSettingsPanel.Controls.Add(this._scPriorityRangeRadio);
+            this._scSettingsPanel.Controls.Add(this._scSendOneScoutCheck);
+            this._scSettingsPanel.Controls.Add(this._scSendOneOnNewCheck);
             this._scSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._scSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._scSettingsPanel.Name = "_scSettingsPanel";
             this._scSettingsPanel.Padding = new System.Windows.Forms.Padding(8, 6, 8, 6);
             this._scSettingsPanel.Size = new System.Drawing.Size(1142, 90);
             this._scSettingsPanel.TabIndex = 0;
+            //
+            // _scEnabledCheck
+            //
+            this._scEnabledCheck.AutoSize = true;
+            this._scEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._scEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scEnabledCheck.Location = new System.Drawing.Point(8, 8);
+            this._scEnabledCheck.Name = "_scEnabledCheck";
+            this._scEnabledCheck.Size = new System.Drawing.Size(130, 23);
+            this._scEnabledCheck.TabIndex = 0;
+            this._scEnabledCheck.Text = "Enable Scout";
+            //
+            // _scStatusLabel
+            //
+            this._scStatusLabel.AutoSize = true;
+            this._scStatusLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._scStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
+            this._scStatusLabel.Location = new System.Drawing.Point(160, 10);
+            this._scStatusLabel.Name = "_scStatusLabel";
+            this._scStatusLabel.Size = new System.Drawing.Size(60, 15);
+            this._scStatusLabel.TabIndex = 1;
+            this._scStatusLabel.Text = "DISABLED";
+            //
+            // _scIntervalLabel
+            //
+            this._scIntervalLabel.AutoSize = true;
+            this._scIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._scIntervalLabel.Location = new System.Drawing.Point(290, 10);
+            this._scIntervalLabel.Name = "_scIntervalLabel";
+            this._scIntervalLabel.Size = new System.Drawing.Size(120, 13);
+            this._scIntervalLabel.TabIndex = 2;
+            this._scIntervalLabel.Text = "Cycle interval (sec):";
+            //
+            // _scIntervalInput
+            //
+            this._scIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._scIntervalInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scIntervalInput.Location = new System.Drawing.Point(450, 7);
+            this._scIntervalInput.Maximum = new decimal(new int[] { 3600, 0, 0, 0 });
+            this._scIntervalInput.Minimum = new decimal(new int[] { 10, 0, 0, 0 });
+            this._scIntervalInput.Name = "_scIntervalInput";
+            this._scIntervalInput.Size = new System.Drawing.Size(70, 23);
+            this._scIntervalInput.TabIndex = 3;
+            this._scIntervalInput.Value = new decimal(new int[] { 60, 0, 0, 0 });
+            //
+            // _scMaxTimeLabel
+            //
+            this._scMaxTimeLabel.AutoSize = true;
+            this._scMaxTimeLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._scMaxTimeLabel.Location = new System.Drawing.Point(8, 39);
+            this._scMaxTimeLabel.Name = "_scMaxTimeLabel";
+            this._scMaxTimeLabel.Size = new System.Drawing.Size(130, 13);
+            this._scMaxTimeLabel.TabIndex = 4;
+            this._scMaxTimeLabel.Text = "Max scout time (sec):";
+            //
+            // _scMaxTimeInput
+            //
+            this._scMaxTimeInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._scMaxTimeInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scMaxTimeInput.Location = new System.Drawing.Point(160, 36);
+            this._scMaxTimeInput.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
+            this._scMaxTimeInput.Minimum = new decimal(new int[] { 10, 0, 0, 0 });
+            this._scMaxTimeInput.Name = "_scMaxTimeInput";
+            this._scMaxTimeInput.Size = new System.Drawing.Size(70, 23);
+            this._scMaxTimeInput.TabIndex = 5;
+            this._scMaxTimeInput.Value = new decimal(new int[] { 1200, 0, 0, 0 });
+            //
+            // _scAutoHireLabel
+            //
+            this._scAutoHireLabel.AutoSize = true;
+            this._scAutoHireLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._scAutoHireLabel.Location = new System.Drawing.Point(244, 39);
+            this._scAutoHireLabel.Name = "_scAutoHireLabel";
+            this._scAutoHireLabel.Size = new System.Drawing.Size(155, 13);
+            this._scAutoHireLabel.TabIndex = 6;
+            this._scAutoHireLabel.Text = "Auto hire scouts (0=off):";
+            //
+            // _scAutoHireInput
+            //
+            this._scAutoHireInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._scAutoHireInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scAutoHireInput.Location = new System.Drawing.Point(420, 36);
+            this._scAutoHireInput.Maximum = new decimal(new int[] { 8, 0, 0, 0 });
+            this._scAutoHireInput.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
+            this._scAutoHireInput.Name = "_scAutoHireInput";
+            this._scAutoHireInput.Size = new System.Drawing.Size(55, 23);
+            this._scAutoHireInput.TabIndex = 7;
+            this._scAutoHireInput.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            //
+            // _scDelayLabel
+            //
+            this._scDelayLabel.AutoSize = true;
+            this._scDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._scDelayLabel.Location = new System.Drawing.Point(490, 39);
+            this._scDelayLabel.Name = "_scDelayLabel";
+            this._scDelayLabel.Size = new System.Drawing.Size(170, 13);
+            this._scDelayLabel.TabIndex = 8;
+            this._scDelayLabel.Text = "Delay between sends (ms):";
+            //
+            // _scDelayInput
+            //
+            this._scDelayInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
+            this._scDelayInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scDelayInput.Location = new System.Drawing.Point(695, 36);
+            this._scDelayInput.Maximum = new decimal(new int[] { 60000, 0, 0, 0 });
+            this._scDelayInput.Minimum = new decimal(new int[] { 500, 0, 0, 0 });
+            this._scDelayInput.Name = "_scDelayInput";
+            this._scDelayInput.Size = new System.Drawing.Size(75, 23);
+            this._scDelayInput.TabIndex = 9;
+            this._scDelayInput.Value = new decimal(new int[] { 3000, 0, 0, 0 });
+            //
+            // _scDisableOnCardExpiryCheck
+            //
+            this._scDisableOnCardExpiryCheck.AutoSize = true;
+            this._scDisableOnCardExpiryCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scDisableOnCardExpiryCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scDisableOnCardExpiryCheck.Location = new System.Drawing.Point(790, 36);
+            this._scDisableOnCardExpiryCheck.Name = "_scDisableOnCardExpiryCheck";
+            this._scDisableOnCardExpiryCheck.Size = new System.Drawing.Size(210, 19);
+            this._scDisableOnCardExpiryCheck.TabIndex = 10;
+            this._scDisableOnCardExpiryCheck.Text = "Disable on scout card expiry";
+            //
+            // _scPriorityLabel
+            //
+            this._scPriorityLabel.AutoSize = true;
+            this._scPriorityLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._scPriorityLabel.Location = new System.Drawing.Point(8, 64);
+            this._scPriorityLabel.Name = "_scPriorityLabel";
+            this._scPriorityLabel.Size = new System.Drawing.Size(75, 13);
+            this._scPriorityLabel.TabIndex = 11;
+            this._scPriorityLabel.Text = "Scout order:";
+            //
+            // _scPriorityResourceRadio
+            //
+            this._scPriorityResourceRadio.AutoSize = true;
+            this._scPriorityResourceRadio.Checked = true;
+            this._scPriorityResourceRadio.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scPriorityResourceRadio.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scPriorityResourceRadio.Location = new System.Drawing.Point(90, 62);
+            this._scPriorityResourceRadio.Name = "_scPriorityResourceRadio";
+            this._scPriorityResourceRadio.Size = new System.Drawing.Size(230, 19);
+            this._scPriorityResourceRadio.TabIndex = 12;
+            this._scPriorityResourceRadio.TabStop = true;
+            this._scPriorityResourceRadio.Text = "Resource Priority (type order in list)";
+            //
+            // _scPriorityRangeRadio
+            //
+            this._scPriorityRangeRadio.AutoSize = true;
+            this._scPriorityRangeRadio.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scPriorityRangeRadio.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scPriorityRangeRadio.Location = new System.Drawing.Point(330, 62);
+            this._scPriorityRangeRadio.Name = "_scPriorityRangeRadio";
+            this._scPriorityRangeRadio.Size = new System.Drawing.Size(200, 19);
+            this._scPriorityRangeRadio.TabIndex = 13;
+            this._scPriorityRangeRadio.Text = "Range Priority (nearest first)";
+            //
+            // _scSendOneScoutCheck
+            //
+            this._scSendOneScoutCheck.AutoSize = true;
+            this._scSendOneScoutCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scSendOneScoutCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scSendOneScoutCheck.Location = new System.Drawing.Point(570, 62);
+            this._scSendOneScoutCheck.Name = "_scSendOneScoutCheck";
+            this._scSendOneScoutCheck.Size = new System.Drawing.Size(280, 19);
+            this._scSendOneScoutCheck.TabIndex = 14;
+            this._scSendOneScoutCheck.Text = "Send 1 scout per stash (ignore stash size)";
+            //
+            // _scSendOneOnNewCheck
+            //
+            this._scSendOneOnNewCheck.AutoSize = true;
+            this._scSendOneOnNewCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scSendOneOnNewCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scSendOneOnNewCheck.Location = new System.Drawing.Point(850, 62);
+            this._scSendOneOnNewCheck.Name = "_scSendOneOnNewCheck";
+            this._scSendOneOnNewCheck.Size = new System.Drawing.Size(300, 19);
+            this._scSendOneOnNewCheck.TabIndex = 15;
+            this._scSendOneOnNewCheck.Text = "Send 1 scout on New Stash (to discover type)";
             //
             // _scSeparator  (docked Top — docks just below _scSettingsPanel)
             //
@@ -4822,11 +5527,37 @@ namespace Kingdoms.Bot.UI
             // _scVillagePanel  (docked Left, fills height below settings+separator)
             //
             this._scVillagePanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(28)))), ((int)(((byte)(28)))), ((int)(((byte)(38)))));
+            this._scVillagePanel.Controls.Add(this._scVillageListBox);
+            this._scVillagePanel.Controls.Add(this._scVillageHeaderLabel);
             this._scVillagePanel.Dock = System.Windows.Forms.DockStyle.Left;
             this._scVillagePanel.Location = new System.Drawing.Point(0, 91);
             this._scVillagePanel.Name = "_scVillagePanel";
             this._scVillagePanel.Size = new System.Drawing.Size(220, 406);
             this._scVillagePanel.TabIndex = 1;
+            //
+            // _scVillageListBox
+            //
+            this._scVillageListBox.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(32)))), ((int)(((byte)(32)))), ((int)(((byte)(44)))));
+            this._scVillageListBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this._scVillageListBox.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._scVillageListBox.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this._scVillageListBox.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scVillageListBox.Name = "_scVillageListBox";
+            this._scVillageListBox.Size = new System.Drawing.Size(220, 384);
+            this._scVillageListBox.TabIndex = 0;
+            //
+            // _scVillageHeaderLabel
+            //
+            this._scVillageHeaderLabel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(40)))));
+            this._scVillageHeaderLabel.Dock = System.Windows.Forms.DockStyle.Top;
+            this._scVillageHeaderLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._scVillageHeaderLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._scVillageHeaderLabel.Location = new System.Drawing.Point(0, 0);
+            this._scVillageHeaderLabel.Name = "_scVillageHeaderLabel";
+            this._scVillageHeaderLabel.Padding = new System.Windows.Forms.Padding(6, 4, 0, 0);
+            this._scVillageHeaderLabel.Size = new System.Drawing.Size(220, 22);
+            this._scVillageHeaderLabel.TabIndex = 1;
+            this._scVillageHeaderLabel.Text = "Villages";
             //
             // _scDivider
             //
@@ -4840,11 +5571,130 @@ namespace Kingdoms.Bot.UI
             // _scContentPanel  (Fill — takes everything remaining)
             //
             this._scContentPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._scContentPanel.Controls.Add(this._scVillageEnabledCheck);
+            this._scContentPanel.Controls.Add(this._scScoutListLabel);
+            this._scContentPanel.Controls.Add(this._scIgnoreListLabel);
+            this._scContentPanel.Controls.Add(this._scScoutList);
+            this._scContentPanel.Controls.Add(this._scIgnoreList);
+            this._scContentPanel.Controls.Add(this._scMoveUpBtn);
+            this._scContentPanel.Controls.Add(this._scMoveDownBtn);
+            this._scContentPanel.Controls.Add(this._scMoveToIgnoreBtn);
+            this._scContentPanel.Controls.Add(this._scMoveToScoutBtn);
+            this._scContentPanel.Controls.Add(this._scCopySettingsBtn);
             this._scContentPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._scContentPanel.Location = new System.Drawing.Point(222, 91);
             this._scContentPanel.Name = "_scContentPanel";
             this._scContentPanel.Size = new System.Drawing.Size(920, 406);
             this._scContentPanel.TabIndex = 3;
+            //
+            // _scVillageEnabledCheck
+            //
+            this._scVillageEnabledCheck.AutoSize = true;
+            this._scVillageEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scVillageEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._scVillageEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scVillageEnabledCheck.Location = new System.Drawing.Point(10, 8);
+            this._scVillageEnabledCheck.Name = "_scVillageEnabledCheck";
+            this._scVillageEnabledCheck.Size = new System.Drawing.Size(160, 23);
+            this._scVillageEnabledCheck.TabIndex = 0;
+            this._scVillageEnabledCheck.Text = "Scout this village";
+            //
+            // _scScoutListLabel
+            //
+            this._scScoutListLabel.AutoSize = true;
+            this._scScoutListLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._scScoutListLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._scScoutListLabel.Location = new System.Drawing.Point(10, 36);
+            this._scScoutListLabel.Name = "_scScoutListLabel";
+            this._scScoutListLabel.Size = new System.Drawing.Size(130, 15);
+            this._scScoutListLabel.TabIndex = 1;
+            this._scScoutListLabel.Text = "Resources to Scout";
+            //
+            // _scIgnoreListLabel
+            //
+            this._scIgnoreListLabel.AutoSize = true;
+            this._scIgnoreListLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._scIgnoreListLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._scIgnoreListLabel.Location = new System.Drawing.Point(420, 36);
+            this._scIgnoreListLabel.Name = "_scIgnoreListLabel";
+            this._scIgnoreListLabel.Size = new System.Drawing.Size(135, 15);
+            this._scIgnoreListLabel.TabIndex = 2;
+            this._scIgnoreListLabel.Text = "Resources to Ignore";
+            //
+            // _scScoutList
+            //
+            this._scScoutList.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(32)))), ((int)(((byte)(32)))), ((int)(((byte)(44)))));
+            this._scScoutList.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._scScoutList.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scScoutList.Location = new System.Drawing.Point(10, 56);
+            this._scScoutList.Name = "_scScoutList";
+            this._scScoutList.Size = new System.Drawing.Size(290, 310);
+            this._scScoutList.TabIndex = 3;
+            //
+            // _scIgnoreList
+            //
+            this._scIgnoreList.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(32)))), ((int)(((byte)(32)))), ((int)(((byte)(44)))));
+            this._scIgnoreList.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._scIgnoreList.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scIgnoreList.Location = new System.Drawing.Point(420, 56);
+            this._scIgnoreList.Name = "_scIgnoreList";
+            this._scIgnoreList.Size = new System.Drawing.Size(290, 310);
+            this._scIgnoreList.TabIndex = 4;
+            //
+            // _scMoveUpBtn
+            //
+            this._scMoveUpBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(50)))), ((int)(((byte)(70)))));
+            this._scMoveUpBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scMoveUpBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scMoveUpBtn.Location = new System.Drawing.Point(308, 56);
+            this._scMoveUpBtn.Name = "_scMoveUpBtn";
+            this._scMoveUpBtn.Size = new System.Drawing.Size(30, 26);
+            this._scMoveUpBtn.TabIndex = 5;
+            this._scMoveUpBtn.Text = "▲";
+            //
+            // _scMoveDownBtn
+            //
+            this._scMoveDownBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(50)))), ((int)(((byte)(70)))));
+            this._scMoveDownBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scMoveDownBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scMoveDownBtn.Location = new System.Drawing.Point(308, 86);
+            this._scMoveDownBtn.Name = "_scMoveDownBtn";
+            this._scMoveDownBtn.Size = new System.Drawing.Size(30, 26);
+            this._scMoveDownBtn.TabIndex = 6;
+            this._scMoveDownBtn.Text = "▼";
+            //
+            // _scMoveToIgnoreBtn
+            //
+            this._scMoveToIgnoreBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(50)))), ((int)(((byte)(70)))));
+            this._scMoveToIgnoreBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scMoveToIgnoreBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scMoveToIgnoreBtn.Location = new System.Drawing.Point(353, 180);
+            this._scMoveToIgnoreBtn.Name = "_scMoveToIgnoreBtn";
+            this._scMoveToIgnoreBtn.Size = new System.Drawing.Size(50, 26);
+            this._scMoveToIgnoreBtn.TabIndex = 7;
+            this._scMoveToIgnoreBtn.Text = ">>";
+            //
+            // _scMoveToScoutBtn
+            //
+            this._scMoveToScoutBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(50)))), ((int)(((byte)(70)))));
+            this._scMoveToScoutBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scMoveToScoutBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scMoveToScoutBtn.Location = new System.Drawing.Point(353, 214);
+            this._scMoveToScoutBtn.Name = "_scMoveToScoutBtn";
+            this._scMoveToScoutBtn.Size = new System.Drawing.Size(50, 26);
+            this._scMoveToScoutBtn.TabIndex = 8;
+            this._scMoveToScoutBtn.Text = "<<";
+            //
+            // _scCopySettingsBtn
+            //
+            this._scCopySettingsBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(70)))), ((int)(((byte)(50)))));
+            this._scCopySettingsBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scCopySettingsBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scCopySettingsBtn.Location = new System.Drawing.Point(10, 378);
+            this._scCopySettingsBtn.Name = "_scCopySettingsBtn";
+            this._scCopySettingsBtn.Size = new System.Drawing.Size(160, 26);
+            this._scCopySettingsBtn.TabIndex = 9;
+            this._scCopySettingsBtn.Text = "Copy to all villages";
             //
             // _miscPage
             //
@@ -5063,6 +5913,8 @@ namespace Kingdoms.Bot.UI
             // 
             // BotControlForm
             // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
             this.ClientSize = new System.Drawing.Size(1150, 900);
             this.Controls.Add(this._mainSplit);
@@ -5170,6 +6022,13 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._abmQueueVidInput)).EndInit();
             this._bqPage.ResumeLayout(false);
             this._defenderPage.ResumeLayout(false);
+            this._dfSettingsPanel.ResumeLayout(false);
+            this._dfSettingsPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._dfDurationInput)).EndInit();
+            this._dfCardsPanel.ResumeLayout(false);
+            this._dfCardsPanel.PerformLayout();
+            this._dfActionsPanel.ResumeLayout(false);
+            this._dfActionsPanel.PerformLayout();
             this._mkPage.ResumeLayout(false);
             this._mkColHeader.ResumeLayout(false);
             this._mkSettingsPanel.ResumeLayout(false);
@@ -5190,6 +6049,11 @@ namespace Kingdoms.Bot.UI
             ((System.ComponentModel.ISupportInitialize)(this._ppIntervalInput)).EndInit();
             this._scoutPage.ResumeLayout(false);
             this._scSettingsPanel.ResumeLayout(false);
+            this._scSettingsPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this._scIntervalInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._scMaxTimeInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._scAutoHireInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._scDelayInput)).EndInit();
             this._scVillagePanel.ResumeLayout(false);
             this._scContentPanel.ResumeLayout(false);
             this._miscPage.ResumeLayout(false);
@@ -5234,11 +6098,23 @@ namespace Kingdoms.Bot.UI
             //
             this._autoProdScrollPanel.AutoScroll = true;
             this._autoProdScrollPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._autoProdScrollPanel.Controls.Add(this._autoProdScrollPanelPlaceholder);
             this._autoProdScrollPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._autoProdScrollPanel.Location = new System.Drawing.Point(0, 60);
             this._autoProdScrollPanel.Name = "_autoProdScrollPanel";
             this._autoProdScrollPanel.Size = new System.Drawing.Size(1134, 407);
             this._autoProdScrollPanel.TabIndex = 2;
+            //
+            // _autoProdScrollPanelPlaceholder
+            //
+            this._autoProdScrollPanelPlaceholder.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._autoProdScrollPanelPlaceholder.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this._autoProdScrollPanelPlaceholder.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(75)))), ((int)(((byte)(95)))));
+            this._autoProdScrollPanelPlaceholder.Name = "_autoProdScrollPanelPlaceholder";
+            this._autoProdScrollPanelPlaceholder.TabIndex = 99;
+            this._autoProdScrollPanelPlaceholder.Text = "〈 Production card rows — one per tradeable good (Wood, Stone, Iron…) 〉";
+            this._autoProdScrollPanelPlaceholder.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this._autoProdScrollPanelPlaceholder.Visible = false;
             //
             // _autoProdHeaderPanel
             //
@@ -5393,11 +6269,23 @@ namespace Kingdoms.Bot.UI
             //
             this._autoModuleScrollPanel.AutoScroll = true;
             this._autoModuleScrollPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._autoModuleScrollPanel.Controls.Add(this._autoModuleScrollPanelPlaceholder);
             this._autoModuleScrollPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this._autoModuleScrollPanel.Location = new System.Drawing.Point(0, 90);
             this._autoModuleScrollPanel.Name = "_autoModuleScrollPanel";
             this._autoModuleScrollPanel.Size = new System.Drawing.Size(1134, 377);
             this._autoModuleScrollPanel.TabIndex = 2;
+            //
+            // _autoModuleScrollPanelPlaceholder
+            //
+            this._autoModuleScrollPanelPlaceholder.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._autoModuleScrollPanelPlaceholder.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this._autoModuleScrollPanelPlaceholder.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(75)))), ((int)(((byte)(95)))));
+            this._autoModuleScrollPanelPlaceholder.Name = "_autoModuleScrollPanelPlaceholder";
+            this._autoModuleScrollPanelPlaceholder.TabIndex = 99;
+            this._autoModuleScrollPanelPlaceholder.Text = "〈 Module schedule rows — one per bot module 〉";
+            this._autoModuleScrollPanelPlaceholder.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this._autoModuleScrollPanelPlaceholder.Visible = false;
             //
             // _autoModuleHeaderPanel
             //
@@ -5914,8 +6802,62 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Panel _scVillagePanel;
         private System.Windows.Forms.Panel _scDivider;
         private System.Windows.Forms.Panel _scContentPanel;
+        private System.Windows.Forms.CheckBox _scEnabledCheck;
+        private System.Windows.Forms.Label _scStatusLabel;
+        private System.Windows.Forms.Label _scIntervalLabel;
+        private System.Windows.Forms.NumericUpDown _scIntervalInput;
+        private System.Windows.Forms.Label _scMaxTimeLabel;
+        private System.Windows.Forms.NumericUpDown _scMaxTimeInput;
+        private System.Windows.Forms.Label _scAutoHireLabel;
+        private System.Windows.Forms.NumericUpDown _scAutoHireInput;
+        private System.Windows.Forms.Label _scDelayLabel;
+        private System.Windows.Forms.NumericUpDown _scDelayInput;
+        private System.Windows.Forms.CheckBox _scDisableOnCardExpiryCheck;
+        private System.Windows.Forms.Label _scPriorityLabel;
+        private System.Windows.Forms.RadioButton _scPriorityResourceRadio;
+        private System.Windows.Forms.RadioButton _scPriorityRangeRadio;
+        private System.Windows.Forms.CheckBox _scSendOneScoutCheck;
+        private System.Windows.Forms.CheckBox _scSendOneOnNewCheck;
+        private System.Windows.Forms.ListBox _scVillageListBox;
+        private System.Windows.Forms.Label _scVillageHeaderLabel;
+        private System.Windows.Forms.CheckBox _scVillageEnabledCheck;
+        private System.Windows.Forms.Label _scScoutListLabel;
+        private System.Windows.Forms.Label _scIgnoreListLabel;
+        private System.Windows.Forms.ListBox _scScoutList;
+        private System.Windows.Forms.ListBox _scIgnoreList;
+        private System.Windows.Forms.Button _scMoveUpBtn;
+        private System.Windows.Forms.Button _scMoveDownBtn;
+        private System.Windows.Forms.Button _scMoveToIgnoreBtn;
+        private System.Windows.Forms.Button _scMoveToScoutBtn;
+        private System.Windows.Forms.Button _scCopySettingsBtn;
         // Defender tab controls
         private System.Windows.Forms.TabPage _defenderPage;
+        private System.Windows.Forms.Panel _dfSettingsPanel;
+        private System.Windows.Forms.CheckBox _dfEnabledCheck;
+        private System.Windows.Forms.Label _dfStatusLabel;
+        private System.Windows.Forms.Label _dfDurationLabel;
+        private System.Windows.Forms.NumericUpDown _dfDurationInput;
+        private System.Windows.Forms.Label _dfVillageLabel;
+        private System.Windows.Forms.ComboBox _dfVillageCombo;
+        private System.Windows.Forms.Button _dfVillageRefreshBtn;
+        private System.Windows.Forms.Button _dfStartBtn;
+        private System.Windows.Forms.Button _dfStopBtn;
+        private System.Windows.Forms.Label _dfCountdownPrefixLabel;
+        private System.Windows.Forms.Label _dfCountdownLabel;
+        private System.Windows.Forms.Panel _dfSep1;
+        private System.Windows.Forms.Panel _dfCardsPanel;
+        private System.Windows.Forms.Label _dfCardsTitle;
+        private System.Windows.Forms.Label _dfKnightsLabel;
+        private System.Windows.Forms.ComboBox _dfKnightsCombo;
+        private System.Windows.Forms.Label _dfLastStandLabel;
+        private System.Windows.Forms.ComboBox _dfLastStandCombo;
+        private System.Windows.Forms.CheckBox _dfDesperateCheck;
+        private System.Windows.Forms.Panel _dfSep2;
+        private System.Windows.Forms.Panel _dfActionsPanel;
+        private System.Windows.Forms.Label _dfActionsTitle;
+        private System.Windows.Forms.CheckBox _dfAutoRepairCheck;
+        private System.Windows.Forms.CheckBox _dfRestoreTroopsCheck;
+        private System.Windows.Forms.CheckBox _dfRestoreInfraCheck;
         // Monk tab controls
         private System.Windows.Forms.TabPage _mkPage;
         private System.Windows.Forms.Panel _mkSettingsPanel;
@@ -5937,5 +6879,17 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Button _mkAddRouteBtn;
         private System.Windows.Forms.Button _mkEditRouteBtn;
         private System.Windows.Forms.Button _mkDeleteRouteBtn;
+        // Designer-only placeholder labels (Visible = false at runtime)
+        private System.Windows.Forms.Label _vsVillageListPanelPlaceholder;
+        private System.Windows.Forms.Label _rdActionListPanelPlaceholder;
+        private System.Windows.Forms.Label _rcVillageListPanelPlaceholder;
+        private System.Windows.Forms.Label _rcCapitalsListPanelPlaceholder;
+        private System.Windows.Forms.Label _crVillageListPanelPlaceholder;
+        private System.Windows.Forms.Label _bldBuildingListPanelPlaceholder;
+        private System.Windows.Forms.Label _ppVillageListPanelPlaceholder;
+        private System.Windows.Forms.Label _bqVillageListPanelPlaceholder;
+        private System.Windows.Forms.Label _mkRouteListPanelPlaceholder;
+        private System.Windows.Forms.Label _autoProdScrollPanelPlaceholder;
+        private System.Windows.Forms.Label _autoModuleScrollPanelPlaceholder;
     }
 }
