@@ -870,6 +870,16 @@ namespace Kingdoms.Bot.UI
             _grpRefreshVillagesBtn.FlatStyle = FlatStyle.Flat;
             _grpRefreshVillagesBtn.Font = fSmall;
 
+            // Responsive anchoring: the member list grows vertically with the panel,
+            // while the selected-member detail block stays pinned to the bottom.
+            _grpMemberList.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            _grpRemoveMemberBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            _grpMemberNameLabel.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            _grpMemberTagLabel.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            _grpMemberTagInput.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            _grpMemberVillagesLabel.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            _grpRefreshVillagesBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+
             memberPanel.Controls.AddRange(new Control[] {
                 addLabel, _grpPlayerNameInput, _grpAddMemberBtn, _grpRefreshAllBtn,
                 membersLabel, _grpMemberList, _grpRemoveMemberBtn,

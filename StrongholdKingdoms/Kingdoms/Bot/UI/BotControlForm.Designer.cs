@@ -1021,7 +1021,6 @@ namespace Kingdoms.Bot.UI
             0,
             0});
             this._vsDelayInput.Location = new System.Drawing.Point(498, 42);
-            this._vsDelayInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._vsDelayInput.Maximum = new decimal(new int[] {
             30000,
             0,
@@ -1047,7 +1046,6 @@ namespace Kingdoms.Bot.UI
             this._vsDelayLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._vsDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._vsDelayLabel.Location = new System.Drawing.Point(306, 56);
-            this._vsDelayLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._vsDelayLabel.Name = "_vsDelayLabel";
             this._vsDelayLabel.Size = new System.Drawing.Size(156, 15);
             this._vsDelayLabel.TabIndex = 5;
@@ -1100,7 +1098,6 @@ namespace Kingdoms.Bot.UI
             this._vsLastRunLabel.Font = new System.Drawing.Font("Segoe UI", 8F);
             this._vsLastRunLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._vsLastRunLabel.Location = new System.Drawing.Point(316, 27);
-            this._vsLastRunLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._vsLastRunLabel.Name = "_vsLastRunLabel";
             this._vsLastRunLabel.Size = new System.Drawing.Size(82, 13);
             this._vsLastRunLabel.TabIndex = 2;
@@ -1265,6 +1262,7 @@ namespace Kingdoms.Bot.UI
             this._rdSettingsPanel.Controls.Add(this._rdScanIntervalLabel);
             this._rdSettingsPanel.Controls.Add(this._rdStatusLabel);
             this._rdSettingsPanel.Controls.Add(this._rdEnabledCheck);
+            this._rdSettingsPanel.AutoScroll = true;
             this._rdSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._rdSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._rdSettingsPanel.Name = "_rdSettingsPanel";
@@ -1278,7 +1276,6 @@ namespace Kingdoms.Bot.UI
             this._rdMinArmySizeInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMinArmySizeInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._rdMinArmySizeInput.Location = new System.Drawing.Point(537, 81);
-            this._rdMinArmySizeInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._rdMinArmySizeInput.Maximum = new decimal(new int[] {
             10000,
             0,
@@ -1299,7 +1296,6 @@ namespace Kingdoms.Bot.UI
             this._rdMinArmySizeLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMinArmySizeLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._rdMinArmySizeLabel.Location = new System.Drawing.Point(416, 84);
-            this._rdMinArmySizeLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._rdMinArmySizeLabel.Name = "_rdMinArmySizeLabel";
             this._rdMinArmySizeLabel.Size = new System.Drawing.Size(115, 15);
             this._rdMinArmySizeLabel.TabIndex = 20;
@@ -1379,7 +1375,6 @@ namespace Kingdoms.Bot.UI
             this._rdMaxLandTimeInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMaxLandTimeInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._rdMaxLandTimeInput.Location = new System.Drawing.Point(567, 112);
-            this._rdMaxLandTimeInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._rdMaxLandTimeInput.Maximum = new decimal(new int[] {
             168,
             0,
@@ -1395,7 +1390,6 @@ namespace Kingdoms.Bot.UI
             this._rdMaxLandTimeLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMaxLandTimeLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._rdMaxLandTimeLabel.Location = new System.Drawing.Point(416, 115);
-            this._rdMaxLandTimeLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._rdMaxLandTimeLabel.Name = "_rdMaxLandTimeLabel";
             this._rdMaxLandTimeLabel.Size = new System.Drawing.Size(145, 15);
             this._rdMaxLandTimeLabel.TabIndex = 46;
@@ -1422,7 +1416,6 @@ namespace Kingdoms.Bot.UI
             this._rdTestDiscordBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._rdTestDiscordBtn.ForeColor = System.Drawing.Color.White;
             this._rdTestDiscordBtn.Location = new System.Drawing.Point(660, 38);
-            this._rdTestDiscordBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._rdTestDiscordBtn.Name = "_rdTestDiscordBtn";
             this._rdTestDiscordBtn.Size = new System.Drawing.Size(110, 24);
             this._rdTestDiscordBtn.TabIndex = 10;
@@ -1502,7 +1495,6 @@ namespace Kingdoms.Bot.UI
             this._rdMentionTagInput.Font = new System.Drawing.Font("Consolas", 8.5F);
             this._rdMentionTagInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._rdMentionTagInput.Location = new System.Drawing.Point(870, 37);
-            this._rdMentionTagInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._rdMentionTagInput.Name = "_rdMentionTagInput";
             this._rdMentionTagInput.Size = new System.Drawing.Size(220, 21);
             this._rdMentionTagInput.TabIndex = 31;
@@ -1513,7 +1505,6 @@ namespace Kingdoms.Bot.UI
             this._rdMentionTagLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMentionTagLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._rdMentionTagLabel.Location = new System.Drawing.Point(785, 38);
-            this._rdMentionTagLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._rdMentionTagLabel.Name = "_rdMentionTagLabel";
             this._rdMentionTagLabel.Size = new System.Drawing.Size(71, 15);
             this._rdMentionTagLabel.TabIndex = 30;
@@ -1527,7 +1518,6 @@ namespace Kingdoms.Bot.UI
             this._rdForceRefreshCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdForceRefreshCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._rdForceRefreshCheck.Location = new System.Drawing.Point(450, 12);
-            this._rdForceRefreshCheck.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._rdForceRefreshCheck.Name = "_rdForceRefreshCheck";
             this._rdForceRefreshCheck.Size = new System.Drawing.Size(187, 19);
             this._rdForceRefreshCheck.TabIndex = 30;
@@ -1922,7 +1912,6 @@ namespace Kingdoms.Bot.UI
             this._rcDisbandBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._rcDisbandBtn.ForeColor = System.Drawing.Color.White;
             this._rcDisbandBtn.Location = new System.Drawing.Point(665, 70);
-            this._rcDisbandBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._rcDisbandBtn.Name = "_rcDisbandBtn";
             this._rcDisbandBtn.Size = new System.Drawing.Size(70, 24);
             this._rcDisbandBtn.TabIndex = 8;
@@ -1937,7 +1926,6 @@ namespace Kingdoms.Bot.UI
             this._rcDisbandCombo.Font = new System.Drawing.Font("Segoe UI", 8F);
             this._rcDisbandCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._rcDisbandCombo.Location = new System.Drawing.Point(498, 70);
-            this._rcDisbandCombo.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._rcDisbandCombo.Name = "_rcDisbandCombo";
             this._rcDisbandCombo.Size = new System.Drawing.Size(160, 21);
             this._rcDisbandCombo.TabIndex = 7;
@@ -1967,7 +1955,6 @@ namespace Kingdoms.Bot.UI
             0,
             0});
             this._rcDelayInput.Location = new System.Drawing.Point(498, 40);
-            this._rcDelayInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._rcDelayInput.Maximum = new decimal(new int[] {
             30000,
             0,
@@ -1993,7 +1980,6 @@ namespace Kingdoms.Bot.UI
             this._rcDelayLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rcDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._rcDelayLabel.Location = new System.Drawing.Point(290, 42);
-            this._rcDelayLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._rcDelayLabel.Name = "_rcDelayLabel";
             this._rcDelayLabel.Size = new System.Drawing.Size(156, 15);
             this._rcDelayLabel.TabIndex = 4;
@@ -2133,6 +2119,7 @@ namespace Kingdoms.Bot.UI
             this._crSettingsPanel.Controls.Add(this._crIntervalLabel);
             this._crSettingsPanel.Controls.Add(this._crStatusLabel);
             this._crSettingsPanel.Controls.Add(this._crEnabledCheck);
+            this._crSettingsPanel.AutoScroll = true;
             this._crSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._crSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._crSettingsPanel.Name = "_crSettingsPanel";
@@ -2149,7 +2136,6 @@ namespace Kingdoms.Bot.UI
             this._crCopySettingsBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._crCopySettingsBtn.ForeColor = System.Drawing.Color.White;
             this._crCopySettingsBtn.Location = new System.Drawing.Point(716, 38);
-            this._crCopySettingsBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._crCopySettingsBtn.Name = "_crCopySettingsBtn";
             this._crCopySettingsBtn.Size = new System.Drawing.Size(100, 24);
             this._crCopySettingsBtn.TabIndex = 10;
@@ -2165,7 +2151,6 @@ namespace Kingdoms.Bot.UI
             this._crRefreshBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._crRefreshBtn.ForeColor = System.Drawing.Color.White;
             this._crRefreshBtn.Location = new System.Drawing.Point(604, 38);
-            this._crRefreshBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._crRefreshBtn.Name = "_crRefreshBtn";
             this._crRefreshBtn.Size = new System.Drawing.Size(100, 24);
             this._crRefreshBtn.TabIndex = 9;
@@ -2181,7 +2166,6 @@ namespace Kingdoms.Bot.UI
             this._crRepairAllBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._crRepairAllBtn.ForeColor = System.Drawing.Color.White;
             this._crRepairAllBtn.Location = new System.Drawing.Point(604, 68);
-            this._crRepairAllBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._crRepairAllBtn.Name = "_crRepairAllBtn";
             this._crRepairAllBtn.Size = new System.Drawing.Size(100, 24);
             this._crRepairAllBtn.TabIndex = 8;
@@ -2197,7 +2181,6 @@ namespace Kingdoms.Bot.UI
             this._crMemoriseInfraBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._crMemoriseInfraBtn.ForeColor = System.Drawing.Color.White;
             this._crMemoriseInfraBtn.Location = new System.Drawing.Point(604, 98);
-            this._crMemoriseInfraBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._crMemoriseInfraBtn.Name = "_crMemoriseInfraBtn";
             this._crMemoriseInfraBtn.Size = new System.Drawing.Size(115, 24);
             this._crMemoriseInfraBtn.TabIndex = 11;
@@ -2213,7 +2196,6 @@ namespace Kingdoms.Bot.UI
             this._crMemoriseTroopsBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._crMemoriseTroopsBtn.ForeColor = System.Drawing.Color.White;
             this._crMemoriseTroopsBtn.Location = new System.Drawing.Point(731, 98);
-            this._crMemoriseTroopsBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._crMemoriseTroopsBtn.Name = "_crMemoriseTroopsBtn";
             this._crMemoriseTroopsBtn.Size = new System.Drawing.Size(115, 24);
             this._crMemoriseTroopsBtn.TabIndex = 12;
@@ -2244,7 +2226,6 @@ namespace Kingdoms.Bot.UI
             0,
             0});
             this._crDelayInput.Location = new System.Drawing.Point(498, 40);
-            this._crDelayInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._crDelayInput.Maximum = new decimal(new int[] {
             30000,
             0,
@@ -2270,7 +2251,6 @@ namespace Kingdoms.Bot.UI
             this._crDelayLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._crDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._crDelayLabel.Location = new System.Drawing.Point(290, 42);
-            this._crDelayLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._crDelayLabel.Name = "_crDelayLabel";
             this._crDelayLabel.Size = new System.Drawing.Size(156, 15);
             this._crDelayLabel.TabIndex = 5;
@@ -2576,11 +2556,12 @@ namespace Kingdoms.Bot.UI
             this._trSettingsPanel.Controls.Add(this._trIntervalLabel);
             this._trSettingsPanel.Controls.Add(this._trStatusLabel);
             this._trSettingsPanel.Controls.Add(this._trEnabledCheck);
+            this._trSettingsPanel.AutoScroll = true;
             this._trSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._trSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._trSettingsPanel.Name = "_trSettingsPanel";
             this._trSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._trSettingsPanel.Size = new System.Drawing.Size(1142, 100);
+            this._trSettingsPanel.Size = new System.Drawing.Size(1142, 135);
             this._trSettingsPanel.TabIndex = 0;
             //
             // _trAutoSaveRouteProgressCheck
@@ -2591,8 +2572,7 @@ namespace Kingdoms.Bot.UI
             this._trAutoSaveRouteProgressCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._trAutoSaveRouteProgressCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trAutoSaveRouteProgressCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trAutoSaveRouteProgressCheck.Location = new System.Drawing.Point(928, 70);
-            this._trAutoSaveRouteProgressCheck.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this._trAutoSaveRouteProgressCheck.Location = new System.Drawing.Point(465, 100);
             this._trAutoSaveRouteProgressCheck.Name = "_trAutoSaveRouteProgressCheck";
             this._trAutoSaveRouteProgressCheck.TabIndex = 18;
             this._trAutoSaveRouteProgressCheck.Text = "Auto-save route progress";
@@ -2603,8 +2583,7 @@ namespace Kingdoms.Bot.UI
             this._trDisableOnCardExpiryCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._trDisableOnCardExpiryCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trDisableOnCardExpiryCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trDisableOnCardExpiryCheck.Location = new System.Drawing.Point(775, 70);
-            this._trDisableOnCardExpiryCheck.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this._trDisableOnCardExpiryCheck.Location = new System.Drawing.Point(310, 100);
             this._trDisableOnCardExpiryCheck.Name = "_trDisableOnCardExpiryCheck";
             this._trDisableOnCardExpiryCheck.Size = new System.Drawing.Size(139, 19);
             this._trDisableOnCardExpiryCheck.TabIndex = 17;
@@ -2615,8 +2594,7 @@ namespace Kingdoms.Bot.UI
             this._trPriorityLabel.AutoSize = true;
             this._trPriorityLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trPriorityLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(200)))), ((int)(((byte)(210)))));
-            this._trPriorityLabel.Location = new System.Drawing.Point(490, 72);
-            this._trPriorityLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this._trPriorityLabel.Location = new System.Drawing.Point(16, 102);
             this._trPriorityLabel.Name = "_trPriorityLabel";
             this._trPriorityLabel.Text = "Priority:";
             //
@@ -2627,8 +2605,7 @@ namespace Kingdoms.Bot.UI
             this._trPriorityCombo.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trPriorityCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._trPriorityCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trPriorityCombo.Location = new System.Drawing.Point(545, 68);
-            this._trPriorityCombo.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this._trPriorityCombo.Location = new System.Drawing.Point(70, 98);
             this._trPriorityCombo.Name = "_trPriorityCombo";
             this._trPriorityCombo.Size = new System.Drawing.Size(220, 22);
             this._trPriorityCombo.TabIndex = 16;
@@ -2644,7 +2621,7 @@ namespace Kingdoms.Bot.UI
             this._trIgnoreTransactionsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._trIgnoreTransactionsCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trIgnoreTransactionsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trIgnoreTransactionsCheck.Location = new System.Drawing.Point(310, 70);
+            this._trIgnoreTransactionsCheck.Location = new System.Drawing.Point(470, 70);
             this._trIgnoreTransactionsCheck.Name = "_trIgnoreTransactionsCheck";
             this._trIgnoreTransactionsCheck.Size = new System.Drawing.Size(165, 19);
             this._trIgnoreTransactionsCheck.TabIndex = 15;
@@ -2655,7 +2632,7 @@ namespace Kingdoms.Bot.UI
             this._trAutoHireLimitInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._trAutoHireLimitInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._trAutoHireLimitInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trAutoHireLimitInput.Location = new System.Drawing.Point(235, 70);
+            this._trAutoHireLimitInput.Location = new System.Drawing.Point(395, 70);
             this._trAutoHireLimitInput.Maximum = new decimal(new int[] {
             500,
             0,
@@ -2680,7 +2657,7 @@ namespace Kingdoms.Bot.UI
             this._trAutoHireLimitLabel.AutoSize = true;
             this._trAutoHireLimitLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trAutoHireLimitLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._trAutoHireLimitLabel.Location = new System.Drawing.Point(170, 72);
+            this._trAutoHireLimitLabel.Location = new System.Drawing.Point(330, 72);
             this._trAutoHireLimitLabel.Name = "_trAutoHireLimitLabel";
             this._trAutoHireLimitLabel.Size = new System.Drawing.Size(59, 15);
             this._trAutoHireLimitLabel.TabIndex = 13;
@@ -2692,7 +2669,7 @@ namespace Kingdoms.Bot.UI
             this._trAutoHireCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._trAutoHireCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trAutoHireCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trAutoHireCheck.Location = new System.Drawing.Point(16, 70);
+            this._trAutoHireCheck.Location = new System.Drawing.Point(185, 70);
             this._trAutoHireCheck.Name = "_trAutoHireCheck";
             this._trAutoHireCheck.Size = new System.Drawing.Size(133, 19);
             this._trAutoHireCheck.TabIndex = 12;
@@ -2703,8 +2680,7 @@ namespace Kingdoms.Bot.UI
             this._trExchangeLimitInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._trExchangeLimitInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._trExchangeLimitInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trExchangeLimitInput.Location = new System.Drawing.Point(735, 40);
-            this._trExchangeLimitInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this._trExchangeLimitInput.Location = new System.Drawing.Point(110, 70);
             this._trExchangeLimitInput.Maximum = new decimal(new int[] {
             500,
             0,
@@ -2729,8 +2705,7 @@ namespace Kingdoms.Bot.UI
             this._trExchangeLimitLabel.AutoSize = true;
             this._trExchangeLimitLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trExchangeLimitLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._trExchangeLimitLabel.Location = new System.Drawing.Point(645, 42);
-            this._trExchangeLimitLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this._trExchangeLimitLabel.Location = new System.Drawing.Point(16, 72);
             this._trExchangeLimitLabel.Name = "_trExchangeLimitLabel";
             this._trExchangeLimitLabel.Size = new System.Drawing.Size(88, 15);
             this._trExchangeLimitLabel.TabIndex = 10;
@@ -2742,7 +2717,6 @@ namespace Kingdoms.Bot.UI
             this._trTradeLimitInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._trTradeLimitInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._trTradeLimitInput.Location = new System.Drawing.Point(585, 40);
-            this._trTradeLimitInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._trTradeLimitInput.Maximum = new decimal(new int[] {
             500,
             0,
@@ -2768,7 +2742,6 @@ namespace Kingdoms.Bot.UI
             this._trTradeLimitLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trTradeLimitLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._trTradeLimitLabel.Location = new System.Drawing.Point(500, 42);
-            this._trTradeLimitLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._trTradeLimitLabel.Name = "_trTradeLimitLabel";
             this._trTradeLimitLabel.Size = new System.Drawing.Size(74, 15);
             this._trTradeLimitLabel.TabIndex = 8;
@@ -2780,7 +2753,6 @@ namespace Kingdoms.Bot.UI
             this._trMerchantsPerTradeInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._trMerchantsPerTradeInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._trMerchantsPerTradeInput.Location = new System.Drawing.Point(440, 40);
-            this._trMerchantsPerTradeInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._trMerchantsPerTradeInput.Minimum = new decimal(new int[] {
             1,
             0,
@@ -2801,7 +2773,6 @@ namespace Kingdoms.Bot.UI
             this._trMerchantsPerTradeLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trMerchantsPerTradeLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._trMerchantsPerTradeLabel.Location = new System.Drawing.Point(345, 42);
-            this._trMerchantsPerTradeLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._trMerchantsPerTradeLabel.Name = "_trMerchantsPerTradeLabel";
             this._trMerchantsPerTradeLabel.Size = new System.Drawing.Size(122, 15);
             this._trMerchantsPerTradeLabel.TabIndex = 6;
@@ -3286,7 +3257,6 @@ namespace Kingdoms.Bot.UI
             this._abSubmitBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._abSubmitBtn.ForeColor = System.Drawing.Color.White;
             this._abSubmitBtn.Location = new System.Drawing.Point(530, 66);
-            this._abSubmitBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abSubmitBtn.Name = "_abSubmitBtn";
             this._abSubmitBtn.Size = new System.Drawing.Size(130, 24);
             this._abSubmitBtn.TabIndex = 12;
@@ -3302,7 +3272,6 @@ namespace Kingdoms.Bot.UI
             this._abDeselectAllBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._abDeselectAllBtn.ForeColor = System.Drawing.Color.White;
             this._abDeselectAllBtn.Location = new System.Drawing.Point(426, 66);
-            this._abDeselectAllBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abDeselectAllBtn.Name = "_abDeselectAllBtn";
             this._abDeselectAllBtn.Size = new System.Drawing.Size(90, 24);
             this._abDeselectAllBtn.TabIndex = 11;
@@ -3373,7 +3342,6 @@ namespace Kingdoms.Bot.UI
             this._abStackDelayInput.Font = new System.Drawing.Font("Segoe UI", 9F);
             this._abStackDelayInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._abStackDelayInput.Location = new System.Drawing.Point(530, 38);
-            this._abStackDelayInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abStackDelayInput.Maximum = new decimal(new int[] {
             30,
             0,
@@ -3399,7 +3367,6 @@ namespace Kingdoms.Bot.UI
             this._abStackDelayLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._abStackDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._abStackDelayLabel.Location = new System.Drawing.Point(420, 40);
-            this._abStackDelayLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abStackDelayLabel.Name = "_abStackDelayLabel";
             this._abStackDelayLabel.Size = new System.Drawing.Size(85, 15);
             this._abStackDelayLabel.TabIndex = 5;
@@ -3412,7 +3379,6 @@ namespace Kingdoms.Bot.UI
             this._abFakeSendCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._abFakeSendCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._abFakeSendCheck.Location = new System.Drawing.Point(600, 38);
-            this._abFakeSendCheck.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abFakeSendCheck.Name = "_abFakeSendCheck";
             this._abFakeSendCheck.Size = new System.Drawing.Size(197, 19);
             this._abFakeSendCheck.TabIndex = 7;
@@ -3799,6 +3765,7 @@ namespace Kingdoms.Bot.UI
             this._abmConnPanel.Controls.Add(this._abmConnectBtn);
             this._abmConnPanel.Controls.Add(this._abmSessionKeyBox);
             this._abmConnPanel.Controls.Add(this._abmApiUrlBox);
+            this._abmConnPanel.AutoScroll = true;
             this._abmConnPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._abmConnPanel.Location = new System.Drawing.Point(0, 0);
             this._abmConnPanel.Name = "_abmConnPanel";
@@ -3836,7 +3803,6 @@ namespace Kingdoms.Bot.UI
             this._abmConnectBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._abmConnectBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._abmConnectBtn.Location = new System.Drawing.Point(464, 3);
-            this._abmConnectBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abmConnectBtn.Name = "_abmConnectBtn";
             this._abmConnectBtn.Size = new System.Drawing.Size(70, 22);
             this._abmConnectBtn.TabIndex = 2;
@@ -3851,7 +3817,6 @@ namespace Kingdoms.Bot.UI
             this._abmDisconnectBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._abmDisconnectBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._abmDisconnectBtn.Location = new System.Drawing.Point(538, 3);
-            this._abmDisconnectBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abmDisconnectBtn.Name = "_abmDisconnectBtn";
             this._abmDisconnectBtn.Size = new System.Drawing.Size(84, 22);
             this._abmDisconnectBtn.TabIndex = 3;
@@ -3863,7 +3828,6 @@ namespace Kingdoms.Bot.UI
             this._abmConnStatusLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold);
             this._abmConnStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._abmConnStatusLabel.Location = new System.Drawing.Point(626, 7);
-            this._abmConnStatusLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abmConnStatusLabel.Name = "_abmConnStatusLabel";
             this._abmConnStatusLabel.Size = new System.Drawing.Size(450, 16);
             this._abmConnStatusLabel.TabIndex = 4;
@@ -3912,6 +3876,7 @@ namespace Kingdoms.Bot.UI
             this._abmCtrlPanel.Controls.Add(this._abmIncludeVassalsCheck);
             this._abmCtrlPanel.Controls.Add(this._abmPlayCardsCheck);
             this._abmCtrlPanel.Controls.Add(this._abmAutoCancelCardCheck);
+            this._abmCtrlPanel.AutoScroll = true;
             this._abmCtrlPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._abmCtrlPanel.Location = new System.Drawing.Point(0, 0);
             this._abmCtrlPanel.Name = "_abmCtrlPanel";
@@ -4007,7 +3972,6 @@ namespace Kingdoms.Bot.UI
             this._abmAutoCancelCardCheck.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             this._abmAutoCancelCardCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._abmAutoCancelCardCheck.Location = new System.Drawing.Point(408, 34);
-            this._abmAutoCancelCardCheck.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abmAutoCancelCardCheck.Name = "_abmAutoCancelCardCheck";
             this._abmAutoCancelCardCheck.Size = new System.Drawing.Size(138, 18);
             this._abmAutoCancelCardCheck.TabIndex = 14;
@@ -4021,7 +3985,6 @@ namespace Kingdoms.Bot.UI
             this._abmPushConfigBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._abmPushConfigBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._abmPushConfigBtn.Location = new System.Drawing.Point(520, 4);
-            this._abmPushConfigBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abmPushConfigBtn.Name = "_abmPushConfigBtn";
             this._abmPushConfigBtn.Size = new System.Drawing.Size(86, 22);
             this._abmPushConfigBtn.TabIndex = 4;
@@ -4036,7 +3999,6 @@ namespace Kingdoms.Bot.UI
             this._abmPrepareBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._abmPrepareBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._abmPrepareBtn.Location = new System.Drawing.Point(610, 4);
-            this._abmPrepareBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abmPrepareBtn.Name = "_abmPrepareBtn";
             this._abmPrepareBtn.Size = new System.Drawing.Size(70, 22);
             this._abmPrepareBtn.TabIndex = 5;
@@ -4051,7 +4013,6 @@ namespace Kingdoms.Bot.UI
             this._abmLaunchBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._abmLaunchBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._abmLaunchBtn.Location = new System.Drawing.Point(684, 4);
-            this._abmLaunchBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abmLaunchBtn.Name = "_abmLaunchBtn";
             this._abmLaunchBtn.Size = new System.Drawing.Size(66, 22);
             this._abmLaunchBtn.TabIndex = 6;
@@ -4066,7 +4027,6 @@ namespace Kingdoms.Bot.UI
             this._abmCancelBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._abmCancelBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._abmCancelBtn.Location = new System.Drawing.Point(754, 4);
-            this._abmCancelBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abmCancelBtn.Name = "_abmCancelBtn";
             this._abmCancelBtn.Size = new System.Drawing.Size(60, 22);
             this._abmCancelBtn.TabIndex = 7;
@@ -4081,7 +4041,6 @@ namespace Kingdoms.Bot.UI
             this._abmResetBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._abmResetBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._abmResetBtn.Location = new System.Drawing.Point(818, 4);
-            this._abmResetBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abmResetBtn.Name = "_abmResetBtn";
             this._abmResetBtn.Size = new System.Drawing.Size(96, 22);
             this._abmResetBtn.TabIndex = 8;
@@ -4096,7 +4055,6 @@ namespace Kingdoms.Bot.UI
             this._abmTakeCoordBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._abmTakeCoordBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._abmTakeCoordBtn.Location = new System.Drawing.Point(918, 4);
-            this._abmTakeCoordBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abmTakeCoordBtn.Name = "_abmTakeCoordBtn";
             this._abmTakeCoordBtn.Size = new System.Drawing.Size(118, 22);
             this._abmTakeCoordBtn.TabIndex = 9;
@@ -4108,7 +4066,6 @@ namespace Kingdoms.Bot.UI
             this._abmCoordStatusLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold);
             this._abmCoordStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._abmCoordStatusLabel.Location = new System.Drawing.Point(1040, 8);
-            this._abmCoordStatusLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._abmCoordStatusLabel.Name = "_abmCoordStatusLabel";
             this._abmCoordStatusLabel.Size = new System.Drawing.Size(86, 16);
             this._abmCoordStatusLabel.TabIndex = 10;
@@ -4458,7 +4415,6 @@ namespace Kingdoms.Bot.UI
             this._ppRunNowBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._ppRunNowBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._ppRunNowBtn.Location = new System.Drawing.Point(431, 39);
-            this._ppRunNowBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._ppRunNowBtn.Name = "_ppRunNowBtn";
             this._ppRunNowBtn.Size = new System.Drawing.Size(80, 26);
             this._ppRunNowBtn.TabIndex = 7;
@@ -4471,7 +4427,6 @@ namespace Kingdoms.Bot.UI
             this._ppCopySettingsBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._ppCopySettingsBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._ppCopySettingsBtn.Location = new System.Drawing.Point(521, 39);
-            this._ppCopySettingsBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._ppCopySettingsBtn.Name = "_ppCopySettingsBtn";
             this._ppCopySettingsBtn.Size = new System.Drawing.Size(100, 26);
             this._ppCopySettingsBtn.TabIndex = 8;
@@ -4712,7 +4667,6 @@ namespace Kingdoms.Bot.UI
             this._dfVillageRefreshBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._dfVillageRefreshBtn.ForeColor = System.Drawing.Color.White;
             this._dfVillageRefreshBtn.Location = new System.Drawing.Point(608, 34);
-            this._dfVillageRefreshBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._dfVillageRefreshBtn.Name = "_dfVillageRefreshBtn";
             this._dfVillageRefreshBtn.Size = new System.Drawing.Size(70, 22);
             this._dfVillageRefreshBtn.TabIndex = 6;
@@ -4967,6 +4921,7 @@ namespace Kingdoms.Bot.UI
             this._mkSettingsPanel.Controls.Add(this._mkAutoRecruitInput);
             this._mkSettingsPanel.Controls.Add(this._mkRefreshBtn);
             this._mkSettingsPanel.Controls.Add(this._mkRunNowBtn);
+            this._mkSettingsPanel.AutoScroll = true;
             this._mkSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._mkSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._mkSettingsPanel.Name = "_mkSettingsPanel";
@@ -5068,7 +5023,6 @@ namespace Kingdoms.Bot.UI
             this._mkRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._mkRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._mkRefreshBtn.Location = new System.Drawing.Point(492, 39);
-            this._mkRefreshBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._mkRefreshBtn.Name = "_mkRefreshBtn";
             this._mkRefreshBtn.Size = new System.Drawing.Size(75, 26);
             this._mkRefreshBtn.TabIndex = 8;
@@ -5081,7 +5035,6 @@ namespace Kingdoms.Bot.UI
             this._mkRunNowBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._mkRunNowBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._mkRunNowBtn.Location = new System.Drawing.Point(578, 39);
-            this._mkRunNowBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._mkRunNowBtn.Name = "_mkRunNowBtn";
             this._mkRunNowBtn.Size = new System.Drawing.Size(80, 26);
             this._mkRunNowBtn.TabIndex = 9;
@@ -5093,7 +5046,6 @@ namespace Kingdoms.Bot.UI
             this._mkAutoRecruitLabel.AutoSize = true;
             this._mkAutoRecruitLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._mkAutoRecruitLabel.Location = new System.Drawing.Point(668, 44);
-            this._mkAutoRecruitLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._mkAutoRecruitLabel.Name = "_mkAutoRecruitLabel";
             this._mkAutoRecruitLabel.TabIndex = 10;
             this._mkAutoRecruitLabel.Text = "Auto recruit:";
@@ -5103,7 +5055,6 @@ namespace Kingdoms.Bot.UI
             this._mkAutoRecruitInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
             this._mkAutoRecruitInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._mkAutoRecruitInput.Location = new System.Drawing.Point(753, 41);
-            this._mkAutoRecruitInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._mkAutoRecruitInput.Maximum = new decimal(new int[] { 8, 0, 0, 0 });
             this._mkAutoRecruitInput.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
             this._mkAutoRecruitInput.Name = "_mkAutoRecruitInput";
@@ -5254,7 +5205,6 @@ namespace Kingdoms.Bot.UI
             this._bqCopySettingsBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._bqCopySettingsBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._bqCopySettingsBtn.Location = new System.Drawing.Point(521, 39);
-            this._bqCopySettingsBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._bqCopySettingsBtn.Name = "_bqCopySettingsBtn";
             this._bqCopySettingsBtn.Size = new System.Drawing.Size(100, 26);
             this._bqCopySettingsBtn.TabIndex = 8;
@@ -5267,7 +5217,6 @@ namespace Kingdoms.Bot.UI
             this._bqRunNowBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._bqRunNowBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._bqRunNowBtn.Location = new System.Drawing.Point(431, 39);
-            this._bqRunNowBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._bqRunNowBtn.Name = "_bqRunNowBtn";
             this._bqRunNowBtn.Size = new System.Drawing.Size(80, 26);
             this._bqRunNowBtn.TabIndex = 7;
@@ -5389,6 +5338,7 @@ namespace Kingdoms.Bot.UI
             this._scSettingsPanel.Controls.Add(this._scPriorityRangeRadio);
             this._scSettingsPanel.Controls.Add(this._scSendOneScoutCheck);
             this._scSettingsPanel.Controls.Add(this._scSendOneOnNewCheck);
+            this._scSettingsPanel.AutoScroll = true;
             this._scSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._scSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._scSettingsPanel.Name = "_scSettingsPanel";
@@ -5424,7 +5374,6 @@ namespace Kingdoms.Bot.UI
             this._scIntervalLabel.AutoSize = true;
             this._scIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._scIntervalLabel.Location = new System.Drawing.Point(290, 10);
-            this._scIntervalLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._scIntervalLabel.Name = "_scIntervalLabel";
             this._scIntervalLabel.Size = new System.Drawing.Size(120, 13);
             this._scIntervalLabel.TabIndex = 2;
@@ -5435,7 +5384,6 @@ namespace Kingdoms.Bot.UI
             this._scIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
             this._scIntervalInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._scIntervalInput.Location = new System.Drawing.Point(450, 7);
-            this._scIntervalInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._scIntervalInput.Maximum = new decimal(new int[] { 3600, 0, 0, 0 });
             this._scIntervalInput.Minimum = new decimal(new int[] { 10, 0, 0, 0 });
             this._scIntervalInput.Name = "_scIntervalInput";
@@ -5470,7 +5418,6 @@ namespace Kingdoms.Bot.UI
             this._scAutoHireLabel.AutoSize = true;
             this._scAutoHireLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._scAutoHireLabel.Location = new System.Drawing.Point(244, 39);
-            this._scAutoHireLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._scAutoHireLabel.Name = "_scAutoHireLabel";
             this._scAutoHireLabel.Size = new System.Drawing.Size(155, 13);
             this._scAutoHireLabel.TabIndex = 6;
@@ -5481,7 +5428,6 @@ namespace Kingdoms.Bot.UI
             this._scAutoHireInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
             this._scAutoHireInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._scAutoHireInput.Location = new System.Drawing.Point(420, 36);
-            this._scAutoHireInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._scAutoHireInput.Maximum = new decimal(new int[] { 8, 0, 0, 0 });
             this._scAutoHireInput.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
             this._scAutoHireInput.Name = "_scAutoHireInput";
@@ -5494,7 +5440,6 @@ namespace Kingdoms.Bot.UI
             this._scDelayLabel.AutoSize = true;
             this._scDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._scDelayLabel.Location = new System.Drawing.Point(490, 39);
-            this._scDelayLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._scDelayLabel.Name = "_scDelayLabel";
             this._scDelayLabel.Size = new System.Drawing.Size(170, 13);
             this._scDelayLabel.TabIndex = 8;
@@ -5505,7 +5450,6 @@ namespace Kingdoms.Bot.UI
             this._scDelayInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(55)))));
             this._scDelayInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._scDelayInput.Location = new System.Drawing.Point(695, 36);
-            this._scDelayInput.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._scDelayInput.Maximum = new decimal(new int[] { 60000, 0, 0, 0 });
             this._scDelayInput.Minimum = new decimal(new int[] { 500, 0, 0, 0 });
             this._scDelayInput.Name = "_scDelayInput";
@@ -5519,7 +5463,6 @@ namespace Kingdoms.Bot.UI
             this._scDisableOnCardExpiryCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._scDisableOnCardExpiryCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._scDisableOnCardExpiryCheck.Location = new System.Drawing.Point(790, 36);
-            this._scDisableOnCardExpiryCheck.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._scDisableOnCardExpiryCheck.Name = "_scDisableOnCardExpiryCheck";
             this._scDisableOnCardExpiryCheck.Size = new System.Drawing.Size(210, 19);
             this._scDisableOnCardExpiryCheck.TabIndex = 10;
@@ -5565,7 +5508,6 @@ namespace Kingdoms.Bot.UI
             this._scSendOneScoutCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._scSendOneScoutCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._scSendOneScoutCheck.Location = new System.Drawing.Point(570, 62);
-            this._scSendOneScoutCheck.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._scSendOneScoutCheck.Name = "_scSendOneScoutCheck";
             this._scSendOneScoutCheck.Size = new System.Drawing.Size(280, 19);
             this._scSendOneScoutCheck.TabIndex = 14;
@@ -5577,7 +5519,6 @@ namespace Kingdoms.Bot.UI
             this._scSendOneOnNewCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._scSendOneOnNewCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._scSendOneOnNewCheck.Location = new System.Drawing.Point(850, 62);
-            this._scSendOneOnNewCheck.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this._scSendOneOnNewCheck.Name = "_scSendOneOnNewCheck";
             this._scSendOneOnNewCheck.Size = new System.Drawing.Size(300, 19);
             this._scSendOneOnNewCheck.TabIndex = 15;
@@ -5695,6 +5636,7 @@ namespace Kingdoms.Bot.UI
             this._scScoutList.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._scScoutList.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._scScoutList.Location = new System.Drawing.Point(10, 56);
+            this._scScoutList.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) | System.Windows.Forms.AnchorStyles.Left)));
             this._scScoutList.Name = "_scScoutList";
             this._scScoutList.Size = new System.Drawing.Size(290, 310);
             this._scScoutList.TabIndex = 3;
@@ -5705,6 +5647,7 @@ namespace Kingdoms.Bot.UI
             this._scIgnoreList.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._scIgnoreList.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._scIgnoreList.Location = new System.Drawing.Point(420, 56);
+            this._scIgnoreList.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) | System.Windows.Forms.AnchorStyles.Left)));
             this._scIgnoreList.Name = "_scIgnoreList";
             this._scIgnoreList.Size = new System.Drawing.Size(290, 310);
             this._scIgnoreList.TabIndex = 4;
@@ -5759,6 +5702,7 @@ namespace Kingdoms.Bot.UI
             this._scCopySettingsBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._scCopySettingsBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._scCopySettingsBtn.Location = new System.Drawing.Point(10, 378);
+            this._scCopySettingsBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this._scCopySettingsBtn.Name = "_scCopySettingsBtn";
             this._scCopySettingsBtn.Size = new System.Drawing.Size(160, 26);
             this._scCopySettingsBtn.TabIndex = 9;
