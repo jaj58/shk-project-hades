@@ -4438,6 +4438,13 @@ namespace Kingdoms.Bot.UI
         private void AbmRebuildVillageRows(AutoBombMultiSettings settings, bool isCoordinator)
         {
             _abmVillageRows.Clear();
+
+            // Dispose old controls before clearing to release GDI handles immediately.
+            // With 40+ villages per player this can be 800+ controls; without disposal
+            // the handles accumulate and cause lag or crashes.
+            _abmVillageListPanel.SuspendLayout();
+            foreach (Control c in _abmVillageListPanel.Controls)
+                c.Dispose();
             _abmVillageListPanel.Controls.Clear();
 
             List<string> formationNames = AutoBombModule.GetFormationNames();
@@ -4482,6 +4489,7 @@ namespace Kingdoms.Bot.UI
             }
 
             _abmVillageListPanel.AutoScrollMinSize = new Size(0, y);
+            _abmVillageListPanel.ResumeLayout(false);
 
             // Restore per-village formation/card/stack/type from last saved setup
             AbmLoadSetup();
@@ -4500,8 +4508,13 @@ namespace Kingdoms.Bot.UI
 
         private void AbmRebuildPendingRows(AutoBombMultiSettings settings)
         {
+            _abmPendingListPanel.SuspendLayout();
+            foreach (MultiPendingRow row in _abmPendingRows)
+            {
+                _abmPendingListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
             _abmPendingRows.Clear();
-            _abmPendingListPanel.Controls.Clear();
             int y = 0, idx = 0;
 
             foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
@@ -4526,6 +4539,7 @@ namespace Kingdoms.Bot.UI
                 }
             }
             _abmPendingListPanel.AutoScrollMinSize = new Size(0, y);
+            _abmPendingListPanel.ResumeLayout(false);
         }
 
         private void AbQueueAddId()
@@ -5378,7 +5392,11 @@ namespace Kingdoms.Bot.UI
         private void PpPopulateVillageList()
         {
             _ppVillageListPanel.SuspendLayout();
-            _ppVillageListPanel.Controls.Clear();
+            foreach (PopularityVillageRow row in _ppVillageRows)
+            {
+                _ppVillageListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
             _ppVillageRows.Clear();
 
             if (GameEngine.Instance == null || GameEngine.Instance.World == null)
@@ -5533,7 +5551,11 @@ namespace Kingdoms.Bot.UI
         private void BqPopulateVillageList()
         {
             _bqVillageListPanel.SuspendLayout();
-            _bqVillageListPanel.Controls.Clear();
+            foreach (BanquetVillageRow row in _bqVillageRows)
+            {
+                _bqVillageListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
             _bqVillageRows.Clear();
 
             if (GameEngine.Instance == null || GameEngine.Instance.World == null)
@@ -7001,7 +7023,11 @@ namespace Kingdoms.Bot.UI
         private void MkPopulateRouteList()
         {
             _mkRouteListPanel.SuspendLayout();
-            _mkRouteListPanel.Controls.Clear();
+            foreach (MonkRouteRow row in _mkRouteRows)
+            {
+                _mkRouteListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
             _mkRouteRows.Clear();
             _mkSelectedRouteIndex = -1;
 
