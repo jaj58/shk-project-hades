@@ -242,8 +242,10 @@ function handle_set_attack_config(&$state, $req) {
         ];
     }
     $state['attacks'] = $merged;
-    // Reset state to idle/configured
-    if (in_array($state['state'], ['idle', 'configured'])) {
+    // Always transition to 'configured' unless actively launching.
+    // This allows the coordinator to push a fresh config after a cancelled
+    // or completed attack without needing a full reset first.
+    if ($state['state'] !== 'launching') {
         $state['state'] = 'configured';
     }
     save_and_respond($state, ['state_data' => $state]);

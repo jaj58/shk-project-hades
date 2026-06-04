@@ -3800,6 +3800,16 @@ namespace Kingdoms.Bot.UI
                 if (s != null)
                     s.PlayCards = _abmPlayCardsCheck.Checked;
             };
+            _abmSelectAllBtn.Click += delegate
+            {
+                foreach (MultiBombVillageRow row in _abmVillageRows)
+                    if (row.Enabled) row.Selected = true;
+            };
+            _abmDeselectAllBtn.Click += delegate
+            {
+                foreach (MultiBombVillageRow row in _abmVillageRows)
+                    if (row.Enabled) row.Selected = false;
+            };
             _abmAutoCancelCardCheck.CheckedChanged += delegate
             {
                 AutoBombMultiSettings s = AbmSettings;
@@ -3943,9 +3953,9 @@ namespace Kingdoms.Bot.UI
                     useCaptains = p[3] == "1";
                     int.TryParse(p[4], out stack);
                     int.TryParse(p[5], out attackTypeIndex);
-                    // Field 7 (index 6) is selected. If absent (old save), default true —
-                    // the village was in a saved config so it was intended to be active.
-                    bool selected = p.Length < 7 || p[6] != "0";
+                    // Field 7 (index 6) is selected. Must be explicitly "1" to enable —
+                    // old saves without this field default to disabled (matches new default).
+                    bool selected = p.Length >= 7 && p[6] == "1";
                     row.ApplyConfig(formation, cardIndex, useCaptains, stack, attackTypeIndex);
                     row.Selected = selected;
                 }
@@ -4389,6 +4399,8 @@ namespace Kingdoms.Bot.UI
             _abmIncludeVassalsCheck.Enabled  = modEnabled;
             _abmPlayCardsCheck.Enabled       = modEnabled;
             _abmAutoCancelCardCheck.Enabled  = modEnabled;
+            _abmSelectAllBtn.Enabled         = coordControls;
+            _abmDeselectAllBtn.Enabled       = coordControls;
             _abmPushConfigBtn.Enabled       = coordControls;
             _abmPrepareBtn.Enabled          = coordControls;
             _abmLaunchBtn.Enabled           = coordControls && (stateText == "configured" || stateText == "prepared" || stateText == "preparing");

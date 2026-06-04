@@ -309,6 +309,8 @@ namespace Kingdoms.Bot.UI
             this._abmIncludeVassalsCheck = new System.Windows.Forms.CheckBox();
             this._abmPlayCardsCheck = new System.Windows.Forms.CheckBox();
             this._abmAutoCancelCardCheck = new System.Windows.Forms.CheckBox();
+            this._abmSelectAllBtn = new System.Windows.Forms.Button();
+            this._abmDeselectAllBtn = new System.Windows.Forms.Button();
             this._abmQueueEnabledCheck = new System.Windows.Forms.CheckBox();
             this._abmQueueVidInput = new System.Windows.Forms.NumericUpDown();
             this._abmQueueAddIdBtn = new System.Windows.Forms.Button();
@@ -3872,6 +3874,8 @@ namespace Kingdoms.Bot.UI
             this._abmCtrlPanel.Controls.Add(this._abmIncludeVassalsCheck);
             this._abmCtrlPanel.Controls.Add(this._abmPlayCardsCheck);
             this._abmCtrlPanel.Controls.Add(this._abmAutoCancelCardCheck);
+            this._abmCtrlPanel.Controls.Add(this._abmSelectAllBtn);
+            this._abmCtrlPanel.Controls.Add(this._abmDeselectAllBtn);
             this._abmCtrlPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._abmCtrlPanel.Location = new System.Drawing.Point(0, 0);
             this._abmCtrlPanel.Name = "_abmCtrlPanel";
@@ -3971,6 +3975,34 @@ namespace Kingdoms.Bot.UI
             this._abmAutoCancelCardCheck.Size = new System.Drawing.Size(138, 18);
             this._abmAutoCancelCardCheck.TabIndex = 14;
             this._abmAutoCancelCardCheck.Text = "Auto Cancel Wrong Card";
+            //
+            // _abmSelectAllBtn
+            //
+            this._abmSelectAllBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(70)))), ((int)(((byte)(40)))));
+            this._abmSelectAllBtn.FlatAppearance.BorderSize = 0;
+            this._abmSelectAllBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmSelectAllBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._abmSelectAllBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(230)))), ((int)(((byte)(200)))));
+            this._abmSelectAllBtn.Location = new System.Drawing.Point(424, 33);
+            this._abmSelectAllBtn.Name = "_abmSelectAllBtn";
+            this._abmSelectAllBtn.Size = new System.Drawing.Size(54, 18);
+            this._abmSelectAllBtn.TabIndex = 14;
+            this._abmSelectAllBtn.Text = "Sel All";
+            this._abmSelectAllBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmDeselectAllBtn
+            //
+            this._abmDeselectAllBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
+            this._abmDeselectAllBtn.FlatAppearance.BorderSize = 0;
+            this._abmDeselectAllBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmDeselectAllBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._abmDeselectAllBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(200)))), ((int)(((byte)(200)))));
+            this._abmDeselectAllBtn.Location = new System.Drawing.Point(482, 33);
+            this._abmDeselectAllBtn.Name = "_abmDeselectAllBtn";
+            this._abmDeselectAllBtn.Size = new System.Drawing.Size(62, 18);
+            this._abmDeselectAllBtn.TabIndex = 15;
+            this._abmDeselectAllBtn.Text = "Desel All";
+            this._abmDeselectAllBtn.UseVisualStyleBackColor = false;
             //
             // _abmPushConfigBtn
             //
@@ -6622,6 +6654,8 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _abmIncludeVassalsCheck;
         private System.Windows.Forms.CheckBox _abmPlayCardsCheck;
         private System.Windows.Forms.CheckBox _abmAutoCancelCardCheck;
+        private System.Windows.Forms.Button _abmSelectAllBtn;
+        private System.Windows.Forms.Button _abmDeselectAllBtn;
         private System.Windows.Forms.Button _abmPushConfigBtn;
         private System.Windows.Forms.Button _abmPrepareBtn;
         private System.Windows.Forms.Button _abmLaunchBtn;

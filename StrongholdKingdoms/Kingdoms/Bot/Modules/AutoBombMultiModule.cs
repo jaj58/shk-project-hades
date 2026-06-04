@@ -61,6 +61,11 @@ namespace Kingdoms.Bot.Modules
         // played IDs locally to avoid re-playing the same (now-consumed) instance on the next village.
         private readonly HashSet<int> _playedCardInstanceIds = new HashSet<int>();
 
+        // The earliest time the current active card will be free (i.e. consumed by the village
+        // it was played for). Set to that village's scheduled send time when a card is played.
+        // Used to delay the next card play when send times are very close together.
+        private DateTime _cardFreeAt = DateTime.MinValue;
+
         public override string ModuleName { get { return "Auto Bomb Multi"; } }
         public override TimeSpan Interval { get { return TimeSpan.FromMilliseconds(500); } }
 
@@ -213,12 +218,15 @@ namespace Kingdoms.Bot.Modules
                 // Cache locally so queue advances can rebuild without re-fetching from API
                 _cachedAttackConfig = new List<Dictionary<string, object>>(attackList);
 
-                PostAction(settings, "set_attack_config", new Dictionary<string, object>
+                var resp = PostAction(settings, "set_attack_config", new Dictionary<string, object>
                 {
                     ["player_name"]       = GetLocalPlayerName(),
                     ["target_village_id"] = targetVillageId,
                     ["attacks"]           = attackList,
                 });
+                // Apply state immediately so the UI reflects 'configured' without
+                // waiting up to 2 s for the next poll cycle to pick it up.
+                if (resp != null) ApplyStateFromResponse(settings, resp);
                 LogInfo("Attack config pushed to API for target " + targetVillageId + ".");
             }
             catch (Exception ex) { LogError("PushAttackConfig failed: " + ex.Message); }
@@ -771,6 +779,7 @@ namespace Kingdoms.Bot.Modules
             _interdictDetected = false;
             _fakeSendTriggered = false;
             _playedCardInstanceIds.Clear();
+            _cardFreeAt = DateTime.MinValue;
             DisposeFakeSendTimer();
 
             StopLaunchThread();
@@ -927,7 +936,7 @@ namespace Kingdoms.Bot.Modules
                             }
                             if (!_cancelLaunchEvent.WaitOne(0))
                             {
-                                if (!EnsureCorrectCardActive(entry.CardType, settings))
+                                if (!EnsureCorrectCardActive(entry.CardType, settings, entry.ScheduledSendTime))
                                 {
                                     LogError("[Thread] Card management failed for village " +
                                         entry.SourceVillageId + " — cancelling batch.");
@@ -1024,6 +1033,7 @@ namespace Kingdoms.Bot.Modules
                     _fakeSendTriggered = false;
                     _prepareErrorCancel = false;
                     _playedCardInstanceIds.Clear();
+                    _cardFreeAt = DateTime.MinValue;
                     cancelled = false; // allow next iteration to fire
                 }
             }
@@ -1981,7 +1991,8 @@ namespace Kingdoms.Bot.Modules
         /// Returns true if the state is acceptable (correct card active or no action needed),
         /// false only on an unrecoverable error (wrong card with auto-cancel off, or card not in inventory).
         /// </summary>
-        private bool EnsureCorrectCardActive(int cardType, AutoBombMultiSettings settings)
+        private bool EnsureCorrectCardActive(int cardType, AutoBombMultiSettings settings,
+            DateTime currentVillageSendTime)
         {
             try
             {
@@ -2012,26 +2023,52 @@ namespace Kingdoms.Bot.Modules
 
                 if (speedCardActive)
                 {
-                    if (activeDefId == desiredDefId)
+                    // Check if this instance was already played for a prior village in this
+                    // batch. If so, it will be consumed by that village's send before this
+                    // village fires — don't treat it as available, play a fresh copy instead.
+                    // Do NOT cancel it; it belongs to the prior village.
+                    bool claimedByPrior = _playedCardInstanceIds.Contains(activeInstanceId);
+
+                    if (activeDefId == desiredDefId && !claimedByPrior)
                     {
                         LogDebug("[Card] Correct card already active (cardType=" + cardType +
                             " defId=" + desiredDefId + ").");
                         return true;
                     }
 
-                    // Wrong card is active
-                    if (!settings.AutoCancelWrongCard)
+                    if (claimedByPrior)
                     {
-                        LogError("[Card] Wrong speed card active (defId=" + activeDefId +
-                            ") for desired card_type=" + cardType + " (defId=" + desiredDefId +
-                            ") — AutoCancelWrongCard is off. Cancelling batch.");
-                        return false;
+                        // Same card type but claimed by a prior village. That village will consume
+                        // it when it sends. Only one speed card can be active at once, so we must
+                        // wait until _cardFreeAt (= prior village's scheduled send time) before
+                        // playing a new copy for this village.
+                        TimeSpan waitForFree = _cardFreeAt - DateTime.Now;
+                        if (waitForFree > TimeSpan.Zero)
+                        {
+                            LogInfo("[Card] Active card (instanceId=" + activeInstanceId +
+                                ") claimed by prior village — waiting " +
+                                (int)waitForFree.TotalSeconds + "s for it to be consumed.");
+                            if (_cancelLaunchEvent.WaitOne((int)waitForFree.TotalMilliseconds))
+                                return false; // cancelled while waiting
+                        }
+                        LogInfo("[Card] Card now free — playing fresh copy for cardType=" + cardType + ".");
                     }
+                    else
+                    {
+                        // Wrong card type is active
+                        if (!settings.AutoCancelWrongCard)
+                        {
+                            LogError("[Card] Wrong speed card active (defId=" + activeDefId +
+                                ") for desired card_type=" + cardType + " (defId=" + desiredDefId +
+                                ") — AutoCancelWrongCard is off. Cancelling batch.");
+                            return false;
+                        }
 
-                    LogInfo("[Card] Wrong speed card active (defId=" + activeDefId +
-                        ") — cancelling before playing card_type=" + cardType +
-                        " (defId=" + desiredDefId + ").");
-                    RemoteServices.Instance.CancelCard(activeInstanceId);
+                        LogInfo("[Card] Wrong speed card active (defId=" + activeDefId +
+                            ") — cancelling before playing card_type=" + cardType +
+                            " (defId=" + desiredDefId + ").");
+                        RemoteServices.Instance.CancelCard(activeInstanceId);
+                    }
                 }
 
                 // Find and play the desired card from inventory
@@ -2045,6 +2082,10 @@ namespace Kingdoms.Bot.Modules
                 // Record before playing so if this is a logistics card it won't be picked
                 // again by the next village even before ProfileCards is updated server-side.
                 _playedCardInstanceIds.Add(instanceId);
+
+                // Record when this card will be consumed so a subsequent village that needs
+                // a card can wait until after this village sends before playing its own.
+                _cardFreeAt = currentVillageSendTime;
 
                 LogInfo("[Card] Playing card_type=" + cardType + " (instanceId=" + instanceId + ").");
                 XmlRpcCardsProvider provider = XmlRpcCardsProvider.CreateForEndpoint(
