@@ -1262,7 +1262,6 @@ namespace Kingdoms.Bot.UI
             this._rdSettingsPanel.Controls.Add(this._rdScanIntervalLabel);
             this._rdSettingsPanel.Controls.Add(this._rdStatusLabel);
             this._rdSettingsPanel.Controls.Add(this._rdEnabledCheck);
-            this._rdSettingsPanel.AutoScroll = true;
             this._rdSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._rdSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._rdSettingsPanel.Name = "_rdSettingsPanel";
@@ -2119,7 +2118,6 @@ namespace Kingdoms.Bot.UI
             this._crSettingsPanel.Controls.Add(this._crIntervalLabel);
             this._crSettingsPanel.Controls.Add(this._crStatusLabel);
             this._crSettingsPanel.Controls.Add(this._crEnabledCheck);
-            this._crSettingsPanel.AutoScroll = true;
             this._crSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._crSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._crSettingsPanel.Name = "_crSettingsPanel";
@@ -2556,7 +2554,6 @@ namespace Kingdoms.Bot.UI
             this._trSettingsPanel.Controls.Add(this._trIntervalLabel);
             this._trSettingsPanel.Controls.Add(this._trStatusLabel);
             this._trSettingsPanel.Controls.Add(this._trEnabledCheck);
-            this._trSettingsPanel.AutoScroll = true;
             this._trSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._trSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._trSettingsPanel.Name = "_trSettingsPanel";
@@ -3765,7 +3762,6 @@ namespace Kingdoms.Bot.UI
             this._abmConnPanel.Controls.Add(this._abmConnectBtn);
             this._abmConnPanel.Controls.Add(this._abmSessionKeyBox);
             this._abmConnPanel.Controls.Add(this._abmApiUrlBox);
-            this._abmConnPanel.AutoScroll = true;
             this._abmConnPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._abmConnPanel.Location = new System.Drawing.Point(0, 0);
             this._abmConnPanel.Name = "_abmConnPanel";
@@ -3876,7 +3872,6 @@ namespace Kingdoms.Bot.UI
             this._abmCtrlPanel.Controls.Add(this._abmIncludeVassalsCheck);
             this._abmCtrlPanel.Controls.Add(this._abmPlayCardsCheck);
             this._abmCtrlPanel.Controls.Add(this._abmAutoCancelCardCheck);
-            this._abmCtrlPanel.AutoScroll = true;
             this._abmCtrlPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._abmCtrlPanel.Location = new System.Drawing.Point(0, 0);
             this._abmCtrlPanel.Name = "_abmCtrlPanel";
@@ -4921,7 +4916,6 @@ namespace Kingdoms.Bot.UI
             this._mkSettingsPanel.Controls.Add(this._mkAutoRecruitInput);
             this._mkSettingsPanel.Controls.Add(this._mkRefreshBtn);
             this._mkSettingsPanel.Controls.Add(this._mkRunNowBtn);
-            this._mkSettingsPanel.AutoScroll = true;
             this._mkSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._mkSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._mkSettingsPanel.Name = "_mkSettingsPanel";
@@ -5338,7 +5332,6 @@ namespace Kingdoms.Bot.UI
             this._scSettingsPanel.Controls.Add(this._scPriorityRangeRadio);
             this._scSettingsPanel.Controls.Add(this._scSendOneScoutCheck);
             this._scSettingsPanel.Controls.Add(this._scSendOneOnNewCheck);
-            this._scSettingsPanel.AutoScroll = true;
             this._scSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._scSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._scSettingsPanel.Name = "_scSettingsPanel";
