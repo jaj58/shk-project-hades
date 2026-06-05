@@ -1023,7 +1023,7 @@ namespace Kingdoms.Bot.UI
             0,
             0,
             0});
-            this._vsDelayInput.Location = new System.Drawing.Point(498, 42);
+            this._vsDelayInput.Location = new System.Drawing.Point(680, 42);
             this._vsDelayInput.Maximum = new decimal(new int[] {
             30000,
             0,
@@ -1048,7 +1048,7 @@ namespace Kingdoms.Bot.UI
             this._vsDelayLabel.AutoSize = true;
             this._vsDelayLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._vsDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._vsDelayLabel.Location = new System.Drawing.Point(306, 56);
+            this._vsDelayLabel.Location = new System.Drawing.Point(440, 56);
             this._vsDelayLabel.Name = "_vsDelayLabel";
             this._vsDelayLabel.Size = new System.Drawing.Size(156, 15);
             this._vsDelayLabel.TabIndex = 5;
@@ -1064,7 +1064,7 @@ namespace Kingdoms.Bot.UI
             0,
             0,
             0});
-            this._vsIntervalInput.Location = new System.Drawing.Point(190, 42);
+            this._vsIntervalInput.Location = new System.Drawing.Point(240, 42);
             this._vsIntervalInput.Maximum = new decimal(new int[] {
             3600,
             0,
@@ -1100,7 +1100,7 @@ namespace Kingdoms.Bot.UI
             this._vsLastRunLabel.AutoSize = true;
             this._vsLastRunLabel.Font = new System.Drawing.Font("Segoe UI", 8F);
             this._vsLastRunLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._vsLastRunLabel.Location = new System.Drawing.Point(316, 27);
+            this._vsLastRunLabel.Location = new System.Drawing.Point(390, 27);
             this._vsLastRunLabel.Name = "_vsLastRunLabel";
             this._vsLastRunLabel.Size = new System.Drawing.Size(82, 13);
             this._vsLastRunLabel.TabIndex = 2;
