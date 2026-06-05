@@ -89,6 +89,7 @@ namespace Kingdoms.Bot.UI
         private List<MultiPendingRow> _abmPendingRows = new List<MultiPendingRow>();
         private Timer _abmRefreshTimer;
         private bool _abmLastIsCoordinator = false;
+        private NumericUpDown _abmAddVidInput;
 
         // ── DPI helper ────────────────────────────────────────────────────────
         // Scales a design-time pixel value (authored at 96 DPI) to the current
@@ -3826,11 +3827,103 @@ namespace Kingdoms.Bot.UI
             _abmQueueLoadBtn.Click              += delegate { AbmQueueLoad(); };
             _abmQueueResetBtn.Click             += delegate { AbmQueueReset(); };
 
+            // ── Add Village strip (dynamic — sits between column header and village list) ──
+            Panel addVillageStrip = new Panel();
+            addVillageStrip.BackColor = Color.FromArgb(18, 22, 30);
+            addVillageStrip.Dock = DockStyle.Top;
+            addVillageStrip.Height = 26;
+
+            Label addVidLbl = new Label();
+            addVidLbl.Text = "Add VID:";
+            addVidLbl.Font = new Font("Segoe UI", 7.5f);
+            addVidLbl.ForeColor = TextSec;
+            addVidLbl.AutoSize = true;
+            addVidLbl.Location = new Point(6, 6);
+            addVillageStrip.Controls.Add(addVidLbl);
+
+            _abmAddVidInput = new NumericUpDown();
+            _abmAddVidInput.Minimum = 1;
+            _abmAddVidInput.Maximum = int.MaxValue;
+            _abmAddVidInput.Value = 1;
+            _abmAddVidInput.BackColor = Color.FromArgb(50, 52, 64);
+            _abmAddVidInput.ForeColor = Color.FromArgb(230, 230, 240);
+            _abmAddVidInput.Font = new Font("Segoe UI", 7.5f);
+            _abmAddVidInput.BorderStyle = BorderStyle.FixedSingle;
+            _abmAddVidInput.Location = new Point(62, 3);
+            _abmAddVidInput.Size = new Size(90, 20);
+            _abmAddVidInput.ThousandsSeparator = false;
+            addVillageStrip.Controls.Add(_abmAddVidInput);
+
+            Button addPlayerVidBtn = new Button();
+            addPlayerVidBtn.Text = "+ Player Village";
+            addPlayerVidBtn.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            addPlayerVidBtn.FlatStyle = FlatStyle.Flat;
+            addPlayerVidBtn.FlatAppearance.BorderSize = 0;
+            addPlayerVidBtn.BackColor = Color.FromArgb(40, 70, 40);
+            addPlayerVidBtn.ForeColor = Color.FromArgb(180, 230, 180);
+            addPlayerVidBtn.Location = new Point(158, 3);
+            addPlayerVidBtn.Size = new Size(108, 20);
+            addPlayerVidBtn.Click += delegate { AbmAddVillage((int)_abmAddVidInput.Value, false); };
+            addVillageStrip.Controls.Add(addPlayerVidBtn);
+
+            Button addVassalVidBtn = new Button();
+            addVassalVidBtn.Text = "+ Vassal Village";
+            addVassalVidBtn.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            addVassalVidBtn.FlatStyle = FlatStyle.Flat;
+            addVassalVidBtn.FlatAppearance.BorderSize = 0;
+            addVassalVidBtn.BackColor = Color.FromArgb(50, 40, 70);
+            addVassalVidBtn.ForeColor = Color.FromArgb(200, 180, 230);
+            addVassalVidBtn.Location = new Point(272, 3);
+            addVassalVidBtn.Size = new Size(108, 20);
+            addVassalVidBtn.Click += delegate { AbmAddVillage((int)_abmAddVidInput.Value, true); };
+            addVillageStrip.Controls.Add(addVassalVidBtn);
+
+            Button clearRowsBtn = new Button();
+            clearRowsBtn.Text = "Clear List";
+            clearRowsBtn.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            clearRowsBtn.FlatStyle = FlatStyle.Flat;
+            clearRowsBtn.FlatAppearance.BorderSize = 0;
+            clearRowsBtn.BackColor = Color.FromArgb(70, 40, 40);
+            clearRowsBtn.ForeColor = Color.FromArgb(230, 180, 180);
+            clearRowsBtn.Location = new Point(386, 3);
+            clearRowsBtn.Size = new Size(70, 20);
+            clearRowsBtn.Click += delegate
+            {
+                if (MessageBox.Show("Clear all villages from the list?", "Auto Bomb Multi",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                {
+                    AbmClearVillageRows();
+                    AbmSaveSetup();
+                }
+            };
+            addVillageStrip.Controls.Add(clearRowsBtn);
+
+            Button loadSetupBtn = new Button();
+            loadSetupBtn.Text = "Load Setup";
+            loadSetupBtn.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            loadSetupBtn.FlatStyle = FlatStyle.Flat;
+            loadSetupBtn.FlatAppearance.BorderSize = 0;
+            loadSetupBtn.BackColor = Color.FromArgb(40, 55, 80);
+            loadSetupBtn.ForeColor = Color.FromArgb(180, 210, 240);
+            loadSetupBtn.Location = new Point(462, 3);
+            loadSetupBtn.Size = new Size(74, 20);
+            loadSetupBtn.Click += delegate { AbmClearVillageRows(); AbmLoadSetup(); };
+            addVillageStrip.Controls.Add(loadSetupBtn);
+
+            // Insert into Players tab. Dock=Top controls stack by child index: higher index =
+            // higher on screen. Designer order is ListPanel(0,Fill), ColHeader(1), CtrlPanel(2).
+            // Putting the strip at index 1 yields top-to-bottom: CtrlPanel, ColHeader, strip, list.
+            _abmPlayersTab.Controls.Add(addVillageStrip);
+            _abmPlayersTab.Controls.SetChildIndex(addVillageStrip, 1);
+
             // ── Refresh timer ─────────────────────────────────────────────────
             _abmRefreshTimer = new Timer();
             _abmRefreshTimer.Interval = 1500;
             _abmRefreshTimer.Tick += delegate { try { AbmRefreshDisplay(); } catch { } };
             _abmRefreshTimer.Start();
+
+            // Load any previously saved village setup
+            AbmLoadSetup();
         }
 
         // ── Multi-bomb load/save ──────────────────────────────────────────────
@@ -3896,10 +3989,11 @@ namespace Kingdoms.Bot.UI
             try
             {
                 var lines = new System.Text.StringBuilder();
-                lines.AppendLine("# ABM Setup " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                lines.AppendLine("# ABM Setup v2 " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 foreach (MultiBombVillageRow row in _abmVillageRows)
                 {
-                    // villageId|formation|cardIndex|useCaptains|stack|attackTypeIndex
+                    // v2 format: villageId|playerName|villageName|isVassal|parentVillageId|
+                    //            formation|cardIndex|useCaptains|stack|attackTypeIndex|selected
                     int attackTypeIndex = 0;
                     int at = row.SelectedAttackType;
                     if (at == 9) attackTypeIndex = 1;
@@ -3908,6 +4002,10 @@ namespace Kingdoms.Bot.UI
                     lines.AppendLine(string.Join("|", new string[]
                     {
                         row.SourceVillageId.ToString(),
+                        row.OwnerPlayerName ?? "",
+                        row.VillageName ?? "",
+                        row.IsVassal ? "1" : "0",
+                        row.ParentVillageId.ToString(),
                         row.SelectedFormation,
                         row.SelectedCardType.ToString(),
                         row.UseCaptains ? "1" : "0",
@@ -3924,41 +4022,70 @@ namespace Kingdoms.Bot.UI
 
         private void AbmLoadSetup()
         {
-            if (_abmVillageRows.Count == 0) return;
             string path = AbmSetupFilePath();
             if (!System.IO.File.Exists(path)) return;
             try
             {
-                // Build lookup: villageId → config line parts
-                var map = new Dictionary<int, string[]>();
+                AutoBombMultiSettings s = AbmSettings;
+                if (s == null) return;
+                bool isCoord = s.IsCoordinator;
+
                 foreach (string raw in System.IO.File.ReadAllLines(path, System.Text.Encoding.UTF8))
                 {
                     string line = raw.Trim();
                     if (line.StartsWith("#") || string.IsNullOrEmpty(line)) continue;
-                    string[] parts = line.Split('|');
-                    if (parts.Length < 6) continue;
-                    int vid;
-                    if (int.TryParse(parts[0], out vid))
-                        map[vid] = parts;
+                    string[] p = line.Split('|');
+
+                    // v2 format (11 fields): villageId|playerName|villageName|isVassal|parentVillageId|
+                    //                        formation|cardIndex|useCaptains|stack|attackTypeIndex|selected
+                    if (p.Length < 11) continue;
+
+                    int vid, parentVid, cardIndex, stack, attackTypeIndex;
+                    if (!int.TryParse(p[0], out vid)) continue;
+                    int.TryParse(p[4], out parentVid);
+                    int.TryParse(p[6], out cardIndex);
+                    int.TryParse(p[8], out stack);
+                    int.TryParse(p[9], out attackTypeIndex);
+                    string playerName  = p[1];
+                    string villageName = p[2];
+                    bool isVassal      = p[3] == "1";
+                    bool useCaptains   = p[7] == "1";
+                    bool selected      = p[10] == "1";
+
+                    // Don't add duplicates
+                    bool alreadyAdded = false;
+                    foreach (MultiBombVillageRow r in _abmVillageRows)
+                        if (r.SourceVillageId == vid) { alreadyAdded = true; break; }
+                    if (alreadyAdded) continue;
+
+                    // Try to get live data from connected players; fall back to saved data
+                    MultiVillageInfo liveVi = null;
+                    MultiPlayerInfo  liveOwner = null;
+                    foreach (MultiPlayerInfo pi in s.ConnectedPlayers)
+                        foreach (MultiVillageInfo vi in pi.Villages)
+                            if (vi.VillageId == vid)
+                            { liveVi = vi; liveOwner = pi; break; }
+
+                    // Build a synthetic village info using saved data when not connected
+                    if (liveOwner == null)
+                    {
+                        liveOwner = new MultiPlayerInfo { PlayerName = playerName };
+                        liveVi    = new MultiVillageInfo
+                        {
+                            VillageId = vid, VillageName = villageName,
+                            IsVassal = isVassal, ParentVillageId = parentVid
+                        };
+                    }
+
+                    AbmAddVillageRow(s, liveOwner, liveVi, isCoord);
+
+                    // Apply saved config to the row we just added
+                    MultiBombVillageRow newRow = _abmVillageRows[_abmVillageRows.Count - 1];
+                    newRow.ApplyConfig(p[5], cardIndex, useCaptains, stack, attackTypeIndex);
+                    newRow.Selected = selected;
                 }
 
-                foreach (MultiBombVillageRow row in _abmVillageRows)
-                {
-                    string[] p;
-                    if (!map.TryGetValue(row.SourceVillageId, out p)) continue;
-                    string formation = p[1];
-                    int cardIndex, stack, attackTypeIndex;
-                    bool useCaptains;
-                    int.TryParse(p[2], out cardIndex);
-                    useCaptains = p[3] == "1";
-                    int.TryParse(p[4], out stack);
-                    int.TryParse(p[5], out attackTypeIndex);
-                    // Field 7 (index 6) is selected. Must be explicitly "1" to enable —
-                    // old saves without this field default to disabled (matches new default).
-                    bool selected = p.Length >= 7 && p[6] == "1";
-                    row.ApplyConfig(formation, cardIndex, useCaptains, stack, attackTypeIndex);
-                    row.Selected = selected;
-                }
+                AbmRepositionVillageRows();
             }
             catch { }
         }
@@ -4032,16 +4159,34 @@ namespace Kingdoms.Bot.UI
                 return;
             }
 
+            string localPlayerName = AutoBombMultiModule.GetLocalPlayerName();
+
             var attacks = new List<MultiAttackConfigEntry>();
             foreach (MultiBombVillageRow row in _abmVillageRows)
             {
                 if (!row.Selected) continue;
 
-                // Always recalculate travel time fresh from game world using the current
-                // target VID — the stored row value may be 0 if the village was registered
-                // before a target was set.
-                double baseTravel = AutoBombModule.CalculateBaseTravelTime(
-                    row.SourceVillageId, targetVid, row.UseCaptains);
+                // Travel time source depends on who owns the village:
+                //  - Local village: recalc fresh from our own game world against the target.
+                //  - Remote village: we can't compute it (we don't know the remote village's
+                //    location) — use the base travel time the owning player posted to the API,
+                //    looked up live from connected players so it's current for this target.
+                double baseTravel;
+                bool isLocalVillage = (row.OwnerPlayerName == localPlayerName);
+                if (isLocalVillage)
+                {
+                    baseTravel = AutoBombModule.CalculateBaseTravelTime(
+                        row.SourceVillageId, targetVid, row.UseCaptains);
+                }
+                else
+                {
+                    baseTravel = AbmLookupRemoteTravel(s, row.SourceVillageId, row.UseCaptains);
+                    if (baseTravel <= 0)
+                    {
+                        // Fall back to the row's snapshot if live lookup failed
+                        baseTravel = row.UseCaptains ? row.BaseTravelTimeCaptain : row.BaseTravelTimeArmy;
+                    }
+                }
                 double effectiveTravel = AutoBombModule.ApplyCardSpeed(baseTravel, row.SelectedCardType);
 
                 attacks.Add(new MultiAttackConfigEntry
@@ -4069,11 +4214,15 @@ namespace Kingdoms.Bot.UI
                 AutoBombMultiSettings s2 = AbmSettings;
                 if (s2 != null) s2.TargetVillageId = targetVid;
 
-                // Update travel time labels in-place — don't rebuild rows (would lose UI selections)
+                // Update travel time labels in-place — don't rebuild rows (would lose UI selections).
+                // Use local calc for own villages, posted API value for remote villages.
                 foreach (MultiBombVillageRow row in _abmVillageRows)
                 {
-                    double baseTravel = AutoBombModule.CalculateBaseTravelTime(
-                        row.SourceVillageId, targetVid, false);
+                    double baseTravel;
+                    if (row.OwnerPlayerName == localPlayerName)
+                        baseTravel = AutoBombModule.CalculateBaseTravelTime(row.SourceVillageId, targetVid, false);
+                    else
+                        baseTravel = AbmLookupRemoteTravel(s, row.SourceVillageId, false);
                     row.UpdateTravelTime(baseTravel);
                 }
 
@@ -4132,6 +4281,7 @@ namespace Kingdoms.Bot.UI
                 return;
             AutoBombMultiModule mod = AbmModule;
             if (mod != null) mod.ResetSession();
+            AbmClearVillageRows();
         }
 
         private void AbmDoTakeCoordinator()
@@ -4433,83 +4583,133 @@ namespace Kingdoms.Bot.UI
 
         private void AbmRefreshVillageRows(AutoBombMultiSettings settings, bool isCoordinator)
         {
-            int totalVillages = 0;
-            foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
-                totalVillages += pi.Villages.Count;
-
+            // Row controls bake in editability (isCoordinator) at construction time.
+            // If coordinator status changes, re-create the rows so their controls match —
+            // save the current config, clear, and reload restores everything with new state.
             bool coordChanged = (isCoordinator != _abmLastIsCoordinator);
             _abmLastIsCoordinator = isCoordinator;
-
-            if (totalVillages != _abmVillageRows.Count || coordChanged)
-                AbmRebuildVillageRows(settings, isCoordinator);
-            else
+            if (coordChanged && _abmVillageRows.Count > 0)
             {
-                foreach (MultiBombVillageRow row in _abmVillageRows)
-                    foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
-                        foreach (MultiVillageInfo vi in pi.Villages)
-                            if (vi.VillageId == row.SourceVillageId)
-                                row.SetStatus(vi.AttackStatus);
+                AbmSaveSetup();
+                AbmClearVillageRows();
+                AbmLoadSetup();
+                return;
             }
+
+            // Rows are manually added by the coordinator — don't auto-rebuild.
+            // Just update status labels on whatever rows are already in the list.
+            foreach (MultiBombVillageRow row in _abmVillageRows)
+                foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
+                    foreach (MultiVillageInfo vi in pi.Villages)
+                        if (vi.VillageId == row.SourceVillageId)
+                            row.SetStatus(vi.AttackStatus);
         }
 
-        private void AbmRebuildVillageRows(AutoBombMultiSettings settings, bool isCoordinator)
+        /// <summary>Clears all village rows from the list panel (e.g. on Reset Session).</summary>
+        private void AbmClearVillageRows()
         {
-            _abmVillageRows.Clear();
-
-            // Dispose old controls before clearing to release GDI handles immediately.
-            // With 40+ villages per player this can be 800+ controls; without disposal
-            // the handles accumulate and cause lag or crashes.
             _abmVillageListPanel.SuspendLayout();
             foreach (Control c in _abmVillageListPanel.Controls)
                 c.Dispose();
             _abmVillageListPanel.Controls.Clear();
+            _abmVillageRows.Clear();
+            _abmVillageListPanel.AutoScrollMinSize = new Size(0, 0);
+            _abmVillageListPanel.ResumeLayout(false);
+        }
 
-            List<string> formationNames = AutoBombModule.GetFormationNames();
-            int y = 0, idx = 0;
+        /// <summary>
+        /// Adds a single village row to the list.
+        /// Looks up the village in the connected players data; shows a warning if not found.
+        /// </summary>
+        private void AbmAddVillage(int villageId, bool isVassal)
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null) return;
 
-            string localPlayerName = AutoBombMultiModule.GetLocalPlayerName();
+            // Don't add duplicates
+            foreach (MultiBombVillageRow existing in _abmVillageRows)
+                if (existing.SourceVillageId == villageId) return;
 
-            foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
+            // Find in connected players
+            MultiVillageInfo found = null;
+            MultiPlayerInfo owner = null;
+            foreach (MultiPlayerInfo pi in s.ConnectedPlayers)
             {
-                Label playerHeader = new Label();
-                playerHeader.BackColor = Color.FromArgb(20, 30, 50);
-                playerHeader.ForeColor = pi.IsCoordinator
-                    ? Color.FromArgb(100, 200, 255)
-                    : Color.FromArgb(180, 200, 230);
-                playerHeader.Font = new Font("Segoe UI", 7.5f, FontStyle.Bold);
-                playerHeader.Text = "  " + pi.PlayerName + (pi.IsCoordinator ? " [Coordinator]" : "");
-                playerHeader.Location = new Point(0, y);
-                playerHeader.Size = new Size(1100, 18);
-                _abmVillageListPanel.Controls.Add(playerHeader);
-                y += 18;
-
-                bool isLocal = (pi.PlayerName == localPlayerName);
-
                 foreach (MultiVillageInfo vi in pi.Villages)
                 {
-                    var row = new MultiBombVillageRow(
-                        pi.PlayerName, vi.VillageId, vi.VillageName,
-                        vi.TravelTimeArmy, vi.TravelTimeCaptain,
-                        vi.NumPeasants, vi.NumArchers, vi.NumPikemen,
-                        vi.NumSwordsmen, vi.NumCatapults, vi.NumCaptains,
-                        formationNames, isLocal, idx, isCoordinator,
-                        vi.IsVassal, vi.ParentVillageId);
-
-                    row.Location = new Point(0, y);
-                    row.Width = _abmVillageListPanel.Width > 0 ? _abmVillageListPanel.Width : 1100;
-                    row.SetStatus(vi.AttackStatus);
-                    _abmVillageListPanel.Controls.Add(row);
-                    _abmVillageRows.Add(row);
-                    y += 24;
-                    idx++;
+                    if (vi.VillageId == villageId && vi.IsVassal == isVassal)
+                    { found = vi; owner = pi; break; }
                 }
+                if (found != null) break;
             }
 
-            _abmVillageListPanel.AutoScrollMinSize = new Size(0, y);
-            _abmVillageListPanel.ResumeLayout(false);
+            if (found == null)
+            {
+                MessageBox.Show("Village " + villageId + " was not found in any connected player's " +
+                    (isVassal ? "vassal" : "village") + " list.\n\nMake sure all players are connected and have posted their village data.",
+                    "Auto Bomb Multi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-            // Restore per-village formation/card/stack/type from last saved setup
-            AbmLoadSetup();
+            AbmAddVillageRow(s, owner, found, s.IsCoordinator);
+            AbmRepositionVillageRows();
+            AbmSaveSetup();
+        }
+
+        private void AbmAddVillageRow(AutoBombMultiSettings settings, MultiPlayerInfo owner,
+            MultiVillageInfo vi, bool isCoordinator)
+        {
+            string localPlayerName = AutoBombMultiModule.GetLocalPlayerName();
+            bool isLocal = (owner.PlayerName == localPlayerName);
+            List<string> formationNames = AutoBombModule.GetFormationNames();
+            int idx = _abmVillageRows.Count;
+
+            var row = new MultiBombVillageRow(
+                owner.PlayerName, vi.VillageId, vi.VillageName,
+                vi.TravelTimeArmy, vi.TravelTimeCaptain,
+                vi.NumPeasants, vi.NumArchers, vi.NumPikemen,
+                vi.NumSwordsmen, vi.NumCatapults, vi.NumCaptains,
+                formationNames, isLocal, idx, isCoordinator,
+                vi.IsVassal, vi.ParentVillageId);
+
+            row.Width = _abmVillageListPanel.Width > 0 ? _abmVillageListPanel.Width : 1100;
+            row.SetStatus(vi.AttackStatus);
+            row.RemoveRequested += r =>
+            {
+                _abmVillageListPanel.Controls.Remove(r);
+                _abmVillageRows.Remove(r);
+                r.Dispose();
+                AbmRepositionVillageRows();
+                AbmSaveSetup();
+            };
+
+            _abmVillageListPanel.Controls.Add(row);
+            _abmVillageRows.Add(row);
+        }
+
+        private void AbmRepositionVillageRows()
+        {
+            int y = 0;
+            foreach (MultiBombVillageRow row in _abmVillageRows)
+            {
+                row.Location = new Point(0, y);
+                y += 24;
+            }
+            _abmVillageListPanel.AutoScrollMinSize = new Size(0, y);
+        }
+
+        /// <summary>
+        /// Returns the live base travel time (seconds) for a village owned by a remote player,
+        /// as posted to the API. Returns 0 if not found.
+        /// </summary>
+        private double AbmLookupRemoteTravel(AutoBombMultiSettings settings, int villageId, bool useCaptains)
+        {
+            if (settings == null) return 0;
+            foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
+                foreach (MultiVillageInfo vi in pi.Villages)
+                    if (vi.VillageId == villageId)
+                        return useCaptains ? vi.TravelTimeCaptain : vi.TravelTimeArmy;
+            return 0;
         }
 
         private void AbmRefreshPendingRows(AutoBombMultiSettings settings)

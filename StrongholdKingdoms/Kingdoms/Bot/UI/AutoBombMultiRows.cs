@@ -22,6 +22,7 @@ namespace Kingdoms.Bot.UI
         private static readonly Color TextRemote   = Color.FromArgb(140, 170, 200);
 
         public string OwnerPlayerName;
+        public string VillageName;
         public int SourceVillageId;
         public int ParentVillageId;
         public bool IsVassal;
@@ -37,6 +38,10 @@ namespace Kingdoms.Bot.UI
         private CheckBox _selectCheck;
         private Label _statusLabel;
         private Label _travelTimeLabel;
+        private Button _removeBtn;
+
+        /// <summary>Raised when the coordinator clicks the × remove button on this row.</summary>
+        public event Action<MultiBombVillageRow> RemoveRequested;
 
         public bool Selected
         {
@@ -129,6 +134,7 @@ namespace Kingdoms.Bot.UI
             bool isVassal = false, int parentVillageId = 0)
         {
             OwnerPlayerName       = ownerPlayerName;
+            VillageName           = villageName;
             SourceVillageId       = sourceVillageId;
             IsVassal              = isVassal;
             ParentVillageId       = parentVillageId;
@@ -153,7 +159,11 @@ namespace Kingdoms.Bot.UI
             this.Controls.Add(_selectCheck);
             x += 22;
 
-            Label villLabel = MakeLabel("[" + sourceVillageId + "] " + villageName, x, 170);
+            // Show player name prefix for remote villages so the coordinator can see ownership
+            string villageDisplay = isRemote
+                ? ownerPlayerName + "  [" + sourceVillageId + "] " + villageName
+                : "[" + sourceVillageId + "] " + villageName;
+            Label villLabel = MakeLabel(villageDisplay, x, 170);
             villLabel.ForeColor = isVassal
                 ? Color.FromArgb(190, 160, 230)
                 : (isRemote ? TextRemote : TextPri);
@@ -251,6 +261,24 @@ namespace Kingdoms.Bot.UI
 
             _statusLabel = MakeLabel("", x, 100);
             _statusLabel.ForeColor = TextSec;
+
+            // Remove button — coordinator only, at far right of row
+            if (isCoordinator)
+            {
+                _removeBtn = new Button();
+                _removeBtn.Text = "×";
+                _removeBtn.Font = new Font("Segoe UI", 7.5f, FontStyle.Bold);
+                _removeBtn.FlatStyle = FlatStyle.Flat;
+                _removeBtn.FlatAppearance.BorderSize = 0;
+                _removeBtn.BackColor = Color.FromArgb(80, 40, 40);
+                _removeBtn.ForeColor = Color.FromArgb(230, 100, 100);
+                _removeBtn.Size = new Size(20, 18);
+                _removeBtn.Location = new Point(this.Width - 22, 3);
+                _removeBtn.Anchor = AnchorStyles.Right | AnchorStyles.Top;
+                _removeBtn.Cursor = Cursors.Hand;
+                _removeBtn.Click += (s, e) => { if (RemoveRequested != null) RemoveRequested(this); };
+                this.Controls.Add(_removeBtn);
+            }
         }
 
         private Label MakeLabel(string text, int x, int width)

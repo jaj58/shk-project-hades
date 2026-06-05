@@ -66,6 +66,14 @@ namespace Kingdoms.Bot.Modules
         // Used to delay the next card play when send times are very close together.
         private DateTime _cardFreeAt = DateTime.MinValue;
 
+        // Cached result of BuildLocalVillageList. Rebuilt only when the target village changes
+        // or after VillageListCacheSeconds, rather than on every heartbeat. With 200+ vassals,
+        // rebuilding every 2 s during launch generates hundreds of world-map lookups per second.
+        private List<Dictionary<string, object>> _cachedVillageList = null;
+        private int    _cachedVillageListTargetVid = -1;
+        private DateTime _cachedVillageListTime    = DateTime.MinValue;
+        private const int VillageListCacheSeconds  = 60;
+
         public override string ModuleName { get { return "Auto Bomb Multi"; } }
         public override TimeSpan Interval { get { return TimeSpan.FromMilliseconds(500); } }
 
@@ -96,6 +104,7 @@ namespace Kingdoms.Bot.Modules
             _pollStarted = false;
             _stopPollEvent.Set();
             _cancelLaunchEvent.Set();
+            _cachedVillageList = null; // force fresh build on next connect
 
             AutoBombMultiSettings settings = Settings;
             if (settings != null && !string.IsNullOrEmpty(settings.ApiUrl))
@@ -404,7 +413,10 @@ namespace Kingdoms.Bot.Modules
             settings.IsCoordinator = (coordinator == GetLocalPlayerName());
 
             // ── Target village ────────────────────────────────────────────────
-            settings.TargetVillageId = GetInt(stateData, "target_village_id");
+            int newTargetVidFromPoll = GetInt(stateData, "target_village_id");
+            if (newTargetVidFromPoll != settings.TargetVillageId)
+                InvalidateVillageListCache(); // travel times depend on target — force rebuild
+            settings.TargetVillageId = newTargetVidFromPoll;
 
             // ── Connected players ─────────────────────────────────────────────
             object playersObj;
@@ -2200,12 +2212,32 @@ namespace Kingdoms.Bot.Modules
             catch (Exception ex) { LogError("PlayerReady failed: " + ex.Message); }
         }
 
+        /// <summary>
+        /// Clears the village list cache, forcing a full rebuild on the next heartbeat.
+        /// Call when the target village changes or when a village sync has just completed.
+        /// </summary>
+        public void InvalidateVillageListCache()
+        {
+            _cachedVillageList = null;
+        }
+
         private List<Dictionary<string, object>> BuildLocalVillageList(AutoBombMultiSettings settings)
         {
+            int targetVid = settings.TargetVillageId;
+
+            // Return cached list if the target hasn't changed and it's still fresh.
+            // With 200+ vassals each requiring two CalculateBaseTravelTime calls, rebuilding
+            // every heartbeat (2 s during launch) is hundreds of world-map lookups per second.
+            if (_cachedVillageList != null &&
+                _cachedVillageListTargetVid == targetVid &&
+                (DateTime.Now - _cachedVillageListTime).TotalSeconds < VillageListCacheSeconds)
+            {
+                return _cachedVillageList;
+            }
+
             var result = new List<Dictionary<string, object>>();
             if (GameEngine.Instance == null || GameEngine.Instance.World == null) return result;
 
-            int targetVid = settings.TargetVillageId;
             foreach (int vid in GameEngine.Instance.World.getUserVillageIDList())
             {
                 string name = GameEngine.Instance.World.getVillageName(vid);
@@ -2272,6 +2304,10 @@ namespace Kingdoms.Bot.Modules
                 }
             }
 
+            _cachedVillageList            = result;
+            _cachedVillageListTargetVid   = targetVid;
+            _cachedVillageListTime        = DateTime.Now;
+            LogDebug("Village list rebuilt: " + result.Count + " entries (own + vassals).");
             return result;
         }
 
