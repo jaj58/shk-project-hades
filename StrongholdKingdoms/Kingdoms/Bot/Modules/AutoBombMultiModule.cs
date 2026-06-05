@@ -628,19 +628,9 @@ namespace Kingdoms.Bot.Modules
             var myEntries = new List<BombAttackEntry>();
 
             object attacksObj;
-            Dictionary<int, string> sendTimes = new Dictionary<int, string>();
-
             object sendTimesObj;
-            if (stateData.TryGetValue("scheduled_send_times", out sendTimesObj) && sendTimesObj != null)
-            {
-                var st = sendTimesObj as Dictionary<string, object>;
-                if (st != null)
-                    foreach (var kv in st)
-                    {
-                        int vid;
-                        if (int.TryParse(kv.Key, out vid)) sendTimes[vid] = kv.Value.ToString();
-                    }
-            }
+            stateData.TryGetValue("scheduled_send_times", out sendTimesObj);
+            Dictionary<int, string> sendTimes = ParseSendTimesForPlayer(sendTimesObj, myName);
 
             LogInfo("Launching: " + sendTimes.Count + " scheduled send time(s) received from API.");
             foreach (var kv in sendTimes)
@@ -765,15 +755,15 @@ namespace Kingdoms.Bot.Modules
                     if (sd2 != null)
                     {
                         object stObj2; sd2.TryGetValue("scheduled_send_times", out stObj2);
-                        var st2 = stObj2 as Dictionary<string, object>;
-                        if (st2 != null)
+                        var st2map = ParseSendTimesForPlayer(stObj2, myName);
+                        if (st2map.Count > 0)
                         {
                             foreach (var e in myEntries)
                             {
                                 if (e.ScheduledSendTime != DateTime.MaxValue) continue;
-                                object sv; if (!st2.TryGetValue(e.SourceVillageId.ToString(), out sv) || sv == null) continue;
+                                string sv; if (!st2map.TryGetValue(e.SourceVillageId, out sv) || sv == null) continue;
                                 DateTime utc2;
-                                if (DateTime.TryParse(sv.ToString(), null,
+                                if (DateTime.TryParse(sv, null,
                                     System.Globalization.DateTimeStyles.RoundtripKind, out utc2))
                                 {
                                     e.ScheduledSendTime    = utc2.ToLocalTime().AddSeconds(-settings.ServerClockOffsetSeconds);
@@ -1424,24 +1414,17 @@ namespace Kingdoms.Bot.Modules
                 _lastProcessedLaunchId = GetStr(stateData, "launch_id", "");
                 _lastSessionState = "launching"; // suppress poll re-trigger for this batch
 
-                // Parse scheduled send times
-                var sendTimes = new Dictionary<int, string>();
+                // Build this player's new BombAttackEntry list
+                string myName = GetLocalPlayerName();
+
+                // Parse scheduled send times for this player (keyed "player|vid" by the API)
                 object sendTimesObj;
-                if (stateData.TryGetValue("scheduled_send_times", out sendTimesObj) && sendTimesObj != null)
-                {
-                    var st = sendTimesObj as Dictionary<string, object>;
-                    if (st != null)
-                        foreach (var kv in st)
-                        {
-                            int vid; if (int.TryParse(kv.Key, out vid)) sendTimes[vid] = kv.Value.ToString();
-                        }
-                }
+                stateData.TryGetValue("scheduled_send_times", out sendTimesObj);
+                var sendTimes = ParseSendTimesForPlayer(sendTimesObj, myName);
                 LogInfo("[Queue] " + sendTimes.Count + " send time(s) received for target " + newTargetVid + ".");
                 foreach (var kv in sendTimes)
                     LogInfo("[Queue]   Village " + kv.Key + " → send at " + kv.Value);
 
-                // Build this player's new BombAttackEntry list
-                string myName = GetLocalPlayerName();
                 var newEntries = new List<BombAttackEntry>();
 
                 object newAttacksObj;
@@ -1538,12 +1521,8 @@ namespace Kingdoms.Bot.Modules
                     _lastProcessedLaunchId = GetStr(stateData, "launch_id", "");
                     _lastSessionState      = "launching";
 
-                    sendTimes = new Dictionary<int, string>();
                     object stObj2; stateData.TryGetValue("scheduled_send_times", out stObj2);
-                    var st2 = stObj2 as Dictionary<string, object>;
-                    if (st2 != null)
-                        foreach (var kv2 in st2)
-                        { int v2; if (int.TryParse(kv2.Key, out v2)) sendTimes[v2] = kv2.Value.ToString(); }
+                    sendTimes = ParseSendTimesForPlayer(stObj2, myName);
 
                     newEntries = new List<BombAttackEntry>();
                     object attacksObj2; stateData.TryGetValue("attacks", out attacksObj2);
@@ -2340,6 +2319,36 @@ namespace Kingdoms.Bot.Modules
                 LogError("PostAttackEvent '" + action + "' failed: " + ex.Message);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Parses the API's scheduled_send_times into a (villageId → ISO time) map containing
+        /// only the entries for the given player. The API keys these by "player|villageId" so a
+        /// village sent by two different players (player attack + vassal attack) gets distinct
+        /// send times. Falls back to a bare-villageId key for backward compatibility.
+        /// Within a single player a village ID is unique, so a vid-keyed result is unambiguous.
+        /// </summary>
+        private Dictionary<int, string> ParseSendTimesForPlayer(object sendTimesObj, string playerName)
+        {
+            var result = new Dictionary<int, string>();
+            var st = sendTimesObj as Dictionary<string, object>;
+            if (st == null) return result;
+            foreach (var kv in st)
+            {
+                int sep = kv.Key.IndexOf('|');
+                if (sep <= 0)
+                {
+                    // Old format: keyed by village ID alone
+                    int vidOld;
+                    if (int.TryParse(kv.Key, out vidOld)) result[vidOld] = kv.Value.ToString();
+                    continue;
+                }
+                if (kv.Key.Substring(0, sep) != playerName) continue;
+                int vid;
+                if (int.TryParse(kv.Key.Substring(sep + 1), out vid))
+                    result[vid] = kv.Value.ToString();
+            }
+            return result;
         }
 
         // ── API call ──────────────────────────────────────────────────────────

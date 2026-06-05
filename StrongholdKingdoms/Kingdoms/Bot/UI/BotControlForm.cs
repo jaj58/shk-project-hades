@@ -4159,22 +4159,6 @@ namespace Kingdoms.Bot.UI
                 return;
             }
 
-            // Guard: the same village can be staged as both a player and a vassal entry, but
-            // only ONE may be selected per bomb — they share the same physical troops, and the
-            // API schedules send times by village ID. Block selecting both.
-            var selectedVids = new HashSet<int>();
-            foreach (MultiBombVillageRow row in _abmVillageRows)
-            {
-                if (!row.Selected) continue;
-                if (!selectedVids.Add(row.SourceVillageId))
-                {
-                    MessageBox.Show("Village " + row.SourceVillageId + " is selected as both a player " +
-                        "and a vassal attack.\n\nThese use the same troops — select only one before pushing config.",
-                        "Auto Bomb Multi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-            }
-
             string localPlayerName = AutoBombMultiModule.GetLocalPlayerName();
 
             var attacks = new List<MultiAttackConfigEntry>();
