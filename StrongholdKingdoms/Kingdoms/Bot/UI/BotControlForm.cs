@@ -3894,6 +3894,18 @@ namespace Kingdoms.Bot.UI
             };
             addVillageStrip.Controls.Add(clearRowsBtn);
 
+            Button saveSetupBtn = new Button();
+            saveSetupBtn.Text = "Save Setup";
+            saveSetupBtn.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            saveSetupBtn.FlatStyle = FlatStyle.Flat;
+            saveSetupBtn.FlatAppearance.BorderSize = 0;
+            saveSetupBtn.BackColor = Color.FromArgb(40, 70, 55);
+            saveSetupBtn.ForeColor = Color.FromArgb(180, 230, 200);
+            saveSetupBtn.Location = new Point(462, 3);
+            saveSetupBtn.Size = new Size(74, 20);
+            saveSetupBtn.Click += delegate { AbmSaveSetupNamed(); };
+            addVillageStrip.Controls.Add(saveSetupBtn);
+
             Button loadSetupBtn = new Button();
             loadSetupBtn.Text = "Load Setup";
             loadSetupBtn.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
@@ -3901,9 +3913,9 @@ namespace Kingdoms.Bot.UI
             loadSetupBtn.FlatAppearance.BorderSize = 0;
             loadSetupBtn.BackColor = Color.FromArgb(40, 55, 80);
             loadSetupBtn.ForeColor = Color.FromArgb(180, 210, 240);
-            loadSetupBtn.Location = new Point(462, 3);
+            loadSetupBtn.Location = new Point(542, 3);
             loadSetupBtn.Size = new Size(74, 20);
-            loadSetupBtn.Click += delegate { AbmClearVillageRows(); AbmLoadSetup(); };
+            loadSetupBtn.Click += delegate { AbmLoadSetupNamed(); };
             addVillageStrip.Controls.Add(loadSetupBtn);
 
             // Insert into Players tab. Dock=Top controls stack by child index: higher index =
@@ -3981,7 +3993,19 @@ namespace Kingdoms.Bot.UI
             return System.IO.Path.Combine(dir, "abm_setup_" + safe + ".txt");
         }
 
+        // Auto-save to the per-session-key file (called on every change to remember state).
         private void AbmSaveSetup()
+        {
+            AbmWriteSetupToPath(AbmSetupFilePath());
+        }
+
+        // Auto-load from the per-session-key file (called on connect/startup).
+        private void AbmLoadSetup()
+        {
+            AbmReadSetupFromPath(AbmSetupFilePath());
+        }
+
+        private void AbmWriteSetupToPath(string path)
         {
             if (_abmVillageRows.Count == 0) return;
             try
@@ -4012,15 +4036,57 @@ namespace Kingdoms.Bot.UI
                         row.Selected ? "1" : "0"
                     }));
                 }
-                System.IO.File.WriteAllText(AbmSetupFilePath(), lines.ToString(),
-                    System.Text.Encoding.UTF8);
+                System.IO.File.WriteAllText(path, lines.ToString(), System.Text.Encoding.UTF8);
             }
             catch { }
         }
 
-        private void AbmLoadSetup()
+        // Named "Save Setup" — lets the coordinator keep multiple setups by filename.
+        private void AbmSaveSetupNamed()
         {
-            string path = AbmSetupFilePath();
+            if (_abmVillageRows.Count == 0)
+            {
+                MessageBox.Show("No villages in the list to save.", "Auto Bomb Multi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            using (SaveFileDialog dlg = new SaveFileDialog())
+            {
+                dlg.Filter = "ABM Setup (*.abm)|*.abm|All files (*.*)|*.*";
+                dlg.Title = "Save Auto Bomb Multi Setup";
+                dlg.InitialDirectory = AbmSetupDir();
+                dlg.FileName = "setup.abm";
+                if (dlg.ShowDialog(this) != DialogResult.OK) return;
+                AbmWriteSetupToPath(dlg.FileName);
+            }
+        }
+
+        // Named "Load Setup" — load a previously saved setup file.
+        private void AbmLoadSetupNamed()
+        {
+            using (OpenFileDialog dlg = new OpenFileDialog())
+            {
+                dlg.Filter = "ABM Setup (*.abm)|*.abm|Text (*.txt)|*.txt|All files (*.*)|*.*";
+                dlg.Title = "Load Auto Bomb Multi Setup";
+                dlg.InitialDirectory = AbmSetupDir();
+                if (dlg.ShowDialog(this) != DialogResult.OK) return;
+                AbmClearVillageRows();
+                AbmReadSetupFromPath(dlg.FileName);
+                AbmSaveSetup(); // mirror into the auto-save file so it persists across restarts
+            }
+        }
+
+        private string AbmSetupDir()
+        {
+            string dir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "SHKBot");
+            try { System.IO.Directory.CreateDirectory(dir); } catch { }
+            return dir;
+        }
+
+        private void AbmReadSetupFromPath(string path)
+        {
             if (!System.IO.File.Exists(path)) return;
             try
             {

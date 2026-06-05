@@ -245,18 +245,69 @@ namespace Kingdoms.Bot.Modules
         {
             AutoBombMultiSettings settings = Settings;
             if (settings == null || !settings.IsCoordinator) return;
+            // Run on a background thread — the remote-travel handshake may wait a few seconds
+            // and must not freeze the UI thread that clicked Launch.
+            var t = new Thread(() => StartTimerProc(settings));
+            t.IsBackground = true;
+            t.Name = "AbmStartTimer";
+            t.Start();
+        }
+
+        private void StartTimerProc(AutoBombMultiSettings settings)
+        {
             try
             {
+                string myName    = GetLocalPlayerName();
+                int    targetVid = settings.TargetVillageId;
+                var    source    = _cachedAttackConfig;
+
+                // Detect whether any selected attack belongs to another player.
+                bool hasRemote = false;
+                if (source != null)
+                    foreach (var ad in source)
+                        if (GetBool(ad, "selected", true) && GetStr(ad, "source_player", "") != myName)
+                            { hasRemote = true; break; }
+
+                // With remote players, their config travel times can be stale (computed before
+                // they saw this target). Wait for them to recompute, then re-push the config with
+                // corrected travel times before firing the timer. The launch thread re-prepares
+                // each attack just-in-time, so re-pushing here does not disturb the prepared state.
+                if (hasRemote && source != null && source.Count > 0)
+                {
+                    _cancelLaunchEvent.Reset();
+                    if (!WaitForRemoteTravelReady(settings, source, targetVid, myName, 25000))
+                    {
+                        LogInfo("[Launch] Cancelled during remote-travel wait — not starting timer.");
+                        return;
+                    }
+
+                    var freshList = BuildQueueAttackList(settings, source, targetVid, myName);
+                    _cachedAttackConfig = new List<Dictionary<string, object>>(freshList);
+                    foreach (var atk in freshList)
+                        LogInfo("[Launch] Travel: village=" + GetInt(atk, "source_village_id") +
+                            " player=" + GetStr(atk, "source_player", "") +
+                            " travel=" + (int)GetDouble(atk, "travel_time_seconds") + "s");
+
+                    PostAction(settings, "set_attack_config", new Dictionary<string, object>
+                    {
+                        ["player_name"]       = myName,
+                        ["target_village_id"] = targetVid,
+                        ["attacks"]           = freshList,
+                    });
+                    // Brief settle so non-coordinators poll the corrected config before the timer.
+                    if (_cancelLaunchEvent.WaitOne(2000)) return;
+                }
+
                 PostAction(settings, "start_timer", new Dictionary<string, object>
                 {
-                    ["player_name"]            = GetLocalPlayerName(),
+                    ["player_name"]            = myName,
                     ["stack_delay_seconds"]    = settings.StackDelaySeconds,
                     ["fake_send"]              = settings.FakeSendEnabled,
                     ["auto_cancel_on_interdict"] = settings.AutoCancelOnInterdict,
                 });
                 LogInfo("Timer started — all clients will receive launch times on next poll.");
             }
-            catch (Exception ex) { LogError("StartTimer failed: " + ex.Message); }
+            catch (Exception ex) { LogError("StartTimerProc failed: " + ex.Message); }
         }
 
         public void TriggerPrepare()
@@ -414,9 +465,18 @@ namespace Kingdoms.Bot.Modules
 
             // ── Target village ────────────────────────────────────────────────
             int newTargetVidFromPoll = GetInt(stateData, "target_village_id");
-            if (newTargetVidFromPoll != settings.TargetVillageId)
+            bool targetChanged = (newTargetVidFromPoll != settings.TargetVillageId);
+            if (targetChanged)
                 InvalidateVillageListCache(); // travel times depend on target — force rebuild
             settings.TargetVillageId = newTargetVidFromPoll;
+
+            // When the target changes (e.g. queue advanced to the next target), a non-coordinator
+            // must promptly recompute its villages' travel times for the new target and repost,
+            // so the coordinator can read correct values before starting the bomb timer.
+            if (targetChanged && !settings.IsCoordinator && newTargetVidFromPoll > 0)
+            {
+                try { PostPlayerReady(settings); } catch { }
+            }
 
             // ── Connected players ─────────────────────────────────────────────
             object playersObj;
@@ -431,6 +491,7 @@ namespace Kingdoms.Bot.Modules
                     pi.PlayerName    = GetStr(pd, "name", "");
                     pi.IsCoordinator = (pi.PlayerName == coordinator);
                     pi.Ready         = GetBool(pd, "ready");
+                    pi.TravelTarget  = GetInt(pd, "travel_target");
 
                     object villagesObj;
                     if (pd.TryGetValue("villages", out villagesObj) && villagesObj is System.Collections.ArrayList)
@@ -1249,6 +1310,108 @@ namespace Kingdoms.Bot.Modules
             catch { return false; }
         }
 
+        /// <summary>
+        /// Returns the base travel time (seconds) a remote player posted for one of their
+        /// villages, from the latest connected-players data. Returns 0 if not found.
+        /// </summary>
+        private double GetPostedTravelForVillage(AutoBombMultiSettings settings, int villageId, bool captainsOnly)
+        {
+            if (settings.ConnectedPlayers != null)
+                foreach (var pi in settings.ConnectedPlayers)
+                    foreach (var vi in pi.Villages)
+                        if (vi.VillageId == villageId)
+                            return captainsOnly ? vi.TravelTimeCaptain : vi.TravelTimeArmy;
+            return 0;
+        }
+
+        /// <summary>
+        /// Builds an attack-config list for a target. Travel time is computed locally for the
+        /// coordinator's own villages (accurate) and taken from the owning player's posted data
+        /// for remote villages (the coordinator can't compute another player's village location).
+        /// Card speed is applied. Entries are de-duplicated on player+village+vassal.
+        /// </summary>
+        private List<Dictionary<string, object>> BuildQueueAttackList(
+            AutoBombMultiSettings settings, List<Dictionary<string, object>> sourceAttacks,
+            int targetVid, string myName)
+        {
+            var list = new List<Dictionary<string, object>>();
+            var seen = new HashSet<string>();
+            foreach (var ad in sourceAttacks)
+            {
+                int srcVid = GetInt(ad, "source_village_id");
+                string player = GetStr(ad, "source_player", "");
+                bool isVassal = GetBool(ad, "is_vassal");
+                string key = player + "|" + srcVid + "|" + (isVassal ? "v" : "p");
+                if (srcVid <= 0 || !seen.Add(key))
+                {
+                    if (srcVid > 0) LogWarning("[Queue] Skipping duplicate attack " + key + ".");
+                    continue;
+                }
+                bool captainsOnly = GetBool(ad, "captains_only");
+                int cardType = GetInt(ad, "card_type");
+                double baseTravel = (player == myName)
+                    ? AutoBombModule.CalculateBaseTravelTime(srcVid, targetVid, captainsOnly)
+                    : GetPostedTravelForVillage(settings, srcVid, captainsOnly);
+                double newTravel = AutoBombModule.ApplyCardSpeed(baseTravel, cardType);
+                list.Add(new Dictionary<string, object>
+                {
+                    ["source_player"]       = player,
+                    ["source_village_id"]   = srcVid,
+                    ["parent_village_id"]   = GetInt(ad, "parent_village_id"),
+                    ["is_vassal"]           = isVassal,
+                    ["formation"]           = GetStr(ad, "formation", ""),
+                    ["stack"]               = GetInt(ad, "stack", 1),
+                    ["card_type"]           = cardType,
+                    ["captains_only"]       = captainsOnly,
+                    ["attack_type"]         = GetInt(ad, "attack_type", 11),
+                    ["travel_time_seconds"] = newTravel,
+                    ["selected"]            = GetBool(ad, "selected", true),
+                });
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// Waits until every remote player with a selected attack has recomputed its travel
+        /// times for the given target (reported via the travel_target heartbeat field), or until
+        /// timeout. Returns false only if cancelled. Coordinator's own villages need no wait.
+        /// </summary>
+        private bool WaitForRemoteTravelReady(AutoBombMultiSettings settings,
+            List<Dictionary<string, object>> sourceAttacks, int targetVid, string myName, int timeoutMs)
+        {
+            var remotePlayers = new HashSet<string>();
+            foreach (var ad in sourceAttacks)
+            {
+                if (!GetBool(ad, "selected", true)) continue;
+                string p = GetStr(ad, "source_player", "");
+                if (!string.IsNullOrEmpty(p) && p != myName) remotePlayers.Add(p);
+            }
+            if (remotePlayers.Count == 0) return true; // only own villages — nothing to wait for
+
+            LogInfo("[Queue] Waiting for " + remotePlayers.Count +
+                " remote player(s) to recompute travel for target " + targetVid + "...");
+            DateTime deadline = DateTime.Now.AddMilliseconds(timeoutMs);
+            while (DateTime.Now < deadline)
+            {
+                int ready = 0;
+                var cp = settings.ConnectedPlayers;
+                if (cp != null)
+                    foreach (string p in remotePlayers)
+                        foreach (var pi in cp)
+                            if (pi.PlayerName == p && pi.TravelTarget == targetVid) { ready++; break; }
+
+                if (ready >= remotePlayers.Count)
+                {
+                    LogInfo("[Queue] All remote players ready for target " + targetVid + ".");
+                    return true;
+                }
+                if (_cancelLaunchEvent.WaitOne(1000)) return false; // cancelled
+            }
+            LogWarning("[Queue] Timed out waiting for remote players to recompute travel for target " +
+                targetVid + " — proceeding with best-effort travel times.");
+            return true;
+        }
+
         private List<BombAttackEntry> TryAdvanceMultiQueue(AutoBombMultiSettings settings)
         {
             // Mark current target done
@@ -1320,65 +1483,52 @@ namespace Kingdoms.Bot.Modules
                     }
                 }
 
-                // Rebuild attack list with recalculated travel times for the new target.
-                // Card speed must be applied so the API schedules arrival at the correct time.
-                // Deduplicate as a safety net against PHP state corruption. Key on
-                // player+village+vassal so a village legitimately present as both a player
-                // village and a vassal village (different owners) is NOT collapsed.
-                var newAttackList = new List<Dictionary<string, object>>();
-                var seenVids = new HashSet<string>();
-                foreach (var ad in sourceAttacks)
+                string myName = GetLocalPlayerName();
+
+                // ── Phase 1: announce the new target ──────────────────────────────
+                // Push a preliminary config so the new target_village_id reaches the API.
+                // Remote clients see the target change on their next poll and immediately
+                // recompute + repost their villages' travel times for the new target.
+                // (Own villages use accurate local travel; remote use posted values, which
+                //  are still for the previous target at this point — corrected in phase 2.)
+                var prelimList = BuildQueueAttackList(settings, sourceAttacks, newTargetVid, myName);
+                PostAction(settings, "set_attack_config", new Dictionary<string, object>
                 {
-                    int srcVid = GetInt(ad, "source_village_id");
-                    string dedupKey = GetStr(ad, "source_player", "") + "|" + srcVid + "|" +
-                        (GetBool(ad, "is_vassal") ? "v" : "p");
-                    if (srcVid <= 0 || !seenVids.Add(dedupKey))
-                    {
-                        if (srcVid > 0) LogWarning("[Queue] Skipping duplicate attack " + dedupKey + ".");
-                        continue;
-                    }
-                    bool captainsOnly = GetBool(ad, "captains_only");
-                    int cardType = GetInt(ad, "card_type");
-                    double newTravel = AutoBombModule.ApplyCardSpeed(
-                        AutoBombModule.CalculateBaseTravelTime(srcVid, newTargetVid, captainsOnly),
-                        cardType);
-                    newAttackList.Add(new Dictionary<string, object>
-                    {
-                        ["source_player"]       = GetStr(ad, "source_player", ""),
-                        ["source_village_id"]   = srcVid,
-                        ["parent_village_id"]   = GetInt(ad, "parent_village_id"),
-                        ["is_vassal"]           = GetBool(ad, "is_vassal"),
-                        ["formation"]           = GetStr(ad, "formation", ""),
-                        ["stack"]               = GetInt(ad, "stack", 1),
-                        ["card_type"]           = cardType,
-                        ["captains_only"]       = captainsOnly,
-                        ["attack_type"]         = GetInt(ad, "attack_type", 11),
-                        ["travel_time_seconds"] = newTravel,
-                        ["selected"]            = GetBool(ad, "selected", true),
-                    });
-                }
+                    ["player_name"]       = GetLocalPlayerName(),
+                    ["target_village_id"] = newTargetVid,
+                    ["attacks"]           = prelimList,
+                });
+                LogInfo("[Queue] Announced new target " + newTargetVid + " — waiting for remote travel times.");
+
+                // ── Phase 2: wait for remote players, then push corrected config ─────
+                // Wait until every remote player with a selected attack has recomputed travel
+                // for the new target (or timeout). The background poll thread refreshes
+                // ConnectedPlayers (incl. each player's TravelTarget) while we wait.
+                if (!WaitForRemoteTravelReady(settings, sourceAttacks, newTargetVid, myName, 25000))
+                    return null; // cancelled
+
+                // Rebuild with now-fresh remote travel times and push the final config.
+                var newAttackList = BuildQueueAttackList(settings, sourceAttacks, newTargetVid, myName);
 
                 // Update cache so the next queue advance also has correct data
                 _cachedAttackConfig = new List<Dictionary<string, object>>(newAttackList);
 
-                // Log recalculated travel times for verification
                 foreach (var atk in newAttackList)
-                    LogInfo("[Queue] Travel recalc: village=" + GetInt(atk, "source_village_id") +
+                    LogInfo("[Queue] Travel: village=" + GetInt(atk, "source_village_id") +
+                        " player=" + GetStr(atk, "source_player", "") +
                         " travel=" + (int)GetDouble(atk, "travel_time_seconds") +
                         "s card=" + GetInt(atk, "card_type"));
 
-                // Push updated config to API
                 PostAction(settings, "set_attack_config", new Dictionary<string, object>
                 {
                     ["player_name"]       = GetLocalPlayerName(),
                     ["target_village_id"] = newTargetVid,
                     ["attacks"]           = newAttackList,
                 });
-                LogInfo("[Queue] Config pushed for target " + newTargetVid + ".");
+                LogInfo("[Queue] Final config pushed for target " + newTargetVid + ".");
 
-                // Give non-coordinator clients time to poll and see the new config
-                // before the timer fires. Poll interval is 2000ms so 6s = ~3 polls.
-                if (_cancelLaunchEvent.WaitOne(6000)) return null;
+                // Brief settle so non-coordinators poll the final config before the timer fires.
+                if (_cancelLaunchEvent.WaitOne(2000)) return null;
 
                 // Start the timer — sets state → launching with new send times + new launch_id
                 PostAction(settings, "start_timer", new Dictionary<string, object>
@@ -1414,9 +1564,7 @@ namespace Kingdoms.Bot.Modules
                 _lastProcessedLaunchId = GetStr(stateData, "launch_id", "");
                 _lastSessionState = "launching"; // suppress poll re-trigger for this batch
 
-                // Build this player's new BombAttackEntry list
-                string myName = GetLocalPlayerName();
-
+                // Build this player's new BombAttackEntry list (myName declared earlier)
                 // Parse scheduled send times for this player (keyed "player|vid" by the API)
                 object sendTimesObj;
                 stateData.TryGetValue("scheduled_send_times", out sendTimesObj);
@@ -2193,6 +2341,10 @@ namespace Kingdoms.Bot.Modules
                 {
                     ["player_name"] = playerName,
                     ["villages"]    = villages,
+                    // The target these villages' travel times were computed against. Lets the
+                    // coordinator confirm a player has recomputed for the current target before
+                    // starting a queued bomb's timer.
+                    ["travel_target"] = settings.TargetVillageId,
                 });
                 LogInfo("Registered with API as '" + playerName + "' with " + villages.Count + " village(s).");
             }
