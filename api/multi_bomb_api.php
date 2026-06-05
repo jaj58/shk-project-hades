@@ -218,19 +218,24 @@ function handle_set_attack_config(&$state, $req) {
     require_coordinator($state, $name);
 
     $state['target_village_id'] = (int)$target;
-    // Merge new attack definitions; preserve runtime status from existing entries
+    // Merge new attack definitions; preserve runtime status from existing entries.
+    // Key by player+village+vassal so a village staged as both a player and a vassal
+    // attack keeps each entry's status independently.
     $existing = [];
     foreach ($state['attacks'] as $a) {
-        $existing[$a['source_village_id']] = $a;
+        $k = $a['source_player'] . '|' . $a['source_village_id'] . '|' . ($a['is_vassal'] ? 'v' : 'p');
+        $existing[$k] = $a;
     }
     $merged = [];
     foreach ($attacks as $a) {
         $vid = (int)$a['source_village_id'];
+        $isV = (bool)($a['is_vassal'] ?? false);
+        $k   = $a['source_player'] . '|' . $vid . '|' . ($isV ? 'v' : 'p');
         $merged[] = [
             'source_player'    => $a['source_player'],
             'source_village_id'=> $vid,
             'parent_village_id'=> (int)($a['parent_village_id'] ?? 0),
-            'is_vassal'        => (bool)($a['is_vassal'] ?? false),
+            'is_vassal'        => $isV,
             'formation'        => $a['formation'],
             'stack'            => (int)$a['stack'],
             'card_type'        => (int)$a['card_type'],
@@ -238,7 +243,7 @@ function handle_set_attack_config(&$state, $req) {
             'attack_type'      => (int)$a['attack_type'],
             'travel_time_seconds' => (float)($a['travel_time_seconds'] ?? 0),
             'selected'         => (bool)($a['selected'] ?? true),
-            'status'           => isset($existing[$vid]) ? $existing[$vid]['status'] : 'queued',
+            'status'           => isset($existing[$k]) ? $existing[$k]['status'] : 'queued',
         ];
     }
     $state['attacks'] = $merged;
@@ -316,8 +321,12 @@ function handle_start_timer(&$state, $req) {
 
 function handle_attack_validated(&$state, $req) {
     $village_id = (int)require_field($req, 'source_village_id');
+    $player     = isset($req['player_name']) ? $req['player_name'] : '';
     foreach ($state['attacks'] as &$a) {
-        if ($a['source_village_id'] === $village_id) {
+        // Match on village + player so a village staged as both a player and a vassal
+        // attack (different owners) updates only the correct entry.
+        if ($a['source_village_id'] === $village_id &&
+            ($player === '' || $a['source_player'] === $player)) {
             $a['status'] = 'validated';
             break;
         }
@@ -365,8 +374,11 @@ function handle_cancel_attacks(&$state, $req) {
 
 function handle_attack_event(&$state, $req, $new_status) {
     $village_id = (int)require_field($req, 'source_village_id');
+    $player     = isset($req['player_name']) ? $req['player_name'] : '';
     foreach ($state['attacks'] as &$a) {
-        if ($a['source_village_id'] === $village_id) {
+        // Match on village + player to disambiguate player vs vassal entries of the same village.
+        if ($a['source_village_id'] === $village_id &&
+            ($player === '' || $a['source_player'] === $player)) {
             $a['status'] = $new_status;
             break;
         }
@@ -400,8 +412,11 @@ function handle_attack_event(&$state, $req, $new_status) {
 function handle_attack_failed(&$state, $req, $is_prepare) {
     $village_id = (int)require_field($req, 'source_village_id');
     $reason     = isset($req['reason']) ? $req['reason'] : '';
+    $player     = isset($req['player_name']) ? $req['player_name'] : '';
     foreach ($state['attacks'] as &$a) {
-        if ($a['source_village_id'] === $village_id) {
+        // Match on village + player to disambiguate player vs vassal entries of the same village.
+        if ($a['source_village_id'] === $village_id &&
+            ($player === '' || $a['source_player'] === $player)) {
             $a['status']         = $is_prepare ? 'failed_prepare' : 'failed';
             $a['failure_reason'] = $reason;
             break;

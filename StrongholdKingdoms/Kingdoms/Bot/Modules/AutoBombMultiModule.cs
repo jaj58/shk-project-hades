@@ -1317,28 +1317,34 @@ namespace Kingdoms.Bot.Modules
                     var aal0 = ao0 as System.Collections.ArrayList;
                     if (aal0 == null) { LogError("[Queue] No attacks array in state."); return null; }
                     sourceAttacks = new List<Dictionary<string, object>>();
-                    var seenFb = new HashSet<int>();
+                    var seenFb = new HashSet<string>();
                     foreach (var item0 in aal0)
                     {
                         var ad0 = item0 as Dictionary<string, object>;
                         if (ad0 == null) continue;
                         int v0 = GetInt(ad0, "source_village_id");
-                        if (v0 <= 0 || !seenFb.Add(v0)) continue;
+                        string key0 = GetStr(ad0, "source_player", "") + "|" + v0 + "|" +
+                            (GetBool(ad0, "is_vassal") ? "v" : "p");
+                        if (v0 <= 0 || !seenFb.Add(key0)) continue;
                         sourceAttacks.Add(ad0);
                     }
                 }
 
                 // Rebuild attack list with recalculated travel times for the new target.
                 // Card speed must be applied so the API schedules arrival at the correct time.
-                // Deduplicate village IDs as a safety net even when using the cache.
+                // Deduplicate as a safety net against PHP state corruption. Key on
+                // player+village+vassal so a village legitimately present as both a player
+                // village and a vassal village (different owners) is NOT collapsed.
                 var newAttackList = new List<Dictionary<string, object>>();
-                var seenVids = new HashSet<int>();
+                var seenVids = new HashSet<string>();
                 foreach (var ad in sourceAttacks)
                 {
                     int srcVid = GetInt(ad, "source_village_id");
-                    if (srcVid <= 0 || !seenVids.Add(srcVid))
+                    string dedupKey = GetStr(ad, "source_player", "") + "|" + srcVid + "|" +
+                        (GetBool(ad, "is_vassal") ? "v" : "p");
+                    if (srcVid <= 0 || !seenVids.Add(dedupKey))
                     {
-                        if (srcVid > 0) LogWarning("[Queue] Skipping duplicate source_village_id " + srcVid + ".");
+                        if (srcVid > 0) LogWarning("[Queue] Skipping duplicate attack " + dedupKey + ".");
                         continue;
                     }
                     bool captainsOnly = GetBool(ad, "captains_only");

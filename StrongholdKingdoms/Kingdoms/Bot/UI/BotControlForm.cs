@@ -4052,10 +4052,10 @@ namespace Kingdoms.Bot.UI
                     bool useCaptains   = p[7] == "1";
                     bool selected      = p[10] == "1";
 
-                    // Don't add duplicates
+                    // Don't add the same village+type twice (player and vassal entries are distinct)
                     bool alreadyAdded = false;
                     foreach (MultiBombVillageRow r in _abmVillageRows)
-                        if (r.SourceVillageId == vid) { alreadyAdded = true; break; }
+                        if (r.SourceVillageId == vid && r.IsVassal == isVassal) { alreadyAdded = true; break; }
                     if (alreadyAdded) continue;
 
                     // Try to get live data from connected players; fall back to saved data
@@ -4157,6 +4157,22 @@ namespace Kingdoms.Bot.UI
                 MessageBox.Show("Enter a valid target village ID.", "Auto Bomb Multi",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
+            }
+
+            // Guard: the same village can be staged as both a player and a vassal entry, but
+            // only ONE may be selected per bomb — they share the same physical troops, and the
+            // API schedules send times by village ID. Block selecting both.
+            var selectedVids = new HashSet<int>();
+            foreach (MultiBombVillageRow row in _abmVillageRows)
+            {
+                if (!row.Selected) continue;
+                if (!selectedVids.Add(row.SourceVillageId))
+                {
+                    MessageBox.Show("Village " + row.SourceVillageId + " is selected as both a player " +
+                        "and a vassal attack.\n\nThese use the same troops — select only one before pushing config.",
+                        "Auto Bomb Multi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
             }
 
             string localPlayerName = AutoBombMultiModule.GetLocalPlayerName();
@@ -4626,9 +4642,17 @@ namespace Kingdoms.Bot.UI
             AutoBombMultiSettings s = AbmSettings;
             if (s == null) return;
 
-            // Don't add duplicates
+            // Don't add the same village+type twice. The same village CAN appear once as a
+            // player village and once as a vassal village (e.g. the owner sends their own troops
+            // and the liege commands the vassal village) — these are distinct entries.
             foreach (MultiBombVillageRow existing in _abmVillageRows)
-                if (existing.SourceVillageId == villageId) return;
+                if (existing.SourceVillageId == villageId && existing.IsVassal == isVassal)
+                {
+                    MessageBox.Show("Village " + villageId + " is already in the list as a " +
+                        (isVassal ? "vassal" : "player") + " village.",
+                        "Auto Bomb Multi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
             // Find in connected players
             MultiVillageInfo found = null;
