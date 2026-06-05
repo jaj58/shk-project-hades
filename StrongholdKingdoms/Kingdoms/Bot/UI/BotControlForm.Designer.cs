@@ -5963,8 +5963,7 @@ namespace Kingdoms.Bot.UI
             // 
             // BotControlForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
             this.ClientSize = new System.Drawing.Size(1150, 900);
             this.Controls.Add(this._mainSplit);

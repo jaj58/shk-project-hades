@@ -91,16 +91,6 @@ namespace Kingdoms.Bot.UI
         private bool _abmLastIsCoordinator = false;
         private NumericUpDown _abmAddVidInput;
 
-        // ── DPI helper ────────────────────────────────────────────────────────
-        // Scales a design-time pixel value (authored at 96 DPI) to the current
-        // device DPI.  Use for any control sizes/positions set in code rather
-        // than the designer (the designer controls are auto-scaled by WinForms).
-        private int Dp(int designPx)
-        {
-            using (var g = CreateGraphics())
-                return (int)Math.Round(designPx * g.DpiX / 96f);
-        }
-
         // Per-tab loading guards — prevent settings writes while controls are being populated from settings
         private bool _vsLoading;
         private bool _rcLoading;
