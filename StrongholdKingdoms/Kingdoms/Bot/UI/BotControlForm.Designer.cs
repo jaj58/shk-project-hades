@@ -923,7 +923,7 @@ namespace Kingdoms.Bot.UI
             this._vsSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._vsSettingsPanel.Name = "_vsSettingsPanel";
             this._vsSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 12);
-            this._vsSettingsPanel.Size = new System.Drawing.Size(1142, 100);
+            this._vsSettingsPanel.Size = new System.Drawing.Size(1142, 116);
             this._vsSettingsPanel.TabIndex = 0;
             // 
             // _vsButtonBar
@@ -933,7 +933,7 @@ namespace Kingdoms.Bot.UI
             this._vsButtonBar.Controls.Add(this._vsDeselectAllBtn);
             this._vsButtonBar.Controls.Add(this._vsSelectVillagesBtn);
             this._vsButtonBar.Controls.Add(this._vsSelectCapitalsBtn);
-            this._vsButtonBar.Location = new System.Drawing.Point(16, 70);
+            this._vsButtonBar.Location = new System.Drawing.Point(16, 78);
             this._vsButtonBar.Name = "_vsButtonBar";
             this._vsButtonBar.Size = new System.Drawing.Size(700, 28);
             this._vsButtonBar.TabIndex = 7;
@@ -1023,7 +1023,7 @@ namespace Kingdoms.Bot.UI
             0,
             0,
             0});
-            this._vsDelayInput.Location = new System.Drawing.Point(680, 42);
+            this._vsDelayInput.Location = new System.Drawing.Point(680, 43);
             this._vsDelayInput.Maximum = new decimal(new int[] {
             30000,
             0,
@@ -1048,7 +1048,7 @@ namespace Kingdoms.Bot.UI
             this._vsDelayLabel.AutoSize = true;
             this._vsDelayLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._vsDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._vsDelayLabel.Location = new System.Drawing.Point(440, 56);
+            this._vsDelayLabel.Location = new System.Drawing.Point(440, 46);
             this._vsDelayLabel.Name = "_vsDelayLabel";
             this._vsDelayLabel.Size = new System.Drawing.Size(156, 15);
             this._vsDelayLabel.TabIndex = 5;
@@ -1064,7 +1064,7 @@ namespace Kingdoms.Bot.UI
             0,
             0,
             0});
-            this._vsIntervalInput.Location = new System.Drawing.Point(240, 42);
+            this._vsIntervalInput.Location = new System.Drawing.Point(240, 43);
             this._vsIntervalInput.Maximum = new decimal(new int[] {
             3600,
             0,
@@ -1089,7 +1089,7 @@ namespace Kingdoms.Bot.UI
             this._vsIntervalLabel.AutoSize = true;
             this._vsIntervalLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._vsIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._vsIntervalLabel.Location = new System.Drawing.Point(32, 56);
+            this._vsIntervalLabel.Location = new System.Drawing.Point(32, 46);
             this._vsIntervalLabel.Name = "_vsIntervalLabel";
             this._vsIntervalLabel.Size = new System.Drawing.Size(135, 15);
             this._vsIntervalLabel.TabIndex = 3;
@@ -1100,7 +1100,7 @@ namespace Kingdoms.Bot.UI
             this._vsLastRunLabel.AutoSize = true;
             this._vsLastRunLabel.Font = new System.Drawing.Font("Segoe UI", 8F);
             this._vsLastRunLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._vsLastRunLabel.Location = new System.Drawing.Point(390, 27);
+            this._vsLastRunLabel.Location = new System.Drawing.Point(390, 15);
             this._vsLastRunLabel.Name = "_vsLastRunLabel";
             this._vsLastRunLabel.Size = new System.Drawing.Size(82, 13);
             this._vsLastRunLabel.TabIndex = 2;
@@ -1111,7 +1111,7 @@ namespace Kingdoms.Bot.UI
             this._vsStatusLabel.AutoSize = true;
             this._vsStatusLabel.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._vsStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(200)))), ((int)(((byte)(120)))));
-            this._vsStatusLabel.Location = new System.Drawing.Point(216, 27);
+            this._vsStatusLabel.Location = new System.Drawing.Point(216, 15);
             this._vsStatusLabel.Name = "_vsStatusLabel";
             this._vsStatusLabel.Size = new System.Drawing.Size(57, 13);
             this._vsStatusLabel.TabIndex = 1;
@@ -1125,7 +1125,7 @@ namespace Kingdoms.Bot.UI
             this._vsEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._vsEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this._vsEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._vsEnabledCheck.Location = new System.Drawing.Point(32, 24);
+            this._vsEnabledCheck.Location = new System.Drawing.Point(32, 12);
             this._vsEnabledCheck.Name = "_vsEnabledCheck";
             this._vsEnabledCheck.Size = new System.Drawing.Size(133, 23);
             this._vsEnabledCheck.TabIndex = 0;
