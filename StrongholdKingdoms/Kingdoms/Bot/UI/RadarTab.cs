@@ -41,15 +41,8 @@ namespace Kingdoms.Bot.UI
             this.Controls.AddRange(new Control[] { nameLabel, _monitorCheck, _discordNotifyCheck });
             this.ResumeLayout(false);
 
-            _monitorCheck.CheckedChanged += delegate { PushToSettings(); };
-            _discordNotifyCheck.CheckedChanged += delegate { PushToSettings(); };
-        }
-
-        private void PushToSettings()
-        {
-            if (_boundSettings == null) return;
-            _boundSettings.Monitor = _monitorCheck.Checked;
-            _boundSettings.DiscordNotify = _discordNotifyCheck.Checked;
+            _monitorCheck.CheckedChanged += delegate { if (_boundSettings != null) _boundSettings.Monitor = _monitorCheck.Checked; };
+            _discordNotifyCheck.CheckedChanged += delegate { if (_boundSettings != null) _boundSettings.DiscordNotify = _discordNotifyCheck.Checked; };
         }
 
         public void SetValues(RadarActionSettings settings)
@@ -57,6 +50,13 @@ namespace Kingdoms.Bot.UI
             _boundSettings = settings;
             _monitorCheck.Checked = settings.Monitor;
             _discordNotifyCheck.Checked = settings.DiscordNotify;
+        }
+
+        public void WriteToSettings()
+        {
+            if (_boundSettings == null) return;
+            _boundSettings.Monitor = _monitorCheck.Checked;
+            _boundSettings.DiscordNotify = _discordNotifyCheck.Checked;
         }
 
         private static CheckBox MakeCheck(int x, bool isChecked)
@@ -115,19 +115,10 @@ namespace Kingdoms.Bot.UI
             });
             this.ResumeLayout(false);
 
-            _monitorCheck.CheckedChanged += delegate { PushToSettings(); };
-            _systemNotifyCheck.CheckedChanged += delegate { PushToSettings(); };
-            _discordNotifyCheck.CheckedChanged += delegate { PushToSettings(); };
-            _autoInterdictCheck.CheckedChanged += delegate { PushToSettings(); };
-        }
-
-        private void PushToSettings()
-        {
-            if (_boundSettings == null) return;
-            _boundSettings.Monitor = _monitorCheck.Checked;
-            _boundSettings.SystemNotify = _systemNotifyCheck.Checked;
-            _boundSettings.DiscordNotify = _discordNotifyCheck.Checked;
-            _boundSettings.AutoInterdict = _autoInterdictCheck.Checked;
+            _monitorCheck.CheckedChanged += delegate { if (_boundSettings != null) _boundSettings.Monitor = _monitorCheck.Checked; };
+            _systemNotifyCheck.CheckedChanged += delegate { if (_boundSettings != null) _boundSettings.SystemNotify = _systemNotifyCheck.Checked; };
+            _discordNotifyCheck.CheckedChanged += delegate { if (_boundSettings != null) _boundSettings.DiscordNotify = _discordNotifyCheck.Checked; };
+            _autoInterdictCheck.CheckedChanged += delegate { if (_boundSettings != null) _boundSettings.AutoInterdict = _autoInterdictCheck.Checked; };
         }
 
         public void SetValues(RadarActionSettings settings)
@@ -137,6 +128,15 @@ namespace Kingdoms.Bot.UI
             _systemNotifyCheck.Checked = settings.SystemNotify;
             _discordNotifyCheck.Checked = settings.DiscordNotify;
             _autoInterdictCheck.Checked = settings.AutoInterdict;
+        }
+
+        public void WriteToSettings()
+        {
+            if (_boundSettings == null) return;
+            _boundSettings.Monitor = _monitorCheck.Checked;
+            _boundSettings.SystemNotify = _systemNotifyCheck.Checked;
+            _boundSettings.DiscordNotify = _discordNotifyCheck.Checked;
+            _boundSettings.AutoInterdict = _autoInterdictCheck.Checked;
         }
 
         public void GetValues(RadarActionSettings settings)

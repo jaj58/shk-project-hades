@@ -89,6 +89,28 @@ namespace Kingdoms.Bot.UI
         private List<MultiPendingRow> _abmPendingRows = new List<MultiPendingRow>();
         private Timer _abmRefreshTimer;
         private bool _abmLastIsCoordinator = false;
+        private NumericUpDown _abmAddVidInput;
+
+        // ── DPI helper ────────────────────────────────────────────────────────
+        // Scales a design-time pixel value (authored at 96 DPI) to the current
+        // device DPI.  Use for any control sizes/positions set in code rather
+        // than the designer (the designer controls are auto-scaled by WinForms).
+        private int Dp(int designPx)
+        {
+            using (var g = CreateGraphics())
+                return (int)Math.Round(designPx * g.DpiX / 96f);
+        }
+
+        // Per-tab loading guards — prevent settings writes while controls are being populated from settings
+        private bool _vsLoading;
+        private bool _rcLoading;
+        private bool _crLoading;
+        private bool _trLoading;
+        private bool _bldLoading;
+        private bool _ppLoading;
+        private bool _bqLoading;
+        private bool _miscLoading;
+        private bool _mkLoading;
 
         // Misc tab — no runtime state needed (settings only)
 
@@ -99,27 +121,6 @@ namespace Kingdoms.Bot.UI
         private object _scDragItem;
         private int _scDragFromIndex = -1;
         private Timer _scRefreshTimer;
-        // Controls created programmatically in WireUpScoutTab
-        private ListBox _scVillageListBox;
-        private CheckBox _scVillageEnabledCheck;
-        private ListBox _scScoutList;
-        private ListBox _scIgnoreList;
-        private Button _scMoveToIgnoreBtn;
-        private Button _scMoveToScoutBtn;
-        private Button _scMoveUpBtn;
-        private Button _scMoveDownBtn;
-        private CheckBox _scEnabledCheck;
-        private Label _scStatusLabel;
-        private NumericUpDown _scIntervalInput;
-        private NumericUpDown _scMaxTimeInput;
-        private NumericUpDown _scAutoHireInput;
-        private NumericUpDown _scDelayInput;
-        private CheckBox _scDisableOnCardExpiryCheck;
-        private RadioButton _scPriorityResourceRadio;
-        private RadioButton _scPriorityRangeRadio;
-        private CheckBox _scSendOneScoutCheck;
-        private CheckBox _scSendOneOnNewCheck;
-        private Button _scCopySettingsBtn;
 
         // Popularity tab runtime state
         private Timer _ppRefreshTimer;
@@ -150,6 +151,15 @@ namespace Kingdoms.Bot.UI
             if (_instance == null || _instance.IsDisposed)
             {
                 _instance = new BotControlForm();
+
+                // Clamp the initial size to the available working area on whatever
+                // screen the form will appear on (CenterScreen positioning is set in
+                // the designer, so we target the primary screen's working area).
+                Rectangle workingArea = Screen.PrimaryScreen.WorkingArea;
+                int w = Math.Min(_instance.Width,  workingArea.Width);
+                int h = Math.Min(_instance.Height, workingArea.Height);
+                if (w != _instance.Width || h != _instance.Height)
+                    _instance.Size = new System.Drawing.Size(w, h);
             }
 
             if (!_instance.Visible)
@@ -263,6 +273,7 @@ namespace Kingdoms.Bot.UI
 
         private void VsPushToSettings()
         {
+            if (_vsLoading) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
 
@@ -282,15 +293,19 @@ namespace Kingdoms.Bot.UI
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
+            _vsLoading = true;
+            try
+            {
+                VillageSyncSettings s = BotEngine.Instance.Settings.VillageSync;
+                _vsEnabledCheck.Checked = s.Enabled;
+                _vsIntervalInput.Value = Math.Max(_vsIntervalInput.Minimum,
+                    Math.Min(_vsIntervalInput.Maximum, s.IntervalSeconds));
+                _vsDelayInput.Value = Math.Max(_vsDelayInput.Minimum,
+                    Math.Min(_vsDelayInput.Maximum, s.DelayBetweenVillagesMs));
 
-            VillageSyncSettings s = BotEngine.Instance.Settings.VillageSync;
-            _vsEnabledCheck.Checked = s.Enabled;
-            _vsIntervalInput.Value = Math.Max(_vsIntervalInput.Minimum,
-                Math.Min(_vsIntervalInput.Maximum, s.IntervalSeconds));
-            _vsDelayInput.Value = Math.Max(_vsDelayInput.Minimum,
-                Math.Min(_vsDelayInput.Maximum, s.DelayBetweenVillagesMs));
-
-            VsPopulateVillageList();
+                VsPopulateVillageList();
+            }
+            finally { _vsLoading = false; }
         }
 
         private void VsWriteToSettings()
@@ -943,10 +958,7 @@ namespace Kingdoms.Bot.UI
                 if (_grpLoading) return;
                 GroupRadarMember m = GrpGetSelectedMember();
                 if (m != null)
-                {
                     m.DiscordTag = _grpMemberTagInput.Text.Trim();
-                    GrpSaveToSettings();
-                }
             };
         }
 
@@ -1039,6 +1051,17 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _grpEnabledCheck.Checked;
             s.DiscordWebhookUrl = _grpWebhookInput.Text.Trim();
             s.DiscordMentionTag = _grpMentionTagInput.Text.Trim();
+        }
+
+        private void GrpWriteToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            GroupRadarSettings s = BotEngine.Instance.Settings.Radar.GroupRadar;
+            s.Enabled = _grpEnabledCheck.Checked;
+            s.DiscordWebhookUrl = _grpWebhookInput.Text.Trim();
+            s.DiscordMentionTag = _grpMentionTagInput.Text.Trim();
+            foreach (GroupActionRow row in _grpActionRows)
+                row.WriteToSettings();
         }
 
         private void GrpSaveToSettings()
@@ -1228,6 +1251,7 @@ namespace Kingdoms.Bot.UI
             _rcIntervalInput.ValueChanged += delegate { RcPushToSettings(); };
             _rcDelayInput.ValueChanged += delegate { RcPushToSettings(); };
 
+
             // Villages tab: add toolbar above column header
             RcBuildColumnHeaders(_rcColHeaderVillages, RecruitingModule.AllUnitKeys);
             Panel villageToolbar = RcMakeToolbarPanel();
@@ -1320,6 +1344,7 @@ namespace Kingdoms.Bot.UI
 
         private void RcPushToSettings()
         {
+            if (_rcLoading) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
 
@@ -1339,15 +1364,19 @@ namespace Kingdoms.Bot.UI
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
+            _rcLoading = true;
+            try
+            {
+                RecruitingSettings s = BotEngine.Instance.Settings.Recruiting;
+                _rcEnabledCheck.Checked = s.Enabled;
+                _rcIntervalInput.Value = Math.Max(_rcIntervalInput.Minimum,
+                    Math.Min(_rcIntervalInput.Maximum, s.CycleIntervalSeconds));
+                _rcDelayInput.Value = Math.Max(_rcDelayInput.Minimum,
+                    Math.Min(_rcDelayInput.Maximum, s.DelayBetweenVillagesMs));
 
-            RecruitingSettings s = BotEngine.Instance.Settings.Recruiting;
-            _rcEnabledCheck.Checked = s.Enabled;
-            _rcIntervalInput.Value = Math.Max(_rcIntervalInput.Minimum,
-                Math.Min(_rcIntervalInput.Maximum, s.CycleIntervalSeconds));
-            _rcDelayInput.Value = Math.Max(_rcDelayInput.Minimum,
-                Math.Min(_rcDelayInput.Maximum, s.DelayBetweenVillagesMs));
-
-            RcBuildVillageList();
+                RcBuildVillageList();
+            }
+            finally { _rcLoading = false; }
         }
 
         private void RcWriteToSettings()
@@ -1615,6 +1644,7 @@ namespace Kingdoms.Bot.UI
 
         private void CrPushToSettings()
         {
+            if (_crLoading) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
 
@@ -1635,16 +1665,20 @@ namespace Kingdoms.Bot.UI
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
+            _crLoading = true;
+            try
+            {
+                CastleRepairSettings s = BotEngine.Instance.Settings.CastleRepair;
+                _crEnabledCheck.Checked = s.Enabled;
+                _crIntervalInput.Value = Math.Max(_crIntervalInput.Minimum,
+                    Math.Min(_crIntervalInput.Maximum, s.IntervalSeconds));
+                _crDelayInput.Value = Math.Max(_crDelayInput.Minimum,
+                    Math.Min(_crDelayInput.Maximum, s.DelayBetweenVillagesMs));
+                _crRepairOnAttackCheck.Checked = s.RepairOnAttack;
 
-            CastleRepairSettings s = BotEngine.Instance.Settings.CastleRepair;
-            _crEnabledCheck.Checked = s.Enabled;
-            _crIntervalInput.Value = Math.Max(_crIntervalInput.Minimum,
-                Math.Min(_crIntervalInput.Maximum, s.IntervalSeconds));
-            _crDelayInput.Value = Math.Max(_crDelayInput.Minimum,
-                Math.Min(_crDelayInput.Maximum, s.DelayBetweenVillagesMs));
-            _crRepairOnAttackCheck.Checked = s.RepairOnAttack;
-
-            CrPopulateVillageList();
+                CrPopulateVillageList();
+            }
+            finally { _crLoading = false; }
         }
 
         private void CrWriteToSettings()
@@ -2064,6 +2098,7 @@ namespace Kingdoms.Bot.UI
             else if (_tabControl.SelectedTab == _radarPage)
             {
                 RdWriteToSettings();
+                GrpWriteToSettings();
                 tabName = "Radar";
             }
             else if (_tabControl.SelectedTab == _recruitingPage)
@@ -2097,6 +2132,16 @@ namespace Kingdoms.Bot.UI
                 AbmWriteToSettings();
                 tabName = "Auto Bomb Multi";
             }
+            else if (_tabControl.SelectedTab == _popularityPage)
+            {
+                PpWriteToSettings();
+                tabName = "Popularity";
+            }
+            else if (_tabControl.SelectedTab == _scoutPage)
+            {
+                ScPushGlobalSettings();
+                tabName = "Scout";
+            }
             else if (_tabControl.SelectedTab == _miscPage)
             {
                 MiscWriteToSettings();
@@ -2107,7 +2152,23 @@ namespace Kingdoms.Bot.UI
                 AutoWriteToSettings();
                 tabName = "Auto";
             }
+            else if (_tabControl.SelectedTab == _bqPage)
+            {
+                BqWriteToSettings();
+                tabName = "Banquet";
+            }
+            else if (_tabControl.SelectedTab == _defenderPage)
+            {
+                DfWriteToSettings();
+                tabName = "Defender";
+            }
+            else if (_tabControl.SelectedTab == _mkPage)
+            {
+                MkWriteToSettings();
+                tabName = "Monk";
+            }
 
+            BotEngine.Instance.ApplySettings();
             BotEngine.Instance.SaveSettings();
             BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings saved.");
         }
@@ -2165,6 +2226,11 @@ namespace Kingdoms.Bot.UI
                 MiscLoadFromSettings();
                 tabName = "Misc";
             }
+            else if (_tabControl.SelectedTab == _popularityPage)
+            {
+                PpLoadFromSettings();
+                tabName = "Popularity";
+            }
             else if (_tabControl.SelectedTab == _scoutPage)
             {
                 ScLoadFromSettings();
@@ -2174,6 +2240,21 @@ namespace Kingdoms.Bot.UI
             {
                 AutoLoadFromSettings();
                 tabName = "Auto";
+            }
+            else if (_tabControl.SelectedTab == _bqPage)
+            {
+                BqLoadFromSettings();
+                tabName = "Banquet";
+            }
+            else if (_tabControl.SelectedTab == _defenderPage)
+            {
+                DfLoadFromSettings();
+                tabName = "Defender";
+            }
+            else if (_tabControl.SelectedTab == _mkPage)
+            {
+                MkLoadFromSettings();
+                tabName = "Monk";
             }
 
             RefreshStatus();
@@ -2836,10 +2917,10 @@ namespace Kingdoms.Bot.UI
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
-
+            _trLoading = true;
+            try
+            {
             TradeSettings s = BotEngine.Instance.Settings.Trade;
-            // Set the priority combo FIRST so that when _trEnabledCheck.Checked fires
-            // TrWriteToSettings() via CheckedChanged, SelectedIndex is already valid.
             _trPriorityCombo.SelectedIndex = (int)s.Priority;
             _trEnabledCheck.Checked = s.Enabled;
             _trIntervalInput.Value = Math.Max(_trIntervalInput.Minimum,
@@ -2862,10 +2943,13 @@ namespace Kingdoms.Bot.UI
             TrRefreshMarkets();
             TrBuildRoutesList();
             TrBuildPlayerRoutesList();
+            }
+            finally { _trLoading = false; }
         }
 
         private void TrWriteToSettings()
         {
+            if (_trLoading) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
 
@@ -3222,20 +3306,25 @@ namespace Kingdoms.Bot.UI
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
+            _bldLoading = true;
+            try
+            {
+                VillageBuilderSettings s = BotEngine.Instance.Settings.VillageBuilder;
+                _bldEnabledCheck.Checked = s.Enabled;
+                _bldIntervalInput.Value = Math.Max(_bldIntervalInput.Minimum,
+                    Math.Min(_bldIntervalInput.Maximum, s.CycleIntervalSeconds));
+                _bldDelayInput.Value = Math.Max(_bldDelayInput.Minimum,
+                    Math.Min(_bldDelayInput.Maximum, s.DelayBetweenVillagesMs));
+                _bldWaitForResourcesCheck.Checked = s.WaitForResources;
 
-            VillageBuilderSettings s = BotEngine.Instance.Settings.VillageBuilder;
-            _bldEnabledCheck.Checked = s.Enabled;
-            _bldIntervalInput.Value = Math.Max(_bldIntervalInput.Minimum,
-                Math.Min(_bldIntervalInput.Maximum, s.CycleIntervalSeconds));
-            _bldDelayInput.Value = Math.Max(_bldDelayInput.Minimum,
-                Math.Min(_bldDelayInput.Maximum, s.DelayBetweenVillagesMs));
-            _bldWaitForResourcesCheck.Checked = s.WaitForResources;
-
-            BldPopulateVillageCombo();
+                BldPopulateVillageCombo();
+            }
+            finally { _bldLoading = false; }
         }
 
         private void BldWriteToSettings()
         {
+            if (_bldLoading) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
 
@@ -3712,6 +3801,16 @@ namespace Kingdoms.Bot.UI
                 if (s != null)
                     s.PlayCards = _abmPlayCardsCheck.Checked;
             };
+            _abmSelectAllBtn.Click += delegate
+            {
+                foreach (MultiBombVillageRow row in _abmVillageRows)
+                    if (row.Enabled) row.Selected = true;
+            };
+            _abmDeselectAllBtn.Click += delegate
+            {
+                foreach (MultiBombVillageRow row in _abmVillageRows)
+                    if (row.Enabled) row.Selected = false;
+            };
             _abmAutoCancelCardCheck.CheckedChanged += delegate
             {
                 AutoBombMultiSettings s = AbmSettings;
@@ -3728,11 +3827,103 @@ namespace Kingdoms.Bot.UI
             _abmQueueLoadBtn.Click              += delegate { AbmQueueLoad(); };
             _abmQueueResetBtn.Click             += delegate { AbmQueueReset(); };
 
+            // ── Add Village strip (dynamic — sits between column header and village list) ──
+            Panel addVillageStrip = new Panel();
+            addVillageStrip.BackColor = Color.FromArgb(18, 22, 30);
+            addVillageStrip.Dock = DockStyle.Top;
+            addVillageStrip.Height = 26;
+
+            Label addVidLbl = new Label();
+            addVidLbl.Text = "Add VID:";
+            addVidLbl.Font = new Font("Segoe UI", 7.5f);
+            addVidLbl.ForeColor = TextSec;
+            addVidLbl.AutoSize = true;
+            addVidLbl.Location = new Point(6, 6);
+            addVillageStrip.Controls.Add(addVidLbl);
+
+            _abmAddVidInput = new NumericUpDown();
+            _abmAddVidInput.Minimum = 1;
+            _abmAddVidInput.Maximum = int.MaxValue;
+            _abmAddVidInput.Value = 1;
+            _abmAddVidInput.BackColor = Color.FromArgb(50, 52, 64);
+            _abmAddVidInput.ForeColor = Color.FromArgb(230, 230, 240);
+            _abmAddVidInput.Font = new Font("Segoe UI", 7.5f);
+            _abmAddVidInput.BorderStyle = BorderStyle.FixedSingle;
+            _abmAddVidInput.Location = new Point(62, 3);
+            _abmAddVidInput.Size = new Size(90, 20);
+            _abmAddVidInput.ThousandsSeparator = false;
+            addVillageStrip.Controls.Add(_abmAddVidInput);
+
+            Button addPlayerVidBtn = new Button();
+            addPlayerVidBtn.Text = "+ Player Village";
+            addPlayerVidBtn.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            addPlayerVidBtn.FlatStyle = FlatStyle.Flat;
+            addPlayerVidBtn.FlatAppearance.BorderSize = 0;
+            addPlayerVidBtn.BackColor = Color.FromArgb(40, 70, 40);
+            addPlayerVidBtn.ForeColor = Color.FromArgb(180, 230, 180);
+            addPlayerVidBtn.Location = new Point(158, 3);
+            addPlayerVidBtn.Size = new Size(108, 20);
+            addPlayerVidBtn.Click += delegate { AbmAddVillage((int)_abmAddVidInput.Value, false); };
+            addVillageStrip.Controls.Add(addPlayerVidBtn);
+
+            Button addVassalVidBtn = new Button();
+            addVassalVidBtn.Text = "+ Vassal Village";
+            addVassalVidBtn.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            addVassalVidBtn.FlatStyle = FlatStyle.Flat;
+            addVassalVidBtn.FlatAppearance.BorderSize = 0;
+            addVassalVidBtn.BackColor = Color.FromArgb(50, 40, 70);
+            addVassalVidBtn.ForeColor = Color.FromArgb(200, 180, 230);
+            addVassalVidBtn.Location = new Point(272, 3);
+            addVassalVidBtn.Size = new Size(108, 20);
+            addVassalVidBtn.Click += delegate { AbmAddVillage((int)_abmAddVidInput.Value, true); };
+            addVillageStrip.Controls.Add(addVassalVidBtn);
+
+            Button clearRowsBtn = new Button();
+            clearRowsBtn.Text = "Clear List";
+            clearRowsBtn.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            clearRowsBtn.FlatStyle = FlatStyle.Flat;
+            clearRowsBtn.FlatAppearance.BorderSize = 0;
+            clearRowsBtn.BackColor = Color.FromArgb(70, 40, 40);
+            clearRowsBtn.ForeColor = Color.FromArgb(230, 180, 180);
+            clearRowsBtn.Location = new Point(386, 3);
+            clearRowsBtn.Size = new Size(70, 20);
+            clearRowsBtn.Click += delegate
+            {
+                if (MessageBox.Show("Clear all villages from the list?", "Auto Bomb Multi",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                {
+                    AbmClearVillageRows();
+                    AbmSaveSetup();
+                }
+            };
+            addVillageStrip.Controls.Add(clearRowsBtn);
+
+            Button loadSetupBtn = new Button();
+            loadSetupBtn.Text = "Load Setup";
+            loadSetupBtn.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
+            loadSetupBtn.FlatStyle = FlatStyle.Flat;
+            loadSetupBtn.FlatAppearance.BorderSize = 0;
+            loadSetupBtn.BackColor = Color.FromArgb(40, 55, 80);
+            loadSetupBtn.ForeColor = Color.FromArgb(180, 210, 240);
+            loadSetupBtn.Location = new Point(462, 3);
+            loadSetupBtn.Size = new Size(74, 20);
+            loadSetupBtn.Click += delegate { AbmClearVillageRows(); AbmLoadSetup(); };
+            addVillageStrip.Controls.Add(loadSetupBtn);
+
+            // Insert into Players tab. Dock=Top controls stack by child index: higher index =
+            // higher on screen. Designer order is ListPanel(0,Fill), ColHeader(1), CtrlPanel(2).
+            // Putting the strip at index 1 yields top-to-bottom: CtrlPanel, ColHeader, strip, list.
+            _abmPlayersTab.Controls.Add(addVillageStrip);
+            _abmPlayersTab.Controls.SetChildIndex(addVillageStrip, 1);
+
             // ── Refresh timer ─────────────────────────────────────────────────
             _abmRefreshTimer = new Timer();
             _abmRefreshTimer.Interval = 1500;
             _abmRefreshTimer.Tick += delegate { try { AbmRefreshDisplay(); } catch { } };
             _abmRefreshTimer.Start();
+
+            // Load any previously saved village setup
+            AbmLoadSetup();
         }
 
         // ── Multi-bomb load/save ──────────────────────────────────────────────
@@ -3798,10 +3989,11 @@ namespace Kingdoms.Bot.UI
             try
             {
                 var lines = new System.Text.StringBuilder();
-                lines.AppendLine("# ABM Setup " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                lines.AppendLine("# ABM Setup v2 " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 foreach (MultiBombVillageRow row in _abmVillageRows)
                 {
-                    // villageId|formation|cardIndex|useCaptains|stack|attackTypeIndex
+                    // v2 format: villageId|playerName|villageName|isVassal|parentVillageId|
+                    //            formation|cardIndex|useCaptains|stack|attackTypeIndex|selected
                     int attackTypeIndex = 0;
                     int at = row.SelectedAttackType;
                     if (at == 9) attackTypeIndex = 1;
@@ -3810,11 +4002,16 @@ namespace Kingdoms.Bot.UI
                     lines.AppendLine(string.Join("|", new string[]
                     {
                         row.SourceVillageId.ToString(),
+                        row.OwnerPlayerName ?? "",
+                        row.VillageName ?? "",
+                        row.IsVassal ? "1" : "0",
+                        row.ParentVillageId.ToString(),
                         row.SelectedFormation,
                         row.SelectedCardType.ToString(),
                         row.UseCaptains ? "1" : "0",
                         row.StackOrder.ToString(),
-                        attackTypeIndex.ToString()
+                        attackTypeIndex.ToString(),
+                        row.Selected ? "1" : "0"
                     }));
                 }
                 System.IO.File.WriteAllText(AbmSetupFilePath(), lines.ToString(),
@@ -3825,37 +4022,70 @@ namespace Kingdoms.Bot.UI
 
         private void AbmLoadSetup()
         {
-            if (_abmVillageRows.Count == 0) return;
             string path = AbmSetupFilePath();
             if (!System.IO.File.Exists(path)) return;
             try
             {
-                // Build lookup: villageId → config line parts
-                var map = new Dictionary<int, string[]>();
+                AutoBombMultiSettings s = AbmSettings;
+                if (s == null) return;
+                bool isCoord = s.IsCoordinator;
+
                 foreach (string raw in System.IO.File.ReadAllLines(path, System.Text.Encoding.UTF8))
                 {
                     string line = raw.Trim();
                     if (line.StartsWith("#") || string.IsNullOrEmpty(line)) continue;
-                    string[] parts = line.Split('|');
-                    if (parts.Length < 6) continue;
-                    int vid;
-                    if (int.TryParse(parts[0], out vid))
-                        map[vid] = parts;
+                    string[] p = line.Split('|');
+
+                    // v2 format (11 fields): villageId|playerName|villageName|isVassal|parentVillageId|
+                    //                        formation|cardIndex|useCaptains|stack|attackTypeIndex|selected
+                    if (p.Length < 11) continue;
+
+                    int vid, parentVid, cardIndex, stack, attackTypeIndex;
+                    if (!int.TryParse(p[0], out vid)) continue;
+                    int.TryParse(p[4], out parentVid);
+                    int.TryParse(p[6], out cardIndex);
+                    int.TryParse(p[8], out stack);
+                    int.TryParse(p[9], out attackTypeIndex);
+                    string playerName  = p[1];
+                    string villageName = p[2];
+                    bool isVassal      = p[3] == "1";
+                    bool useCaptains   = p[7] == "1";
+                    bool selected      = p[10] == "1";
+
+                    // Don't add the same village+type twice (player and vassal entries are distinct)
+                    bool alreadyAdded = false;
+                    foreach (MultiBombVillageRow r in _abmVillageRows)
+                        if (r.SourceVillageId == vid && r.IsVassal == isVassal) { alreadyAdded = true; break; }
+                    if (alreadyAdded) continue;
+
+                    // Try to get live data from connected players; fall back to saved data
+                    MultiVillageInfo liveVi = null;
+                    MultiPlayerInfo  liveOwner = null;
+                    foreach (MultiPlayerInfo pi in s.ConnectedPlayers)
+                        foreach (MultiVillageInfo vi in pi.Villages)
+                            if (vi.VillageId == vid)
+                            { liveVi = vi; liveOwner = pi; break; }
+
+                    // Build a synthetic village info using saved data when not connected
+                    if (liveOwner == null)
+                    {
+                        liveOwner = new MultiPlayerInfo { PlayerName = playerName };
+                        liveVi    = new MultiVillageInfo
+                        {
+                            VillageId = vid, VillageName = villageName,
+                            IsVassal = isVassal, ParentVillageId = parentVid
+                        };
+                    }
+
+                    AbmAddVillageRow(s, liveOwner, liveVi, isCoord);
+
+                    // Apply saved config to the row we just added
+                    MultiBombVillageRow newRow = _abmVillageRows[_abmVillageRows.Count - 1];
+                    newRow.ApplyConfig(p[5], cardIndex, useCaptains, stack, attackTypeIndex);
+                    newRow.Selected = selected;
                 }
 
-                foreach (MultiBombVillageRow row in _abmVillageRows)
-                {
-                    string[] p;
-                    if (!map.TryGetValue(row.SourceVillageId, out p)) continue;
-                    string formation = p[1];
-                    int cardIndex, stack, attackTypeIndex;
-                    bool useCaptains;
-                    int.TryParse(p[2], out cardIndex);
-                    useCaptains = p[3] == "1";
-                    int.TryParse(p[4], out stack);
-                    int.TryParse(p[5], out attackTypeIndex);
-                    row.ApplyConfig(formation, cardIndex, useCaptains, stack, attackTypeIndex);
-                }
+                AbmRepositionVillageRows();
             }
             catch { }
         }
@@ -3929,16 +4159,50 @@ namespace Kingdoms.Bot.UI
                 return;
             }
 
+            // Guard: the same village can be staged as both a player and a vassal entry, but
+            // only ONE may be selected per bomb — they share the same physical troops, and the
+            // API schedules send times by village ID. Block selecting both.
+            var selectedVids = new HashSet<int>();
+            foreach (MultiBombVillageRow row in _abmVillageRows)
+            {
+                if (!row.Selected) continue;
+                if (!selectedVids.Add(row.SourceVillageId))
+                {
+                    MessageBox.Show("Village " + row.SourceVillageId + " is selected as both a player " +
+                        "and a vassal attack.\n\nThese use the same troops — select only one before pushing config.",
+                        "Auto Bomb Multi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
+
+            string localPlayerName = AutoBombMultiModule.GetLocalPlayerName();
+
             var attacks = new List<MultiAttackConfigEntry>();
             foreach (MultiBombVillageRow row in _abmVillageRows)
             {
                 if (!row.Selected) continue;
 
-                // Always recalculate travel time fresh from game world using the current
-                // target VID — the stored row value may be 0 if the village was registered
-                // before a target was set.
-                double baseTravel = AutoBombModule.CalculateBaseTravelTime(
-                    row.SourceVillageId, targetVid, row.UseCaptains);
+                // Travel time source depends on who owns the village:
+                //  - Local village: recalc fresh from our own game world against the target.
+                //  - Remote village: we can't compute it (we don't know the remote village's
+                //    location) — use the base travel time the owning player posted to the API,
+                //    looked up live from connected players so it's current for this target.
+                double baseTravel;
+                bool isLocalVillage = (row.OwnerPlayerName == localPlayerName);
+                if (isLocalVillage)
+                {
+                    baseTravel = AutoBombModule.CalculateBaseTravelTime(
+                        row.SourceVillageId, targetVid, row.UseCaptains);
+                }
+                else
+                {
+                    baseTravel = AbmLookupRemoteTravel(s, row.SourceVillageId, row.UseCaptains);
+                    if (baseTravel <= 0)
+                    {
+                        // Fall back to the row's snapshot if live lookup failed
+                        baseTravel = row.UseCaptains ? row.BaseTravelTimeCaptain : row.BaseTravelTimeArmy;
+                    }
+                }
                 double effectiveTravel = AutoBombModule.ApplyCardSpeed(baseTravel, row.SelectedCardType);
 
                 attacks.Add(new MultiAttackConfigEntry
@@ -3966,11 +4230,15 @@ namespace Kingdoms.Bot.UI
                 AutoBombMultiSettings s2 = AbmSettings;
                 if (s2 != null) s2.TargetVillageId = targetVid;
 
-                // Update travel time labels in-place — don't rebuild rows (would lose UI selections)
+                // Update travel time labels in-place — don't rebuild rows (would lose UI selections).
+                // Use local calc for own villages, posted API value for remote villages.
                 foreach (MultiBombVillageRow row in _abmVillageRows)
                 {
-                    double baseTravel = AutoBombModule.CalculateBaseTravelTime(
-                        row.SourceVillageId, targetVid, false);
+                    double baseTravel;
+                    if (row.OwnerPlayerName == localPlayerName)
+                        baseTravel = AutoBombModule.CalculateBaseTravelTime(row.SourceVillageId, targetVid, false);
+                    else
+                        baseTravel = AbmLookupRemoteTravel(s, row.SourceVillageId, false);
                     row.UpdateTravelTime(baseTravel);
                 }
 
@@ -4029,6 +4297,7 @@ namespace Kingdoms.Bot.UI
                 return;
             AutoBombMultiModule mod = AbmModule;
             if (mod != null) mod.ResetSession();
+            AbmClearVillageRows();
         }
 
         private void AbmDoTakeCoordinator()
@@ -4296,6 +4565,8 @@ namespace Kingdoms.Bot.UI
             _abmIncludeVassalsCheck.Enabled  = modEnabled;
             _abmPlayCardsCheck.Enabled       = modEnabled;
             _abmAutoCancelCardCheck.Enabled  = modEnabled;
+            _abmSelectAllBtn.Enabled         = coordControls;
+            _abmDeselectAllBtn.Enabled       = coordControls;
             _abmPushConfigBtn.Enabled       = coordControls;
             _abmPrepareBtn.Enabled          = coordControls;
             _abmLaunchBtn.Enabled           = coordControls && (stateText == "configured" || stateText == "prepared" || stateText == "preparing");
@@ -4328,75 +4599,141 @@ namespace Kingdoms.Bot.UI
 
         private void AbmRefreshVillageRows(AutoBombMultiSettings settings, bool isCoordinator)
         {
-            int totalVillages = 0;
-            foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
-                totalVillages += pi.Villages.Count;
-
+            // Row controls bake in editability (isCoordinator) at construction time.
+            // If coordinator status changes, re-create the rows so their controls match —
+            // save the current config, clear, and reload restores everything with new state.
             bool coordChanged = (isCoordinator != _abmLastIsCoordinator);
             _abmLastIsCoordinator = isCoordinator;
-
-            if (totalVillages != _abmVillageRows.Count || coordChanged)
-                AbmRebuildVillageRows(settings, isCoordinator);
-            else
+            if (coordChanged && _abmVillageRows.Count > 0)
             {
-                foreach (MultiBombVillageRow row in _abmVillageRows)
-                    foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
-                        foreach (MultiVillageInfo vi in pi.Villages)
-                            if (vi.VillageId == row.SourceVillageId)
-                                row.SetStatus(vi.AttackStatus);
+                AbmSaveSetup();
+                AbmClearVillageRows();
+                AbmLoadSetup();
+                return;
             }
+
+            // Rows are manually added by the coordinator — don't auto-rebuild.
+            // Just update status labels on whatever rows are already in the list.
+            foreach (MultiBombVillageRow row in _abmVillageRows)
+                foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
+                    foreach (MultiVillageInfo vi in pi.Villages)
+                        if (vi.VillageId == row.SourceVillageId)
+                            row.SetStatus(vi.AttackStatus);
         }
 
-        private void AbmRebuildVillageRows(AutoBombMultiSettings settings, bool isCoordinator)
+        /// <summary>Clears all village rows from the list panel (e.g. on Reset Session).</summary>
+        private void AbmClearVillageRows()
         {
-            _abmVillageRows.Clear();
+            _abmVillageListPanel.SuspendLayout();
+            foreach (Control c in _abmVillageListPanel.Controls)
+                c.Dispose();
             _abmVillageListPanel.Controls.Clear();
+            _abmVillageRows.Clear();
+            _abmVillageListPanel.AutoScrollMinSize = new Size(0, 0);
+            _abmVillageListPanel.ResumeLayout(false);
+        }
 
-            List<string> formationNames = AutoBombModule.GetFormationNames();
-            int y = 0, idx = 0;
+        /// <summary>
+        /// Adds a single village row to the list.
+        /// Looks up the village in the connected players data; shows a warning if not found.
+        /// </summary>
+        private void AbmAddVillage(int villageId, bool isVassal)
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null) return;
 
-            string localPlayerName = AutoBombMultiModule.GetLocalPlayerName();
+            // Don't add the same village+type twice. The same village CAN appear once as a
+            // player village and once as a vassal village (e.g. the owner sends their own troops
+            // and the liege commands the vassal village) — these are distinct entries.
+            foreach (MultiBombVillageRow existing in _abmVillageRows)
+                if (existing.SourceVillageId == villageId && existing.IsVassal == isVassal)
+                {
+                    MessageBox.Show("Village " + villageId + " is already in the list as a " +
+                        (isVassal ? "vassal" : "player") + " village.",
+                        "Auto Bomb Multi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
-            foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
+            // Find in connected players
+            MultiVillageInfo found = null;
+            MultiPlayerInfo owner = null;
+            foreach (MultiPlayerInfo pi in s.ConnectedPlayers)
             {
-                Label playerHeader = new Label();
-                playerHeader.BackColor = Color.FromArgb(20, 30, 50);
-                playerHeader.ForeColor = pi.IsCoordinator
-                    ? Color.FromArgb(100, 200, 255)
-                    : Color.FromArgb(180, 200, 230);
-                playerHeader.Font = new Font("Segoe UI", 7.5f, FontStyle.Bold);
-                playerHeader.Text = "  " + pi.PlayerName + (pi.IsCoordinator ? " [Coordinator]" : "");
-                playerHeader.Location = new Point(0, y);
-                playerHeader.Size = new Size(1100, 18);
-                _abmVillageListPanel.Controls.Add(playerHeader);
-                y += 18;
-
-                bool isLocal = (pi.PlayerName == localPlayerName);
-
                 foreach (MultiVillageInfo vi in pi.Villages)
                 {
-                    var row = new MultiBombVillageRow(
-                        pi.PlayerName, vi.VillageId, vi.VillageName,
-                        vi.TravelTimeArmy, vi.TravelTimeCaptain,
-                        vi.NumPeasants, vi.NumArchers, vi.NumPikemen,
-                        vi.NumSwordsmen, vi.NumCatapults, vi.NumCaptains,
-                        formationNames, isLocal, idx, isCoordinator,
-                        vi.IsVassal, vi.ParentVillageId);
-
-                    row.Location = new Point(0, y);
-                    row.Width = _abmVillageListPanel.Width > 0 ? _abmVillageListPanel.Width : 1100;
-                    row.SetStatus(vi.AttackStatus);
-                    _abmVillageListPanel.Controls.Add(row);
-                    _abmVillageRows.Add(row);
-                    y += 24;
-                    idx++;
+                    if (vi.VillageId == villageId && vi.IsVassal == isVassal)
+                    { found = vi; owner = pi; break; }
                 }
+                if (found != null) break;
             }
 
-            _abmVillageListPanel.AutoScrollMinSize = new Size(0, y);
+            if (found == null)
+            {
+                MessageBox.Show("Village " + villageId + " was not found in any connected player's " +
+                    (isVassal ? "vassal" : "village") + " list.\n\nMake sure all players are connected and have posted their village data.",
+                    "Auto Bomb Multi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-            // Restore per-village formation/card/stack/type from last saved setup
-            AbmLoadSetup();
+            AbmAddVillageRow(s, owner, found, s.IsCoordinator);
+            AbmRepositionVillageRows();
+            AbmSaveSetup();
+        }
+
+        private void AbmAddVillageRow(AutoBombMultiSettings settings, MultiPlayerInfo owner,
+            MultiVillageInfo vi, bool isCoordinator)
+        {
+            string localPlayerName = AutoBombMultiModule.GetLocalPlayerName();
+            bool isLocal = (owner.PlayerName == localPlayerName);
+            List<string> formationNames = AutoBombModule.GetFormationNames();
+            int idx = _abmVillageRows.Count;
+
+            var row = new MultiBombVillageRow(
+                owner.PlayerName, vi.VillageId, vi.VillageName,
+                vi.TravelTimeArmy, vi.TravelTimeCaptain,
+                vi.NumPeasants, vi.NumArchers, vi.NumPikemen,
+                vi.NumSwordsmen, vi.NumCatapults, vi.NumCaptains,
+                formationNames, isLocal, idx, isCoordinator,
+                vi.IsVassal, vi.ParentVillageId);
+
+            row.Width = _abmVillageListPanel.Width > 0 ? _abmVillageListPanel.Width : 1100;
+            row.SetStatus(vi.AttackStatus);
+            row.RemoveRequested += r =>
+            {
+                _abmVillageListPanel.Controls.Remove(r);
+                _abmVillageRows.Remove(r);
+                r.Dispose();
+                AbmRepositionVillageRows();
+                AbmSaveSetup();
+            };
+
+            _abmVillageListPanel.Controls.Add(row);
+            _abmVillageRows.Add(row);
+        }
+
+        private void AbmRepositionVillageRows()
+        {
+            int y = 0;
+            foreach (MultiBombVillageRow row in _abmVillageRows)
+            {
+                row.Location = new Point(0, y);
+                y += 24;
+            }
+            _abmVillageListPanel.AutoScrollMinSize = new Size(0, y);
+        }
+
+        /// <summary>
+        /// Returns the live base travel time (seconds) for a village owned by a remote player,
+        /// as posted to the API. Returns 0 if not found.
+        /// </summary>
+        private double AbmLookupRemoteTravel(AutoBombMultiSettings settings, int villageId, bool useCaptains)
+        {
+            if (settings == null) return 0;
+            foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
+                foreach (MultiVillageInfo vi in pi.Villages)
+                    if (vi.VillageId == villageId)
+                        return useCaptains ? vi.TravelTimeCaptain : vi.TravelTimeArmy;
+            return 0;
         }
 
         private void AbmRefreshPendingRows(AutoBombMultiSettings settings)
@@ -4412,8 +4749,13 @@ namespace Kingdoms.Bot.UI
 
         private void AbmRebuildPendingRows(AutoBombMultiSettings settings)
         {
+            _abmPendingListPanel.SuspendLayout();
+            foreach (MultiPendingRow row in _abmPendingRows)
+            {
+                _abmPendingListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
             _abmPendingRows.Clear();
-            _abmPendingListPanel.Controls.Clear();
             int y = 0, idx = 0;
 
             foreach (MultiPlayerInfo pi in settings.ConnectedPlayers)
@@ -4438,6 +4780,7 @@ namespace Kingdoms.Bot.UI
                 }
             }
             _abmPendingListPanel.AutoScrollMinSize = new Size(0, y);
+            _abmPendingListPanel.ResumeLayout(false);
         }
 
         private void AbQueueAddId()
@@ -5168,17 +5511,23 @@ namespace Kingdoms.Bot.UI
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
-            MiscSettings s = BotEngine.Instance.Settings.Misc;
-            _miscCollectFreeCardsCheck.Checked = s.CollectFreeCards;
-            _miscDisableCannotPlayCardCheck.Checked = s.DisableCannotPlayCardPopup;
-            _miscShowOtherTraderInfoCheck.Checked = s.ShowOtherTraderInfo;
-            _miscWorldMapParishBuildingCountCheck.Checked = s.WorldMapParishBuildingCount;
-            _miscShowUserScreenInfoCheck.Checked = s.ShowUserScreenInfo;
-            _miscMapAttackTypeIconsCheck.Checked = s.MapAttackTypeIcons;
+            _miscLoading = true;
+            try
+            {
+                MiscSettings s = BotEngine.Instance.Settings.Misc;
+                _miscCollectFreeCardsCheck.Checked = s.CollectFreeCards;
+                _miscDisableCannotPlayCardCheck.Checked = s.DisableCannotPlayCardPopup;
+                _miscShowOtherTraderInfoCheck.Checked = s.ShowOtherTraderInfo;
+                _miscWorldMapParishBuildingCountCheck.Checked = s.WorldMapParishBuildingCount;
+                _miscShowUserScreenInfoCheck.Checked = s.ShowUserScreenInfo;
+                _miscMapAttackTypeIconsCheck.Checked = s.MapAttackTypeIcons;
+            }
+            finally { _miscLoading = false; }
         }
 
         private void MiscWriteToSettings()
         {
+            if (_miscLoading) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
             MiscSettings s = BotEngine.Instance.Settings.Misc;
@@ -5246,19 +5595,24 @@ namespace Kingdoms.Bot.UI
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
+            _ppLoading = true;
+            try
+            {
+                PopularitySettings s = BotEngine.Instance.Settings.Popularity;
+                _ppEnabledCheck.Checked = s.Enabled;
+                _ppIntervalInput.Value = Math.Max(_ppIntervalInput.Minimum,
+                    Math.Min(_ppIntervalInput.Maximum, s.CycleIntervalSeconds));
+                _ppDelayInput.Value = Math.Max(_ppDelayInput.Minimum,
+                    Math.Min(_ppDelayInput.Maximum, s.DelayBetweenVillagesMs));
 
-            PopularitySettings s = BotEngine.Instance.Settings.Popularity;
-            _ppEnabledCheck.Checked = s.Enabled;
-            _ppIntervalInput.Value = Math.Max(_ppIntervalInput.Minimum,
-                Math.Min(_ppIntervalInput.Maximum, s.CycleIntervalSeconds));
-            _ppDelayInput.Value = Math.Max(_ppDelayInput.Minimum,
-                Math.Min(_ppDelayInput.Maximum, s.DelayBetweenVillagesMs));
-
-            PpPopulateVillageList();
+                PpPopulateVillageList();
+            }
+            finally { _ppLoading = false; }
         }
 
         private void PpWriteToSettings()
         {
+            if (_ppLoading) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
                 return;
 
@@ -5279,7 +5633,11 @@ namespace Kingdoms.Bot.UI
         private void PpPopulateVillageList()
         {
             _ppVillageListPanel.SuspendLayout();
-            _ppVillageListPanel.Controls.Clear();
+            foreach (PopularityVillageRow row in _ppVillageRows)
+            {
+                _ppVillageListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
             _ppVillageRows.Clear();
 
             if (GameEngine.Instance == null || GameEngine.Instance.World == null)
@@ -5397,19 +5755,24 @@ namespace Kingdoms.Bot.UI
         private void BqLoadFromSettings()
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            _bqLoading = true;
+            try
+            {
+                BanquetSettings s = BotEngine.Instance.Settings.Banquet;
+                _bqEnabledCheck.Checked = s.Enabled;
+                _bqIntervalInput.Value = Math.Max(_bqIntervalInput.Minimum,
+                    Math.Min(_bqIntervalInput.Maximum, s.CycleIntervalSeconds));
+                _bqDelayInput.Value = Math.Max(_bqDelayInput.Minimum,
+                    Math.Min(_bqDelayInput.Maximum, s.DelayBetweenVillagesMs));
 
-            BanquetSettings s = BotEngine.Instance.Settings.Banquet;
-            _bqEnabledCheck.Checked = s.Enabled;
-            _bqIntervalInput.Value = Math.Max(_bqIntervalInput.Minimum,
-                Math.Min(_bqIntervalInput.Maximum, s.CycleIntervalSeconds));
-            _bqDelayInput.Value = Math.Max(_bqDelayInput.Minimum,
-                Math.Min(_bqDelayInput.Maximum, s.DelayBetweenVillagesMs));
-
-            BqPopulateVillageList();
+                BqPopulateVillageList();
+            }
+            finally { _bqLoading = false; }
         }
 
         private void BqWriteToSettings()
         {
+            if (_bqLoading) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
 
             BanquetSettings s = BotEngine.Instance.Settings.Banquet;
@@ -5429,7 +5792,11 @@ namespace Kingdoms.Bot.UI
         private void BqPopulateVillageList()
         {
             _bqVillageListPanel.SuspendLayout();
-            _bqVillageListPanel.Controls.Clear();
+            foreach (BanquetVillageRow row in _bqVillageRows)
+            {
+                _bqVillageListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
             _bqVillageRows.Clear();
 
             if (GameEngine.Instance == null || GameEngine.Instance.World == null)
@@ -5612,8 +5979,8 @@ namespace Kingdoms.Bot.UI
             enabled.Location = new Point(6, 4);
             enabled.Size = new Size(18, 18);
             enabled.BackColor = Color.Transparent;
-            enabled.CheckedChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.EnabledCheck = enabled;
+            enabled.CheckedChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             panel.Controls.Add(enabled);
 
             // Good name
@@ -5635,8 +6002,8 @@ namespace Kingdoms.Bot.UI
             tierCombo.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             foreach (string t in def.Tiers) tierCombo.Items.Add(t);
             if (tierCombo.Items.Count > 0) tierCombo.SelectedIndex = 0;
-            tierCombo.SelectedIndexChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.TierCombo = tierCombo;
+            tierCombo.SelectedIndexChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             panel.Controls.Add(tierCombo);
 
             // Target count
@@ -5657,8 +6024,8 @@ namespace Kingdoms.Bot.UI
             targetInput.BackColor = Color.FromArgb(40, 40, 55);
             targetInput.ForeColor = TextPri;
             targetInput.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            targetInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.TargetInput = targetInput;
+            targetInput.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             panel.Controls.Add(targetInput);
 
             // Delay
@@ -5679,8 +6046,8 @@ namespace Kingdoms.Bot.UI
             delayH.BackColor = Color.FromArgb(40, 40, 55);
             delayH.ForeColor = TextPri;
             delayH.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            delayH.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.DelayHInput = delayH;
+            delayH.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             panel.Controls.Add(delayH);
 
             Label hLbl = new Label();
@@ -5700,8 +6067,8 @@ namespace Kingdoms.Bot.UI
             delayM.BackColor = Color.FromArgb(40, 40, 55);
             delayM.ForeColor = TextPri;
             delayM.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            delayM.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.DelayMInput = delayM;
+            delayM.ValueChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             panel.Controls.Add(delayM);
 
             Label mLbl = new Label();
@@ -5813,7 +6180,6 @@ namespace Kingdoms.Bot.UI
                 cb.Location = new Point(120 + col * 32, rowY);
                 cb.Size = new Size(20, 18);
                 cb.BackColor = Color.Transparent;
-                cb.CheckedChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
                 row.HourChecks[h] = cb;
                 panel.Controls.Add(cb);
             }
@@ -5827,14 +6193,14 @@ namespace Kingdoms.Bot.UI
             clb.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             clb.CheckOnClick = true;
             clb.BorderStyle = BorderStyle.FixedSingle;
-            // ItemCheck fires before CheckedItems updates, so defer the save until the new state settles
+            row.CardsListBox = clb;
+            // ItemCheck fires before CheckedItems updates, so defer the write until the new state settles
             clb.ItemCheck += delegate
             {
                 if (_autoLoading) return;
                 if (IsHandleCreated)
                     BeginInvoke((Action)(delegate { if (!_autoLoading) AutoWriteToSettings(); }));
             };
-            row.CardsListBox = clb;
             panel.Controls.Add(clb);
 
             // Re-play card on expiry checkbox
@@ -5846,8 +6212,8 @@ namespace Kingdoms.Bot.UI
             replayCard.ForeColor = TextPri;
             replayCard.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             replayCard.Checked = true;
-            replayCard.CheckedChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.ReplayCardCheck = replayCard;
+            replayCard.CheckedChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             panel.Controls.Add(replayCard);
 
             // Auto-disable checkbox
@@ -5858,8 +6224,8 @@ namespace Kingdoms.Bot.UI
             autoOff.BackColor = Color.Transparent;
             autoOff.ForeColor = TextPri;
             autoOff.Font = new System.Drawing.Font("Segoe UI", 7.5F);
-            autoOff.CheckedChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             row.AutoDisableCheck = autoOff;
+            autoOff.CheckedChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
             panel.Controls.Add(autoOff);
 
             return row;
@@ -6053,261 +6419,8 @@ namespace Kingdoms.Bot.UI
 
         private void WireUpScoutTab()
         {
-            Color bg = Color.FromArgb(24, 24, 32);
-            Color panelBg = Color.FromArgb(30, 30, 40);
-            Color inputBg = Color.FromArgb(40, 40, 55);
-            Color textPri = Color.FromArgb(230, 230, 240);
-            Color textSec = Color.FromArgb(160, 165, 180);
-            Color listBg = Color.FromArgb(32, 32, 44);
-
-            // ── Settings panel (top) ─────────────────────────────────────────
-            _scEnabledCheck = new CheckBox();
-            _scEnabledCheck.Text = "Enable Scout";
-            _scEnabledCheck.ForeColor = textPri;
-            _scEnabledCheck.FlatStyle = FlatStyle.Flat;
-            _scEnabledCheck.Font = new Font("Segoe UI", 10f);
-            _scEnabledCheck.AutoSize = true;
-            _scEnabledCheck.Location = new Point(8, 8);
-            _scSettingsPanel.Controls.Add(_scEnabledCheck);
-
-            _scStatusLabel = new Label();
-            _scStatusLabel.Text = "DISABLED";
-            _scStatusLabel.ForeColor = ErrorCol;
-            _scStatusLabel.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-            _scStatusLabel.AutoSize = true;
-            _scStatusLabel.Location = new Point(160, 10);
-            _scSettingsPanel.Controls.Add(_scStatusLabel);
-
-            Label intervalLabel = new Label();
-            intervalLabel.Text = "Cycle interval (sec):";
-            intervalLabel.ForeColor = textSec;
-            intervalLabel.AutoSize = true;
-            intervalLabel.Location = new Point(290, 10);
-            _scSettingsPanel.Controls.Add(intervalLabel);
-
-            _scIntervalInput = new NumericUpDown();
-            _scIntervalInput.Minimum = 10;
-            _scIntervalInput.Maximum = 3600;
-            _scIntervalInput.Value = 60;
-            _scIntervalInput.BackColor = inputBg;
-            _scIntervalInput.ForeColor = textPri;
-            _scIntervalInput.Location = new Point(450, 7);
-            _scIntervalInput.Size = new Size(70, 23);
-            _scSettingsPanel.Controls.Add(_scIntervalInput);
-
-            // Row 2: MaxTime | AutoHire | Delay | CardExpiry
-            int row2y = 36;
-            Label maxTimeLabel = new Label();
-            maxTimeLabel.Text = "Max scout time (sec):";
-            maxTimeLabel.ForeColor = textSec;
-            maxTimeLabel.AutoSize = true;
-            maxTimeLabel.Location = new Point(8, row2y + 3);
-            _scSettingsPanel.Controls.Add(maxTimeLabel);
-
-            _scMaxTimeInput = new NumericUpDown();
-            _scMaxTimeInput.Minimum = 10;
-            _scMaxTimeInput.Maximum = 9999;
-            _scMaxTimeInput.Value = 1200;
-            _scMaxTimeInput.BackColor = inputBg;
-            _scMaxTimeInput.ForeColor = textPri;
-            _scMaxTimeInput.Location = new Point(160, row2y);
-            _scMaxTimeInput.Size = new Size(70, 23);
-            _scSettingsPanel.Controls.Add(_scMaxTimeInput);
-
-            Label autoHireLabel = new Label();
-            autoHireLabel.Text = "Auto hire scouts (0=off):";
-            autoHireLabel.ForeColor = textSec;
-            autoHireLabel.AutoSize = true;
-            autoHireLabel.Location = new Point(244, row2y + 3);
-            _scSettingsPanel.Controls.Add(autoHireLabel);
-
-            _scAutoHireInput = new NumericUpDown();
-            _scAutoHireInput.Minimum = 0;
-            _scAutoHireInput.Maximum = 8;
-            _scAutoHireInput.Value = 0;
-            _scAutoHireInput.BackColor = inputBg;
-            _scAutoHireInput.ForeColor = textPri;
-            _scAutoHireInput.Location = new Point(420, row2y);
-            _scAutoHireInput.Size = new Size(55, 23);
-            _scSettingsPanel.Controls.Add(_scAutoHireInput);
-
-            Label delayLabel = new Label();
-            delayLabel.Text = "Delay between sends (ms):";
-            delayLabel.ForeColor = textSec;
-            delayLabel.AutoSize = true;
-            delayLabel.Location = new Point(490, row2y + 3);
-            _scSettingsPanel.Controls.Add(delayLabel);
-
-            _scDelayInput = new NumericUpDown();
-            _scDelayInput.Minimum = 500;
-            _scDelayInput.Maximum = 60000;
-            _scDelayInput.Value = 3000;
-            _scDelayInput.BackColor = inputBg;
-            _scDelayInput.ForeColor = textPri;
-            _scDelayInput.Location = new Point(695, row2y);
-            _scDelayInput.Size = new Size(75, 23);
-            _scSettingsPanel.Controls.Add(_scDelayInput);
-
-            _scDisableOnCardExpiryCheck = new CheckBox();
-            _scDisableOnCardExpiryCheck.Text = "Disable on scout card expiry";
-            _scDisableOnCardExpiryCheck.ForeColor = textPri;
-            _scDisableOnCardExpiryCheck.FlatStyle = FlatStyle.Flat;
-            _scDisableOnCardExpiryCheck.AutoSize = true;
-            _scDisableOnCardExpiryCheck.Location = new Point(790, row2y);
-            _scSettingsPanel.Controls.Add(_scDisableOnCardExpiryCheck);
-
-            // Row 3: Priority
-            int row3y = 62;
-            Label priorityLabel = new Label();
-            priorityLabel.Text = "Scout order:";
-            priorityLabel.ForeColor = textSec;
-            priorityLabel.AutoSize = true;
-            priorityLabel.Location = new Point(8, row3y + 2);
-            _scSettingsPanel.Controls.Add(priorityLabel);
-
-            _scPriorityResourceRadio = new RadioButton();
-            _scPriorityResourceRadio.Text = "Resource Priority (type order in list)";
-            _scPriorityResourceRadio.ForeColor = textPri;
-            _scPriorityResourceRadio.FlatStyle = FlatStyle.Flat;
-            _scPriorityResourceRadio.AutoSize = true;
-            _scPriorityResourceRadio.Checked = true;
-            _scPriorityResourceRadio.Location = new Point(90, row3y);
-            _scSettingsPanel.Controls.Add(_scPriorityResourceRadio);
-
-            _scPriorityRangeRadio = new RadioButton();
-            _scPriorityRangeRadio.Text = "Range Priority (nearest first)";
-            _scPriorityRangeRadio.ForeColor = textPri;
-            _scPriorityRangeRadio.FlatStyle = FlatStyle.Flat;
-            _scPriorityRangeRadio.AutoSize = true;
-            _scPriorityRangeRadio.Location = new Point(330, row3y);
-            _scSettingsPanel.Controls.Add(_scPriorityRangeRadio);
-
-            _scSendOneScoutCheck = new CheckBox();
-            _scSendOneScoutCheck.Text = "Send 1 scout per stash (ignore stash size)";
-            _scSendOneScoutCheck.ForeColor = textPri;
-            _scSendOneScoutCheck.FlatStyle = FlatStyle.Flat;
-            _scSendOneScoutCheck.AutoSize = true;
-            _scSendOneScoutCheck.Location = new Point(570, row3y);
-            _scSettingsPanel.Controls.Add(_scSendOneScoutCheck);
-
-            _scSendOneOnNewCheck = new CheckBox();
-            _scSendOneOnNewCheck.Text = "Send 1 scout on New Stash (to discover type)";
-            _scSendOneOnNewCheck.ForeColor = textPri;
-            _scSendOneOnNewCheck.FlatStyle = FlatStyle.Flat;
-            _scSendOneOnNewCheck.AutoSize = true;
-            _scSendOneOnNewCheck.Location = new Point(850, row3y);
-            _scSettingsPanel.Controls.Add(_scSendOneOnNewCheck);
-
-            // ── Village list panel (left) ────────────────────────────────────
-            // Listbox added BEFORE the header so WinForms docks the header first (last-added = first docked)
-            _scVillageListBox = new ListBox();
-            _scVillageListBox.BackColor = listBg;
-            _scVillageListBox.ForeColor = textPri;
-            _scVillageListBox.BorderStyle = BorderStyle.None;
-            _scVillageListBox.Dock = DockStyle.Fill;
-            _scVillageListBox.Font = new Font("Segoe UI", 9f);
-            _scVillagePanel.Controls.Add(_scVillageListBox);
-
-            Label villageHeaderLabel = new Label();
-            villageHeaderLabel.Text = "Villages";
-            villageHeaderLabel.ForeColor = textSec;
-            villageHeaderLabel.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-            villageHeaderLabel.Dock = DockStyle.Top;
-            villageHeaderLabel.Height = 22;
-            villageHeaderLabel.Padding = new Padding(6, 4, 0, 0);
-            villageHeaderLabel.BackColor = Color.FromArgb(30, 30, 40);
-            _scVillagePanel.Controls.Add(villageHeaderLabel);
-
-            // ── Content panel (right) ────────────────────────────────────────
-            _scVillageEnabledCheck = new CheckBox();
-            _scVillageEnabledCheck.Text = "Scout this village";
-            _scVillageEnabledCheck.ForeColor = textPri;
-            _scVillageEnabledCheck.FlatStyle = FlatStyle.Flat;
-            _scVillageEnabledCheck.Font = new Font("Segoe UI", 10f);
-            _scVillageEnabledCheck.AutoSize = true;
-            _scVillageEnabledCheck.Location = new Point(10, 8);
-            _scContentPanel.Controls.Add(_scVillageEnabledCheck);
-
-            Label scoutListLabel = new Label();
-            scoutListLabel.Text = "Resources to Scout";
-            scoutListLabel.ForeColor = textSec;
-            scoutListLabel.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-            scoutListLabel.AutoSize = true;
-            scoutListLabel.Location = new Point(10, 36);
-            _scContentPanel.Controls.Add(scoutListLabel);
-
-            Label ignoreListLabel = new Label();
-            ignoreListLabel.Text = "Resources to Ignore";
-            ignoreListLabel.ForeColor = textSec;
-            ignoreListLabel.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-            ignoreListLabel.AutoSize = true;
-            ignoreListLabel.Location = new Point(420, 36);
-            _scContentPanel.Controls.Add(ignoreListLabel);
-
-            _scScoutList = new ListBox();
-            _scScoutList.BackColor = listBg;
-            _scScoutList.ForeColor = textPri;
-            _scScoutList.BorderStyle = BorderStyle.FixedSingle;
-            _scScoutList.Location = new Point(10, 56);
-            _scScoutList.Size = new Size(290, 310);
-            _scContentPanel.Controls.Add(_scScoutList);
-
-            _scIgnoreList = new ListBox();
-            _scIgnoreList.BackColor = listBg;
-            _scIgnoreList.ForeColor = textPri;
-            _scIgnoreList.BorderStyle = BorderStyle.FixedSingle;
-            _scIgnoreList.Location = new Point(420, 56);
-            _scIgnoreList.Size = new Size(290, 310);
-            _scContentPanel.Controls.Add(_scIgnoreList);
-
-            // Up/Down buttons (to the right of scout list)
-            _scMoveUpBtn = new Button();
-            _scMoveUpBtn.Text = "▲";
-            _scMoveUpBtn.FlatStyle = FlatStyle.Flat;
-            _scMoveUpBtn.BackColor = Color.FromArgb(50, 50, 70);
-            _scMoveUpBtn.ForeColor = textPri;
-            _scMoveUpBtn.Location = new Point(308, 56);
-            _scMoveUpBtn.Size = new Size(30, 26);
-            _scContentPanel.Controls.Add(_scMoveUpBtn);
-
-            _scMoveDownBtn = new Button();
-            _scMoveDownBtn.Text = "▼";
-            _scMoveDownBtn.FlatStyle = FlatStyle.Flat;
-            _scMoveDownBtn.BackColor = Color.FromArgb(50, 50, 70);
-            _scMoveDownBtn.ForeColor = textPri;
-            _scMoveDownBtn.Location = new Point(308, 86);
-            _scMoveDownBtn.Size = new Size(30, 26);
-            _scContentPanel.Controls.Add(_scMoveDownBtn);
-
-            // >> / << transfer buttons (between lists)
-            _scMoveToIgnoreBtn = new Button();
-            _scMoveToIgnoreBtn.Text = ">>";
-            _scMoveToIgnoreBtn.FlatStyle = FlatStyle.Flat;
-            _scMoveToIgnoreBtn.BackColor = Color.FromArgb(50, 50, 70);
-            _scMoveToIgnoreBtn.ForeColor = textPri;
-            _scMoveToIgnoreBtn.Location = new Point(353, 180);
-            _scMoveToIgnoreBtn.Size = new Size(50, 26);
-            _scContentPanel.Controls.Add(_scMoveToIgnoreBtn);
-
-            _scMoveToScoutBtn = new Button();
-            _scMoveToScoutBtn.Text = "<<";
-            _scMoveToScoutBtn.FlatStyle = FlatStyle.Flat;
-            _scMoveToScoutBtn.BackColor = Color.FromArgb(50, 50, 70);
-            _scMoveToScoutBtn.ForeColor = textPri;
-            _scMoveToScoutBtn.Location = new Point(353, 214);
-            _scMoveToScoutBtn.Size = new Size(50, 26);
-            _scContentPanel.Controls.Add(_scMoveToScoutBtn);
-
-            _scCopySettingsBtn = new Button();
-            _scCopySettingsBtn.Text = "Copy to all villages";
-            _scCopySettingsBtn.FlatStyle = FlatStyle.Flat;
-            _scCopySettingsBtn.BackColor = Color.FromArgb(50, 70, 50);
-            _scCopySettingsBtn.ForeColor = textPri;
-            _scCopySettingsBtn.Location = new Point(10, 378);
-            _scCopySettingsBtn.Size = new Size(160, 26);
-            _scContentPanel.Controls.Add(_scCopySettingsBtn);
-
             // ── Wire events ──────────────────────────────────────────────────
+
             _scEnabledCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
             _scIntervalInput.ValueChanged += delegate { ScPushGlobalSettings(); };
             _scMaxTimeInput.ValueChanged += delegate { ScPushGlobalSettings(); };
@@ -6805,34 +6918,11 @@ namespace Kingdoms.Bot.UI
         private static readonly Color DfBorder = Color.FromArgb(55, 58, 72);
 
         private bool _dfLoading;
-        private CheckBox _dfEnabledCheck;
-        private Label _dfStatusLabel;
-        private NumericUpDown _dfDurationInput;
-        private ComboBox _dfVillageCombo;
-        private Button _dfVillageRefreshBtn;
-        private Button _dfStartBtn;
-        private Button _dfStopBtn;
-        private Label _dfCountdownLabel;
-        private ComboBox _dfKnightsCombo;
-        private ComboBox _dfLastStandCombo;
-        private CheckBox _dfDesperateCheck;
-        private CheckBox _dfAutoRepairCheck;
-        private CheckBox _dfRestoreTroopsCheck;
-        private CheckBox _dfRestoreInfraCheck;
         private Timer _dfRefreshTimer;
 
         private void WireUpDefenderTab()
         {
-            BuildDefenderUI();
-
-            _dfRefreshTimer = new Timer();
-            _dfRefreshTimer.Interval = 500;
-            _dfRefreshTimer.Tick += delegate
-            {
-                try { DfUpdateCountdown(); }
-                catch { /* swallow — timer must not propagate exceptions */ }
-            };
-            _dfRefreshTimer.Start();
+            DfInitComboItems();
 
             _dfEnabledCheck.CheckedChanged += delegate { DfWriteToSettings(); };
             _dfDurationInput.ValueChanged += delegate { DfWriteToSettings(); };
@@ -6843,127 +6933,36 @@ namespace Kingdoms.Bot.UI
             _dfRestoreTroopsCheck.CheckedChanged += delegate { DfWriteToSettings(); };
             _dfRestoreInfraCheck.CheckedChanged += delegate { DfWriteToSettings(); };
 
+            _dfRefreshTimer = new Timer();
+            _dfRefreshTimer.Interval = 500;
+            _dfRefreshTimer.Tick += delegate
+            {
+                try { DfUpdateCountdown(); }
+                catch { /* swallow — timer must not propagate exceptions */ }
+            };
+            _dfRefreshTimer.Start();
+
+
             _dfVillageRefreshBtn.Click += delegate { DfPopulateVillages(); };
             _dfStartBtn.Click += delegate { DfStartSpam(); };
             _dfStopBtn.Click += delegate { DfStopSpam(); };
         }
 
-        private void BuildDefenderUI()
+        private void DfInitComboItems()
         {
-            // ---- Settings panel (top) ----
-            Panel settingsPanel = new Panel();
-            settingsPanel.Dock = DockStyle.Top;
-            settingsPanel.Height = 108;
-            settingsPanel.BackColor = DfBgCard;
-            settingsPanel.Padding = new Padding(16, 10, 16, 8);
-
-            _dfEnabledCheck = DfMakeCheck("Module Enabled", new Point(16, 10));
-            settingsPanel.Controls.Add(_dfEnabledCheck);
-
-            _dfStatusLabel = DfMakeLabel("DISABLED", new Point(180, 13));
-            _dfStatusLabel.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
-            _dfStatusLabel.ForeColor = DfError;
-            settingsPanel.Controls.Add(_dfStatusLabel);
-
-            settingsPanel.Controls.Add(DfMakeLabel("Duration (s):", new Point(16, 38)));
-            _dfDurationInput = DfMakeNumeric(new Point(110, 36), 60, 5, 300, 20);
-            settingsPanel.Controls.Add(_dfDurationInput);
-
-            settingsPanel.Controls.Add(DfMakeLabel("Target village:", new Point(190, 38)));
-            _dfVillageCombo = DfMakeCombo(new Point(300, 35), 300);
-            settingsPanel.Controls.Add(_dfVillageCombo);
-
-            _dfVillageRefreshBtn = DfMakeButton("Refresh", DfAccent, new Point(608, 34), new Size(70, 22));
-            settingsPanel.Controls.Add(_dfVillageRefreshBtn);
-
-            _dfStartBtn = DfMakeButton("Start Spam", DfSuccess, new Point(16, 70), new Size(100, 26));
-            settingsPanel.Controls.Add(_dfStartBtn);
-
-            _dfStopBtn = DfMakeButton("Stop", DfError, new Point(126, 70), new Size(70, 26));
-            settingsPanel.Controls.Add(_dfStopBtn);
-
-            settingsPanel.Controls.Add(DfMakeLabel("Countdown:", new Point(210, 75)));
-            _dfCountdownLabel = DfMakeLabel("--", new Point(290, 75));
-            _dfCountdownLabel.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-            _dfCountdownLabel.ForeColor = DfAccent;
-            settingsPanel.Controls.Add(_dfCountdownLabel);
-
-            _defenderPage.Controls.Add(settingsPanel);
-
-            // ---- Separator ----
-            Panel sep1 = DfMakeSeparator();
-            _defenderPage.Controls.Add(sep1);
-
-            // ---- Cards section ----
-            Panel cardsPanel = new Panel();
-            cardsPanel.Dock = DockStyle.Top;
-            cardsPanel.Height = 96;
-            cardsPanel.BackColor = DfBgCard;
-            cardsPanel.Padding = new Padding(16, 8, 16, 8);
-
-            Label cardsTitle = DfMakeLabel("Cards (Spam Cards)", new Point(16, 8));
-            cardsTitle.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-            cardsTitle.ForeColor = DfTextPrimary;
-            cardsPanel.Controls.Add(cardsTitle);
-
-            cardsPanel.Controls.Add(DfMakeLabel("Knights card:", new Point(16, 34)));
-            _dfKnightsCombo = DfMakeCombo(new Point(120, 31), 200);
+            // Populate the knights and last stand card combo boxes.
+            // All other controls are initialized in the designer.
             _dfKnightsCombo.Items.Add(new DfCardItem("None", 0));
             _dfKnightsCombo.Items.Add(new DfCardItem("Surprise Attack (2)", 265));
             _dfKnightsCombo.Items.Add(new DfCardItem("Surprise Attack (5)", 269));
             _dfKnightsCombo.Items.Add(new DfCardItem("Surprise Attack (12)", 270));
             _dfKnightsCombo.SelectedIndex = 0;
-            cardsPanel.Controls.Add(_dfKnightsCombo);
 
-            cardsPanel.Controls.Add(DfMakeLabel("Last Stand card:", new Point(340, 34)));
-            _dfLastStandCombo = DfMakeCombo(new Point(450, 31), 200);
             _dfLastStandCombo.Items.Add(new DfCardItem("None", 0));
             _dfLastStandCombo.Items.Add(new DfCardItem("Last Stand (5)", 266));
             _dfLastStandCombo.Items.Add(new DfCardItem("Last Stand (10)", 271));
             _dfLastStandCombo.Items.Add(new DfCardItem("Last Stand (20)", 272));
             _dfLastStandCombo.SelectedIndex = 0;
-            cardsPanel.Controls.Add(_dfLastStandCombo);
-
-            _dfDesperateCheck = DfMakeCheck("Spam Desperate Defence (card 263)", new Point(16, 64));
-            cardsPanel.Controls.Add(_dfDesperateCheck);
-
-            _defenderPage.Controls.Add(cardsPanel);
-
-            // ---- Separator ----
-            Panel sep2 = DfMakeSeparator();
-            _defenderPage.Controls.Add(sep2);
-
-            // ---- Castle actions section ----
-            Panel actionsPanel = new Panel();
-            actionsPanel.Dock = DockStyle.Top;
-            actionsPanel.Height = 72;
-            actionsPanel.BackColor = DfBgCard;
-            actionsPanel.Padding = new Padding(16, 8, 16, 8);
-
-            Label actionsTitle = DfMakeLabel("Castle Actions (applied to target village)", new Point(16, 8));
-            actionsTitle.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-            actionsTitle.ForeColor = DfTextPrimary;
-            actionsPanel.Controls.Add(actionsTitle);
-
-            _dfAutoRepairCheck = DfMakeCheck("Auto Repair", new Point(16, 38));
-            _dfAutoRepairCheck.Checked = true;
-            actionsPanel.Controls.Add(_dfAutoRepairCheck);
-
-            _dfRestoreTroopsCheck = DfMakeCheck("Restore Troops (local layout)", new Point(140, 38));
-            _dfRestoreTroopsCheck.Checked = true;
-            actionsPanel.Controls.Add(_dfRestoreTroopsCheck);
-
-            _dfRestoreInfraCheck = DfMakeCheck("Restore Infrastructure (local layout)", new Point(360, 38));
-            actionsPanel.Controls.Add(_dfRestoreInfraCheck);
-
-            _defenderPage.Controls.Add(actionsPanel);
-
-            // Fix z-order — last added = top-most in docking
-            _defenderPage.Controls.SetChildIndex(actionsPanel, 0);
-            _defenderPage.Controls.SetChildIndex(sep2, 1);
-            _defenderPage.Controls.SetChildIndex(cardsPanel, 2);
-            _defenderPage.Controls.SetChildIndex(sep1, 3);
-            _defenderPage.Controls.SetChildIndex(settingsPanel, 4);
 
             DfPopulateVillages();
         }
@@ -7108,8 +7107,6 @@ namespace Kingdoms.Bot.UI
                 if (m is Kingdoms.Bot.Modules.DefenderModule)
                     m.Enabled = s.Enabled;
             }
-
-            BotEngine.Instance.Settings.Save();
         }
 
         private static void DfSelectComboByDefId(ComboBox combo, int defId)
@@ -7135,82 +7132,6 @@ namespace Kingdoms.Bot.UI
                 if (mod != null) return mod;
             }
             return null;
-        }
-
-        // ---- UI helpers ----
-
-        private static CheckBox DfMakeCheck(string text, Point loc)
-        {
-            CheckBox cb = new CheckBox();
-            cb.Text = text;
-            cb.Font = new Font("Segoe UI", 8.5f);
-            cb.ForeColor = Color.FromArgb(230, 230, 240);
-            cb.AutoSize = true;
-            cb.FlatStyle = FlatStyle.Flat;
-            cb.Location = loc;
-            return cb;
-        }
-
-        private static Label DfMakeLabel(string text, Point loc)
-        {
-            Label lbl = new Label();
-            lbl.Text = text;
-            lbl.Font = new Font("Segoe UI", 8.5f);
-            lbl.ForeColor = Color.FromArgb(160, 165, 180);
-            lbl.AutoSize = true;
-            lbl.Location = loc;
-            return lbl;
-        }
-
-        private static NumericUpDown DfMakeNumeric(Point loc, int w, int min, int max, int val)
-        {
-            NumericUpDown nud = new NumericUpDown();
-            nud.BackColor = Color.FromArgb(50, 52, 64);
-            nud.ForeColor = Color.FromArgb(230, 230, 240);
-            nud.BorderStyle = BorderStyle.FixedSingle;
-            nud.Location = loc;
-            nud.Size = new Size(w, 22);
-            nud.Minimum = min;
-            nud.Maximum = max;
-            nud.Value = Math.Max(min, Math.Min(max, val));
-            return nud;
-        }
-
-        private static ComboBox DfMakeCombo(Point loc, int w)
-        {
-            ComboBox cb = new ComboBox();
-            cb.BackColor = Color.FromArgb(50, 52, 64);
-            cb.ForeColor = Color.FromArgb(230, 230, 240);
-            cb.DropDownStyle = ComboBoxStyle.DropDownList;
-            cb.FlatStyle = FlatStyle.Flat;
-            cb.Font = new Font("Segoe UI", 8f);
-            cb.Location = loc;
-            cb.Size = new Size(w, 22);
-            return cb;
-        }
-
-        private static Button DfMakeButton(string text, Color bg, Point loc, Size size)
-        {
-            Button btn = new Button();
-            btn.FlatStyle = FlatStyle.Flat;
-            btn.FlatAppearance.BorderSize = 0;
-            btn.BackColor = bg;
-            btn.ForeColor = Color.White;
-            btn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
-            btn.Text = text;
-            btn.Cursor = Cursors.Hand;
-            btn.Location = loc;
-            btn.Size = size;
-            return btn;
-        }
-
-        private static Panel DfMakeSeparator()
-        {
-            Panel p = new Panel();
-            p.Dock = DockStyle.Top;
-            p.Height = 1;
-            p.BackColor = Color.FromArgb(55, 58, 72);
-            return p;
         }
 
         private class DfCardItem
@@ -7240,6 +7161,7 @@ namespace Kingdoms.Bot.UI
             _mkDelayInput.ValueChanged     += delegate { MkWriteToSettings(); };
             _mkMonksToKeepInput.ValueChanged  += delegate { MkWriteToSettings(); };
             _mkAutoRecruitInput.ValueChanged   += delegate { MkWriteToSettings(); };
+
             _mkRefreshBtn.Click    += delegate { MkPopulateRouteList(); };
             _mkRunNowBtn.Click     += delegate { MkRunNow(); };
             _mkAddRouteBtn.Click    += delegate { MkAddRoute(); };
@@ -7298,24 +7220,29 @@ namespace Kingdoms.Bot.UI
         private void MkLoadFromSettings()
         {
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            _mkLoading = true;
+            try
+            {
+                MonkSettings s = BotEngine.Instance.Settings.Monk;
+                _mkEnabledCheck.Checked = s.Enabled;
+                _mkIntervalInput.Value  = Math.Max(_mkIntervalInput.Minimum,
+                    Math.Min(_mkIntervalInput.Maximum, s.CycleIntervalSeconds));
+                _mkDelayInput.Value     = Math.Max(_mkDelayInput.Minimum,
+                    Math.Min(_mkDelayInput.Maximum, s.DelayBetweenRoutesMs));
+                _mkMonksToKeepInput.Value = Math.Max(_mkMonksToKeepInput.Minimum,
+                    Math.Min(_mkMonksToKeepInput.Maximum, s.MonksToKeep));
+                _mkAutoRecruitInput.Value = Math.Max(_mkAutoRecruitInput.Minimum,
+                    Math.Min(_mkAutoRecruitInput.Maximum, s.AutoRecruitMonks));
 
-            MonkSettings s = BotEngine.Instance.Settings.Monk;
-            _mkEnabledCheck.Checked = s.Enabled;
-            _mkIntervalInput.Value  = Math.Max(_mkIntervalInput.Minimum,
-                Math.Min(_mkIntervalInput.Maximum, s.CycleIntervalSeconds));
-            _mkDelayInput.Value     = Math.Max(_mkDelayInput.Minimum,
-                Math.Min(_mkDelayInput.Maximum, s.DelayBetweenRoutesMs));
-            _mkMonksToKeepInput.Value = Math.Max(_mkMonksToKeepInput.Minimum,
-                Math.Min(_mkMonksToKeepInput.Maximum, s.MonksToKeep));
-            _mkAutoRecruitInput.Value = Math.Max(_mkAutoRecruitInput.Minimum,
-                Math.Min(_mkAutoRecruitInput.Maximum, s.AutoRecruitMonks));
-
-            MkPopulateRouteList();
-            MkUpdateStatusDisplay();
+                MkPopulateRouteList();
+                MkUpdateStatusDisplay();
+            }
+            finally { _mkLoading = false; }
         }
 
         private void MkWriteToSettings()
         {
+            if (_mkLoading) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
 
             MonkSettings s = BotEngine.Instance.Settings.Monk;
@@ -7337,7 +7264,11 @@ namespace Kingdoms.Bot.UI
         private void MkPopulateRouteList()
         {
             _mkRouteListPanel.SuspendLayout();
-            _mkRouteListPanel.Controls.Clear();
+            foreach (MonkRouteRow row in _mkRouteRows)
+            {
+                _mkRouteListPanel.Controls.Remove(row);
+                row.Dispose();
+            }
             _mkRouteRows.Clear();
             _mkSelectedRouteIndex = -1;
 
