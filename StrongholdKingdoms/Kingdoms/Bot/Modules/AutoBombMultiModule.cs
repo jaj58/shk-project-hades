@@ -1736,47 +1736,49 @@ namespace Kingdoms.Bot.Modules
                     return false;
                 }
 
-                bool placed = false;
-
+                // Resolve the formation into a positioned element list (cloud preset or local .cas).
+                List<CastleMap.RestoreCastleElement> formationElements = null;
                 CastleMapPreset cloudPreset = AutoBombModule.FindCloudPreset(entry.FormationName);
                 if (cloudPreset != null)
+                    formationElements = AutoBombModule.PresetToElementList(cloudPreset);
+                else
+                    formationElements = castleMap.getAttackSetup(entry.FormationName);
+
+                if (formationElements == null || formationElements.Count == 0)
                 {
-                    int[] presetCounts = AutoBombModule.PresetTroopsCount(cloudPreset);
-                    if (castleMap.HasEnoughTroopsToPlace(ref presetCounts))
-                    {
-                        castleMap.RestoreAttackPresetBG(cloudPreset);
-                        placed = true;
-                    }
-                    else
-                    {
-                        entry.Status = "Error: Not enough troops";
-                        entry.Cancelled = true;
-                        return false;
-                    }
+                    entry.Status = "Error: Formation not found";
+                    entry.Cancelled = true;
+                    return false;
                 }
 
-                if (!placed)
+                int[] counts = AutoBombModule.GetTroopsCountArray12(formationElements);
+                // HasEnoughTroopsToPlace fills counts[6..11] with the village's available troops.
+                bool enough = castleMap.HasEnoughTroopsToPlace(ref counts);
+
+                if (!enough)
                 {
-                    List<CastleMap.RestoreCastleElement> attackSetup = castleMap.getAttackSetup(entry.FormationName);
-                    if (attackSetup == null || attackSetup.Count == 0)
-                    {
-                        entry.Status = "Error: Formation not found";
-                        entry.Cancelled = true;
-                        return false;
-                    }
-                    int[] localCounts = AutoBombModule.GetTroopsCountArray12(attackSetup);
-                    if (castleMap.HasEnoughTroopsToPlace(ref localCounts))
-                    {
-                        castleMap.RestoreAttackSetupBG(attackSetup);
-                        placed = true;
-                    }
-                    else
+                    if (!settings.SendWithMissingTroops)
                     {
                         entry.Status = "Error: Not enough troops";
                         entry.Cancelled = true;
                         return false;
                     }
+
+                    // Partial send: keep only the troops actually available, drop the rest.
+                    int[] available6 = new int[6];
+                    for (int i = 0; i < 6; i++) available6[i] = counts[i + 6];
+                    int[] placedByType;
+                    formationElements = AutoBombModule.FilterFormationToAvailable(
+                        formationElements, available6, out placedByType);
+
+                    LogWarning("[Prepare] Village " + entry.SourceVillageId +
+                        ": insufficient troops for '" + entry.FormationName +
+                        "' — sending partial (P=" + placedByType[0] + " A=" + placedByType[1] +
+                        " Pk=" + placedByType[2] + " S=" + placedByType[3] +
+                        " C=" + placedByType[4] + " Cap=" + placedByType[5] + ").");
                 }
+
+                castleMap.RestoreAttackSetupBG(formationElements);
 
                 if (castleMap.attackNumPeasants == 0 && castleMap.attackNumArchers == 0 &&
                     castleMap.attackNumPikemen == 0 && castleMap.attackNumSwordsmen == 0 &&
