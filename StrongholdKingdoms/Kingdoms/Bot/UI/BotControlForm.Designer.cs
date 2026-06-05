@@ -3983,7 +3983,7 @@ namespace Kingdoms.Bot.UI
             this._abmSendPartialCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._abmSendPartialCheck.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             this._abmSendPartialCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._abmSendPartialCheck.Location = new System.Drawing.Point(6, 60);
+            this._abmSendPartialCheck.Location = new System.Drawing.Point(530, 7);
             this._abmSendPartialCheck.Name = "_abmSendPartialCheck";
             this._abmSendPartialCheck.Size = new System.Drawing.Size(230, 18);
             this._abmSendPartialCheck.TabIndex = 16;
@@ -3996,7 +3996,7 @@ namespace Kingdoms.Bot.UI
             this._abmSelectAllBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._abmSelectAllBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._abmSelectAllBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(230)))), ((int)(((byte)(200)))));
-            this._abmSelectAllBtn.Location = new System.Drawing.Point(424, 33);
+            this._abmSelectAllBtn.Location = new System.Drawing.Point(556, 33);
             this._abmSelectAllBtn.Name = "_abmSelectAllBtn";
             this._abmSelectAllBtn.Size = new System.Drawing.Size(54, 18);
             this._abmSelectAllBtn.TabIndex = 14;
@@ -4010,7 +4010,7 @@ namespace Kingdoms.Bot.UI
             this._abmDeselectAllBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._abmDeselectAllBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._abmDeselectAllBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(200)))), ((int)(((byte)(200)))));
-            this._abmDeselectAllBtn.Location = new System.Drawing.Point(482, 33);
+            this._abmDeselectAllBtn.Location = new System.Drawing.Point(614, 33);
             this._abmDeselectAllBtn.Name = "_abmDeselectAllBtn";
             this._abmDeselectAllBtn.Size = new System.Drawing.Size(62, 18);
             this._abmDeselectAllBtn.TabIndex = 15;
