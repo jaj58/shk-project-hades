@@ -295,7 +295,10 @@ function handle_start_timer(&$state, $req) {
         if (!$a['selected']) continue;
         $arrival_ts = $base_arrival_ts + ($a['stack'] - 1) * $stack_delay;
         $send_ts    = $arrival_ts - $a['travel_time_seconds'];
-        $send_times[$a['source_village_id']] = gmdate('Y-m-d\TH:i:s\Z', (int)$send_ts);
+        // Key by player|village so the same village sent by two players (a player attack and
+        // a vassal attack) gets independent send times instead of one overwriting the other.
+        $key = $a['source_player'] . '|' . $a['source_village_id'];
+        $send_times[$key] = gmdate('Y-m-d\TH:i:s\Z', (int)$send_ts);
     }
 
     $state['scheduled_send_times'] = $send_times;
