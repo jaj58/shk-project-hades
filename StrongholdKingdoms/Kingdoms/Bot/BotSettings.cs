@@ -857,6 +857,9 @@ namespace Kingdoms.Bot
         public bool IsCoordinator;
         [System.Xml.Serialization.XmlIgnore]
         public bool Ready;
+        // The target village this player's posted travel times were computed against.
+        [System.Xml.Serialization.XmlIgnore]
+        public int TravelTarget;
         [System.Xml.Serialization.XmlIgnore]
         public List<MultiVillageInfo> Villages = new List<MultiVillageInfo>();
     }

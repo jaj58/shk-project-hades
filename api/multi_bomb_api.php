@@ -175,13 +175,15 @@ function require_coordinator($state, $player_name) {
 function handle_player_ready(&$state, $req) {
     $name     = require_field($req, 'player_name');
     $villages = isset($req['villages']) ? $req['villages'] : [];
+    $travel_target = isset($req['travel_target']) ? (int)$req['travel_target'] : 0;
 
     $idx = find_player_index($state, $name);
     $player = [
-        'name'      => $name,
-        'villages'  => $villages,
-        'ready'     => true,
-        'last_seen' => gmdate('Y-m-d\TH:i:s\Z'),
+        'name'          => $name,
+        'villages'      => $villages,
+        'ready'         => true,
+        'travel_target' => $travel_target,
+        'last_seen'     => gmdate('Y-m-d\TH:i:s\Z'),
     ];
 
     if ($idx >= 0) {
