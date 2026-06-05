@@ -3985,7 +3985,7 @@ namespace Kingdoms.Bot.UI
             this._abmSendPartialCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._abmSendPartialCheck.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             this._abmSendPartialCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._abmSendPartialCheck.Location = new System.Drawing.Point(530, 7);
+            this._abmSendPartialCheck.Location = new System.Drawing.Point(686, 34);
             this._abmSendPartialCheck.Name = "_abmSendPartialCheck";
             this._abmSendPartialCheck.Size = new System.Drawing.Size(230, 18);
             this._abmSendPartialCheck.TabIndex = 16;
