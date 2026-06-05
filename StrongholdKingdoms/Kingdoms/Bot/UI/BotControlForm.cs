@@ -3731,8 +3731,8 @@ namespace Kingdoms.Bot.UI
             _abmCtrlPanel.Controls.Add(sdLbl);
 
             // ── Village column headers ────────────────────────────────────────
-            string[] vCols = { "", "Village", "Travel", "Card", "Cap?", "Formation", "P", "Arch", "Pike", "Sw", "Cat", "Cap", "Stack", "Type", "Status" };
-            int[]    vColX = { 4, 26, 202, 282, 350, 370, 554, 588, 622, 656, 690, 722, 754, 798, 874 };
+            string[] vCols = { "", "Village", "Travel", "Card", "Cpt", "Formation", "P", "Arch", "Pike", "Sw", "Cat", "Cap", "Stack", "Type", "Status" };
+            int[]    vColX = { 4, 26, 202, 282, 344, 372, 554, 588, 622, 656, 690, 722, 754, 798, 874 };
             for (int i = 0; i < vCols.Length; i++)
             {
                 Label cl = new Label();
