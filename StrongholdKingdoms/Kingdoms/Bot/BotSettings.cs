@@ -878,6 +878,9 @@ namespace Kingdoms.Bot
         public bool PlayCards = false;
         // Cancel a wrong active speed card before playing the desired one
         public bool AutoCancelWrongCard = false;
+        // If a village can't fully fill its formation, send a partial attack with whatever
+        // troops it has instead of failing/cancelling the batch.
+        public bool SendWithMissingTroops = false;
         public List<TargetQueueEntry> TargetQueue = new List<TargetQueueEntry>();
 
         // Runtime state — not persisted

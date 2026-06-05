@@ -309,6 +309,7 @@ namespace Kingdoms.Bot.UI
             this._abmIncludeVassalsCheck = new System.Windows.Forms.CheckBox();
             this._abmPlayCardsCheck = new System.Windows.Forms.CheckBox();
             this._abmAutoCancelCardCheck = new System.Windows.Forms.CheckBox();
+            this._abmSendPartialCheck = new System.Windows.Forms.CheckBox();
             this._abmSelectAllBtn = new System.Windows.Forms.Button();
             this._abmDeselectAllBtn = new System.Windows.Forms.Button();
             this._abmQueueEnabledCheck = new System.Windows.Forms.CheckBox();
@@ -3874,6 +3875,7 @@ namespace Kingdoms.Bot.UI
             this._abmCtrlPanel.Controls.Add(this._abmIncludeVassalsCheck);
             this._abmCtrlPanel.Controls.Add(this._abmPlayCardsCheck);
             this._abmCtrlPanel.Controls.Add(this._abmAutoCancelCardCheck);
+            this._abmCtrlPanel.Controls.Add(this._abmSendPartialCheck);
             this._abmCtrlPanel.Controls.Add(this._abmSelectAllBtn);
             this._abmCtrlPanel.Controls.Add(this._abmDeselectAllBtn);
             this._abmCtrlPanel.Dock = System.Windows.Forms.DockStyle.Top;
@@ -3975,6 +3977,17 @@ namespace Kingdoms.Bot.UI
             this._abmAutoCancelCardCheck.Size = new System.Drawing.Size(138, 18);
             this._abmAutoCancelCardCheck.TabIndex = 14;
             this._abmAutoCancelCardCheck.Text = "Auto Cancel Wrong Card";
+            //
+            // _abmSendPartialCheck
+            //
+            this._abmSendPartialCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmSendPartialCheck.Font = new System.Drawing.Font("Segoe UI", 7.5F);
+            this._abmSendPartialCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmSendPartialCheck.Location = new System.Drawing.Point(6, 60);
+            this._abmSendPartialCheck.Name = "_abmSendPartialCheck";
+            this._abmSendPartialCheck.Size = new System.Drawing.Size(230, 18);
+            this._abmSendPartialCheck.TabIndex = 16;
+            this._abmSendPartialCheck.Text = "Send even if missing troops (partial)";
             //
             // _abmSelectAllBtn
             //
@@ -6654,6 +6667,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _abmIncludeVassalsCheck;
         private System.Windows.Forms.CheckBox _abmPlayCardsCheck;
         private System.Windows.Forms.CheckBox _abmAutoCancelCardCheck;
+        private System.Windows.Forms.CheckBox _abmSendPartialCheck;
         private System.Windows.Forms.Button _abmSelectAllBtn;
         private System.Windows.Forms.Button _abmDeselectAllBtn;
         private System.Windows.Forms.Button _abmPushConfigBtn;

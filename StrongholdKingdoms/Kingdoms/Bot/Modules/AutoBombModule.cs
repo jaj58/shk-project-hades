@@ -1410,6 +1410,16 @@ namespace Kingdoms.Bot.Modules
 
         public static int[] PresetTroopsCount(CastleMapPreset preset)
         {
+            return GetTroopsCountArray12(PresetToElementList(preset));
+        }
+
+        /// <summary>
+        /// Parses a cloud preset's serialized data into a positioned element list — the same
+        /// list form returned by CastleMap.getAttackSetup for local .cas formations. Captains
+        /// not unlocked by the player's Tactics research are filtered out (matching the game).
+        /// </summary>
+        public static List<CastleMap.RestoreCastleElement> PresetToElementList(CastleMapPreset preset)
+        {
             List<CastleMap.RestoreCastleElement> list = new List<CastleMap.RestoreCastleElement>();
             string[] strArray1 = preset.Data.Split(' ');
             int num1 = 0;
@@ -1515,7 +1525,57 @@ namespace Kingdoms.Bot.Modules
                 }
                 list.Add(restoreCastleElement1);
             }
-            return GetTroopsCountArray12(list);
+            return list;
+        }
+
+        /// <summary>
+        /// Maps a formation element type byte to a troop-type index 0..5
+        /// (0=peasant, 1=archer, 2=pikeman, 3=swordsman, 4=catapult, 5=captain),
+        /// matching GetTroopsCountArray12. Returns -1 for non-troop elements.
+        /// </summary>
+        public static int TroopTypeIndex(byte elementType)
+        {
+            switch (elementType)
+            {
+                case 70: case 90: return 0; // peasant
+                case 72: case 92: return 1; // archer
+                case 73: case 93: return 2; // pikeman
+                case 71: case 91: return 3; // swordsman
+                case 74: case 94: return 4; // catapult
+                case 85:
+                case 100: case 101: case 102: case 103:
+                case 104: case 105: case 106: case 107: return 5; // captain
+                default: return -1;
+            }
+        }
+
+        /// <summary>
+        /// Filters a formation element list down to only the troops the village can actually
+        /// place. Iterates in formation order and keeps each element while that troop type still
+        /// has availability, dropping the rest. Used by the "send even if missing troops" option.
+        /// available6 = [peasants, archers, pikemen, swordsmen, catapults, captains].
+        /// Returns the trimmed list; placedByType (optional) receives the counts kept per type.
+        /// </summary>
+        public static List<CastleMap.RestoreCastleElement> FilterFormationToAvailable(
+            List<CastleMap.RestoreCastleElement> elements, int[] available6, out int[] placedByType)
+        {
+            int[] remaining = new int[6];
+            for (int i = 0; i < 6; i++) remaining[i] = (available6 != null && i < available6.Length) ? available6[i] : 0;
+
+            placedByType = new int[6];
+            var result = new List<CastleMap.RestoreCastleElement>();
+            foreach (CastleMap.RestoreCastleElement el in elements)
+            {
+                int idx = TroopTypeIndex(el.elementType);
+                if (idx < 0) { result.Add(el); continue; } // non-troop, keep as-is
+                if (remaining[idx] > 0)
+                {
+                    remaining[idx]--;
+                    placedByType[idx]++;
+                    result.Add(el);
+                }
+            }
+            return result;
         }
 
         public static int[] GetTroopsCountArray12(List<CastleMap.RestoreCastleElement> list)

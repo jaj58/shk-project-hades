@@ -3817,6 +3817,12 @@ namespace Kingdoms.Bot.UI
                 if (s != null)
                     s.AutoCancelWrongCard = _abmAutoCancelCardCheck.Checked;
             };
+            _abmSendPartialCheck.CheckedChanged += delegate
+            {
+                AutoBombMultiSettings s = AbmSettings;
+                if (s != null)
+                    s.SendWithMissingTroops = _abmSendPartialCheck.Checked;
+            };
             _abmQueueAddIdBtn.Click             += delegate { AbmQueueAddId(); };
             _abmQueueLookupBtn.Click            += delegate { AbmQueueLookupPlayer(); };
             _abmQueueAddSelectedVillageBtn.Click += delegate { AbmQueueAddSelectedVillage(); };
@@ -3943,6 +3949,7 @@ namespace Kingdoms.Bot.UI
             _abmIncludeVassalsCheck.Checked  = s.IncludeVassals;
             _abmPlayCardsCheck.Checked       = s.PlayCards;
             _abmAutoCancelCardCheck.Checked  = s.AutoCancelWrongCard;
+            _abmSendPartialCheck.Checked     = s.SendWithMissingTroops;
             _abmQueueEnabledCheck.Checked    = s.TargetQueueEnabled;
             AbmRefreshQueueList(s);
         }
@@ -3961,6 +3968,7 @@ namespace Kingdoms.Bot.UI
             s.IncludeVassals       = _abmIncludeVassalsCheck.Checked;
             s.PlayCards            = _abmPlayCardsCheck.Checked;
             s.AutoCancelWrongCard  = _abmAutoCancelCardCheck.Checked;
+            s.SendWithMissingTroops = _abmSendPartialCheck.Checked;
             s.TargetQueueEnabled   = _abmQueueEnabledCheck.Checked;
         }
 
@@ -4131,6 +4139,7 @@ namespace Kingdoms.Bot.UI
             s.IncludeVassals = _abmIncludeVassalsCheck.Checked;
             s.PlayCards = _abmPlayCardsCheck.Checked;
             s.AutoCancelWrongCard = _abmAutoCancelCardCheck.Checked;
+            s.SendWithMissingTroops = _abmSendPartialCheck.Checked;
 
             AutoBombMultiModule mod = AbmModule;
             if (mod != null)
@@ -4549,6 +4558,7 @@ namespace Kingdoms.Bot.UI
             _abmIncludeVassalsCheck.Enabled  = modEnabled;
             _abmPlayCardsCheck.Enabled       = modEnabled;
             _abmAutoCancelCardCheck.Enabled  = modEnabled;
+            _abmSendPartialCheck.Enabled     = modEnabled;
             _abmSelectAllBtn.Enabled         = coordControls;
             _abmDeselectAllBtn.Enabled       = coordControls;
             _abmPushConfigBtn.Enabled       = coordControls;
