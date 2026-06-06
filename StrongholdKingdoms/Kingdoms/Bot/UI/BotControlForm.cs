@@ -4123,11 +4123,12 @@ namespace Kingdoms.Bot.UI
                     if (alreadyAdded) continue;
 
                     // Try to get live data from connected players; fall back to saved data
+                    // Match on both village ID and vassal type (a village can be both a player village and a vassal)
                     MultiVillageInfo liveVi = null;
                     MultiPlayerInfo  liveOwner = null;
                     foreach (MultiPlayerInfo pi in s.ConnectedPlayers)
                         foreach (MultiVillageInfo vi in pi.Villages)
-                            if (vi.VillageId == vid)
+                            if (vi.VillageId == vid && vi.IsVassal == isVassal)
                             { liveVi = vi; liveOwner = pi; break; }
 
                     // Build a synthetic village info using saved data when not connected

@@ -219,10 +219,16 @@ function handle_set_attack_config(&$state, $req) {
     $target  = require_field($req, 'target_village_id');
     require_coordinator($state, $name);
 
-    $state['target_village_id'] = (int)$target;
+    $new_target = (int)$target;
+    $old_target = $state['target_village_id'];
+    $target_changed = ($old_target !== $new_target);
+
+    $state['target_village_id'] = $new_target;
+
     // Merge new attack definitions; preserve runtime status from existing entries.
     // Key by player+village+vassal so a village staged as both a player and a vassal
     // attack keeps each entry's status independently.
+    // If the target has changed, reset all selected attacks to 'queued' for a fresh batch.
     $existing = [];
     foreach ($state['attacks'] as $a) {
         $k = $a['source_player'] . '|' . $a['source_village_id'] . '|' . ($a['is_vassal'] ? 'v' : 'p');
@@ -233,6 +239,15 @@ function handle_set_attack_config(&$state, $req) {
         $vid = (int)$a['source_village_id'];
         $isV = (bool)($a['is_vassal'] ?? false);
         $k   = $a['source_player'] . '|' . $vid . '|' . ($isV ? 'v' : 'p');
+        $is_selected = (bool)($a['selected'] ?? true);
+
+        // If target changed and this attack is selected, reset status to queued for the new batch
+        if ($target_changed && $is_selected) {
+            $new_status = 'queued';
+        } else {
+            $new_status = isset($existing[$k]) ? $existing[$k]['status'] : 'queued';
+        }
+
         $merged[] = [
             'source_player'    => $a['source_player'],
             'source_village_id'=> $vid,
@@ -244,8 +259,8 @@ function handle_set_attack_config(&$state, $req) {
             'captains_only'    => (bool)$a['captains_only'],
             'attack_type'      => (int)$a['attack_type'],
             'travel_time_seconds' => (float)($a['travel_time_seconds'] ?? 0),
-            'selected'         => (bool)($a['selected'] ?? true),
-            'status'           => isset($existing[$k]) ? $existing[$k]['status'] : 'queued',
+            'selected'         => $is_selected,
+            'status'           => $new_status,
         ];
     }
     $state['attacks'] = $merged;
@@ -320,6 +335,7 @@ function handle_start_timer(&$state, $req) {
     foreach ($state['attacks'] as &$a) {
         if ($a['selected']) $a['status'] = 'queued';
     }
+    unset($a); // break the reference — otherwise later loops corrupt the last element
 
     save_and_respond($state, ['state_data' => $state]);
 }
@@ -336,6 +352,7 @@ function handle_attack_validated(&$state, $req) {
             break;
         }
     }
+    unset($a); // break the reference — the by-value loop below would corrupt this element otherwise
     // Advance to 'prepared' once every selected attack has a terminal validation status
     if ($state['state'] === 'preparing') {
         $all_done = true;
@@ -360,6 +377,7 @@ function handle_prepare_attacks(&$state, $req) {
         if ($a['selected'] && $a['status'] !== 'sent')
             $a['status'] = 'queued';
     }
+    unset($a); // break the reference
     save_and_respond($state, ['state_data' => $state]);
 }
 
@@ -367,6 +385,9 @@ function handle_cancel_attacks(&$state, $req) {
     $reason = isset($req['reason']) ? $req['reason'] : '';
     if ($reason === 'interdict') {
         $state['interdict_detected'] = true;
+    } else {
+        // No reason = coordinator manually clicked Cancel; everyone should recall
+        $state['manual_cancel'] = true;
     }
     $state['state'] = 'cancelled';
     foreach ($state['attacks'] as &$a) {
@@ -374,6 +395,7 @@ function handle_cancel_attacks(&$state, $req) {
             $a['status'] = 'cancelled';
         }
     }
+    unset($a); // break the reference
     save_and_respond($state, ['state_data' => $state]);
 }
 
@@ -388,6 +410,7 @@ function handle_attack_event(&$state, $req, $new_status) {
             break;
         }
     }
+    unset($a); // break the reference — the by-value loops below would corrupt this element otherwise
     // Auto-advance state based on what was just reported
     if ($new_status === 'prepared' && $state['state'] === 'preparing') {
         // If every selected attack is now prepared (or failed/cancelled), move to prepared
@@ -427,12 +450,14 @@ function handle_attack_failed(&$state, $req, $is_prepare) {
             break;
         }
     }
+    unset($a); // break the reference
     if (!$is_prepare) {
         // A failed send cancels remaining attacks immediately
         $state['state'] = 'cancelled';
         foreach ($state['attacks'] as &$a) {
             if ($a['status'] === 'queued') $a['status'] = 'cancelled';
         }
+        unset($a); // break the reference
     } elseif ($state['state'] === 'preparing') {
         // If every selected attack now has a terminal prepare status, advance to 'prepared'
         $all_done = true;

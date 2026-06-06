@@ -457,6 +457,7 @@ namespace Kingdoms.Bot.Modules
             string newState = GetStr(stateData, "state", "idle");
             settings.SessionState = newState;
             settings.InterdictDetected = GetBool(stateData, "interdict_detected");
+            settings.ManualCancel = GetBool(stateData, "manual_cancel");
 
             object coordObj;
             stateData.TryGetValue("coordinator", out coordObj);
@@ -871,7 +872,11 @@ namespace Kingdoms.Bot.Modules
             LogWarning("Session cancelled by API — stopping launch.");
             _cancelLaunchEvent.Set();
             CancelRemainingLocalAttacks();
-            if (settings.InterdictDetected || settings.FakeSendEnabled)
+            // Recall armies only in these cases:
+            // 1. ManualCancel: coordinator explicitly clicked Cancel (always recall)
+            // 2. InterdictDetected + AutoCancelOnInterdict: auto-cancel on interdict (respects checkbox)
+            // 3. FakeSendEnabled: intentional test recall
+            if (settings.ManualCancel || (settings.AutoCancelOnInterdict && settings.InterdictDetected) || settings.FakeSendEnabled)
                 RecallAll(settings);
         }
 
