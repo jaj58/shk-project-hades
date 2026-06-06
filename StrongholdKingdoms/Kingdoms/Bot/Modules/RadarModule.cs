@@ -248,9 +248,15 @@ namespace Kingdoms.Bot.Modules
                     int misses = _armyMissingTicks.ContainsKey(army.armyID)
                         ? _armyMissingTicks[army.armyID] : 0;
 
-                    if (misses >= 5)
+                    // Only give up if the army's travel time has also passed.
+                    // The game's getArmyData reconciliation can remove armies that the
+                    // server hasn't yet confirmed (race between launch and the next
+                    // existingArmies response) — those have a future serverEndTime and
+                    // must keep being re-injected until the server catches up.
+                    bool travelTimePassed = army.serverEndTime <= serverNow.AddSeconds(30);
+
+                    if (misses >= 5 && travelTimePassed)
                     {
-                        // Gone for 5+ consecutive ticks — treat as recalled or landed early.
                         toRemove.Add(army.armyID);
                     }
                     else
@@ -1425,6 +1431,29 @@ namespace Kingdoms.Bot.Modules
         {
             if (army != null)
                 _trackedArmies[army.armyID] = army;
+        }
+
+        // Returns outbound user armies targeting the given village that are still
+        // within their travel window. Used by RecallAll() to recall armies that may
+        // be temporarily absent from the game array due to server reconciliation.
+        public List<WorldMap.LocalArmyData> GetTrackedOutboundUserArmies(int targetVillageId)
+        {
+            List<WorldMap.LocalArmyData> result = new List<WorldMap.LocalArmyData>();
+            DateTime serverNow = VillageMap.getCurrentServerTime();
+            foreach (WorldMap.LocalArmyData army in _trackedArmies.Values)
+            {
+                if (army == null) continue;
+                if (army.targetVillageID != targetVillageId) continue;
+                if (army.lootType >= 0) continue; // returning, not outbound
+                if (army.serverEndTime <= serverNow) continue;
+                try
+                {
+                    if (GameEngine.Instance.World.isUserVillage(army.travelFromVillageID))
+                        result.Add(army);
+                }
+                catch { }
+            }
+            return result;
         }
 
         protected override void OnShutdown()

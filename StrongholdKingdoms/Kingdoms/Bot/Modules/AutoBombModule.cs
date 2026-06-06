@@ -225,17 +225,34 @@ namespace Kingdoms.Bot.Modules
                 if (settings == null) return;
 
                 RemoteServices.Instance.set_CancelCastleAttack_UserCallBack(null);
-                int recalled = 0;
+
+                // Collect IDs from the live game array first.
+                HashSet<long> recalled = new HashSet<long>();
                 foreach (WorldMap.LocalArmyData army in GameEngine.Instance.World.getArmyArray())
                 {
                     if (army.targetVillageID == settings.TargetVillageId &&
                         GameEngine.Instance.World.isUserVillage(army.travelFromVillageID))
                     {
                         RemoteServices.Instance.CancelCastleAttack(army.armyID);
-                        recalled++;
+                        recalled.Add(army.armyID);
                     }
                 }
-                LogInfo("Recalled " + recalled + " army/armies.");
+
+                // Also recall via the radar's tracked armies — these cover the window
+                // where server reconciliation has removed an army from the game array
+                // but it is still genuinely in transit (future serverEndTime).
+                RadarModule radar = GetRadarModule();
+                if (radar != null)
+                {
+                    foreach (WorldMap.LocalArmyData army in
+                        radar.GetTrackedOutboundUserArmies(settings.TargetVillageId))
+                    {
+                        if (recalled.Add(army.armyID))
+                            RemoteServices.Instance.CancelCastleAttack(army.armyID);
+                    }
+                }
+
+                LogInfo("Recalled " + recalled.Count + " army/armies.");
             }
             catch (Exception ex)
             {
