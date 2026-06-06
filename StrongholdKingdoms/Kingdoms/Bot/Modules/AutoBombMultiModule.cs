@@ -166,11 +166,27 @@ namespace Kingdoms.Bot.Modules
                 if (AutoBombModule.CheckForInterdict(_currentTargetVillageId))
                 {
                     _interdictDetected = true;
-                    LogWarning("Interdict detected on target! Cancelling all attacks.");
-                    _cancelLaunchEvent.Set();
-                    CancelRemainingLocalAttacks();
-                    RecallAll(settings);
-                    // Notify API so other players also cancel
+
+                    // Before cancelling, check if any of our sent attacks are too far along to safely recall.
+                    // Use 4:50 (290s) cutoff to provide buffer before the hard 5-minute limit.
+                    if (!CanSafelyRecallAllMyAttacks(290))
+                    {
+                        LogWarning("Interdict detected but one or more sent attacks are >= 4:50 out — " +
+                            "cancelling launch but NOT recalling armies (they're too far out).");
+                        _cancelLaunchEvent.Set();
+                        CancelRemainingLocalAttacks();
+                        // Don't recall; let armies proceed to target
+                    }
+                    else
+                    {
+                        LogWarning("Interdict detected on target! Cancelling all attacks and recalling armies.");
+                        _cancelLaunchEvent.Set();
+                        CancelRemainingLocalAttacks();
+                        RecallAll(settings);
+                    }
+
+                    // Notify API so other players also get the cancel signal.
+                    // Each player will independently decide whether to recall based on their own armies.
                     try { PostAction(settings, "cancel_attacks", new Dictionary<string, object>
                         { ["player_name"] = GetLocalPlayerName(), ["reason"] = "interdict" }); }
                     catch { }
@@ -2271,18 +2287,21 @@ namespace Kingdoms.Bot.Modules
         /// (i.e. past the server's recall window). In that case we let all sent armies proceed —
         /// a partial recall where some armies hit and some return would be worse than a full attack.
         /// </summary>
-        private bool AnyArmyPastRecallWindow()
+        // Check if all of this client's sent attacks are still within safe recall window.
+        // Returns false if any attack is past the safe cutoff (4:50 = 290s, giving 10s buffer before actual 5-min hard limit).
+        private bool CanSafelyRecallAllMyAttacks(double safeRecallSecondsBuffer = 290)
         {
             lock (_attacksLock)
             {
                 foreach (var e in _myAttacks)
                 {
                     if (!e.Sent || e.ScheduledSendTime == DateTime.MaxValue) continue;
-                    if ((DateTime.Now - e.ScheduledSendTime).TotalSeconds >= 300)
-                        return true;
+                    double elapsedSeconds = (DateTime.Now - e.ScheduledSendTime).TotalSeconds;
+                    if (elapsedSeconds >= safeRecallSecondsBuffer)
+                        return false; // At least one attack is too far along to safely recall
                 }
             }
-            return false;
+            return true; // All sent attacks are still within recall window
         }
 
         private void RecallAll(AutoBombMultiSettings settings)
@@ -2291,12 +2310,12 @@ namespace Kingdoms.Bot.Modules
             {
                 if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
 
-                // If any sent army has been out for 5+ minutes it can no longer be recalled.
-                // Rather than a partial recall (some turn back, some hit), let them all go.
-                if (AnyArmyPastRecallWindow())
+                // If any sent army has been out for 4:50+ (290s, giving buffer before hard 5-min limit),
+                // it's too risky to recall. Rather than a partial recall (some turn back, some hit), let them all go.
+                if (!CanSafelyRecallAllMyAttacks(290))
                 {
-                    LogWarning("[Recall] One or more armies past the 5-minute recall window — " +
-                        "letting all sent armies proceed to target.");
+                    LogWarning("[Recall] One or more armies >= 4:50 out — too risky to recall. " +
+                        "Letting all sent armies proceed to target.");
                     return;
                 }
 
@@ -2526,7 +2545,7 @@ namespace Kingdoms.Bot.Modules
             request.Method      = "POST";
             request.ContentType = "application/json";
             request.ContentLength = bytes.Length;
-            request.Timeout     = 10000;
+            request.Timeout     = 30000; // 30 seconds (poll can be slow with network latency or slow hosting)
 
             using (Stream s = request.GetRequestStream())
                 s.Write(bytes, 0, bytes.Length);
