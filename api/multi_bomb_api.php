@@ -219,10 +219,16 @@ function handle_set_attack_config(&$state, $req) {
     $target  = require_field($req, 'target_village_id');
     require_coordinator($state, $name);
 
-    $state['target_village_id'] = (int)$target;
+    $new_target = (int)$target;
+    $old_target = $state['target_village_id'];
+    $target_changed = ($old_target !== $new_target);
+
+    $state['target_village_id'] = $new_target;
+
     // Merge new attack definitions; preserve runtime status from existing entries.
     // Key by player+village+vassal so a village staged as both a player and a vassal
     // attack keeps each entry's status independently.
+    // If the target has changed, reset all selected attacks to 'queued' for a fresh batch.
     $existing = [];
     foreach ($state['attacks'] as $a) {
         $k = $a['source_player'] . '|' . $a['source_village_id'] . '|' . ($a['is_vassal'] ? 'v' : 'p');
@@ -233,6 +239,15 @@ function handle_set_attack_config(&$state, $req) {
         $vid = (int)$a['source_village_id'];
         $isV = (bool)($a['is_vassal'] ?? false);
         $k   = $a['source_player'] . '|' . $vid . '|' . ($isV ? 'v' : 'p');
+        $is_selected = (bool)($a['selected'] ?? true);
+
+        // If target changed and this attack is selected, reset status to queued for the new batch
+        if ($target_changed && $is_selected) {
+            $new_status = 'queued';
+        } else {
+            $new_status = isset($existing[$k]) ? $existing[$k]['status'] : 'queued';
+        }
+
         $merged[] = [
             'source_player'    => $a['source_player'],
             'source_village_id'=> $vid,
@@ -244,8 +259,8 @@ function handle_set_attack_config(&$state, $req) {
             'captains_only'    => (bool)$a['captains_only'],
             'attack_type'      => (int)$a['attack_type'],
             'travel_time_seconds' => (float)($a['travel_time_seconds'] ?? 0),
-            'selected'         => (bool)($a['selected'] ?? true),
-            'status'           => isset($existing[$k]) ? $existing[$k]['status'] : 'queued',
+            'selected'         => $is_selected,
+            'status'           => $new_status,
         ];
     }
     $state['attacks'] = $merged;
