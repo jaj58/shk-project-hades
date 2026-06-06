@@ -385,6 +385,9 @@ function handle_cancel_attacks(&$state, $req) {
     $reason = isset($req['reason']) ? $req['reason'] : '';
     if ($reason === 'interdict') {
         $state['interdict_detected'] = true;
+    } else {
+        // No reason = coordinator manually clicked Cancel; everyone should recall
+        $state['manual_cancel'] = true;
     }
     $state['state'] = 'cancelled';
     foreach ($state['attacks'] as &$a) {

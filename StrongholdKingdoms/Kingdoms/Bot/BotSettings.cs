@@ -898,6 +898,8 @@ namespace Kingdoms.Bot
         [System.Xml.Serialization.XmlIgnore]
         public bool InterdictDetected;
         [System.Xml.Serialization.XmlIgnore]
+        public bool ManualCancel;
+        [System.Xml.Serialization.XmlIgnore]
         public int InterdictCount;
         [System.Xml.Serialization.XmlIgnore]
         public double ServerClockOffsetSeconds;
