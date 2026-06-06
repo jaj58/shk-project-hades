@@ -2003,6 +2003,28 @@ namespace Kingdoms.Bot.Modules
                 entry.Status = "Sent @ " + DateTime.Now.ToString("HH:mm:ss");
                 LogInfo("[Thread] Stack " + entry.Stack + " SENT → " + entry.TargetVillageId);
 
+                // Register with radar immediately so it's tracked before the game array
+                // can drop it — prevents flicker-disappear on the world map.
+                RadarModule radar = GetRadarModule();
+                if (radar != null)
+                {
+                    var postLaunchArray = GameEngine.Instance.World.getArmyArray();
+                    if (postLaunchArray != null)
+                    {
+                        foreach (WorldMap.LocalArmyData a in postLaunchArray)
+                        {
+                            if (a != null && !a.dead &&
+                                a.homeVillageID == entry.SourceVillageId &&
+                                a.targetVillageID == entry.TargetVillageId &&
+                                a.lootType < 0)
+                            {
+                                radar.TrackArmy(a);
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 StartFakeSendTimerIfNeeded();
             }
             catch (Exception ex)
@@ -2321,19 +2343,44 @@ namespace Kingdoms.Bot.Modules
 
                 int targetVid = _currentTargetVillageId;
                 RemoteServices.Instance.set_CancelCastleAttack_UserCallBack(null);
-                int recalled = 0;
+
+                HashSet<long> recalled = new HashSet<long>();
                 foreach (WorldMap.LocalArmyData army in GameEngine.Instance.World.getArmyArray())
                 {
                     if (army.targetVillageID == targetVid &&
                         GameEngine.Instance.World.isUserVillage(army.travelFromVillageID))
                     {
                         RemoteServices.Instance.CancelCastleAttack(army.armyID);
-                        recalled++;
+                        recalled.Add(army.armyID);
                     }
                 }
-                LogInfo("Recalled " + recalled + " army/armies.");
+
+                // Also recall via radar tracked armies — covers armies temporarily absent
+                // from the game array due to server reconciliation.
+                RadarModule radar = GetRadarModule();
+                if (radar != null)
+                {
+                    foreach (WorldMap.LocalArmyData army in radar.GetTrackedOutboundUserArmies(targetVid))
+                    {
+                        if (recalled.Add(army.armyID))
+                            RemoteServices.Instance.CancelCastleAttack(army.armyID);
+                    }
+                }
+
+                LogInfo("Recalled " + recalled.Count + " army/armies.");
             }
             catch (Exception ex) { LogError("Recall error: " + ex.Message); }
+        }
+
+        private RadarModule GetRadarModule()
+        {
+            if (Engine == null) return null;
+            foreach (IBotModule module in Engine.Modules)
+            {
+                RadarModule rm = module as RadarModule;
+                if (rm != null) return rm;
+            }
+            return null;
         }
 
         private void CancelRemainingLocalAttacks()
