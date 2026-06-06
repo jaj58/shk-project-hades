@@ -320,6 +320,7 @@ function handle_start_timer(&$state, $req) {
     foreach ($state['attacks'] as &$a) {
         if ($a['selected']) $a['status'] = 'queued';
     }
+    unset($a); // break the reference — otherwise later loops corrupt the last element
 
     save_and_respond($state, ['state_data' => $state]);
 }
@@ -336,6 +337,7 @@ function handle_attack_validated(&$state, $req) {
             break;
         }
     }
+    unset($a); // break the reference — the by-value loop below would corrupt this element otherwise
     // Advance to 'prepared' once every selected attack has a terminal validation status
     if ($state['state'] === 'preparing') {
         $all_done = true;
@@ -360,6 +362,7 @@ function handle_prepare_attacks(&$state, $req) {
         if ($a['selected'] && $a['status'] !== 'sent')
             $a['status'] = 'queued';
     }
+    unset($a); // break the reference
     save_and_respond($state, ['state_data' => $state]);
 }
 
@@ -374,6 +377,7 @@ function handle_cancel_attacks(&$state, $req) {
             $a['status'] = 'cancelled';
         }
     }
+    unset($a); // break the reference
     save_and_respond($state, ['state_data' => $state]);
 }
 
@@ -388,6 +392,7 @@ function handle_attack_event(&$state, $req, $new_status) {
             break;
         }
     }
+    unset($a); // break the reference — the by-value loops below would corrupt this element otherwise
     // Auto-advance state based on what was just reported
     if ($new_status === 'prepared' && $state['state'] === 'preparing') {
         // If every selected attack is now prepared (or failed/cancelled), move to prepared
@@ -427,12 +432,14 @@ function handle_attack_failed(&$state, $req, $is_prepare) {
             break;
         }
     }
+    unset($a); // break the reference
     if (!$is_prepare) {
         // A failed send cancels remaining attacks immediately
         $state['state'] = 'cancelled';
         foreach ($state['attacks'] as &$a) {
             if ($a['status'] === 'queued') $a['status'] = 'cancelled';
         }
+        unset($a); // break the reference
     } elseif ($state['state'] === 'preparing') {
         // If every selected attack now has a terminal prepare status, advance to 'prepared'
         $all_done = true;
