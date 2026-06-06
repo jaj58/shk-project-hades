@@ -917,7 +917,7 @@ namespace Kingdoms.Bot.Modules
                 RadarModule radar = GetRadarModule();
                 if (radar != null)
                 {
-                    SparseArray postLaunchArray = GameEngine.Instance.World.getArmyArray();
+                    var postLaunchArray = GameEngine.Instance.World.getArmyArray();
                     if (postLaunchArray != null)
                     {
                         foreach (WorldMap.LocalArmyData a in postLaunchArray)
