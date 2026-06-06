@@ -193,6 +193,14 @@ namespace Kingdoms.Bot.Modules
 
             if (settings == null) return;
 
+            // Keep our GetArmyData wrapper in place each tick. retrieveArmies() (called
+            // on reconnect) resets the callback to WorldMap.getArmyData — re-setting here
+            // ensures we intercept every incremental server response and immediately add
+            // new armies to _trackedArmies, closing the flicker window for all armies
+            // (not just our own sent ones).
+            RemoteServices.Instance.set_GetArmyData_UserCallBack(
+                new RemoteServices.GetArmyData_UserCallBack(this.OnGetArmyDataCallback));
+
             SyncTrackedArmies();
             SyncTrackedPeople();
 
@@ -240,9 +248,15 @@ namespace Kingdoms.Bot.Modules
                     int misses = _armyMissingTicks.ContainsKey(army.armyID)
                         ? _armyMissingTicks[army.armyID] : 0;
 
-                    if (misses >= 5)
+                    // Only give up if the army's travel time has also passed.
+                    // The game's getArmyData reconciliation can remove armies that the
+                    // server hasn't yet confirmed (race between launch and the next
+                    // existingArmies response) — those have a future serverEndTime and
+                    // must keep being re-injected until the server catches up.
+                    bool travelTimePassed = army.serverEndTime <= serverNow.AddSeconds(30);
+
+                    if (misses >= 5 && travelTimePassed)
                     {
-                        // Gone for 5+ consecutive ticks — treat as recalled or landed early.
                         toRemove.Add(army.armyID);
                     }
                     else
@@ -1381,8 +1395,79 @@ namespace Kingdoms.Bot.Modules
             _groupLookupEvent.Set();
         }
 
+        // Wraps WorldMap.getArmyData so we can immediately sync _trackedArmies after
+        // every server response — armies are tracked the instant they arrive rather than
+        // waiting up to one full radar tick.
+        private void OnGetArmyDataCallback(GetArmyData_ReturnType returnData)
+        {
+            try
+            {
+                if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                    GameEngine.Instance.World.getArmyData(returnData);
+            }
+            catch (Exception ex)
+            {
+                LogError("OnGetArmyDataCallback (world handler) error: " + ex.Message);
+            }
+
+            try
+            {
+                SparseArray gameArray = GameEngine.Instance?.World?.getArmyArray();
+                if (gameArray != null)
+                {
+                    foreach (WorldMap.LocalArmyData army in gameArray)
+                        if (army != null) _trackedArmies[army.armyID] = army;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("OnGetArmyDataCallback (sync) error: " + ex.Message);
+            }
+        }
+
+        // Called by AutoBombModule immediately after launchArmy() so that the radar
+        // has this army in its tracking dictionary before the game array can drop it.
+        public void TrackArmy(WorldMap.LocalArmyData army)
+        {
+            if (army != null)
+                _trackedArmies[army.armyID] = army;
+        }
+
+        // Returns outbound user armies targeting the given village that are still
+        // within their travel window. Used by RecallAll() to recall armies that may
+        // be temporarily absent from the game array due to server reconciliation.
+        public List<WorldMap.LocalArmyData> GetTrackedOutboundUserArmies(int targetVillageId)
+        {
+            List<WorldMap.LocalArmyData> result = new List<WorldMap.LocalArmyData>();
+            DateTime serverNow = VillageMap.getCurrentServerTime();
+            foreach (WorldMap.LocalArmyData army in _trackedArmies.Values)
+            {
+                if (army == null) continue;
+                if (army.targetVillageID != targetVillageId) continue;
+                if (army.lootType >= 0) continue; // returning, not outbound
+                if (army.serverEndTime <= serverNow) continue;
+                try
+                {
+                    if (GameEngine.Instance.World.isUserVillage(army.travelFromVillageID))
+                        result.Add(army);
+                }
+                catch { }
+            }
+            return result;
+        }
+
         protected override void OnShutdown()
         {
+            // Restore the game's own callback so army updates still work after radar stops
+            try
+            {
+                if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                    RemoteServices.Instance.set_GetArmyData_UserCallBack(
+                        new RemoteServices.GetArmyData_UserCallBack(
+                            GameEngine.Instance.World.getArmyData));
+            }
+            catch { }
+
             _knownArmyIds.Clear();
             _knownPersonIds.Clear();
             _incomingAttackTargets.Clear();
