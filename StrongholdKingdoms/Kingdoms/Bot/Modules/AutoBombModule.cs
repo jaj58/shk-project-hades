@@ -911,6 +911,29 @@ namespace Kingdoms.Bot.Modules
                     " -> " + entry.TargetVillageId +
                     " (ETA: " + entry.EstimatedArrivalTime.ToString("HH:mm:ss") + ")");
 
+                // launchArmy() adds the army to the game array synchronously. Register it
+                // with the radar immediately so it's in _trackedArmies before the game can
+                // drop it — otherwise the radar has nothing to re-inject on a flicker.
+                RadarModule radar = GetRadarModule();
+                if (radar != null)
+                {
+                    SparseArray postLaunchArray = GameEngine.Instance.World.getArmyArray();
+                    if (postLaunchArray != null)
+                    {
+                        foreach (WorldMap.LocalArmyData a in postLaunchArray)
+                        {
+                            if (a != null && !a.dead &&
+                                a.homeVillageID == entry.SourceVillageId &&
+                                a.targetVillageID == entry.TargetVillageId &&
+                                a.lootType < 0)
+                            {
+                                radar.TrackArmy(a);
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 // Start the fake send recall timer on the first successful send
                 StartFakeSendTimerIfNeeded();
             }
@@ -921,6 +944,21 @@ namespace Kingdoms.Bot.Modules
                 entry.PreparedCastleMap = null;
                 LogError("[Thread] Stack " + entry.Stack + " fire failed: " + ex.Message);
             }
+        }
+
+        // =================================================================
+        // RadarModule integration
+        // =================================================================
+
+        private RadarModule GetRadarModule()
+        {
+            if (Engine == null) return null;
+            foreach (IBotModule module in Engine.Modules)
+            {
+                RadarModule rm = module as RadarModule;
+                if (rm != null) return rm;
+            }
+            return null;
         }
 
         // =================================================================

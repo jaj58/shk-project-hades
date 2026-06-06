@@ -193,6 +193,14 @@ namespace Kingdoms.Bot.Modules
 
             if (settings == null) return;
 
+            // Keep our GetArmyData wrapper in place each tick. retrieveArmies() (called
+            // on reconnect) resets the callback to WorldMap.getArmyData — re-setting here
+            // ensures we intercept every incremental server response and immediately add
+            // new armies to _trackedArmies, closing the flicker window for all armies
+            // (not just our own sent ones).
+            RemoteServices.Instance.set_GetArmyData_UserCallBack(
+                new RemoteServices.GetArmyData_UserCallBack(this.OnGetArmyDataCallback));
+
             SyncTrackedArmies();
             SyncTrackedPeople();
 
@@ -1381,8 +1389,56 @@ namespace Kingdoms.Bot.Modules
             _groupLookupEvent.Set();
         }
 
+        // Wraps WorldMap.getArmyData so we can immediately sync _trackedArmies after
+        // every server response — armies are tracked the instant they arrive rather than
+        // waiting up to one full radar tick.
+        private void OnGetArmyDataCallback(GetArmyData_ReturnType returnData)
+        {
+            try
+            {
+                if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                    GameEngine.Instance.World.getArmyData(returnData);
+            }
+            catch (Exception ex)
+            {
+                LogError("OnGetArmyDataCallback (world handler) error: " + ex.Message);
+            }
+
+            try
+            {
+                SparseArray gameArray = GameEngine.Instance?.World?.getArmyArray();
+                if (gameArray != null)
+                {
+                    foreach (WorldMap.LocalArmyData army in gameArray)
+                        if (army != null) _trackedArmies[army.armyID] = army;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("OnGetArmyDataCallback (sync) error: " + ex.Message);
+            }
+        }
+
+        // Called by AutoBombModule immediately after launchArmy() so that the radar
+        // has this army in its tracking dictionary before the game array can drop it.
+        public void TrackArmy(WorldMap.LocalArmyData army)
+        {
+            if (army != null)
+                _trackedArmies[army.armyID] = army;
+        }
+
         protected override void OnShutdown()
         {
+            // Restore the game's own callback so army updates still work after radar stops
+            try
+            {
+                if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                    RemoteServices.Instance.set_GetArmyData_UserCallBack(
+                        new RemoteServices.GetArmyData_UserCallBack(
+                            GameEngine.Instance.World.getArmyData));
+            }
+            catch { }
+
             _knownArmyIds.Clear();
             _knownPersonIds.Clear();
             _incomingAttackTargets.Clear();
