@@ -154,8 +154,8 @@ namespace Kingdoms.Bot.Modules
                     return;
                 }
 
-                LogInfo("Playing card defId=" + defId + " instanceId=" + instanceId + ".");
-                PlayCard(instanceId);
+                LogInfo("Playing card defId=" + defId + " instanceId=" + instanceId + " on village " + _targetVillageId + ".");
+                PlayCard(instanceId, _targetVillageId);
             }
             catch (Exception ex)
             {
@@ -193,7 +193,7 @@ namespace Kingdoms.Bot.Modules
             return 0;
         }
 
-        private void PlayCard(int instanceId)
+        private void PlayCard(int instanceId, int targetVillageId)
         {
             try
             {
@@ -202,11 +202,12 @@ namespace Kingdoms.Bot.Modules
                     URLs.ProfileServerAddressCards,
                     URLs.ProfileServerPort,
                     URLs.ProfileCardPath);
+                string villageTarget = targetVillageId > 0 ? targetVillageId.ToString() : "-1";
                 XmlRpcCardsRequest req = new XmlRpcCardsRequest(
                     RemoteServices.Instance.UserGuid.ToString().Replace("-", ""),
                     RemoteServices.Instance.SessionGuid.ToString().Replace("-", ""),
                     instanceId.ToString(),
-                    "-1",
+                    villageTarget,
                     RemoteServices.Instance.ProfileWorldID.ToString());
                 provider.PlayUserCard(
                     req,
