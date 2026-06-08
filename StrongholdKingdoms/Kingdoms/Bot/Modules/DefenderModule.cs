@@ -12,12 +12,16 @@ namespace Kingdoms.Bot.Modules
 
         public override TimeSpan Interval
         {
-            get { return TimeSpan.FromMilliseconds(200); }
+            get { return TimeSpan.Zero; }
         }
 
         private bool _spamActive = false;
         private DateTime _spamEndTime = DateTime.MinValue;
         private int _targetVillageId = 0;
+
+        // Tracks instance IDs we have already fired this spam session so we never
+        // re-submit a consumed card before ProfileCards refreshes from the server.
+        private readonly HashSet<int> _playedInstanceIds = new HashSet<int>();
 
         private DefenderSettings Settings
         {
@@ -34,6 +38,7 @@ namespace Kingdoms.Bot.Modules
             _spamActive = false;
             _spamEndTime = DateTime.MinValue;
             _targetVillageId = 0;
+            _playedInstanceIds.Clear();
         }
 
         protected override void OnTick()
@@ -45,6 +50,7 @@ namespace Kingdoms.Bot.Modules
             if (DateTime.Now >= _spamEndTime)
             {
                 _spamActive = false;
+                _playedInstanceIds.Clear();
                 LogInfo("Defender spam finished.");
                 return;
             }
@@ -100,12 +106,14 @@ namespace Kingdoms.Bot.Modules
             _targetVillageId = targetVillageId;
             _spamActive = true;
             _spamEndTime = DateTime.Now.AddSeconds(durationSeconds);
+            _playedInstanceIds.Clear();
             LogInfo("Defender spam started for " + durationSeconds + "s targeting village " + targetVillageId + ".");
         }
 
         public void StopSpam()
         {
             _spamActive = false;
+            _playedInstanceIds.Clear();
             LogInfo("Defender spam stopped manually.");
         }
 
@@ -147,13 +155,16 @@ namespace Kingdoms.Bot.Modules
                     return;
                 }
 
-                int instanceId = FindCardInstanceByDefId(defId, cardData);
+                int instanceId = FindCardInstanceByDefId(defId, cardData, _playedInstanceIds);
                 if (instanceId == 0)
                 {
-                    LogDebug("TryPlayCard defId=" + defId + ": all " + inventoryCount + " instance(s) already active.");
+                    LogDebug("TryPlayCard defId=" + defId + ": all " + inventoryCount + " instance(s) already played or active.");
                     return;
                 }
 
+                // Mark as played immediately so subsequent ticks don't re-submit this instance
+                // before ProfileCards refreshes from the server.
+                _playedInstanceIds.Add(instanceId);
                 LogInfo("Playing card defId=" + defId + " instanceId=" + instanceId + " on village " + _targetVillageId + ".");
                 PlayCard(instanceId, _targetVillageId);
             }
@@ -170,7 +181,7 @@ namespace Kingdoms.Bot.Modules
             return GameEngine.Instance.cardsManager.UserCardData;
         }
 
-        private static int FindCardInstanceByDefId(int targetDefId, CardData activeCardData)
+        private static int FindCardInstanceByDefId(int targetDefId, CardData activeCardData, HashSet<int> alreadyPlayed)
         {
             try
             {
@@ -185,7 +196,8 @@ namespace Kingdoms.Bot.Modules
                 foreach (var kvp in mgr.ProfileCards)
                 {
                     if (kvp.Value == null || kvp.Value.id != targetDefId) continue;
-                    if (activeIds.Contains(kvp.Key)) continue;
+                    if (activeIds.Contains(kvp.Key)) continue;       // already active on server
+                    if (alreadyPlayed != null && alreadyPlayed.Contains(kvp.Key)) continue; // fired this session
                     return kvp.Key;
                 }
             }
@@ -233,6 +245,7 @@ namespace Kingdoms.Bot.Modules
         protected override void OnShutdown()
         {
             _spamActive = false;
+            _playedInstanceIds.Clear();
         }
     }
 }
