@@ -61,6 +61,10 @@ namespace Kingdoms.Bot.Modules
         // played IDs locally to avoid re-playing the same (now-consumed) instance on the next village.
         private readonly HashSet<int> _playedCardInstanceIds = new HashSet<int>();
 
+        // Flag tracking if a manual cancel (via CancelAll) is pending.
+        // Used to resend cancel_attacks on each poll until the batch completes.
+        private volatile bool _pendingManualCancel;
+
         // The earliest time the current active card will be free (i.e. consumed by the village
         // it was played for). Set to that village's scheduled send time when a card is played.
         // Used to delay the next card play when send times are very close together.
@@ -351,6 +355,7 @@ namespace Kingdoms.Bot.Modules
                 lock (_attacksLock) { foreach (var e in _myAttacks) if (e.Sent) { anySent = true; break; } }
                 if (anySent) RecallAll(settings);
             }
+            _pendingManualCancel = true;
             try
             {
                 PostAction(settings, "cancel_attacks", new Dictionary<string, object>
@@ -425,6 +430,20 @@ namespace Kingdoms.Bot.Modules
 
             ApplyStateFromResponse(settings, resp);
 
+            // ── Resend pending cancel/recall signals ──────────────────────────
+            // If an interdict was detected or a manual cancel is pending, resend the signal
+            // every poll cycle so players who missed the previous signal will catch it.
+            if ((_interdictDetected || _pendingManualCancel) && settings.IsCoordinator)
+            {
+                try
+                {
+                    string reason = _interdictDetected ? "interdict" : "";
+                    PostAction(settings, "cancel_attacks", new Dictionary<string, object>
+                        { ["player_name"] = GetLocalPlayerName(), ["reason"] = reason });
+                }
+                catch { }
+            }
+
             // Non-coordinator army return reporting.
             // The coordinator handles its own reporting inside WaitForArmiesReturnMulti.
             // Non-coordinators report here so the coordinator's wait can unblock.
@@ -474,6 +493,12 @@ namespace Kingdoms.Bot.Modules
             settings.SessionState = newState;
             settings.InterdictDetected = GetBool(stateData, "interdict_detected");
             settings.ManualCancel = GetBool(stateData, "manual_cancel");
+
+            // Clear pending cancel flags when session moves out of cancelled state
+            if (newState != "cancelled")
+            {
+                _pendingManualCancel = false;
+            }
 
             object coordObj;
             stateData.TryGetValue("coordinator", out coordObj);
