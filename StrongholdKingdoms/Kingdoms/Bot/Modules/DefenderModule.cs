@@ -56,6 +56,7 @@ namespace Kingdoms.Bot.Modules
             if (DateTime.Now >= _spamEndTime)
             {
                 _spamActive = false;
+                MyMessageBox.Suppress = false;
                 lock (_consumedLock) { _consumedInstanceIds.Clear(); }
                 LogInfo("Defender spam finished.");
                 return;
@@ -121,12 +122,16 @@ namespace Kingdoms.Bot.Modules
             _spamActive = true;
             _spamEndTime = DateTime.Now.AddSeconds(durationSeconds);
             lock (_consumedLock) { _consumedInstanceIds.Clear(); }
+            // Suppress "Castle Placement Error" popups that fire when the server
+            // rejects rapid commitCastle() calls during an active battle.
+            MyMessageBox.Suppress = true;
             LogInfo("Defender spam started for " + durationSeconds + "s targeting village " + targetVillageId + ".");
         }
 
         public void StopSpam()
         {
             _spamActive = false;
+            MyMessageBox.Suppress = false;
             lock (_consumedLock) { _consumedInstanceIds.Clear(); }
             LogInfo("Defender spam stopped manually.");
         }
@@ -235,6 +240,7 @@ namespace Kingdoms.Bot.Modules
         protected override void OnShutdown()
         {
             _spamActive = false;
+            MyMessageBox.Suppress = false;
             lock (_consumedLock) { _consumedInstanceIds.Clear(); }
         }
     }
