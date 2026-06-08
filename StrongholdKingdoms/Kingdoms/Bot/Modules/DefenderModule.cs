@@ -19,9 +19,15 @@ namespace Kingdoms.Bot.Modules
         private DateTime _spamEndTime = DateTime.MinValue;
         private int _targetVillageId = 0;
 
-        // Tracks instance IDs we have already fired this spam session so we never
-        // re-submit a consumed card before ProfileCards refreshes from the server.
-        private readonly HashSet<int> _playedInstanceIds = new HashSet<int>();
+        // Only tracks instances the server has confirmed are genuinely consumed:
+        //   • server response success (code 1)
+        //   • "you do not have that card available" (instance removed from inventory)
+        //
+        // "More than one of this type may not be played" is NOT added here —
+        // the instance is still valid; it must be retried once the currently-active
+        // card of that type expires (i.e. after the next attack lands).
+        private readonly HashSet<int> _consumedInstanceIds = new HashSet<int>();
+        private readonly object _consumedLock = new object();
 
         private DefenderSettings Settings
         {
@@ -38,7 +44,7 @@ namespace Kingdoms.Bot.Modules
             _spamActive = false;
             _spamEndTime = DateTime.MinValue;
             _targetVillageId = 0;
-            _playedInstanceIds.Clear();
+            lock (_consumedLock) { _consumedInstanceIds.Clear(); }
         }
 
         protected override void OnTick()
@@ -50,23 +56,31 @@ namespace Kingdoms.Bot.Modules
             if (DateTime.Now >= _spamEndTime)
             {
                 _spamActive = false;
-                _playedInstanceIds.Clear();
+                MyMessageBox.Suppress = false;
+                lock (_consumedLock) { _consumedInstanceIds.Clear(); }
                 LogInfo("Defender spam finished.");
                 return;
             }
 
-            // Cards are global — no village switch required
-            if (s.KnightsCardDefId > 0) TryPlayCard(s.KnightsCardDefId);
+            // ── 1. Cards (fire-and-forget, no village switch required) ──────────
+            //
+            // For each configured card type we snapshot ALL instance IDs from the
+            // local inventory and fire a PlayCard request for every non-consumed one.
+            // The server accepts at most one per type; the rest return "more than
+            // one of this type" and are silently ignored.  As soon as an attack lands
+            // and the active card expires, the first non-consumed instance will
+            // succeed on the very next tick.
+            if (s.KnightsCardDefId > 0)   TryPlayCard(s.KnightsCardDefId);
             if (s.LastStandCardDefId > 0) TryPlayCard(s.LastStandCardDefId);
-            if (s.SpamDesperateDefence) TryPlayCard(263);
+            if (s.SpamDesperateDefence)    TryPlayCard(263);
 
-            // Castle actions require the correct village to be loaded
+            // ── 2. Castle actions (require the correct village to be loaded) ─────
             if (_targetVillageId <= 0) return;
 
             if (GameEngine.Instance == null || GameEngine.Instance.Castle == null ||
                 GameEngine.Instance.Castle.VillageID != _targetVillageId)
             {
-                // Switch to the target village and wait for the castle to load
+                // Switch to the target village; the castle will be ready on the next tick.
                 try
                 {
                     InterfaceMgr.Instance.setVillageNameBar(_targetVillageId);
@@ -76,17 +90,18 @@ namespace Kingdoms.Bot.Modules
                 return;
             }
 
-            // Castle is loaded for the correct village — spam all configured actions
+            // Castle is loaded for the correct village.
+            // Priority order: troops → repair → infrastructure.
             try
             {
-                if (s.AutoRepair)
-                    GameEngine.Instance.Castle.autoRepairCastle();
-
                 if (s.RestoreTroops)
                 {
                     GameEngine.Instance.Castle.restoreTroops();
                     GameEngine.Instance.Castle.commitCastle();
                 }
+
+                if (s.AutoRepair)
+                    GameEngine.Instance.Castle.autoRepairCastle();
 
                 if (s.RestoreInfrastructure)
                 {
@@ -106,14 +121,18 @@ namespace Kingdoms.Bot.Modules
             _targetVillageId = targetVillageId;
             _spamActive = true;
             _spamEndTime = DateTime.Now.AddSeconds(durationSeconds);
-            _playedInstanceIds.Clear();
+            lock (_consumedLock) { _consumedInstanceIds.Clear(); }
+            // Suppress "Castle Placement Error" popups that fire when the server
+            // rejects rapid commitCastle() calls during an active battle.
+            MyMessageBox.Suppress = true;
             LogInfo("Defender spam started for " + durationSeconds + "s targeting village " + targetVillageId + ".");
         }
 
         public void StopSpam()
         {
             _spamActive = false;
-            _playedInstanceIds.Clear();
+            MyMessageBox.Suppress = false;
+            lock (_consumedLock) { _consumedInstanceIds.Clear(); }
             LogInfo("Defender spam stopped manually.");
         }
 
@@ -128,81 +147,41 @@ namespace Kingdoms.Bot.Modules
         }
 
         // =================================================================
-        // Card playing — fire-and-forget, no duplicate guard intentional.
-        // Defense cards (SA, LS, DD) require the target village ID, not "-1".
+        // Card playing
         // =================================================================
 
+        /// <summary>
+        /// Fires a PlayCard request for every non-consumed instance of
+        /// <paramref name="defId"/> found in the local ProfileCards inventory.
+        /// All requests are fire-and-forget; the server accepts at most one per
+        /// card type at a time.  Only the accepted instance is marked consumed.
+        /// </summary>
         private void TryPlayCard(int defId)
         {
             try
             {
-                CardData cardData = GetCardData();
-                if (cardData == null)
-                {
-                    LogDebug("TryPlayCard defId=" + defId + ": UserCardData is null.");
-                    return;
-                }
-
-                int inventoryCount = 0;
                 var mgr = GameEngine.Instance != null ? GameEngine.Instance.cardsManager : null;
-                if (mgr != null)
-                    foreach (var kvp in mgr.ProfileCards)
-                        if (kvp.Value != null && kvp.Value.id == defId) inventoryCount++;
+                if (mgr == null) return;
 
-                if (inventoryCount == 0)
-                {
-                    LogDebug("TryPlayCard defId=" + defId + ": none in inventory.");
-                    return;
-                }
-
-                int instanceId = FindCardInstanceByDefId(defId, cardData, _playedInstanceIds);
-                if (instanceId == 0)
-                {
-                    LogDebug("TryPlayCard defId=" + defId + ": all " + inventoryCount + " instance(s) already played or active.");
-                    return;
-                }
-
-                // Mark as played immediately so subsequent ticks don't re-submit this instance
-                // before ProfileCards refreshes from the server.
-                _playedInstanceIds.Add(instanceId);
-                LogInfo("Playing card defId=" + defId + " instanceId=" + instanceId + " on village " + _targetVillageId + ".");
-                PlayCard(instanceId, _targetVillageId);
-            }
-            catch (Exception ex)
-            {
-                LogWarning("TryPlayCard defId=" + defId + " error: " + ex.Message);
-            }
-        }
-
-        private static CardData GetCardData()
-        {
-            if (GameEngine.Instance == null || GameEngine.Instance.cardsManager == null)
-                return null;
-            return GameEngine.Instance.cardsManager.UserCardData;
-        }
-
-        private static int FindCardInstanceByDefId(int targetDefId, CardData activeCardData, HashSet<int> alreadyPlayed)
-        {
-            try
-            {
-                var mgr = GameEngine.Instance != null ? GameEngine.Instance.cardsManager : null;
-                if (mgr == null) return 0;
-
-                var activeIds = new HashSet<int>();
-                if (activeCardData != null && activeCardData.cards != null)
-                    foreach (int c in activeCardData.cards)
-                        if (c != 0) activeIds.Add(c);
-
+                // Snapshot matching instance IDs so the live dictionary is not
+                // held across the async PlayCard calls below.
+                var instances = new List<int>();
                 foreach (var kvp in mgr.ProfileCards)
+                    if (kvp.Value != null && kvp.Value.id == defId)
+                        instances.Add(kvp.Key);
+
+                if (instances.Count == 0) return;
+
+                foreach (int instanceId in instances)
                 {
-                    if (kvp.Value == null || kvp.Value.id != targetDefId) continue;
-                    if (activeIds.Contains(kvp.Key)) continue;       // already active on server
-                    if (alreadyPlayed != null && alreadyPlayed.Contains(kvp.Key)) continue; // fired this session
-                    return kvp.Key;
+                    bool consumed;
+                    lock (_consumedLock) { consumed = _consumedInstanceIds.Contains(instanceId); }
+                    if (consumed) continue;
+
+                    PlayCard(instanceId, _targetVillageId);
                 }
             }
             catch { }
-            return 0;
         }
 
         private void PlayCard(int instanceId, int targetVillageId)
@@ -214,38 +193,55 @@ namespace Kingdoms.Bot.Modules
                     URLs.ProfileServerAddressCards,
                     URLs.ProfileServerPort,
                     URLs.ProfileCardPath);
+
                 string villageTarget = targetVillageId > 0 ? targetVillageId.ToString() : "-1";
+
                 XmlRpcCardsRequest req = new XmlRpcCardsRequest(
                     RemoteServices.Instance.UserGuid.ToString().Replace("-", ""),
                     RemoteServices.Instance.SessionGuid.ToString().Replace("-", ""),
                     instanceId.ToString(),
                     villageTarget,
                     RemoteServices.Instance.ProfileWorldID.ToString());
+
                 provider.PlayUserCard(
                     req,
                     delegate(ICardsProvider p, ICardsResponse r)
                     {
-                        if (r != null)
+                        if (r == null) return;
+
+                        bool ok = r.SuccessCode.HasValue && r.SuccessCode.Value == 1;
+                        if (ok)
                         {
-                            bool ok = r.SuccessCode.HasValue && r.SuccessCode.Value == 1;
-                            if (ok)
-                                LogInfo("Card instance " + instanceId + " played OK.");
-                            else
-                                LogWarning("Card instance " + instanceId + " play failed: " + r.Message);
+                            lock (_consumedLock) { _consumedInstanceIds.Add(instanceId); }
+                            LogInfo("Card instance " + instanceId + " played OK.");
+                            return;
+                        }
+
+                        // "You do not have that card available" — instance is genuinely
+                        // gone from inventory; mark consumed so we stop trying it.
+                        //
+                        // "More than one of this type may not be played" — a card of this
+                        // type is currently active on the server; do NOT mark consumed.
+                        // The same instance will be retried every tick until the active
+                        // card expires (after the next attack lands) and the play succeeds.
+                        //
+                        // All other failures are also silent — no log spam.
+                        string msg = r.Message ?? string.Empty;
+                        if (msg.IndexOf("do not have", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            lock (_consumedLock) { _consumedInstanceIds.Add(instanceId); }
                         }
                     },
                     (Control)InterfaceMgr.Instance.getDXBasePanel());
             }
-            catch (Exception ex)
-            {
-                LogWarning("PlayCard instance " + instanceId + " error: " + ex.Message);
-            }
+            catch { }
         }
 
         protected override void OnShutdown()
         {
             _spamActive = false;
-            _playedInstanceIds.Clear();
+            MyMessageBox.Suppress = false;
+            lock (_consumedLock) { _consumedInstanceIds.Clear(); }
         }
     }
 }

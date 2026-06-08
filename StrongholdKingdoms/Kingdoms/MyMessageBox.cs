@@ -37,6 +37,13 @@ namespace Kingdoms
     private static string customOKSound = "";
     private static string customCancelSound = "";
 
+    /// <summary>
+    /// When true all Show() calls return immediately without displaying a dialog.
+    /// Set by DefenderModule while spam is active to suppress "Castle Placement Error"
+    /// popups that the server fires back during rapid commitCastle() spam.
+    /// </summary>
+    public static bool Suppress = false;
+
     protected override void Dispose(bool disposing)
     {
       if (disposing && this.components != null)
@@ -178,6 +185,7 @@ namespace Kingdoms
 
     public static DialogResult Show(string txtMessage)
     {
+      if (MyMessageBox.Suppress) return MyMessageBox.result;
       MyMessageBox.newMessageBox = new MyMessageBox();
       MyMessageBox.buttons = MessageBoxButtons.OK;
       MyMessageBox.defaultButton = MessageBoxDefaultButton.Button1;
@@ -226,6 +234,7 @@ namespace Kingdoms
 
     public static DialogResult Show(string txtMessage, string txtTitle)
     {
+      if (MyMessageBox.Suppress) return MyMessageBox.result;
       MyMessageBox.newMessageBox = new MyMessageBox();
       MyMessageBox.buttons = MessageBoxButtons.OK;
       MyMessageBox.defaultButton = MessageBoxDefaultButton.Button1;
@@ -276,6 +285,7 @@ namespace Kingdoms
 
     public static DialogResult Show(string txtMessage, string txtTitle, MessageBoxButtons buts)
     {
+      if (MyMessageBox.Suppress) return MyMessageBox.result;
       MyMessageBox.newMessageBox = new MyMessageBox();
       MyMessageBox.buttons = buts;
       MyMessageBox.defaultButton = MessageBoxDefaultButton.Button1;
@@ -331,6 +341,7 @@ namespace Kingdoms
       MessageBoxDefaultButton defaultBut,
       int x2)
     {
+      if (MyMessageBox.Suppress) return MyMessageBox.result;
       MyMessageBox.newMessageBox = new MyMessageBox();
       MyMessageBox.buttons = buts;
       MyMessageBox.defaultButton = defaultBut;
