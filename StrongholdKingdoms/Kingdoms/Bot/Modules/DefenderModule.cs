@@ -120,7 +120,8 @@ namespace Kingdoms.Bot.Modules
         }
 
         // =================================================================
-        // Card playing — fire-and-forget, no duplicate guard intentional
+        // Card playing — fire-and-forget, no duplicate guard intentional.
+        // Defense cards (SA, LS, DD) require the target village ID, not "-1".
         // =================================================================
 
         private void TryPlayCard(int defId)
@@ -128,14 +129,38 @@ namespace Kingdoms.Bot.Modules
             try
             {
                 CardData cardData = GetCardData();
-                if (cardData == null) return;
+                if (cardData == null)
+                {
+                    LogDebug("TryPlayCard defId=" + defId + ": UserCardData is null.");
+                    return;
+                }
+
+                int inventoryCount = 0;
+                var mgr = GameEngine.Instance != null ? GameEngine.Instance.cardsManager : null;
+                if (mgr != null)
+                    foreach (var kvp in mgr.ProfileCards)
+                        if (kvp.Value != null && kvp.Value.id == defId) inventoryCount++;
+
+                if (inventoryCount == 0)
+                {
+                    LogDebug("TryPlayCard defId=" + defId + ": none in inventory.");
+                    return;
+                }
 
                 int instanceId = FindCardInstanceByDefId(defId, cardData);
-                if (instanceId == 0) return;
+                if (instanceId == 0)
+                {
+                    LogDebug("TryPlayCard defId=" + defId + ": all " + inventoryCount + " instance(s) already active.");
+                    return;
+                }
 
+                LogInfo("Playing card defId=" + defId + " instanceId=" + instanceId + ".");
                 PlayCard(instanceId);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogWarning("TryPlayCard defId=" + defId + " error: " + ex.Message);
+            }
         }
 
         private static CardData GetCardData()
@@ -185,10 +210,23 @@ namespace Kingdoms.Bot.Modules
                     RemoteServices.Instance.ProfileWorldID.ToString());
                 provider.PlayUserCard(
                     req,
-                    delegate(ICardsProvider p, ICardsResponse r) { },
+                    delegate(ICardsProvider p, ICardsResponse r)
+                    {
+                        if (r != null)
+                        {
+                            bool ok = r.SuccessCode.HasValue && r.SuccessCode.Value == 1;
+                            if (ok)
+                                LogInfo("Card instance " + instanceId + " played OK.");
+                            else
+                                LogWarning("Card instance " + instanceId + " play failed: " + r.Message);
+                        }
+                    },
                     (Control)InterfaceMgr.Instance.getDXBasePanel());
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogWarning("PlayCard instance " + instanceId + " error: " + ex.Message);
+            }
         }
 
         protected override void OnShutdown()
