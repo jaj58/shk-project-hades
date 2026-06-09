@@ -733,9 +733,21 @@ namespace Kingdoms.Bot.Modules
             object attacksObj;
             object sendTimesObj;
             stateData.TryGetValue("scheduled_send_times", out sendTimesObj);
+
+            // In multi-player, we need send times for ALL players' villages, not just the local player.
+            // Extract all "player|village" send times so that remote players' villages also get scheduled.
+            var allSendTimes = new Dictionary<string, string>();
+            var st = sendTimesObj as Dictionary<string, object>;
+            if (st != null)
+            {
+                foreach (var kv in st)
+                    allSendTimes[kv.Key] = kv.Value.ToString();
+            }
+
+            // For logging and matching, extract just the local player's send times
             Dictionary<int, string> sendTimes = ParseSendTimesForPlayer(sendTimesObj, myName);
 
-            LogInfo("Launching: " + sendTimes.Count + " scheduled send time(s) received from API.");
+            LogInfo("Launching: " + sendTimes.Count + " scheduled send time(s) received from API (showing local villages only).");
             foreach (var kv in sendTimes)
                 LogInfo("  Village " + kv.Key + " → send at " + kv.Value);
 
@@ -1091,7 +1103,9 @@ namespace Kingdoms.Bot.Modules
                     // Distinguish manual cancel from an automatic recall (interdict / fake-send /
                     // prepare-error). On any auto-recall armies have been recalled and we should
                     // still wait for them to return and advance the queue. Manual cancel stops.
-                    bool autoRecalled = _interdictDetected || _fakeSendTriggered || _prepareErrorCancel;
+                    // Check both local flags (_interdictDetected) and API state (settings.InterdictDetected)
+                    // in case a remote player detected the interdict.
+                    bool autoRecalled = _interdictDetected || _fakeSendTriggered || _prepareErrorCancel || settings.InterdictDetected;
                     if (cancelled && !autoRecalled) break;
 
                     // ── Queue advancement (coordinator only) ───────────────────
