@@ -14,7 +14,9 @@ namespace Kingdoms.Bot.Modules
         private DateTime _lastVillageAction = DateTime.MinValue;
         private readonly Random _random = new Random();
 
-        // Cached stock exchange data
+        // Cached stock exchange data. Written from RPC callback threads and read
+        // on the tick thread, so every access goes through _cacheLock.
+        private readonly object _cacheLock = new object();
         private readonly Dictionary<int, StockExchangeCache> _stockExchangeCache =
             new Dictionary<int, StockExchangeCache>();
 
@@ -142,7 +144,10 @@ namespace Kingdoms.Bot.Modules
             try { _stats.SessionStartGold = (long)GameEngine.Instance.World.getCurrentGold(); } catch { }
             _marketsToFetch.Clear();
             _fetchingMarketId = -1;
-            _stockExchangeCache.Clear();
+            lock (_cacheLock)
+            {
+                _stockExchangeCache.Clear();
+            }
             lock (_pendingLock)
             {
                 _pendingByVillage.Clear();
@@ -563,9 +568,7 @@ namespace Kingdoms.Bot.Modules
             // the best price, rather than trading with partial data.
             foreach (int marketId in info.MarketTargets)
             {
-                StockExchangeCache cache;
-                if (!_stockExchangeCache.TryGetValue(marketId, out cache) ||
-                    (DateTime.Now - cache.LastUpdated).TotalMinutes >= PriceCacheValidMinutes)
+                if (!HasFreshCache(marketId))
                     return false;
             }
             return true;
@@ -594,10 +597,7 @@ namespace Kingdoms.Bot.Modules
             // immediately dispatch the next one.
             if (_fetchingMarketId != -1 && _marketsToFetch.Count > 0)
             {
-                StockExchangeCache arrived;
-                bool responseArrived = _stockExchangeCache.TryGetValue(_fetchingMarketId, out arrived) &&
-                                       (DateTime.Now - arrived.LastUpdated).TotalMinutes < PriceCacheValidMinutes;
-                if (responseArrived)
+                if (HasFreshCache(_fetchingMarketId))
                 {
                     try { DispatchNextMarketFetch(); }
                     catch (Exception ex)
@@ -617,9 +617,7 @@ namespace Kingdoms.Bot.Modules
             _fetchingMarketId = -1;
             foreach (int marketId in marketInfo.MarketTargets)
             {
-                StockExchangeCache cache;
-                if (!_stockExchangeCache.TryGetValue(marketId, out cache) ||
-                    (DateTime.Now - cache.LastUpdated).TotalMinutes >= PriceCacheValidMinutes)
+                if (!HasFreshCache(marketId))
                     _marketsToFetch.Add(marketId);
             }
 
@@ -759,6 +757,20 @@ namespace Kingdoms.Bot.Modules
                 try { error = ErrorCodes.getErrorString(returnData.m_errorCode, returnData.m_errorID); }
                 catch { error = "error code " + returnData.m_errorCode; }
             }
+            else if (returnData.stockExchangeData != null && returnData.stockExchangeData.villageID > 0)
+            {
+                // The trade response carries the market's post-trade stock levels —
+                // refresh the cache so the next trade sees what our purchase/sale
+                // actually left behind instead of minutes-old data.
+                try
+                {
+                    UpdateStockExchangeCache(returnData.stockExchangeData.villageID,
+                        CopyExchangeInfo(returnData.stockExchangeData));
+                }
+                catch
+                {
+                }
+            }
             QueueTradeResult(returnData.villageID, returnData.Success, error);
         }
 
@@ -882,6 +894,12 @@ namespace Kingdoms.Bot.Modules
             {
                 LogError(GetVillageName(pending.VillageId) + " " + label + " " + pending.Amount + " " +
                     resourceName + " REJECTED by server: " + (result.Error ?? "unknown error"));
+
+                // Our cached view of that market was evidently wrong — drop it so
+                // the next attempt re-fetches prices instead of repeating the
+                // same rejected trade.
+                if (pending.Kind == PendingKind.MarketBuy || pending.Kind == PendingKind.MarketSell)
+                    InvalidateMarketCache(pending.TargetId);
                 return;
             }
 
@@ -1163,7 +1181,7 @@ namespace Kingdoms.Bot.Modules
             foreach (int marketId in villageInfo.MarketTargets)
             {
                 StockExchangeCache cache;
-                bool hasFreshCache = _stockExchangeCache.TryGetValue(marketId, out cache) &&
+                bool hasFreshCache = TryGetCache(marketId, out cache) &&
                     (DateTime.Now - cache.LastUpdated).TotalMinutes < PriceCacheValidMinutes;
 
                 if (!hasFreshCache)
@@ -1176,28 +1194,14 @@ namespace Kingdoms.Bot.Modules
                 cachedCount++;
                 int stockLevel = cache.GetLevel(resourceId);
 
-                // Calculate actual price for logging
-                int price = 0;
-                try
-                {
-                    price = TradingCalcs.calcSellCost(GameEngine.Instance.LocalWorldData, stockLevel, resourceId);
-                }
-                catch { }
-
                 // Check price control
                 if (!CheckPrice(controlPrice, !selling, stockLevel, resourceId))
                 {
                     priceFilteredCount++;
-                    LogDebug("  Market " + GetVillageName(marketId) + ": stock=" + stockLevel +
-                        " price=" + price + " — SKIPPED (price control " +
-                        (selling ? "min=" : "max=") + controlPrice + ")");
                     continue;
                 }
 
                 double distSq = GameEngine.Instance.World.getSquareDistance(sourceVillageId, marketId);
-
-                LogDebug("  Market " + GetVillageName(marketId) + ": stock=" + stockLevel +
-                    " price=" + price + " dist=" + (int)Math.Sqrt(distSq));
 
                 bool better;
                 if (bestMarket == -1)
@@ -1218,8 +1222,14 @@ namespace Kingdoms.Bot.Modules
             if (bestMarket > 0)
             {
                 bestStockOut = bestStock;
+                int bestPrice = 0;
+                try
+                {
+                    bestPrice = TradingCalcs.calcSellCost(GameEngine.Instance.LocalWorldData, bestStock, resourceId);
+                }
+                catch { }
                 LogDebug("  " + (selling ? "SELL" : "BUY") + " " + resourceName + " -> Best: " +
-                    GetVillageName(bestMarket) + " stock=" + bestStock +
+                    GetVillageName(bestMarket) + " stock=" + bestStock + " price=" + bestPrice +
                     " (cached " + cachedCount + "/" + villageInfo.MarketTargets.Count +
                     ", uncached " + uncachedCount + ", filtered " + priceFilteredCount + ")");
             }
@@ -1614,7 +1624,33 @@ namespace Kingdoms.Bot.Modules
             StockExchangeCache cache = new StockExchangeCache();
             cache.LastUpdated = DateTime.Now;
             cache.Data = data;
-            _stockExchangeCache[villageId] = cache;
+            lock (_cacheLock)
+            {
+                _stockExchangeCache[villageId] = cache;
+            }
+        }
+
+        private bool TryGetCache(int marketId, out StockExchangeCache cache)
+        {
+            lock (_cacheLock)
+            {
+                return _stockExchangeCache.TryGetValue(marketId, out cache);
+            }
+        }
+
+        private bool HasFreshCache(int marketId)
+        {
+            StockExchangeCache cache;
+            return TryGetCache(marketId, out cache) &&
+                (DateTime.Now - cache.LastUpdated).TotalMinutes < PriceCacheValidMinutes;
+        }
+
+        private void InvalidateMarketCache(int marketId)
+        {
+            lock (_cacheLock)
+            {
+                _stockExchangeCache.Remove(marketId);
+            }
         }
 
         private bool AreWeaponsAllowed()
