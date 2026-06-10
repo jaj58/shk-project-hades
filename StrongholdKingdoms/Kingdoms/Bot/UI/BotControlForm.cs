@@ -3765,6 +3765,7 @@ namespace Kingdoms.Bot.UI
             _abmPrepareBtn.Click               += delegate { AbmDoPrepare(); };
             _abmLaunchBtn.Click                += delegate { AbmDoLaunch(); };
             _abmCancelBtn.Click                += delegate { AbmDoCancel(); };
+            _abmForceRecallBtn.Click           += delegate { AbmDoForceRecall(); };
             _abmResetBtn.Click                 += delegate { AbmDoReset(); };
             _abmTakeCoordBtn.Click             += delegate { AbmDoTakeCoordinator(); };
             _abmQueueEnabledCheck.CheckedChanged += delegate
@@ -4340,6 +4341,12 @@ namespace Kingdoms.Bot.UI
             if (mod != null) mod.CancelAll();
         }
 
+        private void AbmDoForceRecall()
+        {
+            AutoBombMultiModule mod = AbmModule;
+            if (mod != null) mod.ForceRecallAll();
+        }
+
         private void AbmDoReset()
         {
             if (MessageBox.Show("Reset the session? This will clear all connected players and attack configs.",
@@ -4622,6 +4629,7 @@ namespace Kingdoms.Bot.UI
             _abmPrepareBtn.Enabled          = coordControls;
             _abmLaunchBtn.Enabled           = coordControls && (stateText == "configured" || stateText == "prepared" || stateText == "preparing");
             _abmCancelBtn.Enabled           = modEnabled;
+            _abmForceRecallBtn.Enabled      = coordControls;
             _abmResetBtn.Enabled            = coordControls;
             _abmTakeCoordBtn.Enabled        = modEnabled && !isCoord;
 
