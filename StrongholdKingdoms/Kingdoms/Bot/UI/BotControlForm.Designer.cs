@@ -1185,7 +1185,7 @@ namespace Kingdoms.Bot.UI
             this._rdColHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this._rdColHeader.Location = new System.Drawing.Point(0, 176);
             this._rdColHeader.Name = "_rdColHeader";
-            this._rdColHeader.Size = new System.Drawing.Size(1142, 24);
+            this._rdColHeader.Size = new System.Drawing.Size(1142, 34);
             this._rdColHeader.TabIndex = 2;
             // 
             // _rdColActionType
@@ -1214,7 +1214,7 @@ namespace Kingdoms.Bot.UI
             this._rdColSystemNotify.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._rdColSystemNotify.Location = new System.Drawing.Point(270, 2);
             this._rdColSystemNotify.Name = "_rdColSystemNotify";
-            this._rdColSystemNotify.Size = new System.Drawing.Size(60, 20);
+            this._rdColSystemNotify.Size = new System.Drawing.Size(60, 30);
             this._rdColSystemNotify.TabIndex = 2;
             this._rdColSystemNotify.Text = "System\r\nNotify";
             // 
@@ -1224,7 +1224,7 @@ namespace Kingdoms.Bot.UI
             this._rdColDiscordNotify.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._rdColDiscordNotify.Location = new System.Drawing.Point(340, 2);
             this._rdColDiscordNotify.Name = "_rdColDiscordNotify";
-            this._rdColDiscordNotify.Size = new System.Drawing.Size(60, 20);
+            this._rdColDiscordNotify.Size = new System.Drawing.Size(60, 30);
             this._rdColDiscordNotify.TabIndex = 3;
             this._rdColDiscordNotify.Text = "Discord\r\nNotify";
             //
@@ -1234,7 +1234,7 @@ namespace Kingdoms.Bot.UI
             this._rdColSound.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._rdColSound.Location = new System.Drawing.Point(410, 2);
             this._rdColSound.Name = "_rdColSound";
-            this._rdColSound.Size = new System.Drawing.Size(70, 20);
+            this._rdColSound.Size = new System.Drawing.Size(70, 30);
             this._rdColSound.TabIndex = 6;
             this._rdColSound.Text = "Sound\r\nNotify";
             //
@@ -1242,9 +1242,9 @@ namespace Kingdoms.Bot.UI
             //
             this._rdColAutoInterdict.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._rdColAutoInterdict.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdColAutoInterdict.Location = new System.Drawing.Point(480, 2);
+            this._rdColAutoInterdict.Location = new System.Drawing.Point(610, 2);
             this._rdColAutoInterdict.Name = "_rdColAutoInterdict";
-            this._rdColAutoInterdict.Size = new System.Drawing.Size(60, 20);
+            this._rdColAutoInterdict.Size = new System.Drawing.Size(60, 30);
             this._rdColAutoInterdict.TabIndex = 4;
             this._rdColAutoInterdict.Text = "Auto\r\nInterdict";
             // 
@@ -1297,7 +1297,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinArmySizeInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._rdMinArmySizeInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMinArmySizeInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdMinArmySizeInput.Location = new System.Drawing.Point(537, 81);
+            this._rdMinArmySizeInput.Location = new System.Drawing.Point(537, 93);
             this._rdMinArmySizeInput.Maximum = new decimal(new int[] {
             10000,
             0,
@@ -1317,7 +1317,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinArmySizeLabel.AutoSize = true;
             this._rdMinArmySizeLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMinArmySizeLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdMinArmySizeLabel.Location = new System.Drawing.Point(416, 84);
+            this._rdMinArmySizeLabel.Location = new System.Drawing.Point(416, 96);
             this._rdMinArmySizeLabel.Name = "_rdMinArmySizeLabel";
             this._rdMinArmySizeLabel.Size = new System.Drawing.Size(115, 15);
             this._rdMinArmySizeLabel.TabIndex = 20;
@@ -1328,7 +1328,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinAttacksInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._rdMinAttacksInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMinAttacksInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdMinAttacksInput.Location = new System.Drawing.Point(157, 115);
+            this._rdMinAttacksInput.Location = new System.Drawing.Point(157, 122);
             this._rdMinAttacksInput.Name = "_rdMinAttacksInput";
             this._rdMinAttacksInput.Size = new System.Drawing.Size(55, 23);
             this._rdMinAttacksInput.TabIndex = 40;
@@ -1338,7 +1338,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinAttacksLabel.AutoSize = true;
             this._rdMinAttacksLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMinAttacksLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdMinAttacksLabel.Location = new System.Drawing.Point(8, 118);
+            this._rdMinAttacksLabel.Location = new System.Drawing.Point(8, 125);
             this._rdMinAttacksLabel.Name = "_rdMinAttacksLabel";
             this._rdMinAttacksLabel.Size = new System.Drawing.Size(143, 15);
             this._rdMinAttacksLabel.TabIndex = 41;
@@ -1349,7 +1349,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinAttacksWindowInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._rdMinAttacksWindowInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMinAttacksWindowInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdMinAttacksWindowInput.Location = new System.Drawing.Point(262, 115);
+            this._rdMinAttacksWindowInput.Location = new System.Drawing.Point(262, 122);
             this._rdMinAttacksWindowInput.Maximum = new decimal(new int[] {
             3600,
             0,
@@ -1374,7 +1374,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinAttacksWindowLabel.AutoSize = true;
             this._rdMinAttacksWindowLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMinAttacksWindowLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdMinAttacksWindowLabel.Location = new System.Drawing.Point(216, 118);
+            this._rdMinAttacksWindowLabel.Location = new System.Drawing.Point(216, 125);
             this._rdMinAttacksWindowLabel.Name = "_rdMinAttacksWindowLabel";
             this._rdMinAttacksWindowLabel.Size = new System.Drawing.Size(40, 15);
             this._rdMinAttacksWindowLabel.TabIndex = 43;
@@ -1385,7 +1385,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinAttacksWindowUnitLabel.AutoSize = true;
             this._rdMinAttacksWindowUnitLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMinAttacksWindowUnitLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdMinAttacksWindowUnitLabel.Location = new System.Drawing.Point(322, 118);
+            this._rdMinAttacksWindowUnitLabel.Location = new System.Drawing.Point(322, 125);
             this._rdMinAttacksWindowUnitLabel.Name = "_rdMinAttacksWindowUnitLabel";
             this._rdMinAttacksWindowUnitLabel.Size = new System.Drawing.Size(12, 15);
             this._rdMinAttacksWindowUnitLabel.TabIndex = 44;
@@ -1396,7 +1396,7 @@ namespace Kingdoms.Bot.UI
             this._rdMaxLandTimeInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._rdMaxLandTimeInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMaxLandTimeInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdMaxLandTimeInput.Location = new System.Drawing.Point(567, 112);
+            this._rdMaxLandTimeInput.Location = new System.Drawing.Point(567, 122);
             this._rdMaxLandTimeInput.Maximum = new decimal(new int[] {
             168,
             0,
@@ -1411,7 +1411,7 @@ namespace Kingdoms.Bot.UI
             this._rdMaxLandTimeLabel.AutoSize = true;
             this._rdMaxLandTimeLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMaxLandTimeLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdMaxLandTimeLabel.Location = new System.Drawing.Point(416, 115);
+            this._rdMaxLandTimeLabel.Location = new System.Drawing.Point(416, 125);
             this._rdMaxLandTimeLabel.Name = "_rdMaxLandTimeLabel";
             this._rdMaxLandTimeLabel.Size = new System.Drawing.Size(145, 15);
             this._rdMaxLandTimeLabel.TabIndex = 46;
@@ -1423,7 +1423,7 @@ namespace Kingdoms.Bot.UI
             this._rdAutoRecruitMonksCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._rdAutoRecruitMonksCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdAutoRecruitMonksCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdAutoRecruitMonksCheck.Location = new System.Drawing.Point(202, 69);
+            this._rdAutoRecruitMonksCheck.Location = new System.Drawing.Point(202, 96);
             this._rdAutoRecruitMonksCheck.Name = "_rdAutoRecruitMonksCheck";
             this._rdAutoRecruitMonksCheck.Size = new System.Drawing.Size(127, 19);
             this._rdAutoRecruitMonksCheck.TabIndex = 8;
@@ -1452,7 +1452,7 @@ namespace Kingdoms.Bot.UI
             this._rdTestSoundBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._rdTestSoundBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._rdTestSoundBtn.ForeColor = System.Drawing.Color.White;
-            this._rdTestSoundBtn.Location = new System.Drawing.Point(660, 69);
+            this._rdTestSoundBtn.Location = new System.Drawing.Point(660, 65);
             this._rdTestSoundBtn.Name = "_rdTestSoundBtn";
             this._rdTestSoundBtn.Size = new System.Drawing.Size(110, 24);
             this._rdTestSoundBtn.TabIndex = 11;
@@ -1467,7 +1467,7 @@ namespace Kingdoms.Bot.UI
             this._rdStopSoundBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._rdStopSoundBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._rdStopSoundBtn.ForeColor = System.Drawing.Color.White;
-            this._rdStopSoundBtn.Location = new System.Drawing.Point(780, 69);
+            this._rdStopSoundBtn.Location = new System.Drawing.Point(780, 65);
             this._rdStopSoundBtn.Name = "_rdStopSoundBtn";
             this._rdStopSoundBtn.Size = new System.Drawing.Size(110, 24);
             this._rdStopSoundBtn.TabIndex = 12;
@@ -1491,7 +1491,7 @@ namespace Kingdoms.Bot.UI
             this._rdInterdictMonkCountInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._rdInterdictMonkCountInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdInterdictMonkCountInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdInterdictMonkCountInput.Location = new System.Drawing.Point(135, 66);
+            this._rdInterdictMonkCountInput.Location = new System.Drawing.Point(135, 93);
             this._rdInterdictMonkCountInput.Minimum = new decimal(new int[] {
             1,
             0,
@@ -1511,7 +1511,7 @@ namespace Kingdoms.Bot.UI
             this._rdInterdictLabel.AutoSize = true;
             this._rdInterdictLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdInterdictLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdInterdictLabel.Location = new System.Drawing.Point(5, 69);
+            this._rdInterdictLabel.Location = new System.Drawing.Point(8, 96);
             this._rdInterdictLabel.Name = "_rdInterdictLabel";
             this._rdInterdictLabel.Size = new System.Drawing.Size(124, 15);
             this._rdInterdictLabel.TabIndex = 6;
@@ -1524,7 +1524,6 @@ namespace Kingdoms.Bot.UI
             this._rdWebhookInput.Font = new System.Drawing.Font("Consolas", 8.5F);
             this._rdWebhookInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._rdWebhookInput.Location = new System.Drawing.Point(142, 37);
-            this._rdWebhookInput.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) | System.Windows.Forms.AnchorStyles.Right)));
             this._rdWebhookInput.Name = "_rdWebhookInput";
             this._rdWebhookInput.Size = new System.Drawing.Size(480, 21);
             this._rdWebhookInput.TabIndex = 5;
@@ -1546,7 +1545,7 @@ namespace Kingdoms.Bot.UI
             this._rdMentionTagInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMentionTagInput.Font = new System.Drawing.Font("Consolas", 8.5F);
             this._rdMentionTagInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdMentionTagInput.Location = new System.Drawing.Point(870, 37);
+            this._rdMentionTagInput.Location = new System.Drawing.Point(142, 64);
             this._rdMentionTagInput.Name = "_rdMentionTagInput";
             this._rdMentionTagInput.Size = new System.Drawing.Size(220, 21);
             this._rdMentionTagInput.TabIndex = 31;
@@ -1556,7 +1555,7 @@ namespace Kingdoms.Bot.UI
             this._rdMentionTagLabel.AutoSize = true;
             this._rdMentionTagLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMentionTagLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdMentionTagLabel.Location = new System.Drawing.Point(785, 38);
+            this._rdMentionTagLabel.Location = new System.Drawing.Point(8, 67);
             this._rdMentionTagLabel.Name = "_rdMentionTagLabel";
             this._rdMentionTagLabel.Size = new System.Drawing.Size(71, 15);
             this._rdMentionTagLabel.TabIndex = 30;

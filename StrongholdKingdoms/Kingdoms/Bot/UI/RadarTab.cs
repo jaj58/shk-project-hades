@@ -89,6 +89,7 @@ namespace Kingdoms.Bot.UI
         private CheckBox _discordNotifyCheck;
         private CheckBox _soundNotifyCheck;
         private Button _soundBrowseBtn;
+        private Label _soundFileLabel;
         private CheckBox _autoInterdictCheck;
 
         public string ActionKey { get { return _actionKey; } }
@@ -123,13 +124,21 @@ namespace Kingdoms.Bot.UI
             _soundBrowseBtn.FlatStyle = FlatStyle.Flat;
             _soundBrowseBtn.FlatAppearance.BorderColor = Color.FromArgb(70, 75, 95);
             _soundBrowseBtn.BackColor = Color.FromArgb(50, 52, 64);
+
+            _soundFileLabel = new Label();
+            _soundFileLabel.Font = new Font("Segoe UI", 7.5f);
+            _soundFileLabel.ForeColor = SoundUnsetColor;
+            _soundFileLabel.Location = new Point(477, 7);
+            _soundFileLabel.Size = new Size(125, 15);
+            _soundFileLabel.AutoEllipsis = true;
             RefreshSoundButton();
 
-            _autoInterdictCheck = MakeCheck(490, settings.AutoInterdict);
+            _autoInterdictCheck = MakeCheck(610, settings.AutoInterdict);
 
             this.Controls.AddRange(new Control[] {
                 nameLabel, _monitorCheck, _systemNotifyCheck,
-                _discordNotifyCheck, _soundNotifyCheck, _soundBrowseBtn, _autoInterdictCheck
+                _discordNotifyCheck, _soundNotifyCheck, _soundBrowseBtn,
+                _soundFileLabel, _autoInterdictCheck
             });
             this.ResumeLayout(false);
 
@@ -173,6 +182,15 @@ namespace Kingdoms.Bot.UI
             string file = _boundSettings != null ? _boundSettings.SoundFile : "";
             bool hasFile = !string.IsNullOrEmpty(file);
             _soundBrowseBtn.ForeColor = hasFile ? SoundSetColor : SoundUnsetColor;
+            _soundFileLabel.ForeColor = hasFile ? SoundSetColor : SoundUnsetColor;
+            string fileName = "";
+            if (hasFile)
+            {
+                try { fileName = System.IO.Path.GetFileName(file); }
+                catch { fileName = file; }
+            }
+            _soundFileLabel.Text = fileName;
+            SoundToolTip.SetToolTip(_soundFileLabel, hasFile ? file : "");
             SoundToolTip.SetToolTip(_soundBrowseBtn, hasFile
                 ? file + "\r\n(right-click to clear)"
                 : "No sound file — click to browse");

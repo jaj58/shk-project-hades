@@ -636,6 +636,12 @@ namespace Kingdoms
     private DateTime lastTraderRefresh = DateTime.MinValue;
     private DateTime lastMarketSend = DateTime.MinValue;
     private bool inMarketSend;
+    // Bot hooks: notified with the server result of sendResources/stockExchangeTrade
+    // dispatches so the bot can verify trades instead of trusting dispatch. The game
+    // callbacks below swallow most errors silently, so without these the bot has no
+    // way to know a trade was rejected.
+    public static Action<SendMarketResources_ReturnType> BotSendMarketResourcesResult;
+    public static Action<StockExchangeTrade_ReturnType> BotStockExchangeTradeResult;
     private bool makeTroopsLocked;
     private DateTime makeTroopsLockedTime = DateTime.MinValue;
     private int localMadeTroops_Peasants;
@@ -8481,6 +8487,14 @@ namespace Kingdoms
     private void sendMarketResourcesCallback(SendMarketResources_ReturnType returnData)
     {
       this.inMarketSend = false;
+      try
+      {
+        if (VillageMap.BotSendMarketResourcesResult != null)
+          VillageMap.BotSendMarketResourcesResult(returnData);
+      }
+      catch
+      {
+      }
       if (!returnData.Success)
         return;
       VillageMap village = GameEngine.Instance.getVillage(returnData.villageID);
@@ -8588,6 +8602,14 @@ namespace Kingdoms
     private void stockExchangeTradeCallback(StockExchangeTrade_ReturnType returnData)
     {
       this.inMarketSend = false;
+      try
+      {
+        if (VillageMap.BotStockExchangeTradeResult != null)
+          VillageMap.BotStockExchangeTradeResult(returnData);
+      }
+      catch
+      {
+      }
       if (returnData.Success)
       {
         VillageMap village = GameEngine.Instance.getVillage(returnData.villageID);
