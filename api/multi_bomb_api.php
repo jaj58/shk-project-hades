@@ -511,3 +511,12 @@ function handle_report_armies_status(&$state, $req) {
     }
     save_and_respond($state, ['state_data' => $state]);
 }
+
+function handle_force_recall_all(&$state, $req) {
+    $name = require_field($req, 'player_name');
+    require_coordinator($state, $name);
+
+    // Set a flag that all clients will see on next poll and trigger immediate recall
+    $state['force_recall_all'] = true;
+    save_and_respond($state, ['state_data' => $state]);
+}

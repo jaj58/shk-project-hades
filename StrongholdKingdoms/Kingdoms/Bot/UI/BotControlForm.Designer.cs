@@ -302,6 +302,7 @@ namespace Kingdoms.Bot.UI
             this._abmPrepareBtn = new System.Windows.Forms.Button();
             this._abmLaunchBtn = new System.Windows.Forms.Button();
             this._abmCancelBtn = new System.Windows.Forms.Button();
+            this._abmForceRecallBtn = new System.Windows.Forms.Button();
             this._abmResetBtn = new System.Windows.Forms.Button();
             this._abmTakeCoordBtn = new System.Windows.Forms.Button();
             this._abmCoordStatusLabel = new System.Windows.Forms.Label();
@@ -3865,6 +3866,7 @@ namespace Kingdoms.Bot.UI
             this._abmCtrlPanel.Controls.Add(this._abmCoordStatusLabel);
             this._abmCtrlPanel.Controls.Add(this._abmTakeCoordBtn);
             this._abmCtrlPanel.Controls.Add(this._abmResetBtn);
+            this._abmCtrlPanel.Controls.Add(this._abmForceRecallBtn);
             this._abmCtrlPanel.Controls.Add(this._abmCancelBtn);
             this._abmCtrlPanel.Controls.Add(this._abmLaunchBtn);
             this._abmCtrlPanel.Controls.Add(this._abmPrepareBtn);
@@ -4075,6 +4077,20 @@ namespace Kingdoms.Bot.UI
             this._abmCancelBtn.Text = "Cancel";
             this._abmCancelBtn.UseVisualStyleBackColor = false;
             //
+            // _abmForceRecallBtn
+            //
+            this._abmForceRecallBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(140)))), ((int)(((byte)(80)))), ((int)(((byte)(20)))));
+            this._abmForceRecallBtn.FlatAppearance.BorderSize = 0;
+            this._abmForceRecallBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmForceRecallBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._abmForceRecallBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmForceRecallBtn.Location = new System.Drawing.Point(818, 4);
+            this._abmForceRecallBtn.Name = "_abmForceRecallBtn";
+            this._abmForceRecallBtn.Size = new System.Drawing.Size(64, 22);
+            this._abmForceRecallBtn.TabIndex = 11;
+            this._abmForceRecallBtn.Text = "Recall All";
+            this._abmForceRecallBtn.UseVisualStyleBackColor = false;
+            //
             // _abmResetBtn
             //
             this._abmResetBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(60)))), ((int)(((byte)(20)))));
@@ -4082,7 +4098,7 @@ namespace Kingdoms.Bot.UI
             this._abmResetBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._abmResetBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._abmResetBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._abmResetBtn.Location = new System.Drawing.Point(818, 4);
+            this._abmResetBtn.Location = new System.Drawing.Point(886, 4);
             this._abmResetBtn.Name = "_abmResetBtn";
             this._abmResetBtn.Size = new System.Drawing.Size(96, 22);
             this._abmResetBtn.TabIndex = 8;
@@ -4096,7 +4112,7 @@ namespace Kingdoms.Bot.UI
             this._abmTakeCoordBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._abmTakeCoordBtn.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._abmTakeCoordBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._abmTakeCoordBtn.Location = new System.Drawing.Point(918, 4);
+            this._abmTakeCoordBtn.Location = new System.Drawing.Point(986, 4);
             this._abmTakeCoordBtn.Name = "_abmTakeCoordBtn";
             this._abmTakeCoordBtn.Size = new System.Drawing.Size(118, 22);
             this._abmTakeCoordBtn.TabIndex = 9;
@@ -4107,7 +4123,7 @@ namespace Kingdoms.Bot.UI
             //
             this._abmCoordStatusLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold);
             this._abmCoordStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._abmCoordStatusLabel.Location = new System.Drawing.Point(1040, 8);
+            this._abmCoordStatusLabel.Location = new System.Drawing.Point(1108, 8);
             this._abmCoordStatusLabel.Name = "_abmCoordStatusLabel";
             this._abmCoordStatusLabel.Size = new System.Drawing.Size(86, 16);
             this._abmCoordStatusLabel.TabIndex = 10;
@@ -6675,6 +6691,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Button _abmPrepareBtn;
         private System.Windows.Forms.Button _abmLaunchBtn;
         private System.Windows.Forms.Button _abmCancelBtn;
+        private System.Windows.Forms.Button _abmForceRecallBtn;
         private System.Windows.Forms.Button _abmResetBtn;
         private System.Windows.Forms.Button _abmTakeCoordBtn;
         private System.Windows.Forms.Label _abmCoordStatusLabel;
