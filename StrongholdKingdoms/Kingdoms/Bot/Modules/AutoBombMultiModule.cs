@@ -78,6 +78,22 @@ namespace Kingdoms.Bot.Modules
         private DateTime _cachedVillageListTime    = DateTime.MinValue;
         private const int VillageListCacheSeconds  = 60;
 
+        // ── Sent army tracking for queue advancement ──────────────────────────
+        // Track when armies were sent and when they were recalled, so we can wait
+        // until all have actually returned before launching the next target.
+        private class SentArmy
+        {
+            public int VillageId;
+            public DateTime SentTime;
+            public DateTime? RecalledTime;  // When we confirmed recall was issued
+            public double TravelSeconds;
+        }
+        private List<SentArmy> _sentArmies = new List<SentArmy>();
+
+        // Recall acknowledgements from remote players
+        // Key: "player_name", Value: DateTime when they acknowledged the recall signal
+        private Dictionary<string, DateTime> _recallAcknowledged = new Dictionary<string, DateTime>();
+
         public override string ModuleName { get { return "Auto Bomb Multi"; } }
         public override TimeSpan Interval { get { return TimeSpan.FromMilliseconds(500); } }
 
@@ -504,16 +520,35 @@ namespace Kingdoms.Bot.Modules
             // ── Session state ─────────────────────────────────────────────────
             string newState = GetStr(stateData, "state", "idle");
             settings.SessionState = newState;
-            settings.InterdictDetected = GetBool(stateData, "interdict_detected");
-            settings.ManualCancel = GetBool(stateData, "manual_cancel");
-
-            // ── Force recall signal ───────────────────────────────────────────
-            // If coordinator set the force_recall_all flag, trigger immediate recall on all clients
+            bool interdictDetected = GetBool(stateData, "interdict_detected");
+            bool manualCancel = GetBool(stateData, "manual_cancel");
             bool forceRecall = GetBool(stateData, "force_recall_all");
-            if (forceRecall)
+
+            settings.InterdictDetected = interdictDetected;
+            settings.ManualCancel = manualCancel;
+
+            // ── Cancel/Recall Signal Handling ────────────────────────────────
+            // When ANY cancel signal is detected (force recall, interdict, manual), acknowledge it
+            // so coordinator knows all remote players received the signal
+            if (forceRecall || interdictDetected || manualCancel)
             {
-                LogInfo("Force recall command received — recalling all armies immediately.");
                 RecallAll(settings);
+                // Send acknowledgement
+                try
+                {
+                    PostAction(settings, "acknowledge_recall", new Dictionary<string, object>
+                    {
+                        ["player_name"] = GetLocalPlayerName(),
+                        ["signal_type"] = forceRecall ? "force_recall_all" :
+                                         interdictDetected ? "interdict" : "manual_cancel"
+                    });
+                    LogInfo("Acknowledged " + (forceRecall ? "force recall" :
+                           interdictDetected ? "interdict" : "manual cancel") + " signal.");
+                }
+                catch (Exception ex)
+                {
+                    LogWarning("Failed to acknowledge recall signal: " + ex.Message);
+                }
             }
 
             // Clear pending cancel flags when session moves out of cancelled state
@@ -540,6 +575,39 @@ namespace Kingdoms.Bot.Modules
             if (targetChanged && !settings.IsCoordinator && newTargetVidFromPoll > 0)
             {
                 try { PostPlayerReady(settings); } catch { }
+            }
+
+            // ── Log recall acknowledgements ──────────────────────────────────
+            object ackObj;
+            if (stateData.TryGetValue("recall_acknowledged", out ackObj) && ackObj is Dictionary<string, object>)
+            {
+                var acks = ackObj as Dictionary<string, object>;
+                if (acks.Count > 0 && settings.IsCoordinator)
+                {
+                    var apiAcks = new List<string>();
+                    var localAcks = new List<string>();
+                    foreach (var kv in acks)
+                    {
+                        var ackData = kv.Value as Dictionary<string, object>;
+                        string signalType = (ackData != null && ackData.ContainsKey("signal_type")) ?
+                            ackData["signal_type"].ToString() : "unknown";
+                        int armiesCount = 0;
+                        if (ackData != null && ackData.ContainsKey("armies_recalled"))
+                            int.TryParse(ackData["armies_recalled"].ToString(), out armiesCount);
+
+                        string entry = kv.Key;
+                        if (armiesCount > 0) entry += "[" + armiesCount + "]";
+
+                        if (signalType == "local_recall")
+                            localAcks.Add(entry);
+                        else
+                            apiAcks.Add(entry + "(" + signalType + ")");
+                    }
+                    if (apiAcks.Count > 0)
+                        LogInfo("[Recall] API Signal acknowledged by: " + string.Join(", ", apiAcks.ToArray()));
+                    if (localAcks.Count > 0)
+                        LogInfo("[Recall] Local recalls executed by: " + string.Join(", ", localAcks.ToArray()));
+                }
             }
 
             // ── Connected players ─────────────────────────────────────────────
@@ -919,6 +987,8 @@ namespace Kingdoms.Bot.Modules
             _fakeSendTriggered = false;
             _playedCardInstanceIds.Clear();
             _cardFreeAt = DateTime.MinValue;
+            _sentArmies.Clear();
+            _recallAcknowledged.Clear();
             DisposeFakeSendTimer();
 
             StopLaunchThread();
@@ -1191,6 +1261,8 @@ namespace Kingdoms.Bot.Modules
                     _prepareErrorCancel = false;
                     _playedCardInstanceIds.Clear();
                     _cardFreeAt = DateTime.MinValue;
+                    _sentArmies.Clear();
+                    _recallAcknowledged.Clear();
                     cancelled = false; // allow next iteration to fire
                 }
             }
@@ -1228,206 +1300,70 @@ namespace Kingdoms.Bot.Modules
 
         // ── Queue advancement helpers ─────────────────────────────────────────
 
-        // Returns true when all players with tracked attacks have reported armies home.
-        // The coordinator both monitors its own armies (and reports) AND polls the API for
-        // all players. Non-coordinators report independently via DoPoll.
+        // Simpler queue advancement: wait based on tracked sent army times and recall confirmations.
+        // Instead of polling the game world, we track when armies were sent and when they were
+        // recalled, then wait until all armies have enough time to return home.
         private bool WaitForArmiesReturnMulti(AutoBombMultiSettings settings,
             List<BombAttackEntry> sentAttacks)
         {
-            // Build the set of source villages this player sent from
-            var mySourceVids = new HashSet<int>();
-            foreach (var e in sentAttacks)
-                if (e.Sent) mySourceVids.Add(e.SourceVillageId);
+            // Simple time-based logic: wait until all sent armies have had enough time to return home.
+            // We track when each army was sent and when it was recalled, then wait the appropriate time.
 
-            // If we sent nothing, report immediately so we don't block the coordinator
-            bool ownReported = mySourceVids.Count == 0;
-            if (ownReported)
-            {
-                try { PostAction(settings, "report_armies_status", new Dictionary<string, object>
-                    { ["player_name"] = GetLocalPlayerName(), ["status"] = "returned" }); }
-                catch { }
-            }
+            LogInfo("[Queue] Tracking " + _sentArmies.Count + " sent armies — waiting for all to return safely.");
 
-            // Check whether any army is past the recall window.
-            // If so, armies will complete the full journey (hit target, then return),
-            // so the return time estimate uses ScheduledSendTime + 2×TravelTime.
-            // If all armies were recalled, the estimate uses time-in-flight×2 (midpoint turn-around).
-            bool pastRecallWindow = false;
-            foreach (var e in sentAttacks)
-            {
-                if (!e.Sent || e.ScheduledSendTime == DateTime.MaxValue) continue;
-                if ((DateTime.Now - e.ScheduledSendTime).TotalSeconds >= 300)
-                    { pastRecallWindow = true; break; }
-            }
-
-            DateTime floorReturnTime = DateTime.MinValue;
-            foreach (var e in sentAttacks)
-            {
-                if (!e.Sent || e.ScheduledSendTime == DateTime.MaxValue) continue;
-                DateTime estReturn;
-                if (pastRecallWindow)
-                {
-                    // Army will travel to target and back: depart + 2×TravelTime + 30s margin
-                    estReturn = e.ScheduledSendTime.AddSeconds(e.TravelTimeSeconds * 2 + 30);
-                }
-                else
-                {
-                    // Army recalled midway: time already in flight + same again + 15s margin
-                    TimeSpan inFlight = DateTime.Now - e.ScheduledSendTime;
-                    if (inFlight < TimeSpan.Zero) inFlight = TimeSpan.Zero;
-                    estReturn = DateTime.Now.Add(inFlight).AddSeconds(15);
-                }
-                if (estReturn > floorReturnTime) floorReturnTime = estReturn;
-            }
-            if (floorReturnTime == DateTime.MinValue) floorReturnTime = DateTime.Now;
-            LogInfo("[Queue] Army return floor: " + floorReturnTime.ToString("HH:mm:ss") +
-                (pastRecallWindow ? " (armies proceeding to target — past recall window)" : " (armies recalled)"));
-
-            // Log tracking summary
-            int sentTotal = 0;
-            foreach (var e in sentAttacks) if (e.Sent) sentTotal++;
-            LogInfo("[Queue] Tracking " + sentTotal + " sent attack(s) from " + mySourceVids.Count +
-                " source village(s) — waiting for all players to confirm armies home.");
-            LogInfo("[Queue] Waiting for all players' armies to return home...");
-
-            int pollCount = 0;
-            int consecutiveClean = 0;
-            const int RequiredCleanPolls = 2;
-            DateTime allReadyTime = DateTime.MaxValue;
-            const int AdvanceBufferSeconds = 2; // Wait 2s after all players report ready before advancing
+            const int AdvanceBufferSeconds = 3; // Wait 3s after all armies could have returned
 
             while (true)
             {
-                if (_cancelLaunchEvent.WaitOne(5000))
+                if (_cancelLaunchEvent.WaitOne(1000))
                 {
                     LogInfo("[Queue] Cancelled while waiting for armies.");
                     return false;
                 }
-                pollCount++;
 
-                // ── Check and report own armies ────────────────────────────────
-                if (!ownReported)
+                // ── Calculate maximum return time from sent armies ───────────────
+                DateTime maxReturnTime = DateTime.MinValue;
+                foreach (var sent in _sentArmies)
                 {
-                    if (DateTime.Now >= floorReturnTime && CheckLocalArmiesHome(mySourceVids))
+                    DateTime returnTime;
+                    if (sent.RecalledTime.HasValue)
                     {
-                        if (consecutiveClean == 0)
-                            LogInfo("[Queue] Coordinator: armies detected as home (poll #" + pollCount + ")");
-
-                        if (++consecutiveClean >= RequiredCleanPolls)
-                        {
-                            ownReported = true;
-                            LogInfo("[Queue] ✓ Coordinator's armies confirmed home after " + RequiredCleanPolls +
-                                " consecutive polls — reporting to API.");
-                            try { PostAction(settings, "report_armies_status",
-                                new Dictionary<string, object>
-                                {
-                                    ["player_name"] = GetLocalPlayerName(),
-                                    ["status"]      = "returned",
-                                }); }
-                            catch (Exception ex)
-                            {
-                                LogError("[Queue] report_armies_status failed: " + ex.Message);
-                            }
-                        }
-                        else
-                        {
-                            LogInfo("[Queue] Coordinator: armies home, waiting for confirmation (" +
-                                consecutiveClean + "/" + RequiredCleanPolls + " polls)");
-                        }
+                        // Army was recalled: it needs time to return to home after recall
+                        // Rough estimate: recall_time + (time already in flight)
+                        TimeSpan inFlight = sent.RecalledTime.Value - sent.SentTime;
+                        returnTime = sent.RecalledTime.Value.Add(inFlight);
                     }
                     else
                     {
-                        consecutiveClean = 0;
-                        // Retry recall on any still-outbound armies (interdict/fake-send path)
-                        try
-                        {
-                            var outbound = new List<WorldMap.LocalArmyData>();
-                            if (GameEngine.Instance?.World != null)
-                            {
-                                foreach (WorldMap.LocalArmyData army in
-                                    GameEngine.Instance.World.getArmyArray())
-                                {
-                                    if (army == null || army.dead) continue;
-                                    if (!mySourceVids.Contains(army.homeVillageID)) continue;
-                                    if (army.lootType < 0 && army.targetVillageID >= 0 &&
-                                        army.targetVillageID != army.homeVillageID)
-                                        outbound.Add(army);
-                                }
-                            }
-                            if (outbound.Count > 0 && !pastRecallWindow)
-                            {
-                                RemoteServices.Instance.set_CancelCastleAttack_UserCallBack(null);
-                                foreach (var army in outbound)
-                                    RemoteServices.Instance.CancelCastleAttack(army.armyID);
-                            }
-                        }
-                        catch { }
+                        // Army not yet recalled: assume it will be or will reach target and return
+                        // Use: sent_time + 2×travel_time (go and come back)
+                        returnTime = sent.SentTime.AddSeconds(sent.TravelSeconds * 2);
                     }
+
+                    if (returnTime > maxReturnTime)
+                        maxReturnTime = returnTime;
                 }
 
-                // ── Poll API for all-players status ────────────────────────────
-                try
+                if (maxReturnTime == DateTime.MinValue)
                 {
-                    var resp = PostAction(settings, "get_status", new Dictionary<string, object>
-                        { ["player_name"] = GetLocalPlayerName() });
-                    if (resp == null) continue;
-
-                    object stateDataObj;
-                    resp.TryGetValue("state_data", out stateDataObj);
-                    var stateData = stateDataObj as Dictionary<string, object>;
-                    if (stateData == null) continue;
-
-                    object armyStatusObj;
-                    stateData.TryGetValue("armies_return_status", out armyStatusObj);
-                    var armyStatus = armyStatusObj as Dictionary<string, object>;
-
-                    if (armyStatus == null || armyStatus.Count == 0)
-                    {
-                        LogInfo("[Queue] No army-return tracking in state — proceeding.");
-                        return true;
-                    }
-
-                    // Detailed logging of each player's status
-                    var readyPlayers = new List<string>();
-                    var waitingPlayers = new List<string>();
-                    foreach (var kv in armyStatus)
-                    {
-                        string playerStatus = kv.Value.ToString();
-                        if (playerStatus == "returned")
-                            readyPlayers.Add(kv.Key);
-                        else
-                            waitingPlayers.Add(kv.Key + "=" + playerStatus);
-                    }
-
-                    if (waitingPlayers.Count == 0)
-                    {
-                        if (allReadyTime == DateTime.MaxValue)
-                        {
-                            allReadyTime = DateTime.Now;
-                            LogInfo("[Queue] ✓ ALL PLAYERS READY: " + string.Join(", ", readyPlayers.ToArray()));
-                            LogInfo("[Queue] Waiting " + AdvanceBufferSeconds + "s buffer before advancing...");
-                        }
-
-                        if ((DateTime.Now - allReadyTime).TotalSeconds >= AdvanceBufferSeconds)
-                        {
-                            LogInfo("[Queue] Buffer elapsed — all players' armies returned. Advancing queue.");
-                            return true;
-                        }
-                    }
-                    else
-                    {
-                        // Reset buffer if someone reports back as waiting
-                        allReadyTime = DateTime.MaxValue;
-                    }
-
-                    if (pollCount % 4 == 0)
-                    {
-                        string readyStr = readyPlayers.Count > 0 ? " [Ready: " + string.Join(", ", readyPlayers.ToArray()) + "]" : "";
-                        LogInfo("[Queue] " + waitingPlayers.Count + " player(s) still waiting: " +
-                            string.Join(", ", waitingPlayers.ToArray()) + readyStr);
-                    }
+                    // No armies sent, proceed immediately
+                    LogInfo("[Queue] No armies tracked — proceeding to advance.");
+                    return true;
                 }
-                catch (Exception ex) { LogError("[Queue] WaitForArmiesReturnMulti poll error: " + ex.Message); }
+
+                // ── Check if all armies have had time to return ───────────────────
+                DateTime safeToAdvanceTime = maxReturnTime.AddSeconds(AdvanceBufferSeconds);
+                if (DateTime.Now >= safeToAdvanceTime)
+                {
+                    LogInfo("[Queue] ✓ All sent armies have had time to return (max return: " +
+                        maxReturnTime.ToString("HH:mm:ss") + "). Advancing queue.");
+                    return true;
+                }
+
+                // Log progress periodically
+                double secondsLeft = (safeToAdvanceTime - DateTime.Now).TotalSeconds;
+                if (secondsLeft > 0 && secondsLeft < 5)
+                    LogInfo("[Queue] Waiting " + secondsLeft.ToString("F1") + "s more before advancing...");
             }
         }
 
@@ -2119,6 +2055,15 @@ namespace Kingdoms.Bot.Modules
                 entry.Status = "Sent @ " + DateTime.Now.ToString("HH:mm:ss");
                 LogInfo("[Thread] Stack " + entry.Stack + " SENT → " + entry.TargetVillageId);
 
+                // Track this sent army for queue advancement timing
+                _sentArmies.Add(new SentArmy
+                {
+                    VillageId = entry.SourceVillageId,
+                    SentTime = DateTime.Now,
+                    RecalledTime = null,
+                    TravelSeconds = entry.TravelTimeSeconds
+                });
+
                 // Register with radar immediately so it's tracked before the game array
                 // can drop it — prevents flicker-disappear on the world map.
                 RadarModule radar = GetRadarModule();
@@ -2461,6 +2406,7 @@ namespace Kingdoms.Bot.Modules
                 RemoteServices.Instance.set_CancelCastleAttack_UserCallBack(null);
 
                 HashSet<long> recalled = new HashSet<long>();
+                HashSet<int> recalledVillages = new HashSet<int>();
                 foreach (WorldMap.LocalArmyData army in GameEngine.Instance.World.getArmyArray())
                 {
                     if (army.targetVillageID == targetVid &&
@@ -2468,6 +2414,7 @@ namespace Kingdoms.Bot.Modules
                     {
                         RemoteServices.Instance.CancelCastleAttack(army.armyID);
                         recalled.Add(army.armyID);
+                        recalledVillages.Add(army.travelFromVillageID);
                     }
                 }
 
@@ -2479,11 +2426,42 @@ namespace Kingdoms.Bot.Modules
                     foreach (WorldMap.LocalArmyData army in radar.GetTrackedOutboundUserArmies(targetVid))
                     {
                         if (recalled.Add(army.armyID))
+                        {
                             RemoteServices.Instance.CancelCastleAttack(army.armyID);
+                            recalledVillages.Add(army.travelFromVillageID);
+                        }
                     }
                 }
 
+                // Record recall time for tracking villages
+                DateTime recallTime = DateTime.Now;
+                foreach (var sent in _sentArmies)
+                {
+                    if (recalledVillages.Contains(sent.VillageId) && !sent.RecalledTime.HasValue)
+                        sent.RecalledTime = recallTime;
+                }
+
                 LogInfo("Recalled " + recalled.Count + " army/armies.");
+
+                // Always acknowledge when we execute a recall, regardless of source
+                // (API signal, local interdict detection, or any other trigger)
+                // Coordinator needs to know all recall operations happening on all clients
+                if (recalled.Count > 0 && settings != null)
+                {
+                    try
+                    {
+                        PostAction(settings, "acknowledge_recall", new Dictionary<string, object>
+                        {
+                            ["player_name"] = GetLocalPlayerName(),
+                            ["signal_type"] = "local_recall",
+                            ["armies_recalled"] = recalled.Count
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWarning("Failed to acknowledge recall execution: " + ex.Message);
+                    }
+                }
             }
             catch (Exception ex) { LogError("Recall error: " + ex.Message); }
         }
@@ -2635,6 +2613,44 @@ namespace Kingdoms.Bot.Modules
             _cachedVillageListTime        = DateTime.Now;
             LogDebug("Village list rebuilt: " + result.Count + " entries (own + vassals).");
             return result;
+        }
+
+        /// <summary>
+        /// Validates that a target village still exists and is owned by the expected player.
+        /// Auto-updates the village name if it changed.
+        /// Returns true if valid, false if it should be removed from the queue.
+        /// </summary>
+        public bool ValidateTargetVillage(int villageId, string expectedOwner, out string villageNameOut)
+        {
+            villageNameOut = "";
+            try
+            {
+                if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+                    return false;
+
+                var village = GameEngine.Instance.World.getVillage(villageId);
+                if (village == null)
+                {
+                    LogWarning("[Queue] Target " + villageId + " — REMOVED (village no longer exists)");
+                    return false;
+                }
+
+                // Check if owned by expected player
+                if (village.ownerID <= 0 || village.ownerName != expectedOwner)
+                {
+                    LogWarning("[Queue] Target " + villageId + " (" + village.Name + ") — REMOVED (captured by " +
+                        (string.IsNullOrEmpty(village.ownerName) ? "barbarians" : village.ownerName) + ")");
+                    return false;
+                }
+
+                villageNameOut = village.Name;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogWarning("[Queue] Error validating target " + villageId + ": " + ex.Message);
+                return false;
+            }
         }
 
         private bool PostAttackEvent(AutoBombMultiSettings settings, string action, int sourceVillageId)

@@ -3822,6 +3822,7 @@ namespace Kingdoms.Bot.UI
             _abmQueueClearBtn.Click             += delegate { AbmQueueClear(); };
             _abmQueueSaveBtn.Click              += delegate { AbmQueueSave(); };
             _abmQueueLoadBtn.Click              += delegate { AbmQueueLoad(); };
+            _abmQueueRefreshBtn.Click           += delegate { AbmQueueRefreshTargets(); };
             _abmQueueResetBtn.Click             += delegate { AbmQueueReset(); };
 
             // ── Add Village strip (dynamic — sits between column header and village list) ──
@@ -4551,12 +4552,64 @@ namespace Kingdoms.Bot.UI
                         s.TargetQueue.Add(e);
                     }
                 }
+                // Validate all loaded targets
+                AbmQueueValidateTargets(s, "Load");
                 AbmRefreshQueueList(s);
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Load failed: " + ex.Message, "Auto Bomb Multi",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void AbmQueueRefreshTargets()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null) return;
+            AbmQueueValidateTargets(s, "Refresh");
+            AbmRefreshQueueList(s);
+        }
+
+        private void AbmQueueValidateTargets(AutoBombMultiSettings s, string action)
+        {
+            if (s == null || s.TargetQueue == null || s.TargetQueue.Count == 0)
+                return;
+
+            AutoBombMultiModule mod = AbmModule;
+            if (mod == null) return;
+
+            string playerName = AutoBombMultiModule.GetLocalPlayerName();
+            var toRemove = new List<TargetQueueEntry>();
+            var nameUpdates = new List<string>();
+
+            foreach (var entry in s.TargetQueue)
+            {
+                string villageNameOut;
+                if (!mod.ValidateTargetVillage(entry.VillageId, playerName, out villageNameOut))
+                {
+                    toRemove.Add(entry);
+                }
+                else if (!string.IsNullOrEmpty(villageNameOut) && villageNameOut != entry.Label)
+                {
+                    // Village name changed, auto-update it
+                    nameUpdates.Add("Village " + entry.VillageId + " renamed: " + entry.Label + " → " + villageNameOut);
+                    entry.Label = villageNameOut;
+                }
+            }
+
+            // Remove invalid targets
+            foreach (var entry in toRemove)
+                s.TargetQueue.Remove(entry);
+
+            // Log changes
+            if (toRemove.Count > 0 || nameUpdates.Count > 0)
+            {
+                LogInfo("[Queue] " + action + " validation complete:");
+                foreach (var update in nameUpdates)
+                    LogInfo("  " + update);
+                if (toRemove.Count > 0)
+                    LogInfo("  Removed " + toRemove.Count + " invalid target(s)");
             }
         }
 

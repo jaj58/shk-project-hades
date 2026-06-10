@@ -324,6 +324,7 @@ namespace Kingdoms.Bot.UI
             this._abmQueueClearBtn = new System.Windows.Forms.Button();
             this._abmQueueSaveBtn = new System.Windows.Forms.Button();
             this._abmQueueLoadBtn = new System.Windows.Forms.Button();
+            this._abmQueueRefreshBtn = new System.Windows.Forms.Button();
             this._abmQueueResetBtn = new System.Windows.Forms.Button();
             this._abmQueueStatusLabel = new System.Windows.Forms.Label();
             this._popularityPage = new System.Windows.Forms.TabPage();
@@ -4194,6 +4195,7 @@ namespace Kingdoms.Bot.UI
             this._abmQueueSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
             this._abmQueueSettingsPanel.Controls.Add(this._abmQueueStatusLabel);
             this._abmQueueSettingsPanel.Controls.Add(this._abmQueueResetBtn);
+            this._abmQueueSettingsPanel.Controls.Add(this._abmQueueRefreshBtn);
             this._abmQueueSettingsPanel.Controls.Add(this._abmQueueLoadBtn);
             this._abmQueueSettingsPanel.Controls.Add(this._abmQueueSaveBtn);
             this._abmQueueSettingsPanel.Controls.Add(this._abmQueueClearBtn);
@@ -4367,6 +4369,20 @@ namespace Kingdoms.Bot.UI
             this._abmQueueLoadBtn.TabIndex = 11;
             this._abmQueueLoadBtn.Text = "Load";
             this._abmQueueLoadBtn.UseVisualStyleBackColor = false;
+            //
+            // _abmQueueRefreshBtn
+            //
+            this._abmQueueRefreshBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(90)))), ((int)(((byte)(70)))));
+            this._abmQueueRefreshBtn.FlatAppearance.BorderSize = 0;
+            this._abmQueueRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmQueueRefreshBtn.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this._abmQueueRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmQueueRefreshBtn.Location = new System.Drawing.Point(598, 44);
+            this._abmQueueRefreshBtn.Name = "_abmQueueRefreshBtn";
+            this._abmQueueRefreshBtn.Size = new System.Drawing.Size(60, 22);
+            this._abmQueueRefreshBtn.TabIndex = 12;
+            this._abmQueueRefreshBtn.Text = "Refresh";
+            this._abmQueueRefreshBtn.UseVisualStyleBackColor = false;
             //
             // _abmQueueResetBtn
             //
@@ -6706,6 +6722,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Button _abmQueueClearBtn;
         private System.Windows.Forms.Button _abmQueueSaveBtn;
         private System.Windows.Forms.Button _abmQueueLoadBtn;
+        private System.Windows.Forms.Button _abmQueueRefreshBtn;
         private System.Windows.Forms.Button _abmQueueResetBtn;
         private System.Windows.Forms.Label _abmQueueStatusLabel;
         private System.Windows.Forms.Panel _abSettingsPanel;
