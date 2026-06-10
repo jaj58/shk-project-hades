@@ -729,7 +729,8 @@ namespace Kingdoms.Bot
     public class TargetQueueEntry
     {
         public int VillageId;
-        public string Label = "";      // player name or custom label for display
+        public string Label = "";      // village name or custom label for display
+        public string OwnerName = "";  // owning player at the time the entry was added/validated
         public bool Completed;
     }
 

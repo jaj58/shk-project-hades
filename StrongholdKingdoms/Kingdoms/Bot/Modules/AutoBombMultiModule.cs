@@ -2616,17 +2616,21 @@ namespace Kingdoms.Bot.Modules
         }
 
         /// <summary>
-        /// Validates that a target village still exists and is owned by the expected player.
-        /// Auto-updates the village name if it changed.
-        /// Returns true if valid, false if it should be removed from the queue.
+        /// Validates that a target village still exists and (if expectedOwner is set) is still
+        /// owned by that player. Outputs the current village name and owner so the caller can
+        /// auto-update stale labels and backfill missing owner names.
+        /// Returns true if the entry should stay in the queue, false if it should be removed.
+        /// If the world isn't loaded yet we keep the entry — we can't prove it's stale.
         /// </summary>
-        public bool ValidateTargetVillage(int villageId, string expectedOwner, out string villageNameOut)
+        public bool ValidateTargetVillage(int villageId, string expectedOwner,
+            out string villageNameOut, out string ownerNameOut)
         {
             villageNameOut = "";
+            ownerNameOut = "";
             try
             {
                 if (GameEngine.Instance == null || GameEngine.Instance.World == null)
-                    return false;
+                    return true; // world not loaded — can't validate, keep the entry
 
                 VillageData village = GameEngine.Instance.World.getVillageData(villageId);
                 if (village == null)
@@ -2635,22 +2639,45 @@ namespace Kingdoms.Bot.Modules
                     return false;
                 }
 
-                // Check if owned by expected player
-                if (village.ownerID <= 0 || village.ownerName != expectedOwner)
+                villageNameOut = GameEngine.Instance.World.getVillageName(villageId) ?? "";
+
+                int ownerUserId = GameEngine.Instance.World.getVillageUserID(villageId);
+                if (ownerUserId >= 0)
                 {
-                    LogWarning("[Queue] Target " + villageId + " (" + village.Name + ") — REMOVED (captured by " +
-                        (string.IsNullOrEmpty(village.ownerName) ? "barbarians" : village.ownerName) + ")");
+                    WorldMap.CachedUserInfo info = GameEngine.Instance.World.getStoredUserInfo(ownerUserId);
+                    if (info != null && !string.IsNullOrEmpty(info.userName))
+                        ownerNameOut = info.userName;
+                }
+
+                if (ownerUserId < 0)
+                {
+                    LogWarning("[Queue] Target " + villageId + " (" + villageNameOut +
+                        ") — REMOVED (no longer player-owned)");
                     return false;
                 }
 
-                villageNameOut = village.Name;
+                if (!string.IsNullOrEmpty(expectedOwner) &&
+                    !ownerNameOut.Equals(expectedOwner, StringComparison.OrdinalIgnoreCase))
+                {
+                    LogWarning("[Queue] Target " + villageId + " (" + villageNameOut + ") — REMOVED (captured by " +
+                        (string.IsNullOrEmpty(ownerNameOut) ? "unknown player" : ownerNameOut) +
+                        ", was " + expectedOwner + ")");
+                    return false;
+                }
+
                 return true;
             }
             catch (Exception ex)
             {
-                LogWarning("[Queue] Error validating target " + villageId + ": " + ex.Message);
-                return false;
+                LogWarning("[Queue] Error validating target " + villageId + ": " + ex.Message + " — keeping entry.");
+                return true;
             }
+        }
+
+        /// <summary>Logs a queue change (used by the UI so messages land in the module log).</summary>
+        public void LogQueueInfo(string message)
+        {
+            LogInfo("[Queue] " + message);
         }
 
         private bool PostAttackEvent(AutoBombMultiSettings settings, string action, int sourceVillageId)
