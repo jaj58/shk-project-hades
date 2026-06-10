@@ -1404,7 +1404,7 @@ namespace Kingdoms.Bot.Modules
                         if (allReadyTime == DateTime.MaxValue)
                         {
                             allReadyTime = DateTime.Now;
-                            LogInfo("[Queue] ✓ ALL PLAYERS READY: " + string.Join(", ", readyPlayers));
+                            LogInfo("[Queue] ✓ ALL PLAYERS READY: " + string.Join(", ", readyPlayers.ToArray()));
                             LogInfo("[Queue] Waiting " + AdvanceBufferSeconds + "s buffer before advancing...");
                         }
 
@@ -1422,9 +1422,9 @@ namespace Kingdoms.Bot.Modules
 
                     if (pollCount % 4 == 0)
                     {
-                        string readyStr = readyPlayers.Count > 0 ? " [Ready: " + string.Join(", ", readyPlayers) + "]" : "";
+                        string readyStr = readyPlayers.Count > 0 ? " [Ready: " + string.Join(", ", readyPlayers.ToArray()) + "]" : "";
                         LogInfo("[Queue] " + waitingPlayers.Count + " player(s) still waiting: " +
-                            string.Join(", ", waitingPlayers) + readyStr);
+                            string.Join(", ", waitingPlayers.ToArray()) + readyStr);
                     }
                 }
                 catch (Exception ex) { LogError("[Queue] WaitForArmiesReturnMulti poll error: " + ex.Message); }
