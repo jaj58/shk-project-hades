@@ -166,6 +166,8 @@ namespace Kingdoms.Bot
         public bool SystemNotify = true;
         public bool DiscordNotify = false;
         public bool AutoInterdict = false;
+        public bool SoundNotify = false;
+        public string SoundFile = "";
     }
 
     [Serializable]

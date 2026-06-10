@@ -114,6 +114,9 @@ namespace Kingdoms.Bot.UI
             this._rdMaxLandTimeLabel = new System.Windows.Forms.Label();
             this._rdAutoRecruitMonksCheck = new System.Windows.Forms.CheckBox();
             this._rdTestDiscordBtn = new System.Windows.Forms.Button();
+            this._rdTestSoundBtn = new System.Windows.Forms.Button();
+            this._rdStopSoundBtn = new System.Windows.Forms.Button();
+            this._rdColSound = new System.Windows.Forms.Label();
             this._rdHintLabel = new System.Windows.Forms.Label();
             this._rdInterdictMonkCountInput = new System.Windows.Forms.NumericUpDown();
             this._rdInterdictLabel = new System.Windows.Forms.Label();
@@ -1177,6 +1180,7 @@ namespace Kingdoms.Bot.UI
             this._rdColHeader.Controls.Add(this._rdColMonitor);
             this._rdColHeader.Controls.Add(this._rdColSystemNotify);
             this._rdColHeader.Controls.Add(this._rdColDiscordNotify);
+            this._rdColHeader.Controls.Add(this._rdColSound);
             this._rdColHeader.Controls.Add(this._rdColAutoInterdict);
             this._rdColHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this._rdColHeader.Location = new System.Drawing.Point(0, 176);
@@ -1223,12 +1227,22 @@ namespace Kingdoms.Bot.UI
             this._rdColDiscordNotify.Size = new System.Drawing.Size(60, 20);
             this._rdColDiscordNotify.TabIndex = 3;
             this._rdColDiscordNotify.Text = "Discord\r\nNotify";
-            // 
+            //
+            // _rdColSound
+            //
+            this._rdColSound.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
+            this._rdColSound.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._rdColSound.Location = new System.Drawing.Point(410, 2);
+            this._rdColSound.Name = "_rdColSound";
+            this._rdColSound.Size = new System.Drawing.Size(70, 20);
+            this._rdColSound.TabIndex = 6;
+            this._rdColSound.Text = "Sound\r\nNotify";
+            //
             // _rdColAutoInterdict
-            // 
+            //
             this._rdColAutoInterdict.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._rdColAutoInterdict.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdColAutoInterdict.Location = new System.Drawing.Point(410, 2);
+            this._rdColAutoInterdict.Location = new System.Drawing.Point(480, 2);
             this._rdColAutoInterdict.Name = "_rdColAutoInterdict";
             this._rdColAutoInterdict.Size = new System.Drawing.Size(60, 20);
             this._rdColAutoInterdict.TabIndex = 4;
@@ -1257,6 +1271,8 @@ namespace Kingdoms.Bot.UI
             this._rdSettingsPanel.Controls.Add(this._rdMaxLandTimeLabel);
             this._rdSettingsPanel.Controls.Add(this._rdAutoRecruitMonksCheck);
             this._rdSettingsPanel.Controls.Add(this._rdTestDiscordBtn);
+            this._rdSettingsPanel.Controls.Add(this._rdTestSoundBtn);
+            this._rdSettingsPanel.Controls.Add(this._rdStopSoundBtn);
             this._rdSettingsPanel.Controls.Add(this._rdHintLabel);
             this._rdSettingsPanel.Controls.Add(this._rdInterdictMonkCountInput);
             this._rdSettingsPanel.Controls.Add(this._rdInterdictLabel);
@@ -1427,6 +1443,36 @@ namespace Kingdoms.Bot.UI
             this._rdTestDiscordBtn.TabIndex = 10;
             this._rdTestDiscordBtn.Text = "Test Webhook";
             this._rdTestDiscordBtn.UseVisualStyleBackColor = false;
+            //
+            // _rdTestSoundBtn
+            //
+            this._rdTestSoundBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(160)))), ((int)(((byte)(255)))));
+            this._rdTestSoundBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._rdTestSoundBtn.FlatAppearance.BorderSize = 0;
+            this._rdTestSoundBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._rdTestSoundBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._rdTestSoundBtn.ForeColor = System.Drawing.Color.White;
+            this._rdTestSoundBtn.Location = new System.Drawing.Point(660, 69);
+            this._rdTestSoundBtn.Name = "_rdTestSoundBtn";
+            this._rdTestSoundBtn.Size = new System.Drawing.Size(110, 24);
+            this._rdTestSoundBtn.TabIndex = 11;
+            this._rdTestSoundBtn.Text = "Test Sound";
+            this._rdTestSoundBtn.UseVisualStyleBackColor = false;
+            //
+            // _rdStopSoundBtn
+            //
+            this._rdStopSoundBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(180)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
+            this._rdStopSoundBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._rdStopSoundBtn.FlatAppearance.BorderSize = 0;
+            this._rdStopSoundBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._rdStopSoundBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._rdStopSoundBtn.ForeColor = System.Drawing.Color.White;
+            this._rdStopSoundBtn.Location = new System.Drawing.Point(780, 69);
+            this._rdStopSoundBtn.Name = "_rdStopSoundBtn";
+            this._rdStopSoundBtn.Size = new System.Drawing.Size(110, 24);
+            this._rdStopSoundBtn.TabIndex = 12;
+            this._rdStopSoundBtn.Text = "Stop Sound";
+            this._rdStopSoundBtn.UseVisualStyleBackColor = false;
             // 
             // _rdHintLabel
             // 
@@ -6589,12 +6635,15 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _rdForceRefreshCheck;
         private System.Windows.Forms.Label _rdHintLabel;
         private System.Windows.Forms.Button _rdTestDiscordBtn;
+        private System.Windows.Forms.Button _rdTestSoundBtn;
+        private System.Windows.Forms.Button _rdStopSoundBtn;
         private System.Windows.Forms.Panel _rdSeparator;
         private System.Windows.Forms.Panel _rdColHeader;
         private System.Windows.Forms.Label _rdColActionType;
         private System.Windows.Forms.Label _rdColMonitor;
         private System.Windows.Forms.Label _rdColSystemNotify;
         private System.Windows.Forms.Label _rdColDiscordNotify;
+        private System.Windows.Forms.Label _rdColSound;
         private System.Windows.Forms.Label _rdColAutoInterdict;
         private System.Windows.Forms.Panel _rdActionListPanel;
         // Recruiting tab controls

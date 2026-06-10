@@ -540,6 +540,9 @@ namespace Kingdoms.Bot.Modules
                         "\u26A0 " + actionLabel + " Incoming!", message, 16736352,
                         string.IsNullOrEmpty(pending.Settings.DiscordMentionTag) ? null : pending.Settings.DiscordMentionTag);
 
+                if (actionSettings.SoundNotify)
+                    RadarSoundPlayer.Play(actionSettings.SoundFile);
+
                 if (actionSettings.AutoInterdict)
                 {
                     int totalArmySize = pending.NumPeasants + pending.NumArchers +
@@ -838,6 +841,9 @@ namespace Kingdoms.Bot.Modules
                         DiscordNotifier.SendAsync(settings.DiscordWebhookUrl,
                             "\u26A0 " + actionLabel + commandSuffix + " Incoming!", message, 15105570,
                             string.IsNullOrEmpty(settings.DiscordMentionTag) ? null : settings.DiscordMentionTag);
+
+                    if (first.ActionSettings.SoundNotify)
+                        RadarSoundPlayer.Play(first.ActionSettings.SoundFile);
 
                     if (first.ActionSettings.AutoInterdict)
                         TryAutoInterdict(first.TargetVillage, settings);

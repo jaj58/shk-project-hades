@@ -29,6 +29,7 @@ namespace Kingdoms.Bot.UI
         private Timer _rdRefreshTimer;
         private List<ActionRow> _rdActionRows = new List<ActionRow>();
         private bool _rdLoading;
+        private int _rdLastSoundTestIndex;
 
         // Group Radar runtime state (controls created programmatically)
         private List<GroupActionRow> _grpActionRows = new List<GroupActionRow>();
@@ -500,6 +501,10 @@ namespace Kingdoms.Bot.UI
                 BotLogger.Log("Radar", BotLogLevel.Info, "Test webhook sent.");
             };
 
+            RadarSoundPlayer.Init();
+            _rdTestSoundBtn.Click += delegate { RdTestNextSound(); };
+            _rdStopSoundBtn.Click += delegate { RadarSoundPlayer.Stop(); };
+
             _rdEnabledCheck.CheckedChanged += delegate { RdPushToSettings(); };
             _rdScanIntervalInput.ValueChanged += delegate { RdPushToSettings(); };
             _rdWebhookInput.TextChanged += delegate { RdPushToSettings(); };
@@ -647,6 +652,31 @@ namespace Kingdoms.Bot.UI
 
             _rdActionListPanel.ResumeLayout(false);
             _rdActionListPanel.PerformLayout();
+        }
+
+        // Cycles through action rows with a configured sound file, playing the next one each click
+        private void RdTestNextSound()
+        {
+            RadarSoundPlayer.Stop();
+            if (_rdActionRows.Count == 0) return;
+
+            if (_rdLastSoundTestIndex >= _rdActionRows.Count)
+                _rdLastSoundTestIndex = 0;
+
+            for (int i = 0; i < _rdActionRows.Count; i++)
+            {
+                int index = (_rdLastSoundTestIndex + i) % _rdActionRows.Count;
+                ActionRow row = _rdActionRows[index];
+                if (RadarSoundPlayer.IsSoundFileValid(row.SoundFile))
+                {
+                    RadarSoundPlayer.Play(row.SoundFile);
+                    BotLogger.Log("Radar", BotLogLevel.Info,
+                        "Test: playing sound for " + RadarModule.GetActionLabel(row.ActionKey) + ".");
+                    _rdLastSoundTestIndex = index + 1;
+                    return;
+                }
+            }
+            BotLogger.Log("Radar", BotLogLevel.Warning, "No sound files configured.");
         }
 
         // =====================================================================
