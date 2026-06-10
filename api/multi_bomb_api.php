@@ -520,3 +520,19 @@ function handle_force_recall_all(&$state, $req) {
     $state['force_recall_all'] = true;
     save_and_respond($state, ['state_data' => $state]);
 }
+
+function handle_acknowledge_recall(&$state, $req) {
+    $name = require_field($req, 'player_name');
+    $signal_type = isset($req['signal_type']) ? $req['signal_type'] : 'unknown';
+
+    // Track that this player has acknowledged the recall/cancel signal
+    // Key: "player_name", Value: ["time" => timestamp, "signal_type" => type]
+    if (!isset($state['recall_acknowledged'])) {
+        $state['recall_acknowledged'] = [];
+    }
+    $state['recall_acknowledged'][$name] = [
+        'time' => gmdate('c'),
+        'signal_type' => $signal_type
+    ];
+    save_and_respond($state, ['state_data' => $state]);
+}

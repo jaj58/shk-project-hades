@@ -12,6 +12,7 @@ namespace Kingdoms.Bot.Modules
         private int _currentVillageIndex;
         private List<int> _villageQueue = new List<int>();
         private DateTime _lastVillageAction = DateTime.MinValue;
+        private readonly Random _random = new Random();
 
         // Cached stock exchange data
         private readonly Dictionary<int, StockExchangeCache> _stockExchangeCache =
@@ -28,17 +29,83 @@ namespace Kingdoms.Bot.Modules
         private Dictionary<int, List<PlayerTradeRouteSettings>> _playerRoutesBySender =
             new Dictionary<int, List<PlayerTradeRouteSettings>>();
 
+        // Per-village step state. Each village drains its trade categories in
+        // priority order, one server call per tick, before the queue advances.
+        private int _activeVillageId = -1;
+        private readonly List<TradeCategory> _remainingCategories = new List<TradeCategory>();
+        private readonly Dictionary<TradeCategory, int> _dispatchCounts =
+            new Dictionary<TradeCategory, int>();
+        private DateTime _blockedSince = DateTime.MinValue;
+        // Safety valve: bounds how many dispatches one category of one village can
+        // make per cycle, so a pathological config can't stall the whole queue.
+        private const int MaxDispatchesPerCategory = 20;
+        private const double BlockedTimeoutSeconds = 120.0;
+
         // Price fetch state
         private bool _waitingForPrices;
         private DateTime _priceFetchStarted = DateTime.MinValue;
         private int _priceFetchVillageId = -1;
-        private List<int> _marketsToFetch = new List<int>();   // remaining markets to request (non-premium sequential)
+        private List<int> _marketsToFetch = new List<int>();   // remaining markets to request
         private int _fetchingMarketId = -1;                     // market whose response is currently in-flight
+        private bool _premiumFetch;
         private const double PriceFetchTimeoutSeconds = 15.0;
         private const double PriceCacheValidMinutes = 3.0;
 
+        // Dispatch verification: stockExchangeTrade()/sendResources() returning true
+        // only means the request was SENT — the server result arrives later via the
+        // VillageMap callbacks, which swallow most errors. We track every dispatch
+        // and only count it (stats, player-route progress) once the server confirms.
+        private readonly object _pendingLock = new object();
+        private readonly Dictionary<int, PendingDispatch> _pendingByVillage =
+            new Dictionary<int, PendingDispatch>();
+        private readonly List<TradeResult> _resultQueue = new List<TradeResult>();
+        private const double PendingTimeoutSeconds = 90.0;
+
         // Session statistics
         private readonly TradeSessionStats _stats = new TradeSessionStats();
+
+        private enum TradeCategory
+        {
+            Markets,
+            Routes,
+            PlayerRoutes
+        }
+
+        private enum TradeActionResult
+        {
+            Dispatched, // a server call was made; wait for the response before the next one
+            NoWork,     // nothing (left) to do in this category this cycle
+            Blocked     // the village's send lock is busy; retry next tick
+        }
+
+        private enum PendingKind
+        {
+            MarketSell,
+            MarketBuy,
+            Route,
+            PlayerRoute
+        }
+
+        private class PendingDispatch
+        {
+            public PendingKind Kind;
+            public int VillageId;
+            public int TargetId;
+            public int ResourceId;
+            public int Amount;
+            public string RouteName;
+            public PlayerTradeRouteSettings PlayerRoute;
+            public PlayerTradeResourceEntry PlayerEntry;
+            public DateTime DispatchedAt;
+        }
+
+        private class TradeResult
+        {
+            public PendingDispatch Pending;
+            public bool Success;
+            public bool Unconfirmed; // no server response arrived before the timeout
+            public string Error;
+        }
 
         public override string ModuleName
         {
@@ -67,10 +134,33 @@ namespace Kingdoms.Bot.Modules
             _currentVillageIndex = 0;
             _villageQueue.Clear();
             _waitingForPrices = false;
+            _activeVillageId = -1;
+            _remainingCategories.Clear();
+            _dispatchCounts.Clear();
+            _blockedSince = DateTime.MinValue;
             _stats.Reset();
             try { _stats.SessionStartGold = (long)GameEngine.Instance.World.getCurrentGold(); } catch { }
             _marketsToFetch.Clear();
             _fetchingMarketId = -1;
+            _stockExchangeCache.Clear();
+            lock (_pendingLock)
+            {
+                _pendingByVillage.Clear();
+                _resultQueue.Clear();
+            }
+
+            // Hook the VillageMap trade callbacks so every dispatch is verified
+            // against the actual server response instead of assumed successful.
+            VillageMap.BotStockExchangeTradeResult =
+                new Action<StockExchangeTrade_ReturnType>(OnStockExchangeTradeResult);
+            VillageMap.BotSendMarketResourcesResult =
+                new Action<SendMarketResources_ReturnType>(OnSendMarketResourcesResult);
+        }
+
+        protected override void OnShutdown()
+        {
+            VillageMap.BotStockExchangeTradeResult = null;
+            VillageMap.BotSendMarketResourcesResult = null;
         }
 
         protected override void OnTick()
@@ -78,79 +168,21 @@ namespace Kingdoms.Bot.Modules
             TradeSettings settings = Settings;
             if (settings == null) return;
 
-            // If waiting for price data, check timeout
+            // Apply confirmed/failed trade results on the tick thread first so
+            // player-route progress and merchant counts are current before we
+            // decide on the next dispatch.
+            DrainTradeResults(settings);
+
             if (_waitingForPrices)
             {
-                if ((DateTime.Now - _priceFetchStarted).TotalSeconds > PriceFetchTimeoutSeconds)
-                {
-                    LogWarning("Price fetch timed out for village " + _priceFetchVillageId + ", proceeding without prices.");
-                    _waitingForPrices = false;
-                }
-                else
-                {
-                    // Check if we got the data
-                    if (HasFreshPricesForVillage(_priceFetchVillageId, settings))
-                    {
-                        LogDebug("Price data received for " + GetVillageName(_priceFetchVillageId));
-                        _waitingForPrices = false;
-                    }
-                    else
-                    {
-                        // For non-premium sequential fetching: detect when the in-flight market's
-                        // data has arrived and immediately dispatch the next one.
-                        if (_fetchingMarketId != -1 && _marketsToFetch.Count > 0)
-                        {
-                            StockExchangeCache arrived;
-                            bool responseArrived = _stockExchangeCache.TryGetValue(_fetchingMarketId, out arrived) &&
-                                                   (DateTime.Now - arrived.LastUpdated).TotalMinutes < PriceCacheValidMinutes;
-                            if (responseArrived)
-                            {
-                                try { DispatchNextMarketFetch(); }
-                                catch (Exception ex)
-                                {
-                                    LogError("Failed to request stock exchange data: " + ex.Message);
-                                    _waitingForPrices = false;
-                                }
-                            }
-                        }
-                        return; // Still waiting
-                    }
-                }
-
-                // Now process the village we were waiting on
-                _lastVillageAction = DateTime.Now;
-                ProcessVillage(_priceFetchVillageId, settings);
-                _priceFetchVillageId = -1;
-
-                if (_currentVillageIndex >= _villageQueue.Count)
-                    LogInfo("Trade cycle complete. Processed " + _villageQueue.Count + " village(s).");
+                HandlePriceWait(settings);
                 return;
             }
 
-            // If we're mid-cycle, process next village
+            // If we're mid-cycle, process the current village
             if (_villageQueue.Count > 0 && _currentVillageIndex < _villageQueue.Count)
             {
-                if ((DateTime.Now - _lastVillageAction).TotalMilliseconds < settings.DelayBetweenVillagesMs)
-                    return;
-
-                int villageId = _villageQueue[_currentVillageIndex];
-                _currentVillageIndex++;
-
-                // Check if this village needs market trading and needs price data
-                VillageMarketTradeInfo marketInfo = settings.GetVillageMarketInfo(villageId);
-                if (marketInfo.IsTrading && marketInfo.MarketTargets.Count > 0 &&
-                    !HasFreshPricesForVillage(villageId, settings))
-                {
-                    // Need to fetch prices first
-                    RequestPrices(villageId, marketInfo, settings);
-                    return;
-                }
-
-                _lastVillageAction = DateTime.Now;
-                ProcessVillage(villageId, settings);
-
-                if (_currentVillageIndex >= _villageQueue.Count)
-                    LogInfo("Trade cycle complete. Processed " + _villageQueue.Count + " village(s).");
+                ProcessQueue(settings);
                 return;
             }
 
@@ -160,6 +192,7 @@ namespace Kingdoms.Bot.Modules
                 return;
 
             _currentVillageIndex = 0;
+            _activeVillageId = -1;
             _lastFullCycle = DateTime.Now;
             RefreshCapitalsList();
             BuildUnifiedVillageQueue(settings);
@@ -174,148 +207,207 @@ namespace Kingdoms.Bot.Modules
             }
         }
 
-        private bool HasFreshPricesForVillage(int villageId, TradeSettings settings)
-        {
-            VillageMarketTradeInfo info = settings.GetVillageMarketInfo(villageId);
-            if (info.MarketTargets.Count == 0) return true;
+        // =====================================================================
+        // Cycle / queue processing
+        // =====================================================================
 
-            // Require ALL markets to have fresh cache before trading.
-            // This ensures FindBestMarket can compare all candidates and pick
-            // the best price, rather than trading with partial data.
-            foreach (int marketId in info.MarketTargets)
+        private void ProcessQueue(TradeSettings settings)
+        {
+            int villageId = _villageQueue[_currentVillageIndex];
+
+            if (_activeVillageId != villageId)
             {
-                StockExchangeCache cache;
-                if (!_stockExchangeCache.TryGetValue(marketId, out cache) ||
-                    (DateTime.Now - cache.LastUpdated).TotalMinutes >= PriceCacheValidMinutes)
-                    return false;
+                BeginVillage(villageId, settings);
+                if (_waitingForPrices)
+                    return; // price fetch in flight; processing resumes when it resolves
             }
-            return true;
+
+            if (_remainingCategories.Count == 0)
+            {
+                AdvanceToNextVillage();
+                return;
+            }
+
+            if ((DateTime.Now - _lastVillageAction).TotalMilliseconds < settings.DelayBetweenVillagesMs)
+                return;
+
+            StepVillage(villageId, settings);
         }
 
-        private void RequestPrices(int villageId, VillageMarketTradeInfo marketInfo, TradeSettings settings)
+        private void BeginVillage(int villageId, TradeSettings settings)
         {
-            _waitingForPrices = true;
-            _priceFetchStarted = DateTime.Now;
-            _priceFetchVillageId = villageId;
+            _activeVillageId = villageId;
+            _remainingCategories.Clear();
+            _dispatchCounts.Clear();
+            _blockedSince = DateTime.MinValue;
 
-            // Build full list of stale markets
-            _marketsToFetch.Clear();
-            _fetchingMarketId = -1;
-            foreach (int marketId in marketInfo.MarketTargets)
+            VillageMap map = GameEngine.Instance.getVillage(villageId);
+            if (map == null)
             {
-                StockExchangeCache cache;
-                if (!_stockExchangeCache.TryGetValue(marketId, out cache) ||
-                    (DateTime.Now - cache.LastUpdated).TotalMinutes >= PriceCacheValidMinutes)
-                    _marketsToFetch.Add(marketId);
+                LogDebug("Village " + villageId + " not loaded, skipping.");
+                return;
             }
 
-            LogDebug(GetVillageName(villageId) + ": Fetching prices from " + _marketsToFetch.Count + " market(s)...");
+            VillageMarketTradeInfo marketInfo = settings.GetVillageMarketInfo(villageId);
+            bool hasMarkets = marketInfo.IsTrading && marketInfo.MarketTargets.Count > 0;
+            bool hasRoutes = _routesBySender.ContainsKey(villageId);
+            bool hasPlayerRoutes = _playerRoutesBySender.ContainsKey(villageId);
 
-            try
+            // Categories run in priority order: each one drains fully (one server
+            // call per tick) before the next is attempted.
+            switch (settings.Priority)
             {
-                RemoteServices.Instance.set_GetStockExchangeData_UserCallBack(
-                    new RemoteServices.GetStockExchangeData_UserCallBack(OnStockExchangeDataReceived));
-
-                if (GameEngine.Instance.World.isAccountPremium())
-                {
-                    // Premium: fetch all at once (up to 20)
-                    List<int> batch = _marketsToFetch.Count > 20
-                        ? _marketsToFetch.GetRange(0, 20)
-                        : new List<int>(_marketsToFetch);
-                    RemoteServices.Instance.GetStockExchangePremiumData(villageId, batch.ToArray());
-                    _marketsToFetch.Clear(); // all dispatched in one call
-                }
-                else
-                {
-                    // Non-premium: dispatch first market; the rest are chained via OnTick
-                    DispatchNextMarketFetch();
-                }
+                case TradePriority.VillageRoutes:
+                    if (hasRoutes) _remainingCategories.Add(TradeCategory.Routes);
+                    if (hasMarkets) _remainingCategories.Add(TradeCategory.Markets);
+                    if (hasPlayerRoutes) _remainingCategories.Add(TradeCategory.PlayerRoutes);
+                    break;
+                case TradePriority.PlayerRoutes:
+                    if (hasPlayerRoutes) _remainingCategories.Add(TradeCategory.PlayerRoutes);
+                    if (hasRoutes) _remainingCategories.Add(TradeCategory.Routes);
+                    if (hasMarkets) _remainingCategories.Add(TradeCategory.Markets);
+                    break;
+                default: // MarketSellFirst / MarketBuyFirst
+                    if (hasMarkets) _remainingCategories.Add(TradeCategory.Markets);
+                    if (hasRoutes) _remainingCategories.Add(TradeCategory.Routes);
+                    if (hasPlayerRoutes) _remainingCategories.Add(TradeCategory.PlayerRoutes);
+                    break;
             }
-            catch (System.Exception ex)
+
+            if (_remainingCategories.Count == 0)
             {
-                LogError("Failed to request stock exchange data: " + ex.Message);
-                _waitingForPrices = false;
+                LogDebug(GetVillageName(villageId) + ": No market trading, routes or player routes configured.");
+                return;
+            }
+
+            LogDebug(GetVillageName(villageId) + ": Processing (markets=" + hasMarkets +
+                ", routes=" + hasRoutes + ", playerRoutes=" + hasPlayerRoutes +
+                ", merchants=" + map.m_numTradersAtHome + ")");
+
+            if (settings.AutoHireMerchants)
+                AutoHireMerchants(map, settings);
+
+            if (hasMarkets && !HasFreshPricesForVillage(villageId, settings))
+                RequestPrices(villageId, marketInfo, settings);
+        }
+
+        private void StepVillage(int villageId, TradeSettings settings)
+        {
+            // Wait for the previous dispatch to be confirmed before making the
+            // next one — otherwise resource levels, merchant counts and player
+            // route progress are stale and we'd double-send.
+            if (HasPendingDispatch(villageId))
+            {
+                if (_blockedSince == DateTime.MinValue)
+                {
+                    _blockedSince = DateTime.Now;
+                }
+                else if ((DateTime.Now - _blockedSince).TotalSeconds > BlockedTimeoutSeconds)
+                {
+                    LogWarning(GetVillageName(villageId) + ": waited " + (int)BlockedTimeoutSeconds +
+                        "s for a trade response, skipping village this cycle.");
+                    AdvanceToNextVillage();
+                }
+                return;
+            }
+
+            VillageMap map = GameEngine.Instance.getVillage(villageId);
+            if (map == null)
+            {
+                LogDebug("Village " + villageId + " not loaded, skipping.");
+                AdvanceToNextVillage();
+                return;
+            }
+
+            string villageName = GetVillageName(villageId);
+
+            while (_remainingCategories.Count > 0)
+            {
+                TradeCategory category = _remainingCategories[0];
+
+                if (GetDispatchCount(category) >= MaxDispatchesPerCategory)
+                {
+                    LogDebug(villageName + ": " + category + " dispatch cap reached for this cycle.");
+                    _remainingCategories.RemoveAt(0);
+                    continue;
+                }
+
+                TradeActionResult result = TryCategory(category, map, villageId, villageName, settings);
+
+                if (result == TradeActionResult.Dispatched)
+                {
+                    _dispatchCounts[category] = GetDispatchCount(category) + 1;
+                    _lastVillageAction = DateTime.Now;
+                    _blockedSince = DateTime.MinValue;
+                    return; // one server call per tick; same category gets retried next tick
+                }
+
+                if (result == TradeActionResult.Blocked)
+                {
+                    // The send lock is busy. Stop here rather than falling through
+                    // to a lower-priority category, which would let it jump the
+                    // queue once the lock clears (priority inversion).
+                    if (_blockedSince == DateTime.MinValue)
+                    {
+                        _blockedSince = DateTime.Now;
+                    }
+                    else if ((DateTime.Now - _blockedSince).TotalSeconds > BlockedTimeoutSeconds)
+                    {
+                        LogWarning(villageName + ": send lock stuck for " + (int)BlockedTimeoutSeconds +
+                            "s, skipping village this cycle.");
+                        AdvanceToNextVillage();
+                    }
+                    return;
+                }
+
+                // NoWork: category exhausted for this cycle, move to the next one.
+                _remainingCategories.RemoveAt(0);
+                _blockedSince = DateTime.MinValue;
+            }
+
+            AdvanceToNextVillage();
+        }
+
+        private TradeActionResult TryCategory(TradeCategory category, VillageMap map,
+            int villageId, string villageName, TradeSettings settings)
+        {
+            switch (category)
+            {
+                case TradeCategory.Markets:
+                    return TryMarketTrade(map, villageId, villageName,
+                        settings.GetVillageMarketInfo(villageId), settings);
+
+                case TradeCategory.Routes:
+                    List<TradeRouteSettings> routes;
+                    if (!_routesBySender.TryGetValue(villageId, out routes))
+                        return TradeActionResult.NoWork;
+                    return TryRouteSend(map, villageId, villageName, routes, settings);
+
+                default:
+                    List<PlayerTradeRouteSettings> playerRoutes;
+                    if (!_playerRoutesBySender.TryGetValue(villageId, out playerRoutes))
+                        return TradeActionResult.NoWork;
+                    return TryPlayerRouteSend(map, villageId, villageName, playerRoutes, settings);
             }
         }
 
-        private void DispatchNextMarketFetch()
+        private int GetDispatchCount(TradeCategory category)
         {
-            if (_marketsToFetch.Count == 0) return;
-            _fetchingMarketId = _marketsToFetch[0];
-            _marketsToFetch.RemoveAt(0);
-            _priceFetchStarted = DateTime.Now; // reset per-request timeout
-            RemoteServices.Instance.GetStockExchangeData(_fetchingMarketId, true);
+            int count;
+            if (_dispatchCounts.TryGetValue(category, out count))
+                return count;
+            return 0;
         }
 
-        private void OnStockExchangeDataReceived(GetStockExchangeData_ReturnType returnData)
+        private void AdvanceToNextVillage()
         {
-            if (returnData == null || !returnData.Success) return;
+            _currentVillageIndex++;
+            _activeVillageId = -1;
+            _remainingCategories.Clear();
+            _blockedSince = DateTime.MinValue;
 
-            // Store the main market data
-            StockExchangePanel.StockExchangeInfo info = new StockExchangePanel.StockExchangeInfo();
-            info.lastTime = DateTime.Now;
-            info.villageID = returnData.villageID;
-            info.woodLevel = returnData.woodLevel;
-            info.stoneLevel = returnData.stoneLevel;
-            info.ironLevel = returnData.ironLevel;
-            info.pitchLevel = returnData.pitchLevel;
-            info.aleLevel = returnData.aleLevel;
-            info.applesLevel = returnData.applesLevel;
-            info.breadLevel = returnData.breadLevel;
-            info.meatLevel = returnData.meatLevel;
-            info.cheeseLevel = returnData.cheeseLevel;
-            info.vegLevel = returnData.vegLevel;
-            info.fishLevel = returnData.fishLevel;
-            info.bowsLevel = returnData.bowsLevel;
-            info.pikesLevel = returnData.pikesLevel;
-            info.swordsLevel = returnData.swordsLevel;
-            info.armourLevel = returnData.armourLevel;
-            info.catapultsLevel = returnData.catapultsLevel;
-            info.furnitureLevel = returnData.furnitureLevel;
-            info.clothesLevel = returnData.clothesLevel;
-            info.saltLevel = returnData.saltLevel;
-            info.venisonLevel = returnData.venisonLevel;
-            info.silkLevel = returnData.silkLevel;
-            info.spicesLevel = returnData.spicesLevel;
-            info.metalwareLevel = returnData.metalwareLevel;
-            info.wineLevel = returnData.wineLevel;
-            UpdateStockExchangeCache(returnData.villageID, info);
-
-            // Store premium multi-market data if available
-            if (returnData.otherVillages != null)
-            {
-                foreach (GetStockExchangeData_ReturnType other in returnData.otherVillages)
-                {
-                    StockExchangePanel.StockExchangeInfo otherInfo = new StockExchangePanel.StockExchangeInfo();
-                    otherInfo.lastTime = DateTime.Now;
-                    otherInfo.villageID = other.villageID;
-                    otherInfo.woodLevel = other.woodLevel;
-                    otherInfo.stoneLevel = other.stoneLevel;
-                    otherInfo.ironLevel = other.ironLevel;
-                    otherInfo.pitchLevel = other.pitchLevel;
-                    otherInfo.aleLevel = other.aleLevel;
-                    otherInfo.applesLevel = other.applesLevel;
-                    otherInfo.breadLevel = other.breadLevel;
-                    otherInfo.meatLevel = other.meatLevel;
-                    otherInfo.cheeseLevel = other.cheeseLevel;
-                    otherInfo.vegLevel = other.vegLevel;
-                    otherInfo.fishLevel = other.fishLevel;
-                    otherInfo.bowsLevel = other.bowsLevel;
-                    otherInfo.pikesLevel = other.pikesLevel;
-                    otherInfo.swordsLevel = other.swordsLevel;
-                    otherInfo.armourLevel = other.armourLevel;
-                    otherInfo.catapultsLevel = other.catapultsLevel;
-                    otherInfo.furnitureLevel = other.furnitureLevel;
-                    otherInfo.clothesLevel = other.clothesLevel;
-                    otherInfo.saltLevel = other.saltLevel;
-                    otherInfo.venisonLevel = other.venisonLevel;
-                    otherInfo.silkLevel = other.silkLevel;
-                    otherInfo.spicesLevel = other.spicesLevel;
-                    otherInfo.metalwareLevel = other.metalwareLevel;
-                    otherInfo.wineLevel = other.wineLevel;
-                    UpdateStockExchangeCache(other.villageID, otherInfo);
-                }
-            }
+            if (_currentVillageIndex >= _villageQueue.Count)
+                LogInfo("Trade cycle complete. Processed " + _villageQueue.Count + " village(s).");
         }
 
         private void BuildUnifiedVillageQueue(TradeSettings settings)
@@ -380,7 +472,14 @@ namespace Kingdoms.Bot.Modules
                     foreach (int id in userVillages)
                     {
                         VillageMarketTradeInfo info = settings.GetVillageMarketInfo(id);
-                        bool hasMarkets = info.IsTrading;
+
+                        // Re-validate market targets once per cycle: parish/faction
+                        // changes can revoke trade rights, and the server silently
+                        // rejects trades with markets we can no longer use.
+                        if (info.IsTrading && info.MarketTargets.Count > 0)
+                            RevalidateMarketTargets(id, info);
+
+                        bool hasMarkets = info.IsTrading && info.MarketTargets.Count > 0;
                         bool hasRoutes = _routesBySender.ContainsKey(id);
                         bool hasPlayerRoutes = _playerRoutesBySender.ContainsKey(id);
 
@@ -396,81 +495,35 @@ namespace Kingdoms.Bot.Modules
                 }
             }
 
+            // Shuffle so the same village doesn't always trade (and spend the
+            // shared gold pool) first every cycle.
+            for (int i = _villageQueue.Count - 1; i > 0; i--)
+            {
+                int j = _random.Next(i + 1);
+                int tmp = _villageQueue[i];
+                _villageQueue[i] = _villageQueue[j];
+                _villageQueue[j] = tmp;
+            }
+
             LogDebug("Queue built: " + _villageQueue.Count + " village(s). " +
                      _routesBySender.Count + " village(s) with routes. " +
                      _playerRoutesBySender.Count + " village(s) with player routes.");
         }
 
-        /// <summary>
-        /// Process one village: do the prioritised trade type first, then the other if merchants remain.
-        /// Only ONE server call per type (respecting the 45-second cooldown on VillageMap).
-        /// </summary>
-        private void ProcessVillage(int villageId, TradeSettings settings)
+        private void RevalidateMarketTargets(int villageId, VillageMarketTradeInfo info)
         {
-            VillageMap map = GameEngine.Instance.getVillage(villageId);
-            if (map == null)
+            for (int i = info.MarketTargets.Count - 1; i >= 0; i--)
             {
-                LogDebug("Village " + villageId + " not loaded, skipping.");
-                return;
-            }
-
-            string villageName = GetVillageName(villageId);
-
-            if (settings.AutoHireMerchants)
-                AutoHireMerchants(map, settings);
-
-            VillageMarketTradeInfo marketInfo = settings.GetVillageMarketInfo(villageId);
-            bool hasMarkets = marketInfo.IsTrading;
-            List<TradeRouteSettings> villageRoutes;
-            bool hasRoutes = _routesBySender.TryGetValue(villageId, out villageRoutes);
-            List<PlayerTradeRouteSettings> playerRoutes;
-            bool hasPlayerRoutes = _playerRoutesBySender.TryGetValue(villageId, out playerRoutes);
-
-            if (!hasMarkets && !hasRoutes && !hasPlayerRoutes)
-            {
-                LogDebug(villageName + ": No market trading, routes or player routes configured.");
-                return;
-            }
-
-            LogDebug(villageName + ": Processing (markets=" + hasMarkets + ", routes=" + hasRoutes +
-                ", playerRoutes=" + hasPlayerRoutes + ", merchants=" + map.m_numTradersAtHome + ")");
-
-            // Only attempt ONE trade type per tick per village.
-            // sendResources() and stockExchangeTrade() share a 45-second cooldown
-            // (inMarketSend/lastMarketSend), so the second call would always fail.
-            // Also, m_numTradersAtHome isn't updated until the server callback returns,
-            // so the second call would read stale merchant counts.
-            bool dispatched = false;
-
-            switch (settings.Priority)
-            {
-                case TradePriority.MarketSellFirst:
-                case TradePriority.MarketBuyFirst:
-                    if (hasMarkets && !dispatched)
-                        dispatched = TryMarketTrade(map, villageId, villageName, marketInfo, settings);
-                    if (hasRoutes && !dispatched)
-                        dispatched = TryRouteSend(map, villageId, villageName, villageRoutes, settings);
-                    if (hasPlayerRoutes && !dispatched)
-                        TryPlayerRouteSend(map, villageId, villageName, playerRoutes, settings);
-                    break;
-
-                case TradePriority.VillageRoutes:
-                    if (hasRoutes && !dispatched)
-                        dispatched = TryRouteSend(map, villageId, villageName, villageRoutes, settings);
-                    if (hasMarkets && !dispatched)
-                        dispatched = TryMarketTrade(map, villageId, villageName, marketInfo, settings);
-                    if (hasPlayerRoutes && !dispatched)
-                        TryPlayerRouteSend(map, villageId, villageName, playerRoutes, settings);
-                    break;
-
-                case TradePriority.PlayerRoutes:
-                    if (hasPlayerRoutes && !dispatched)
-                        dispatched = TryPlayerRouteSend(map, villageId, villageName, playerRoutes, settings);
-                    if (hasRoutes && !dispatched)
-                        dispatched = TryRouteSend(map, villageId, villageName, villageRoutes, settings);
-                    if (hasMarkets && !dispatched)
-                        TryMarketTrade(map, villageId, villageName, marketInfo, settings);
-                    break;
+                int marketId = info.MarketTargets[i];
+                bool allowed = false;
+                try { allowed = GameEngine.Instance.World.allowExchangeTrade(marketId, villageId); }
+                catch { allowed = true; } // don't drop markets on a transient lookup error
+                if (!allowed)
+                {
+                    LogWarning(GetVillageName(villageId) + ": market " + GetVillageName(marketId) +
+                        " is no longer tradeable, removing from targets.");
+                    info.MarketTargets.RemoveAt(i);
+                }
             }
         }
 
@@ -497,15 +550,396 @@ namespace Kingdoms.Bot.Modules
         }
 
         // =====================================================================
+        // Price fetching
+        // =====================================================================
+
+        private bool HasFreshPricesForVillage(int villageId, TradeSettings settings)
+        {
+            VillageMarketTradeInfo info = settings.GetVillageMarketInfo(villageId);
+            if (info.MarketTargets.Count == 0) return true;
+
+            // Require ALL markets to have fresh cache before trading.
+            // This ensures FindBestMarket can compare all candidates and pick
+            // the best price, rather than trading with partial data.
+            foreach (int marketId in info.MarketTargets)
+            {
+                StockExchangeCache cache;
+                if (!_stockExchangeCache.TryGetValue(marketId, out cache) ||
+                    (DateTime.Now - cache.LastUpdated).TotalMinutes >= PriceCacheValidMinutes)
+                    return false;
+            }
+            return true;
+        }
+
+        private void HandlePriceWait(TradeSettings settings)
+        {
+            if (HasFreshPricesForVillage(_priceFetchVillageId, settings))
+            {
+                LogDebug("Price data received for " + GetVillageName(_priceFetchVillageId));
+                _waitingForPrices = false;
+                _priceFetchVillageId = -1;
+                return;
+            }
+
+            if ((DateTime.Now - _priceFetchStarted).TotalSeconds > PriceFetchTimeoutSeconds)
+            {
+                LogWarning("Price fetch timed out for " + GetVillageName(_priceFetchVillageId) +
+                    "; markets without fresh prices will be skipped (no blind trades).");
+                _waitingForPrices = false;
+                _priceFetchVillageId = -1;
+                return;
+            }
+
+            // Chained fetching: when the in-flight request's data arrives,
+            // immediately dispatch the next one.
+            if (_fetchingMarketId != -1 && _marketsToFetch.Count > 0)
+            {
+                StockExchangeCache arrived;
+                bool responseArrived = _stockExchangeCache.TryGetValue(_fetchingMarketId, out arrived) &&
+                                       (DateTime.Now - arrived.LastUpdated).TotalMinutes < PriceCacheValidMinutes;
+                if (responseArrived)
+                {
+                    try { DispatchNextMarketFetch(); }
+                    catch (Exception ex)
+                    {
+                        LogError("Failed to request stock exchange data: " + ex.Message);
+                        _waitingForPrices = false;
+                        _priceFetchVillageId = -1;
+                    }
+                }
+            }
+        }
+
+        private void RequestPrices(int villageId, VillageMarketTradeInfo marketInfo, TradeSettings settings)
+        {
+            // Build the list of stale markets
+            _marketsToFetch.Clear();
+            _fetchingMarketId = -1;
+            foreach (int marketId in marketInfo.MarketTargets)
+            {
+                StockExchangeCache cache;
+                if (!_stockExchangeCache.TryGetValue(marketId, out cache) ||
+                    (DateTime.Now - cache.LastUpdated).TotalMinutes >= PriceCacheValidMinutes)
+                    _marketsToFetch.Add(marketId);
+            }
+
+            if (_marketsToFetch.Count == 0)
+                return;
+
+            _waitingForPrices = true;
+            _priceFetchStarted = DateTime.Now;
+            _priceFetchVillageId = villageId;
+            try { _premiumFetch = GameEngine.Instance.World.isAccountPremium(); }
+            catch { _premiumFetch = false; }
+
+            // Nearest first, so the primary of the first batch is the closest market.
+            int sourceId = villageId;
+            _marketsToFetch.Sort(delegate(int a, int b)
+            {
+                int da = GameEngine.Instance.World.getSquareDistance(sourceId, a);
+                int db = GameEngine.Instance.World.getSquareDistance(sourceId, b);
+                return da.CompareTo(db);
+            });
+
+            LogDebug(GetVillageName(villageId) + ": Fetching prices for " + _marketsToFetch.Count +
+                " market(s)" + (_premiumFetch ? " (premium batches)" : "") + "...");
+
+            try
+            {
+                DispatchNextMarketFetch();
+            }
+            catch (Exception ex)
+            {
+                LogError("Failed to request stock exchange data: " + ex.Message);
+                _waitingForPrices = false;
+                _priceFetchVillageId = -1;
+            }
+        }
+
+        private void DispatchNextMarketFetch()
+        {
+            if (_marketsToFetch.Count == 0) return;
+
+            // Re-register every time: the game's own stock exchange panels can
+            // overwrite this global callback at any moment.
+            RemoteServices.Instance.set_GetStockExchangeData_UserCallBack(
+                new RemoteServices.GetStockExchangeData_UserCallBack(OnStockExchangeDataReceived));
+
+            _priceFetchStarted = DateTime.Now; // per-request timeout
+
+            // The primary village of the request must itself be a market/capital —
+            // the server returns THAT village's exchange data (plus closeVillages
+            // for premium accounts). This mirrors StockExchangePanel; passing our
+            // own village as the primary does not work.
+            int primary = _marketsToFetch[0];
+            _marketsToFetch.RemoveAt(0);
+            _fetchingMarketId = primary;
+
+            if (_premiumFetch && _marketsToFetch.Count > 0)
+            {
+                int batchSize = Math.Min(20, _marketsToFetch.Count);
+                int[] batch = new int[batchSize];
+                for (int i = 0; i < batchSize; i++)
+                    batch[i] = _marketsToFetch[i];
+                _marketsToFetch.RemoveRange(0, batchSize);
+                RemoteServices.Instance.GetStockExchangePremiumData(primary, batch);
+            }
+            else
+            {
+                RemoteServices.Instance.GetStockExchangeData(primary, true);
+            }
+        }
+
+        private void OnStockExchangeDataReceived(GetStockExchangeData_ReturnType returnData)
+        {
+            if (returnData == null) return;
+
+            if (!returnData.Success)
+            {
+                string error;
+                try { error = ErrorCodes.getErrorString(returnData.m_errorCode, returnData.m_errorID); }
+                catch { error = "unknown error"; }
+                LogWarning("Price fetch failed for " + GetVillageName(returnData.villageID) + ": " + error);
+                return;
+            }
+
+            UpdateStockExchangeCache(returnData.villageID, CopyExchangeInfo(returnData));
+
+            // Premium multi-market data
+            if (returnData.otherVillages != null)
+            {
+                foreach (GetStockExchangeData_ReturnType other in returnData.otherVillages)
+                    UpdateStockExchangeCache(other.villageID, CopyExchangeInfo(other));
+            }
+        }
+
+        private static StockExchangePanel.StockExchangeInfo CopyExchangeInfo(
+            GetStockExchangeData_ReturnType data)
+        {
+            StockExchangePanel.StockExchangeInfo info = new StockExchangePanel.StockExchangeInfo();
+            info.lastTime = DateTime.Now;
+            info.villageID = data.villageID;
+            info.woodLevel = data.woodLevel;
+            info.stoneLevel = data.stoneLevel;
+            info.ironLevel = data.ironLevel;
+            info.pitchLevel = data.pitchLevel;
+            info.aleLevel = data.aleLevel;
+            info.applesLevel = data.applesLevel;
+            info.breadLevel = data.breadLevel;
+            info.meatLevel = data.meatLevel;
+            info.cheeseLevel = data.cheeseLevel;
+            info.vegLevel = data.vegLevel;
+            info.fishLevel = data.fishLevel;
+            info.bowsLevel = data.bowsLevel;
+            info.pikesLevel = data.pikesLevel;
+            info.swordsLevel = data.swordsLevel;
+            info.armourLevel = data.armourLevel;
+            info.catapultsLevel = data.catapultsLevel;
+            info.furnitureLevel = data.furnitureLevel;
+            info.clothesLevel = data.clothesLevel;
+            info.saltLevel = data.saltLevel;
+            info.venisonLevel = data.venisonLevel;
+            info.silkLevel = data.silkLevel;
+            info.spicesLevel = data.spicesLevel;
+            info.metalwareLevel = data.metalwareLevel;
+            info.wineLevel = data.wineLevel;
+            return info;
+        }
+
+        // =====================================================================
+        // Dispatch verification
+        // =====================================================================
+
+        private void OnStockExchangeTradeResult(StockExchangeTrade_ReturnType returnData)
+        {
+            if (returnData == null) return;
+            string error = null;
+            if (!returnData.Success)
+            {
+                try { error = ErrorCodes.getErrorString(returnData.m_errorCode, returnData.m_errorID); }
+                catch { error = "error code " + returnData.m_errorCode; }
+            }
+            QueueTradeResult(returnData.villageID, returnData.Success, error);
+        }
+
+        private void OnSendMarketResourcesResult(SendMarketResources_ReturnType returnData)
+        {
+            if (returnData == null) return;
+            string error = null;
+            if (!returnData.Success)
+            {
+                try { error = ErrorCodes.getErrorString(returnData.m_errorCode, returnData.m_errorID); }
+                catch { error = "error code " + returnData.m_errorCode; }
+            }
+            QueueTradeResult(returnData.villageID, returnData.Success, error);
+        }
+
+        // Runs on RPC threads: only queue the result; effects are applied on the
+        // module's tick thread in DrainTradeResults.
+        private void QueueTradeResult(int villageId, bool success, string error)
+        {
+            lock (_pendingLock)
+            {
+                PendingDispatch pending;
+                if (!_pendingByVillage.TryGetValue(villageId, out pending))
+                    return; // not a bot dispatch (e.g. a manual trade from the game UI)
+                _pendingByVillage.Remove(villageId);
+
+                TradeResult result = new TradeResult();
+                result.Pending = pending;
+                result.Success = success;
+                result.Error = error;
+                _resultQueue.Add(result);
+            }
+        }
+
+        private void RecordPending(PendingKind kind, int villageId, int targetId, int resourceId,
+            int amount, string routeName, PlayerTradeRouteSettings playerRoute,
+            PlayerTradeResourceEntry playerEntry)
+        {
+            PendingDispatch pending = new PendingDispatch();
+            pending.Kind = kind;
+            pending.VillageId = villageId;
+            pending.TargetId = targetId;
+            pending.ResourceId = resourceId;
+            pending.Amount = amount;
+            pending.RouteName = routeName;
+            pending.PlayerRoute = playerRoute;
+            pending.PlayerEntry = playerEntry;
+            pending.DispatchedAt = DateTime.Now;
+
+            lock (_pendingLock)
+            {
+                _pendingByVillage[villageId] = pending;
+            }
+        }
+
+        private bool HasPendingDispatch(int villageId)
+        {
+            lock (_pendingLock)
+            {
+                return _pendingByVillage.ContainsKey(villageId);
+            }
+        }
+
+        private void DrainTradeResults(TradeSettings settings)
+        {
+            List<TradeResult> results = null;
+
+            lock (_pendingLock)
+            {
+                // Expire dispatches whose response never arrived (lost response or
+                // the global callback was overwritten by a game panel). Treat them
+                // as sent — the pre-verification module did the same — but say so.
+                List<int> expired = null;
+                foreach (KeyValuePair<int, PendingDispatch> kv in _pendingByVillage)
+                {
+                    if ((DateTime.Now - kv.Value.DispatchedAt).TotalSeconds > PendingTimeoutSeconds)
+                    {
+                        if (expired == null) expired = new List<int>();
+                        expired.Add(kv.Key);
+                    }
+                }
+                if (expired != null)
+                {
+                    foreach (int villageId in expired)
+                    {
+                        TradeResult result = new TradeResult();
+                        result.Pending = _pendingByVillage[villageId];
+                        result.Success = true;
+                        result.Unconfirmed = true;
+                        _pendingByVillage.Remove(villageId);
+                        _resultQueue.Add(result);
+                    }
+                }
+
+                if (_resultQueue.Count > 0)
+                {
+                    results = new List<TradeResult>(_resultQueue);
+                    _resultQueue.Clear();
+                }
+            }
+
+            if (results == null) return;
+            foreach (TradeResult result in results)
+                ApplyTradeResult(result, settings);
+        }
+
+        private void ApplyTradeResult(TradeResult result, TradeSettings settings)
+        {
+            PendingDispatch pending = result.Pending;
+            string resourceName = TradeModuleConstants.GetResourceName(pending.ResourceId);
+            string label;
+            switch (pending.Kind)
+            {
+                case PendingKind.MarketSell: label = "[Market] SELL"; break;
+                case PendingKind.MarketBuy: label = "[Market] BUY"; break;
+                case PendingKind.Route: label = "[Route '" + pending.RouteName + "']"; break;
+                default: label = "[Player Route '" + pending.RouteName + "']"; break;
+            }
+
+            if (!result.Success)
+            {
+                LogError(GetVillageName(pending.VillageId) + " " + label + " " + pending.Amount + " " +
+                    resourceName + " REJECTED by server: " + (result.Error ?? "unknown error"));
+                return;
+            }
+
+            if (result.Unconfirmed)
+                LogWarning(GetVillageName(pending.VillageId) + " " + label + " " + pending.Amount + " " +
+                    resourceName + ": no server response after " + (int)PendingTimeoutSeconds +
+                    "s — assuming it was sent.");
+            else
+                LogDebug(GetVillageName(pending.VillageId) + " " + label + " " + pending.Amount + " " +
+                    resourceName + " confirmed.");
+
+            switch (pending.Kind)
+            {
+                case PendingKind.MarketSell:
+                    _stats.RecordSell(pending.ResourceId, pending.Amount);
+                    break;
+
+                case PendingKind.MarketBuy:
+                    _stats.RecordBuy(pending.ResourceId, pending.Amount);
+                    break;
+
+                case PendingKind.Route:
+                    _stats.RecordRoute(pending.ResourceId, pending.Amount);
+                    break;
+
+                case PendingKind.PlayerRoute:
+                    _stats.RecordPlayerRoute(pending.ResourceId, pending.Amount);
+                    if (pending.PlayerEntry != null)
+                    {
+                        pending.PlayerEntry.AmountSent += pending.Amount;
+                        LogInfo("[Player Route '" + pending.RouteName + "'] " + resourceName +
+                            " progress: " + pending.PlayerEntry.AmountSent + "/" +
+                            pending.PlayerEntry.TotalAmount + ".");
+                    }
+                    if (pending.PlayerRoute != null && pending.PlayerRoute.IsComplete())
+                    {
+                        pending.PlayerRoute.Enabled = false;
+                        LogInfo("[Player Route '" + pending.RouteName + "'] All resources delivered! Route auto-disabled.");
+                    }
+                    // Persist progress immediately so a map swap / relog doesn't reset AmountSent
+                    if (settings.AutoSavePlayerRouteProgress)
+                    {
+                        try { Engine.SaveSettings(); }
+                        catch (Exception ex) { LogError("Failed to save player route progress: " + ex.Message); }
+                    }
+                    break;
+            }
+        }
+
+        // =====================================================================
         // Market Trading
         // =====================================================================
 
         /// <summary>
         /// Attempt ONE market trade for this village.
         /// Sell/buy order is determined by settings.Priority.
-        /// Returns true if a trade was dispatched.
         /// </summary>
-        private bool TryMarketTrade(VillageMap map, int villageId, string villageName,
+        private TradeActionResult TryMarketTrade(VillageMap map, int villageId, string villageName,
             VillageMarketTradeInfo villageInfo, TradeSettings settings)
         {
             int tradersAtHome = map.m_numTradersAtHome;
@@ -515,13 +949,13 @@ namespace Kingdoms.Bot.Modules
             {
                 LogDebug(villageName + " [Market]: Not enough merchants (home=" + tradersAtHome +
                          ", moving=" + movingTraders + "/" + settings.MerchantsTradeLimit + ")");
-                return false;
+                return TradeActionResult.NoWork;
             }
 
             if (villageInfo.MarketTargets.Count == 0)
             {
                 LogDebug(villageName + " [Market]: No markets assigned.");
-                return false;
+                return TradeActionResult.NoWork;
             }
 
             bool areWeaponsAllowed = AreWeaponsAllowed();
@@ -537,7 +971,7 @@ namespace Kingdoms.Bot.Modules
             if (sortedTypes.Count == 0)
             {
                 LogDebug(villageName + " [Market]: No sell/buy resource types configured.");
-                return false;
+                return TradeActionResult.NoWork;
             }
 
             sortedTypes.Sort(delegate(TradeTypeEntry a, TradeTypeEntry b)
@@ -546,30 +980,33 @@ namespace Kingdoms.Bot.Modules
                     (a.Sell ? (double)a.SellLimit : (double)a.BuyLimit));
                 double diffB = Math.Abs(map.getResourceLevel((int)b.ResourceId) -
                     (b.Sell ? (double)b.SellLimit : (double)b.BuyLimit));
-                double capA = GetResourceCap((int)a.ResourceId);
-                double capB = GetResourceCap((int)b.ResourceId);
+                double capA = (double)GetResourceCap((int)a.ResourceId);
+                double capB = (double)GetResourceCap((int)b.ResourceId);
                 if (capA <= 0) capA = 1;
                 if (capB <= 0) capB = 1;
                 return (diffB / capB).CompareTo(diffA / capA);
             });
 
+            TradeActionResult first;
             if (settings.Priority == TradePriority.MarketBuyFirst)
             {
-                if (TryMarketBuy(map, villageId, villageName, villageInfo, settings,
-                    sortedTypes, tradersAtHome, movingTraders)) return true;
+                first = TryMarketBuy(map, villageId, villageName, villageInfo, settings,
+                    sortedTypes, tradersAtHome, movingTraders);
+                if (first != TradeActionResult.NoWork) return first;
                 return TryMarketSell(map, villageId, villageName, villageInfo, settings,
                     sortedTypes, tradersAtHome, movingTraders);
             }
             else
             {
-                if (TryMarketSell(map, villageId, villageName, villageInfo, settings,
-                    sortedTypes, tradersAtHome, movingTraders)) return true;
+                first = TryMarketSell(map, villageId, villageName, villageInfo, settings,
+                    sortedTypes, tradersAtHome, movingTraders);
+                if (first != TradeActionResult.NoWork) return first;
                 return TryMarketBuy(map, villageId, villageName, villageInfo, settings,
                     sortedTypes, tradersAtHome, movingTraders);
             }
         }
 
-        private bool TryMarketSell(VillageMap map, int villageId, string villageName,
+        private TradeActionResult TryMarketSell(VillageMap map, int villageId, string villageName,
             VillageMarketTradeInfo villageInfo, TradeSettings settings,
             List<TradeTypeEntry> sortedTypes, int tradersAtHome, int movingTraders)
         {
@@ -588,34 +1025,35 @@ namespace Kingdoms.Bot.Modules
                 int surplus = currentAmount - tradeType.SellLimit;
                 if (surplus <= minLoad) continue;
 
-                int bestMarket = FindBestMarket(villageInfo, tradeType.MinSellPrice, resourceId, true, villageId);
+                int marketStock;
+                int bestMarket = FindBestMarket(villageInfo, tradeType.MinSellPrice, resourceId,
+                    true, villageId, out marketStock);
                 if (bestMarket <= 0) continue;
 
                 int numMerchants = Math.Min(surplus / carryLevel, tradersAtHome);
                 numMerchants = Math.Min(numMerchants, settings.MerchantsTradeLimit - movingTraders);
-                if (numMerchants <= 0) continue;
+                if (numMerchants < settings.MerchantsPerTrade) continue;
 
                 int amount = numMerchants * carryLevel;
-                bool sent = map.stockExchangeTrade(bestMarket, resourceId, amount, false);
-                if (sent)
+                if (!map.stockExchangeTrade(bestMarket, resourceId, amount, false))
                 {
-                    string resourceName = TradeModuleConstants.GetResourceName(resourceId);
-                    LogInfo(villageName + " [Market] SELL " + amount + " " + resourceName +
-                            " -> " + GetVillageName(bestMarket) +
-                            ". " + (tradersAtHome - numMerchants) + " merchants left.");
-                    _stats.RecordSell(resourceId, amount);
-                    return true;
+                    LogDebug(villageName + " [Market]: send lock busy, retrying next tick.");
+                    return TradeActionResult.Blocked;
                 }
-                else
-                {
-                    LogDebug(villageName + " [Market]: Cooldown active, skipping.");
-                    return false;
-                }
+
+                RecordPending(PendingKind.MarketSell, villageId, bestMarket, resourceId, amount,
+                    null, null, null);
+                LogInfo(villageName + " [Market] SELL " + amount + " " +
+                        TradeModuleConstants.GetResourceName(resourceId) +
+                        " -> " + GetVillageName(bestMarket) +
+                        " (" + numMerchants + " merchants, awaiting confirmation). " +
+                        (tradersAtHome - numMerchants) + " merchants left.");
+                return TradeActionResult.Dispatched;
             }
-            return false;
+            return TradeActionResult.NoWork;
         }
 
-        private bool TryMarketBuy(VillageMap map, int villageId, string villageName,
+        private TradeActionResult TryMarketBuy(VillageMap map, int villageId, string villageName,
             VillageMarketTradeInfo villageInfo, TradeSettings settings,
             List<TradeTypeEntry> sortedTypes, int tradersAtHome, int movingTraders)
         {
@@ -631,52 +1069,91 @@ namespace Kingdoms.Bot.Modules
                 int carryLevel = GetCarryLevel(resourceId);
                 int minLoad = carryLevel * settings.MerchantsPerTrade;
 
-                int deficit = tradeType.BuyLimit - currentAmount;
+                // Clamp the buy target to the village's actual storage cap so a
+                // limit set above the cap can't produce a deficit that never closes.
+                int effectiveLimit = Math.Min(tradeType.BuyLimit, GetResourceCap(resourceId));
+                int deficit = effectiveLimit - currentAmount;
                 if (deficit <= minLoad) continue;
 
-                int bestMarket = FindBestMarket(villageInfo, tradeType.MaxBuyPrice, resourceId, false, villageId);
+                int marketStock;
+                int bestMarket = FindBestMarket(villageInfo, tradeType.MaxBuyPrice, resourceId,
+                    false, villageId, out marketStock);
                 if (bestMarket <= 0) continue;
 
-                int numMerchants = Math.Min(deficit / carryLevel, tradersAtHome);
+                // The server rejects buys for more than the market holds.
+                if (marketStock < minLoad)
+                {
+                    LogDebug(villageName + " [Market]: " + GetVillageName(bestMarket) + " only has " +
+                        marketStock + " " + TradeModuleConstants.GetResourceName(resourceId) +
+                        ", settings require " + minLoad + ". Skipping.");
+                    continue;
+                }
+
+                int numMerchants = Math.Min(Math.Min(deficit, marketStock) / carryLevel, tradersAtHome);
                 numMerchants = Math.Min(numMerchants, settings.MerchantsTradeLimit - movingTraders);
-                if (numMerchants <= 0) continue;
+                if (numMerchants < settings.MerchantsPerTrade) continue;
+
+                // Gold check (same formula as the game UI / old module): the server
+                // rejects buys we can't afford, so clamp the merchant count first.
+                int costPerMerchant = 0;
+                try
+                {
+                    costPerMerchant = TradingCalcs.calcGoldCost(GameEngine.Instance.LocalWorldData,
+                        marketStock, resourceId, marketStock - numMerchants * carryLevel);
+                }
+                catch { }
+                if (costPerMerchant > 0)
+                {
+                    int currentGold = (int)GameEngine.Instance.World.getCurrentGold();
+                    int totalCost = costPerMerchant * numMerchants;
+                    if (totalCost >= currentGold)
+                    {
+                        int affordable = currentGold / costPerMerchant;
+                        LogInfo(villageName + " [Market]: Not enough gold for " + numMerchants +
+                            " merchant(s) of " + TradeModuleConstants.GetResourceName(resourceId) +
+                            " (need " + totalCost + ", have " + currentGold + "). Reducing to " +
+                            affordable + ".");
+                        numMerchants = affordable;
+                    }
+                }
+                if (numMerchants < settings.MerchantsPerTrade) continue;
 
                 int amount = numMerchants * carryLevel;
-                bool sent = map.stockExchangeTrade(bestMarket, resourceId, amount, true);
-                if (sent)
+                if (!map.stockExchangeTrade(bestMarket, resourceId, amount, true))
                 {
-                    string resourceName = TradeModuleConstants.GetResourceName(resourceId);
-                    LogInfo(villageName + " [Market] BUY " + amount + " " + resourceName +
-                            " <- " + GetVillageName(bestMarket) +
-                            ". " + (tradersAtHome - numMerchants) + " merchants left.");
-                    _stats.RecordBuy(resourceId, amount);
-                    return true;
+                    LogDebug(villageName + " [Market]: send lock busy, retrying next tick.");
+                    return TradeActionResult.Blocked;
                 }
-                else
-                {
-                    LogDebug(villageName + " [Market]: Cooldown active, skipping.");
-                    return false;
-                }
+
+                RecordPending(PendingKind.MarketBuy, villageId, bestMarket, resourceId, amount,
+                    null, null, null);
+                LogInfo(villageName + " [Market] BUY " + amount + " " +
+                        TradeModuleConstants.GetResourceName(resourceId) +
+                        " <- " + GetVillageName(bestMarket) +
+                        " (" + numMerchants + " merchants, awaiting confirmation). " +
+                        (tradersAtHome - numMerchants) + " merchants left.");
+                return TradeActionResult.Dispatched;
             }
-            return false;
+            return TradeActionResult.NoWork;
         }
 
         /// <summary>
-        /// Find the best market for a trade. Uses stock levels to calculate prices:
-        /// - Selling: pick the market where the price is highest (lowest stock = highest price)
-        /// - Buying: pick the market where the price is lowest (highest stock = lowest price)
-        /// Falls back to nearest market if no cache data available.
+        /// Find the best market for a trade using cached stock levels:
+        /// - Selling: lowest stock = highest price
+        /// - Buying: highest stock = lowest price
+        /// Markets without fresh price data are skipped — never trade blind.
+        /// Returns the market id, or -1; bestStockOut holds its stock level.
         /// </summary>
         private int FindBestMarket(VillageMarketTradeInfo villageInfo, int controlPrice,
-            int resourceId, bool selling, int sourceVillageId)
+            int resourceId, bool selling, int sourceVillageId, out int bestStockOut)
         {
+            bestStockOut = 0;
             if (villageInfo.MarketTargets.Count == 0)
                 return -1;
 
             int bestMarket = -1;
-            int bestStock = selling ? int.MaxValue : int.MinValue;
+            int bestStock = 0;
             double bestDistSq = double.MaxValue;
-            bool foundCachedMarket = false;
             int cachedCount = 0;
             int uncachedCount = 0;
             int priceFilteredCount = 0;
@@ -689,84 +1166,66 @@ namespace Kingdoms.Bot.Modules
                 bool hasFreshCache = _stockExchangeCache.TryGetValue(marketId, out cache) &&
                     (DateTime.Now - cache.LastUpdated).TotalMinutes < PriceCacheValidMinutes;
 
-                if (hasFreshCache)
+                if (!hasFreshCache)
                 {
-                    cachedCount++;
-                    int stockLevel = cache.GetLevel(resourceId);
-
-                    // Calculate actual price for logging
-                    int price = 0;
-                    try
-                    {
-                        price = TradingCalcs.calcSellCost(GameEngine.Instance.LocalWorldData, stockLevel, resourceId);
-                    }
-                    catch { }
-
-                    // Check price control
-                    if (!CheckPrice(controlPrice, !selling, stockLevel, resourceId))
-                    {
-                        priceFilteredCount++;
-                        LogDebug("  Market " + GetVillageName(marketId) + ": stock=" + stockLevel +
-                            " price=" + price + " — SKIPPED (price control " +
-                            (selling ? "min=" : "max=") + controlPrice + ")");
-                        continue;
-                    }
-
-                    double distSq = GameEngine.Instance.World.getSquareDistance(sourceVillageId, marketId);
-
-                    LogDebug("  Market " + GetVillageName(marketId) + ": stock=" + stockLevel +
-                        " price=" + price + " dist=" + (int)Math.Sqrt(distSq));
-
-                    if (selling)
-                    {
-                        // For selling: lower stock = higher price = better for seller
-                        if (!foundCachedMarket || stockLevel < bestStock ||
-                            (stockLevel == bestStock && distSq < bestDistSq))
-                        {
-                            bestStock = stockLevel;
-                            bestMarket = marketId;
-                            bestDistSq = distSq;
-                            foundCachedMarket = true;
-                        }
-                    }
-                    else
-                    {
-                        // For buying: higher stock = lower price = better for buyer
-                        if (!foundCachedMarket || stockLevel > bestStock ||
-                            (stockLevel == bestStock && distSq < bestDistSq))
-                        {
-                            bestStock = stockLevel;
-                            bestMarket = marketId;
-                            bestDistSq = distSq;
-                            foundCachedMarket = true;
-                        }
-                    }
-                }
-                else
-                {
+                    // No fresh price data — this market is not a candidate.
                     uncachedCount++;
-                    if (!foundCachedMarket)
-                    {
-                        // Fallback: no cache, just pick nearest
-                        double distSq = GameEngine.Instance.World.getSquareDistance(sourceVillageId, marketId);
-                        if (distSq < bestDistSq)
-                        {
-                            bestDistSq = distSq;
-                            bestMarket = marketId;
-                        }
-                    }
+                    continue;
+                }
+
+                cachedCount++;
+                int stockLevel = cache.GetLevel(resourceId);
+
+                // Calculate actual price for logging
+                int price = 0;
+                try
+                {
+                    price = TradingCalcs.calcSellCost(GameEngine.Instance.LocalWorldData, stockLevel, resourceId);
+                }
+                catch { }
+
+                // Check price control
+                if (!CheckPrice(controlPrice, !selling, stockLevel, resourceId))
+                {
+                    priceFilteredCount++;
+                    LogDebug("  Market " + GetVillageName(marketId) + ": stock=" + stockLevel +
+                        " price=" + price + " — SKIPPED (price control " +
+                        (selling ? "min=" : "max=") + controlPrice + ")");
+                    continue;
+                }
+
+                double distSq = GameEngine.Instance.World.getSquareDistance(sourceVillageId, marketId);
+
+                LogDebug("  Market " + GetVillageName(marketId) + ": stock=" + stockLevel +
+                    " price=" + price + " dist=" + (int)Math.Sqrt(distSq));
+
+                bool better;
+                if (bestMarket == -1)
+                    better = true;
+                else if (selling)
+                    better = stockLevel < bestStock || (stockLevel == bestStock && distSq < bestDistSq);
+                else
+                    better = stockLevel > bestStock || (stockLevel == bestStock && distSq < bestDistSq);
+
+                if (better)
+                {
+                    bestStock = stockLevel;
+                    bestMarket = marketId;
+                    bestDistSq = distSq;
                 }
             }
 
             if (bestMarket > 0)
             {
-                string mode = selling ? "SELL" : "BUY";
-                string chosen = foundCachedMarket
-                    ? "stock=" + bestStock + " (cached " + cachedCount + "/" + villageInfo.MarketTargets.Count +
-                      ", uncached " + uncachedCount + ", filtered " + priceFilteredCount + ")"
-                    : "NEAREST FALLBACK (no cached markets had valid prices)";
-                LogDebug("  " + mode + " " + resourceName + " -> Best: " +
-                    GetVillageName(bestMarket) + " " + chosen);
+                bestStockOut = bestStock;
+                LogDebug("  " + (selling ? "SELL" : "BUY") + " " + resourceName + " -> Best: " +
+                    GetVillageName(bestMarket) + " stock=" + bestStock +
+                    " (cached " + cachedCount + "/" + villageInfo.MarketTargets.Count +
+                    ", uncached " + uncachedCount + ", filtered " + priceFilteredCount + ")");
+            }
+            else if (cachedCount == 0 && uncachedCount > 0)
+            {
+                LogDebug("  " + resourceName + ": no fresh price data for any market — skipping (no blind trades).");
             }
 
             return bestMarket;
@@ -797,9 +1256,8 @@ namespace Kingdoms.Bot.Modules
 
         /// <summary>
         /// Attempt ONE village-to-village send for this village across all applicable routes.
-        /// Returns true if a send was dispatched.
         /// </summary>
-        private bool TryRouteSend(VillageMap senderMap, int senderId, string senderName,
+        private TradeActionResult TryRouteSend(VillageMap senderMap, int senderId, string senderName,
             List<TradeRouteSettings> routes, TradeSettings settings)
         {
             int tradersAtHome = senderMap.m_numTradersAtHome;
@@ -808,13 +1266,14 @@ namespace Kingdoms.Bot.Modules
             if (tradersAtHome < settings.MerchantsPerTrade)
             {
                 LogDebug(senderName + " [Route]: No merchants at home (" + tradersAtHome + ").");
-                return false;
+                return TradeActionResult.NoWork;
             }
 
             if (movingTraders >= settings.MerchantsExchangeLimit)
             {
-                LogDebug(senderName + " [Route]: Exchange limit reached (" + movingTraders + "/" + settings.MerchantsExchangeLimit + ").");
-                return false;
+                LogDebug(senderName + " [Route]: Exchange limit reached (" + movingTraders + "/" +
+                    settings.MerchantsExchangeLimit + ").");
+                return TradeActionResult.NoWork;
             }
 
             foreach (TradeRouteSettings route in routes)
@@ -862,12 +1321,17 @@ namespace Kingdoms.Bot.Modules
                         double senderLevel = senderMap.getResourceLevel(resourceId);
                         if (senderLevel <= route.KeepMinimum) continue;
 
+                        // Clamp the target to the recipient's storage cap so we
+                        // don't overfill and waste resources.
+                        double targetMax = Math.Min((double)route.SendMaximum,
+                            (double)GetResourceCap(resourceId));
+
                         double recipientLevel = recipientMap.getResourceLevel(resourceId) +
                             GetPurchasedAmount(recipientId, resourceId, settings.IgnoreCurrentTransactions);
-                        if (recipientLevel >= route.SendMaximum) continue;
+                        if (recipientLevel >= targetMax) continue;
 
                         double canSend = senderLevel - route.KeepMinimum;
-                        double needed = route.SendMaximum - recipientLevel;
+                        double needed = targetMax - recipientLevel;
                         if (needed > canSend) needed = canSend;
 
                         int carryLevel = GetBaseCarryLevel(resourceId);
@@ -881,35 +1345,33 @@ namespace Kingdoms.Bot.Modules
                         if (numMerchants <= 0) continue;
 
                         int amount = numMerchants * carryLevel;
-                        bool sent = senderMap.sendResources(recipientId, resourceId, amount);
-                        if (sent)
+                        if (!senderMap.sendResources(recipientId, resourceId, amount))
                         {
-                            LogInfo(senderName + " [Route '" + route.Name + "'] -> " +
-                                    GetVillageName(recipientId) +
-                                    ": " + amount + " " +
-                                    TradeModuleConstants.GetResourceName(resourceId) +
-                                    " (" + numMerchants + " merchants). " +
-                                    (tradersAtHome - numMerchants) + " left.");
-                            _stats.RecordRoute(resourceId, amount);
-                            return true; // Only ONE send per village per tick
+                            LogDebug(senderName + " [Route]: send lock busy, retrying next tick.");
+                            return TradeActionResult.Blocked;
                         }
-                        else
-                        {
-                            LogDebug(senderName + " [Route]: Cooldown active, skipping.");
-                            return false;
-                        }
+
+                        RecordPending(PendingKind.Route, senderId, recipientId, resourceId, amount,
+                            route.Name, null, null);
+                        LogInfo(senderName + " [Route '" + route.Name + "'] -> " +
+                                GetVillageName(recipientId) +
+                                ": " + amount + " " +
+                                TradeModuleConstants.GetResourceName(resourceId) +
+                                " (" + numMerchants + " merchants, awaiting confirmation). " +
+                                (tradersAtHome - numMerchants) + " left.");
+                        return TradeActionResult.Dispatched;
                     }
                 }
             }
 
-            return false;
+            return TradeActionResult.NoWork;
         }
 
         // =====================================================================
         // Player Route Trading
         // =====================================================================
 
-        private bool TryPlayerRouteSend(VillageMap senderMap, int senderId, string senderName,
+        private TradeActionResult TryPlayerRouteSend(VillageMap senderMap, int senderId, string senderName,
             List<PlayerTradeRouteSettings> routes, TradeSettings settings)
         {
             int tradersAtHome = senderMap.m_numTradersAtHome;
@@ -918,7 +1380,14 @@ namespace Kingdoms.Bot.Modules
             if (tradersAtHome <= 0)
             {
                 LogDebug(senderName + " [Player Route]: No merchants at home.");
-                return false;
+                return TradeActionResult.NoWork;
+            }
+
+            if (movingTraders >= settings.MerchantsExchangeLimit)
+            {
+                LogDebug(senderName + " [Player Route]: Exchange limit reached (" + movingTraders + "/" +
+                    settings.MerchantsExchangeLimit + ").");
+                return TradeActionResult.NoWork;
             }
 
             foreach (PlayerTradeRouteSettings route in routes)
@@ -943,63 +1412,45 @@ namespace Kingdoms.Bot.Modules
                     if (senderLevel <= route.KeepMinimum) continue;
 
                     double canSend = senderLevel - route.KeepMinimum;
-                    int remaining = resEntry.Remaining;
-                    if (canSend > remaining) canSend = remaining;
+                    if (canSend > resEntry.Remaining) canSend = resEntry.Remaining;
+                    if (canSend < 1) continue;
 
                     int carryLevel = GetBaseCarryLevel(resourceId);
-                    if (canSend < carryLevel) continue;
 
-                    // Override min merchants � send even with 1 merchant to ensure all goods are sent
-                    int numMerchants = Math.Min((int)(canSend / carryLevel), tradersAtHome);
+                    // Allow a final partial load (amount below carry level) so the
+                    // route can actually finish instead of stalling on the remainder.
+                    int numMerchants = (int)Math.Ceiling(canSend / (double)carryLevel);
+                    numMerchants = Math.Min(numMerchants, tradersAtHome);
                     numMerchants = Math.Min(numMerchants, route.MaxMerchantsPerTransaction);
                     numMerchants = Math.Min(numMerchants, settings.MerchantsExchangeLimit - movingTraders);
-
                     if (numMerchants <= 0) continue;
 
-                    int amount = numMerchants * carryLevel;
-                    // Don't send more than remaining
-                    if (amount > remaining)
+                    int amount = (int)Math.Min(canSend, (double)(numMerchants * carryLevel));
+                    if (amount <= 0) continue;
+
+                    if (!senderMap.sendResources(route.TargetVillageId, resourceId, amount))
                     {
-                        numMerchants = (int)System.Math.Ceiling((double)remaining / carryLevel);
-                        if (numMerchants <= 0) numMerchants = 1;
-                        numMerchants = Math.Min(numMerchants, tradersAtHome);
-                        amount = numMerchants * carryLevel;
+                        LogDebug(senderName + " [Player Route]: send lock busy, retrying next tick.");
+                        return TradeActionResult.Blocked;
                     }
 
-                    bool sent = senderMap.sendResources(route.TargetVillageId, resourceId, amount);
-                    if (sent)
-                    {
-                        resEntry.AmountSent += amount;
+                    // Progress (AmountSent) is updated only when the server confirms
+                    // the send — see ApplyTradeResult.
+                    RecordPending(PendingKind.PlayerRoute, senderId, route.TargetVillageId,
+                        resourceId, amount, route.Name, route, resEntry);
 
-                        string resourceName = TradeModuleConstants.GetResourceName(resourceId);
-                        LogInfo(senderName + " [Player Route '" + route.Name + "'] -> " +
-                                GetVillageName(route.TargetVillageId) +
-                                ": " + amount + " " + resourceName +
-                                " (" + resEntry.AmountSent + "/" + resEntry.TotalAmount + " sent). " +
-                                (tradersAtHome - numMerchants) + " merchants left.");
-                        _stats.RecordPlayerRoute(resourceId, amount);
-
-                        if (route.IsComplete())
-                        {
-                            route.Enabled = false;
-                            LogInfo("[Player Route '" + route.Name + "'] All resources delivered! Route auto-disabled.");
-                        }
-
-                        // Persist progress immediately so a map swap / relog doesn't reset AmountSent
-                        if (settings.AutoSavePlayerRouteProgress)
-                            Engine.SaveSettings();
-
-                        return true; // One send per village per tick
-                    }
-                    else
-                    {
-                        LogDebug(senderName + " [Player Route]: Cooldown active, skipping.");
-                        return false;
-                    }
+                    string resourceName = TradeModuleConstants.GetResourceName(resourceId);
+                    LogInfo(senderName + " [Player Route '" + route.Name + "'] -> " +
+                            GetVillageName(route.TargetVillageId) +
+                            ": " + amount + " " + resourceName +
+                            " (" + numMerchants + " merchants, awaiting confirmation; " +
+                            resEntry.AmountSent + "/" + resEntry.TotalAmount + " confirmed so far). " +
+                            (tradersAtHome - numMerchants) + " merchants left.");
+                    return TradeActionResult.Dispatched;
                 }
             }
 
-            return false;
+            return TradeActionResult.NoWork;
         }
 
         // =====================================================================
@@ -1206,21 +1657,31 @@ namespace Kingdoms.Bot.Modules
             }
         }
 
-        private static double GetResourceCap(int resourceId)
+        /// <summary>
+        /// The village's actual storage cap for a resource (research + cards),
+        /// matching what the game's own panels display. Falls back to rough
+        /// constants if the lookup fails.
+        /// </summary>
+        private static int GetResourceCap(int resourceId)
         {
             try
             {
-                switch (resourceId)
-                {
-                    case 6: case 7: case 8: case 9:
-                        return 50000;
-                    default:
-                        return 10000;
-                }
+                double cap = GameEngine.Instance.World.UserResearchData.getResourceCap(
+                        GameEngine.Instance.LocalWorldData, resourceId, false) *
+                    CardTypes.getResourceCapMultiplier(resourceId,
+                        GameEngine.Instance.cardsManager.UserCardData);
+                if (cap > 0) return (int)cap;
             }
             catch
             {
-                return 10000;
+            }
+
+            switch (resourceId)
+            {
+                case 6: case 7: case 8: case 9:
+                    return 50000;
+                default:
+                    return 10000;
             }
         }
 

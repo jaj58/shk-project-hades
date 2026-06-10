@@ -85,6 +85,8 @@
     <Reference Include="System.Runtime.Remoting" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Kingdoms\Bot\BotEngine.cs" />
@@ -94,6 +96,7 @@
     <Compile Include="Kingdoms\Bot\ProductionCardCatalog.cs" />
     <Compile Include="Kingdoms\Bot\ModuleCardCatalog.cs" />
     <Compile Include="Kingdoms\Bot\DiscordNotifier.cs" />
+    <Compile Include="Kingdoms\Bot\RadarSoundPlayer.cs" />
     <Compile Include="Kingdoms\Bot\IBotModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombMultiModule.cs" />

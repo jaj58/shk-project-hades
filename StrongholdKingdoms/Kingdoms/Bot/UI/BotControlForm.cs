@@ -29,6 +29,7 @@ namespace Kingdoms.Bot.UI
         private Timer _rdRefreshTimer;
         private List<ActionRow> _rdActionRows = new List<ActionRow>();
         private bool _rdLoading;
+        private int _rdLastSoundTestIndex;
 
         // Group Radar runtime state (controls created programmatically)
         private List<GroupActionRow> _grpActionRows = new List<GroupActionRow>();
@@ -500,6 +501,10 @@ namespace Kingdoms.Bot.UI
                 BotLogger.Log("Radar", BotLogLevel.Info, "Test webhook sent.");
             };
 
+            RadarSoundPlayer.Init();
+            _rdTestSoundBtn.Click += delegate { RdTestNextSound(); };
+            _rdStopSoundBtn.Click += delegate { RadarSoundPlayer.Stop(); };
+
             _rdEnabledCheck.CheckedChanged += delegate { RdPushToSettings(); };
             _rdScanIntervalInput.ValueChanged += delegate { RdPushToSettings(); };
             _rdWebhookInput.TextChanged += delegate { RdPushToSettings(); };
@@ -647,6 +652,31 @@ namespace Kingdoms.Bot.UI
 
             _rdActionListPanel.ResumeLayout(false);
             _rdActionListPanel.PerformLayout();
+        }
+
+        // Cycles through action rows with a configured sound file, playing the next one each click
+        private void RdTestNextSound()
+        {
+            RadarSoundPlayer.Stop();
+            if (_rdActionRows.Count == 0) return;
+
+            if (_rdLastSoundTestIndex >= _rdActionRows.Count)
+                _rdLastSoundTestIndex = 0;
+
+            for (int i = 0; i < _rdActionRows.Count; i++)
+            {
+                int index = (_rdLastSoundTestIndex + i) % _rdActionRows.Count;
+                ActionRow row = _rdActionRows[index];
+                if (RadarSoundPlayer.IsSoundFileValid(row.SoundFile))
+                {
+                    RadarSoundPlayer.Play(row.SoundFile);
+                    BotLogger.Log("Radar", BotLogLevel.Info,
+                        "Test: playing sound for " + RadarModule.GetActionLabel(row.ActionKey) + ".");
+                    _rdLastSoundTestIndex = index + 1;
+                    return;
+                }
+            }
+            BotLogger.Log("Radar", BotLogLevel.Warning, "No sound files configured.");
         }
 
         // =====================================================================
@@ -3822,6 +3852,7 @@ namespace Kingdoms.Bot.UI
             _abmQueueClearBtn.Click             += delegate { AbmQueueClear(); };
             _abmQueueSaveBtn.Click              += delegate { AbmQueueSave(); };
             _abmQueueLoadBtn.Click              += delegate { AbmQueueLoad(); };
+            _abmQueueRefreshBtn.Click           += delegate { AbmQueueRefreshTargets(); };
             _abmQueueResetBtn.Click             += delegate { AbmQueueReset(); };
 
             // ── Add Village strip (dynamic — sits between column header and village list) ──
@@ -4380,6 +4411,7 @@ namespace Kingdoms.Bot.UI
                 {
                     string name = GameEngine.Instance.World.getVillageName(vid);
                     if (!string.IsNullOrEmpty(name)) entry.Label = name;
+                    entry.OwnerName = AbmLookupVillageOwner(vid);
                 }
             }
             catch { }
@@ -4387,6 +4419,22 @@ namespace Kingdoms.Bot.UI
             s.TargetQueue.Add(entry);
             AbmRefreshQueueList(s);
             _abmQueueVidInput.Value = 0;
+        }
+
+        /// <summary>Returns the owning player's name for a village, or "" if barbarian/unknown.</summary>
+        private string AbmLookupVillageOwner(int vid)
+        {
+            try
+            {
+                if (GameEngine.Instance == null || GameEngine.Instance.World == null) return "";
+                int userId = GameEngine.Instance.World.getVillageUserID(vid);
+                if (userId < 0) return "";
+                WorldMap.CachedUserInfo info = GameEngine.Instance.World.getStoredUserInfo(userId);
+                if (info != null && !string.IsNullOrEmpty(info.userName))
+                    return info.userName;
+            }
+            catch { }
+            return "";
         }
 
         private void AbmQueueLookupPlayer()
@@ -4422,6 +4470,7 @@ namespace Kingdoms.Bot.UI
                             TargetQueueEntry e = new TargetQueueEntry();
                             e.VillageId = vid;
                             e.Label = playerName;
+                            e.OwnerName = playerName;
                             s2.TargetQueue.Add(e);
                         }
                         AbmRefreshQueueList(s2);
@@ -4447,6 +4496,7 @@ namespace Kingdoms.Bot.UI
             {
                 string name = GameEngine.Instance.World.getVillageName(vid);
                 if (!string.IsNullOrEmpty(name)) entry.Label = name;
+                entry.OwnerName = AbmLookupVillageOwner(vid);
             }
             catch { }
             s.TargetQueue.Add(entry);
@@ -4511,9 +4561,9 @@ namespace Kingdoms.Bot.UI
             {
                 using (StreamWriter w = new StreamWriter(dlg.FileName))
                 {
-                    w.WriteLine("# Auto Bomb Multi Target Queue");
+                    w.WriteLine("# Auto Bomb Multi Target Queue (villageId,ownerName,label)");
                     foreach (TargetQueueEntry e in s.TargetQueue)
-                        w.WriteLine(e.VillageId + "," + e.Label);
+                        w.WriteLine(e.VillageId + "," + e.OwnerName + "," + e.Label);
                 }
             }
             catch (Exception ex)
@@ -4542,15 +4592,27 @@ namespace Kingdoms.Bot.UI
                     {
                         line = line.Trim();
                         if (line.Length == 0 || line.StartsWith("#")) continue;
-                        string[] parts = line.Split(new char[] { ',' }, 2);
+                        string[] parts = line.Split(new char[] { ',' }, 3);
                         int vid;
                         if (!int.TryParse(parts[0].Trim(), out vid) || vid <= 0) continue;
                         TargetQueueEntry e = new TargetQueueEntry();
                         e.VillageId = vid;
-                        if (parts.Length > 1) e.Label = parts[1].Trim();
+                        if (parts.Length == 2)
+                        {
+                            // old format: villageId,label
+                            e.Label = parts[1].Trim();
+                        }
+                        else if (parts.Length == 3)
+                        {
+                            // new format: villageId,ownerName,label
+                            e.OwnerName = parts[1].Trim();
+                            e.Label = parts[2].Trim();
+                        }
                         s.TargetQueue.Add(e);
                     }
                 }
+                // Validate all loaded targets
+                AbmQueueValidateTargets(s, "Load");
                 AbmRefreshQueueList(s);
             }
             catch (Exception ex)
@@ -4558,6 +4620,60 @@ namespace Kingdoms.Bot.UI
                 MessageBox.Show("Load failed: " + ex.Message, "Auto Bomb Multi",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void AbmQueueRefreshTargets()
+        {
+            AutoBombMultiSettings s = AbmSettings;
+            if (s == null) return;
+            AbmQueueValidateTargets(s, "Refresh");
+            AbmRefreshQueueList(s);
+        }
+
+        private void AbmQueueValidateTargets(AutoBombMultiSettings s, string action)
+        {
+            if (s == null || s.TargetQueue == null || s.TargetQueue.Count == 0)
+                return;
+
+            AutoBombMultiModule mod = AbmModule;
+            if (mod == null) return;
+
+            var toRemove = new List<TargetQueueEntry>();
+
+            foreach (var entry in s.TargetQueue)
+            {
+                string villageNameOut, ownerNameOut;
+                // Compare against the owner recorded when the entry was added/saved.
+                // Entries from old saves have no owner — those just get existence-checked
+                // and their owner backfilled.
+                if (!mod.ValidateTargetVillage(entry.VillageId, entry.OwnerName,
+                        out villageNameOut, out ownerNameOut))
+                {
+                    toRemove.Add(entry);
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(entry.OwnerName) && !string.IsNullOrEmpty(ownerNameOut))
+                {
+                    entry.OwnerName = ownerNameOut;
+                    mod.LogQueueInfo("Target " + entry.VillageId + " — owner recorded as " + ownerNameOut);
+                }
+
+                if (!string.IsNullOrEmpty(villageNameOut) && villageNameOut != entry.Label)
+                {
+                    mod.LogQueueInfo("Target " + entry.VillageId + " renamed: '" + entry.Label +
+                        "' → '" + villageNameOut + "'");
+                    entry.Label = villageNameOut;
+                }
+            }
+
+            // Remove invalid targets (removal reasons are logged in ValidateTargetVillage)
+            foreach (var entry in toRemove)
+                s.TargetQueue.Remove(entry);
+
+            if (toRemove.Count > 0)
+                mod.LogQueueInfo(action + " validation removed " + toRemove.Count + " stale target(s), " +
+                    s.TargetQueue.Count + " remain.");
         }
 
         private void AbmQueueReset()
