@@ -4598,19 +4598,9 @@ namespace Kingdoms.Bot.UI
                 }
             }
 
-            // Remove invalid targets
+            // Remove invalid targets (logging is done in ValidateTargetVillage)
             foreach (var entry in toRemove)
                 s.TargetQueue.Remove(entry);
-
-            // Log changes
-            if (toRemove.Count > 0 || nameUpdates.Count > 0)
-            {
-                LogInfo("[Queue] " + action + " validation complete:");
-                foreach (var update in nameUpdates)
-                    LogInfo("  " + update);
-                if (toRemove.Count > 0)
-                    LogInfo("  Removed " + toRemove.Count + " invalid target(s)");
-            }
         }
 
         private void AbmQueueReset()

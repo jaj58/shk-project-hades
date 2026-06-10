@@ -2628,7 +2628,7 @@ namespace Kingdoms.Bot.Modules
                 if (GameEngine.Instance == null || GameEngine.Instance.World == null)
                     return false;
 
-                var village = GameEngine.Instance.World.getVillage(villageId);
+                VillageData village = GameEngine.Instance.World.getVillageData(villageId);
                 if (village == null)
                 {
                     LogWarning("[Queue] Target " + villageId + " — REMOVED (village no longer exists)");
