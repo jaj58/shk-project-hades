@@ -3761,8 +3761,8 @@ namespace Kingdoms.Bot.UI
             _abmCtrlPanel.Controls.Add(sdLbl);
 
             // ── Village column headers ────────────────────────────────────────
-            string[] vCols = { "", "Village", "Travel", "Card", "Cpt", "Formation", "P", "Arch", "Pike", "Sw", "Cat", "Cap", "Stack", "Type", "Status" };
-            int[]    vColX = { 4, 26, 202, 282, 344, 372, 554, 588, 622, 656, 690, 722, 754, 798, 874 };
+            string[] vCols = { "", "Village", "Travel", "Card", "Cpt", "Formation", "P", "Arch", "Pike", "Sw", "Cat", "Cap", "Stack", "Type", "Mod (S/A)", "Status" };
+            int[]    vColX = { 4, 26, 202, 282, 344, 372, 554, 588, 622, 656, 690, 722, 754, 798, 874, 1028 };
             for (int i = 0; i < vCols.Length; i++)
             {
                 Label cl = new Label();
@@ -3854,6 +3854,10 @@ namespace Kingdoms.Bot.UI
             _abmQueueLoadBtn.Click              += delegate { AbmQueueLoad(); };
             _abmQueueRefreshBtn.Click           += delegate { AbmQueueRefreshTargets(); };
             _abmQueueResetBtn.Click             += delegate { AbmQueueReset(); };
+
+            // Live travel display: recalc all rows when the target or stack delay changes
+            _abmTargetVidBox.TextChanged        += delegate { AbmRecalcAllRowTravel(); };
+            _abmStackDelayInput.ValueChanged    += delegate { AbmRecalcAllRowTravel(); };
 
             // ── Add Village strip (dynamic — sits between column header and village list) ──
             Panel addVillageStrip = new Panel();
@@ -4313,16 +4317,9 @@ namespace Kingdoms.Bot.UI
                 if (s2 != null) s2.TargetVillageId = targetVid;
 
                 // Update travel time labels in-place — don't rebuild rows (would lose UI selections).
-                // Use local calc for own villages, posted API value for remote villages.
-                foreach (MultiBombVillageRow row in _abmVillageRows)
-                {
-                    double baseTravel;
-                    if (row.OwnerPlayerName == localPlayerName)
-                        baseTravel = AutoBombModule.CalculateBaseTravelTime(row.SourceVillageId, targetVid, false);
-                    else
-                        baseTravel = AbmLookupRemoteTravel(s, row.SourceVillageId, false);
-                    row.UpdateTravelTime(baseTravel);
-                }
+                // Live recalc applies card/captain/stack to the display; local rows use local
+                // research, remote rows assume max research.
+                AbmRecalcAllRowTravel();
 
                 AbmSaveSetup();
             }
@@ -4881,9 +4878,59 @@ namespace Kingdoms.Bot.UI
                 AbmRepositionVillageRows();
                 AbmSaveSetup();
             };
+            row.ConfigChanged += r => AbmRecalcRowTravel(r);
 
             _abmVillageListPanel.Controls.Add(row);
             _abmVillageRows.Add(row);
+
+            // Live travel display: calculate immediately if a target VID is already set
+            AbmRecalcRowTravel(row);
+        }
+
+        /// <summary>
+        /// Recalculates and refreshes a row's travel + modified-time display from the current
+        /// target VID, card, captains, stack, and stack delay. Local villages use the local
+        /// player's research; remote villages assume max army/captain speed research.
+        /// Shows "—" when the target VID box is empty/invalid.
+        /// </summary>
+        private void AbmRecalcRowTravel(MultiBombVillageRow row)
+        {
+            if (row == null) return;
+            int stackDelay = (int)_abmStackDelayInput.Value;
+
+            int targetVid;
+            if (!int.TryParse(_abmTargetVidBox.Text.Trim(), out targetVid) || targetVid <= 0)
+            {
+                row.RefreshTravelDisplay(stackDelay, false);
+                return;
+            }
+
+            try
+            {
+                double army, captain;
+                if (row.IsLocalPlayer)
+                {
+                    army    = AutoBombModule.CalculateBaseTravelTime(row.SourceVillageId, targetVid, false);
+                    captain = AutoBombModule.CalculateBaseTravelTime(row.SourceVillageId, targetVid, true);
+                }
+                else
+                {
+                    army    = AutoBombModule.CalculateBaseTravelTimeMaxResearch(row.SourceVillageId, targetVid, false);
+                    captain = AutoBombModule.CalculateBaseTravelTimeMaxResearch(row.SourceVillageId, targetVid, true);
+                }
+                row.SetBaseTravelTimes(army, captain);
+                row.RefreshTravelDisplay(stackDelay, true);
+            }
+            catch
+            {
+                row.RefreshTravelDisplay(stackDelay, false);
+            }
+        }
+
+        private void AbmRecalcAllRowTravel()
+        {
+            foreach (MultiBombVillageRow row in _abmVillageRows)
+                AbmRecalcRowTravel(row);
         }
 
         private void AbmRepositionVillageRows()

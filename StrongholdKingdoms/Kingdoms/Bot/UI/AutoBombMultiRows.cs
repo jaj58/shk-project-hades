@@ -38,10 +38,14 @@ namespace Kingdoms.Bot.UI
         private CheckBox _selectCheck;
         private Label _statusLabel;
         private Label _travelTimeLabel;
+        private Label _modTimeLabel;
         private Button _removeBtn;
 
         /// <summary>Raised when the coordinator clicks the × remove button on this row.</summary>
         public event Action<MultiBombVillageRow> RemoveRequested;
+
+        /// <summary>Raised when card, captains, or stack changes — lets the form recalc travel display.</summary>
+        public event Action<MultiBombVillageRow> ConfigChanged;
 
         public bool Selected
         {
@@ -113,6 +117,40 @@ namespace Kingdoms.Bot.UI
             BaseTravelTimeArmy = travelSeconds;
             if (_travelTimeLabel != null)
                 _travelTimeLabel.Text = AutoBombModule.FormatTimeSpan(TimeSpan.FromSeconds(travelSeconds));
+        }
+
+        /// <summary>Sets both base travel times (without touching the labels).</summary>
+        public void SetBaseTravelTimes(double armySeconds, double captainSeconds)
+        {
+            BaseTravelTimeArmy    = armySeconds;
+            BaseTravelTimeCaptain = captainSeconds;
+        }
+
+        /// <summary>
+        /// Refreshes the travel + modified-time labels from the current base times,
+        /// card selection, captains checkbox, and stack setup.
+        /// Shows "—" when no valid target is set.
+        /// </summary>
+        public void RefreshTravelDisplay(int stackDelaySeconds, bool targetValid)
+        {
+            if (_travelTimeLabel == null || _modTimeLabel == null) return;
+
+            if (!targetValid)
+            {
+                _travelTimeLabel.Text = "—";
+                _modTimeLabel.Text    = "—";
+                return;
+            }
+
+            double eff = EffectiveTravelTime;
+            _travelTimeLabel.Text = AutoBombModule.FormatTimeSpan(TimeSpan.FromSeconds(eff));
+
+            double stackOffset = (StackOrder - 1) * (double)stackDelaySeconds;
+            double send   = eff - stackOffset;
+            if (send < 0) send = 0;
+            double arrive = eff + stackOffset;
+            _modTimeLabel.Text = "S: " + AutoBombModule.FormatTimeSpan(TimeSpan.FromSeconds(send)) +
+                " / A: " + AutoBombModule.FormatTimeSpan(TimeSpan.FromSeconds(arrive));
         }
 
         public void SetStatus(string status)
@@ -259,8 +297,16 @@ namespace Kingdoms.Bot.UI
             this.Controls.Add(_attackTypeCombo);
             x += 76;
 
-            _statusLabel = MakeLabel("", x, 100);
+            _modTimeLabel = MakeLabel("—", x, 150);
+            x += 154;
+
+            _statusLabel = MakeLabel("", x, 80);
             _statusLabel.ForeColor = TextSec;
+
+            // Live travel display: recalc when card, captains, or stack changes
+            _cardCombo.SelectedIndexChanged += (s, e) => RaiseConfigChanged();
+            _captainCheck.CheckedChanged    += (s, e) => RaiseConfigChanged();
+            _stackInput.ValueChanged        += (s, e) => RaiseConfigChanged();
 
             // Remove button — coordinator only, at far right of row
             if (isCoordinator)
@@ -279,6 +325,11 @@ namespace Kingdoms.Bot.UI
                 _removeBtn.Click += (s, e) => { if (RemoveRequested != null) RemoveRequested(this); };
                 this.Controls.Add(_removeBtn);
             }
+        }
+
+        private void RaiseConfigChanged()
+        {
+            if (ConfigChanged != null) ConfigChanged(this);
         }
 
         private Label MakeLabel(string text, int x, int width)
