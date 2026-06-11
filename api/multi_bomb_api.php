@@ -248,6 +248,10 @@ function handle_set_attack_config(&$state, $req) {
             $new_status = isset($existing[$k]) ? $existing[$k]['status'] : 'queued';
         }
 
+        $manual_delay = (int)($a['manual_delay'] ?? 0);
+        if ($manual_delay < -30) $manual_delay = -30;
+        if ($manual_delay > 30)  $manual_delay = 30;
+
         $merged[] = [
             'source_player'    => $a['source_player'],
             'source_village_id'=> $vid,
@@ -259,6 +263,7 @@ function handle_set_attack_config(&$state, $req) {
             'captains_only'    => (bool)$a['captains_only'],
             'attack_type'      => (int)$a['attack_type'],
             'travel_time_seconds' => (float)($a['travel_time_seconds'] ?? 0),
+            'manual_delay'     => $manual_delay,
             'selected'         => $is_selected,
             'status'           => $new_status,
         ];
@@ -281,17 +286,21 @@ function handle_start_timer(&$state, $req) {
     if ($state['target_village_id'] <= 0) respond_error('No target village set.');
 
     $stack_delay = (int)($req['stack_delay_seconds'] ?? 1);
+    $delay_mode  = isset($req['delay_mode']) ? $req['delay_mode'] : 'stack';
     $fake_send   = (bool)($req['fake_send'] ?? false);
     $auto_cancel = (bool)($req['auto_cancel_on_interdict'] ?? true);
 
     $state['timer_settings'] = [
         'stack_delay_seconds'      => $stack_delay,
+        'delay_mode'               => $delay_mode,
         'fake_send'                => $fake_send,
         'auto_cancel_on_interdict' => $auto_cancel,
     ];
 
     // Calculate scheduled send times server-side.
-    // All attacks must arrive at the same base time; each stack adds stack_delay.
+    // Stack mode: all attacks aim at the same base arrival; each stack adds stack_delay.
+    // Manual mode: stack spacing ignored; each attack uses effective travel = travel +
+    //   per-attack manual_delay. Positive delay → sends earlier than exact → lands first.
     // Buffer only needs to cover: poll lag (~2s) + 8s pre-prepare window + ~5s prepare call.
     // The launch thread prepares each attack just-in-time, so only the first attack's
     // prepare time matters for the buffer — subsequent attacks are handled in sequence.
@@ -299,8 +308,10 @@ function handle_start_timer(&$state, $req) {
     $max_travel = 0;
     $num_selected = 0;
     foreach ($state['attacks'] as $a) {
+        $eff = $a['travel_time_seconds'];
+        if ($delay_mode === 'manual') $eff += (int)($a['manual_delay'] ?? 0);
         if (!$a['selected']) continue;
-        if ($a['travel_time_seconds'] > $max_travel) $max_travel = $a['travel_time_seconds'];
+        if ($eff > $max_travel) $max_travel = $eff;
         $num_selected++;
     }
 
@@ -310,8 +321,14 @@ function handle_start_timer(&$state, $req) {
     $send_times = [];
     foreach ($state['attacks'] as $a) {
         if (!$a['selected']) continue;
-        $arrival_ts = $base_arrival_ts + ($a['stack'] - 1) * $stack_delay;
-        $send_ts    = $arrival_ts - $a['travel_time_seconds'];
+        if ($delay_mode === 'manual') {
+            // send = base − (travel + delay); army lands at base − delay
+            $eff     = $a['travel_time_seconds'] + (int)($a['manual_delay'] ?? 0);
+            $send_ts = $base_arrival_ts - $eff;
+        } else {
+            $arrival_ts = $base_arrival_ts + ($a['stack'] - 1) * $stack_delay;
+            $send_ts    = $arrival_ts - $a['travel_time_seconds'];
+        }
         // Key by player|village so the same village sent by two players (a player attack and
         // a vassal attack) gets independent send times instead of one overwriting the other.
         $key = $a['source_player'] . '|' . $a['source_village_id'];

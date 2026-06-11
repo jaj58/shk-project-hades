@@ -306,6 +306,7 @@ namespace Kingdoms.Bot.UI
             this._abmLaunchBtn = new System.Windows.Forms.Button();
             this._abmCancelBtn = new System.Windows.Forms.Button();
             this._abmForceRecallBtn = new System.Windows.Forms.Button();
+            this._abmDelayModeCombo = new System.Windows.Forms.ComboBox();
             this._abmResetBtn = new System.Windows.Forms.Button();
             this._abmTakeCoordBtn = new System.Windows.Forms.Button();
             this._abmCoordStatusLabel = new System.Windows.Forms.Label();
@@ -3919,6 +3920,7 @@ namespace Kingdoms.Bot.UI
             this._abmCtrlPanel.Controls.Add(this._abmPushConfigBtn);
             this._abmCtrlPanel.Controls.Add(this._abmAutoInterdictCheck);
             this._abmCtrlPanel.Controls.Add(this._abmFakeSendCheck);
+            this._abmCtrlPanel.Controls.Add(this._abmDelayModeCombo);
             this._abmCtrlPanel.Controls.Add(this._abmStackDelayInput);
             this._abmCtrlPanel.Controls.Add(this._abmTargetVidBox);
             this._abmCtrlPanel.Controls.Add(this._abmPreRefreshCheck);
@@ -3957,6 +3959,19 @@ namespace Kingdoms.Bot.UI
             this._abmStackDelayInput.Size = new System.Drawing.Size(44, 20);
             this._abmStackDelayInput.TabIndex = 1;
             this._abmStackDelayInput.Value = new decimal(new int[] { 1, 0, 0, 0 });
+            //
+            // _abmDelayModeCombo
+            //
+            this._abmDelayModeCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._abmDelayModeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._abmDelayModeCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._abmDelayModeCombo.Font = new System.Drawing.Font("Segoe UI", 7F);
+            this._abmDelayModeCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._abmDelayModeCombo.Items.AddRange(new object[] { "Stack Dly", "Manual ±" });
+            this._abmDelayModeCombo.Location = new System.Drawing.Point(168, 4);
+            this._abmDelayModeCombo.Name = "_abmDelayModeCombo";
+            this._abmDelayModeCombo.Size = new System.Drawing.Size(72, 21);
+            this._abmDelayModeCombo.TabIndex = 12;
             //
             // _abmFakeSendCheck
             //
@@ -6756,6 +6771,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Button _abmLaunchBtn;
         private System.Windows.Forms.Button _abmCancelBtn;
         private System.Windows.Forms.Button _abmForceRecallBtn;
+        private System.Windows.Forms.ComboBox _abmDelayModeCombo;
         private System.Windows.Forms.Button _abmResetBtn;
         private System.Windows.Forms.Button _abmTakeCoordBtn;
         private System.Windows.Forms.Label _abmCoordStatusLabel;

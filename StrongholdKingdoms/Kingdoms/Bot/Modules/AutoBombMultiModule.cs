@@ -254,6 +254,7 @@ namespace Kingdoms.Bot.Modules
                     ["captains_only"]     = a.CaptainsOnly,
                     ["attack_type"]       = a.AttackType,
                     ["travel_time_seconds"] = a.TravelTimeSeconds,
+                    ["manual_delay"]      = a.ManualDelaySeconds,
                     ["selected"]          = a.Selected,
                 });
             }
@@ -338,6 +339,7 @@ namespace Kingdoms.Bot.Modules
                 {
                     ["player_name"]            = myName,
                     ["stack_delay_seconds"]    = settings.StackDelaySeconds,
+                    ["delay_mode"]             = settings.DelayMode == 1 ? "manual" : "stack",
                     ["fake_send"]              = settings.FakeSendEnabled,
                     ["auto_cancel_on_interdict"] = settings.AutoCancelOnInterdict,
                 });
@@ -946,6 +948,7 @@ namespace Kingdoms.Bot.Modules
                     {
                         ["player_name"]              = GetLocalPlayerName(),
                         ["stack_delay_seconds"]      = settings.StackDelaySeconds,
+                        ["delay_mode"]               = settings.DelayMode == 1 ? "manual" : "stack",
                         ["fake_send"]                = settings.FakeSendEnabled,
                         ["auto_cancel_on_interdict"] = settings.AutoCancelOnInterdict,
                     }); } catch { }
@@ -1438,6 +1441,7 @@ namespace Kingdoms.Bot.Modules
                     ["captains_only"]       = captainsOnly,
                     ["attack_type"]         = GetInt(ad, "attack_type", 11),
                     ["travel_time_seconds"] = newTravel,
+                    ["manual_delay"]        = GetInt(ad, "manual_delay"),
                     ["selected"]            = GetBool(ad, "selected", true),
                 });
             }
@@ -1608,6 +1612,7 @@ namespace Kingdoms.Bot.Modules
                 {
                     ["player_name"]              = GetLocalPlayerName(),
                     ["stack_delay_seconds"]      = settings.StackDelaySeconds,
+                    ["delay_mode"]               = settings.DelayMode == 1 ? "manual" : "stack",
                     ["fake_send"]                = settings.FakeSendEnabled,
                     ["auto_cancel_on_interdict"] = settings.AutoCancelOnInterdict,
                 });
@@ -1728,6 +1733,7 @@ namespace Kingdoms.Bot.Modules
                     {
                         ["player_name"]              = GetLocalPlayerName(),
                         ["stack_delay_seconds"]      = settings.StackDelaySeconds,
+                        ["delay_mode"]               = settings.DelayMode == 1 ? "manual" : "stack",
                         ["fake_send"]                = settings.FakeSendEnabled,
                         ["auto_cancel_on_interdict"] = settings.AutoCancelOnInterdict,
                     });
@@ -3014,6 +3020,9 @@ namespace Kingdoms.Bot.Modules
         public bool CaptainsOnly;
         public int AttackType = 11;
         public double TravelTimeSeconds;
+        // Manual-delay mode: per-village ± seconds (−30..+30). Positive = sends earlier
+        // than its exact time = lands first. Ignored in stack-delay mode.
+        public int ManualDelaySeconds;
         public bool Selected = true;
     }
 }
