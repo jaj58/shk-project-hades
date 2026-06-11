@@ -38,10 +38,14 @@ namespace Kingdoms.Bot.UI
         private CheckBox _selectCheck;
         private Label _statusLabel;
         private Label _travelTimeLabel;
+        private Label _modTimeLabel;
         private Button _removeBtn;
 
         /// <summary>Raised when the coordinator clicks the × remove button on this row.</summary>
         public event Action<MultiBombVillageRow> RemoveRequested;
+
+        /// <summary>Raised when card, captains, or stack changes — lets the form recalc travel display.</summary>
+        public event Action<MultiBombVillageRow> ConfigChanged;
 
         public bool Selected
         {
@@ -55,9 +59,57 @@ namespace Kingdoms.Bot.UI
                 ? _formationCombo.SelectedItem.ToString() : ""; }
         }
 
+        // The stack NumericUpDown is dual-purpose: stack order in stack-delay mode,
+        // per-village ± delay seconds in manual-delay mode. The inactive mode's value
+        // is kept in a backing store so switching modes never loses either.
+        private bool _manualDelayMode;
+        private int  _storedStack = 1;
+        private int  _storedManualDelay = 0;
+        private bool _suppressEvents;
+
         public int StackOrder
         {
-            get { return _stackInput != null ? (int)_stackInput.Value : 1; }
+            get
+            {
+                if (_stackInput == null) return _storedStack;
+                return _manualDelayMode ? _storedStack : (int)_stackInput.Value;
+            }
+        }
+
+        /// <summary>Per-village ± delay seconds (manual-delay mode). Positive = lands first.</summary>
+        public int ManualDelay
+        {
+            get
+            {
+                if (_stackInput == null) return _storedManualDelay;
+                return _manualDelayMode ? (int)_stackInput.Value : _storedManualDelay;
+            }
+        }
+
+        /// <summary>Switches the stack input between stack-order and manual-delay meaning.</summary>
+        public void SetDelayMode(bool manual)
+        {
+            if (_stackInput == null || manual == _manualDelayMode) { _manualDelayMode = manual; return; }
+            _suppressEvents = true;
+            try
+            {
+                if (manual)
+                {
+                    _storedStack = (int)_stackInput.Value;
+                    _stackInput.Minimum = -30;
+                    _stackInput.Maximum = 30;
+                    _stackInput.Value = Math.Max(-30, Math.Min(30, _storedManualDelay));
+                }
+                else
+                {
+                    _storedManualDelay = (int)_stackInput.Value;
+                    _stackInput.Minimum = 1;
+                    _stackInput.Maximum = 100;
+                    _stackInput.Value = Math.Max(1, Math.Min(100, _storedStack));
+                }
+                _manualDelayMode = manual;
+            }
+            finally { _suppressEvents = false; }
         }
 
         public int SelectedCardType
@@ -90,7 +142,8 @@ namespace Kingdoms.Bot.UI
             }
         }
 
-        public void ApplyConfig(string formation, int cardIndex, bool useCaptains, int stack, int attackTypeIndex)
+        public void ApplyConfig(string formation, int cardIndex, bool useCaptains, int stack, int attackTypeIndex,
+            int manualDelay = 0)
         {
             if (_formationCombo != null)
             {
@@ -102,8 +155,17 @@ namespace Kingdoms.Bot.UI
                 _cardCombo.SelectedIndex = Math.Max(0, Math.Min(_cardCombo.Items.Count - 1, cardIndex));
             if (_captainCheck != null)
                 _captainCheck.Checked = useCaptains;
+            _storedStack       = Math.Max(1, Math.Min(100, stack));
+            _storedManualDelay = Math.Max(-30, Math.Min(30, manualDelay));
             if (_stackInput != null)
-                _stackInput.Value = Math.Max(_stackInput.Minimum, Math.Min(_stackInput.Maximum, stack));
+            {
+                _suppressEvents = true;
+                try
+                {
+                    _stackInput.Value = _manualDelayMode ? _storedManualDelay : _storedStack;
+                }
+                finally { _suppressEvents = false; }
+            }
             if (_attackTypeCombo != null)
                 _attackTypeCombo.SelectedIndex = Math.Max(0, Math.Min(_attackTypeCombo.Items.Count - 1, attackTypeIndex));
         }
@@ -113,6 +175,56 @@ namespace Kingdoms.Bot.UI
             BaseTravelTimeArmy = travelSeconds;
             if (_travelTimeLabel != null)
                 _travelTimeLabel.Text = AutoBombModule.FormatTimeSpan(TimeSpan.FromSeconds(travelSeconds));
+        }
+
+        /// <summary>Sets both base travel times (without touching the labels).</summary>
+        public void SetBaseTravelTimes(double armySeconds, double captainSeconds)
+        {
+            BaseTravelTimeArmy    = armySeconds;
+            BaseTravelTimeCaptain = captainSeconds;
+        }
+
+        /// <summary>
+        /// Refreshes the travel + modified-time labels from the current base times,
+        /// card selection, captains checkbox, and stack/delay setup.
+        /// Shows "—" when no valid target is set.
+        /// Stack mode: S = send-priority (eff − (stack−1)×delay), A = arrival spacing.
+        /// Manual mode: S = send-priority (eff + manualDelay), A = lands early/late vs anchor.
+        /// </summary>
+        public void RefreshTravelDisplay(int stackDelaySeconds, bool targetValid)
+        {
+            if (_travelTimeLabel == null || _modTimeLabel == null) return;
+
+            if (!targetValid)
+            {
+                _travelTimeLabel.Text = "—";
+                _modTimeLabel.Text    = "—";
+                return;
+            }
+
+            double eff = EffectiveTravelTime;
+            _travelTimeLabel.Text = AutoBombModule.FormatTimeSpan(TimeSpan.FromSeconds(eff));
+
+            if (_manualDelayMode)
+            {
+                int d = ManualDelay;
+                double send = eff + d;            // effective travel used by the scheduler
+                if (send < 0) send = 0;
+                string arriveStr = d > 0 ? "+" + d + "s early"
+                                 : d < 0 ? (-d) + "s late"
+                                 : "on time";
+                _modTimeLabel.Text = "S: " + AutoBombModule.FormatTimeSpan(TimeSpan.FromSeconds(send)) +
+                    " / A: " + arriveStr;
+            }
+            else
+            {
+                double stackOffset = (StackOrder - 1) * (double)stackDelaySeconds;
+                double send   = eff - stackOffset;
+                if (send < 0) send = 0;
+                double arrive = eff + stackOffset;
+                _modTimeLabel.Text = "S: " + AutoBombModule.FormatTimeSpan(TimeSpan.FromSeconds(send)) +
+                    " / A: " + AutoBombModule.FormatTimeSpan(TimeSpan.FromSeconds(arrive));
+            }
         }
 
         public void SetStatus(string status)
@@ -238,7 +350,8 @@ namespace Kingdoms.Bot.UI
             _stackInput.Size = new Size(40, 20);
             _stackInput.Minimum = 1;
             _stackInput.Maximum = 100;
-            _stackInput.Value = index + 1;
+            _stackInput.Value = Math.Min(100, index + 1);
+            _storedStack = (int)_stackInput.Value;
             _stackInput.Enabled = isCoordinator;
             this.Controls.Add(_stackInput);
             x += 44;
@@ -259,8 +372,16 @@ namespace Kingdoms.Bot.UI
             this.Controls.Add(_attackTypeCombo);
             x += 76;
 
-            _statusLabel = MakeLabel("", x, 100);
+            _modTimeLabel = MakeLabel("—", x, 150);
+            x += 154;
+
+            _statusLabel = MakeLabel("", x, 80);
             _statusLabel.ForeColor = TextSec;
+
+            // Live travel display: recalc when card, captains, or stack changes
+            _cardCombo.SelectedIndexChanged += (s, e) => RaiseConfigChanged();
+            _captainCheck.CheckedChanged    += (s, e) => RaiseConfigChanged();
+            _stackInput.ValueChanged        += (s, e) => RaiseConfigChanged();
 
             // Remove button — coordinator only, at far right of row
             if (isCoordinator)
@@ -279,6 +400,12 @@ namespace Kingdoms.Bot.UI
                 _removeBtn.Click += (s, e) => { if (RemoveRequested != null) RemoveRequested(this); };
                 this.Controls.Add(_removeBtn);
             }
+        }
+
+        private void RaiseConfigChanged()
+        {
+            if (_suppressEvents) return;
+            if (ConfigChanged != null) ConfigChanged(this);
         }
 
         private Label MakeLabel(string text, int x, int width)

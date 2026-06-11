@@ -1833,6 +1833,49 @@ namespace Kingdoms.Bot.Modules
             return travelTime;
         }
 
+        /// <summary>
+        /// Like CalculateBaseTravelTime, but assumes MAX army/captain speed research.
+        /// Used to estimate travel for remote players' villages, whose research levels
+        /// are unknown locally. Capitals ignore research either way.
+        /// </summary>
+        public static double CalculateBaseTravelTimeMaxResearch(int sourceVillageId, int targetVillageId,
+            bool captainsOnly)
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+                return 0;
+
+            WorldData wd = GameEngine.Instance.LocalWorldData;
+            Point src = GameEngine.Instance.World.getVillageLocation(sourceVillageId);
+            Point tgt = GameEngine.Instance.World.getVillageLocation(targetVillageId);
+
+            double dx = src.X - tgt.X;
+            double dy = src.Y - tgt.Y;
+            double dist = Math.Sqrt(dx * dx + dy * dy);
+
+            double travelTime;
+            bool isCapital = GameEngine.Instance.World.isCapital(sourceVillageId);
+
+            if (isCapital)
+            {
+                travelTime = dist * (wd.armyMoveSpeed * wd.gamePlaySpeed);
+            }
+            else if (captainsOnly)
+            {
+                travelTime = dist * (wd.CaptainsMoveSpeed * wd.gamePlaySpeed *
+                    ResearchData.CaptainTimes[ResearchData.CaptainTimes.Length - 1]);
+            }
+            else
+            {
+                travelTime = dist * (wd.armyMoveSpeed * wd.gamePlaySpeed *
+                    ResearchData.ArmyTimes[ResearchData.ArmyTimes.Length - 1]);
+            }
+
+            travelTime = GameEngine.Instance.World.adjustIfIslandTravel(
+                travelTime, sourceVillageId, targetVillageId);
+
+            return travelTime;
+        }
+
         public static double ApplyCardSpeed(double baseTime, int cardType)
         {
             switch (cardType)

@@ -88,6 +88,7 @@ namespace Kingdoms.Bot.UI
         // Auto Bomb Multi tab
         private List<MultiBombVillageRow> _abmVillageRows = new List<MultiBombVillageRow>();
         private List<MultiPendingRow> _abmPendingRows = new List<MultiPendingRow>();
+        private Label _abmStackColHeaderLabel; // "Stack" ↔ "Delay ±" depending on delay mode
         private Timer _abmRefreshTimer;
         private bool _abmLastIsCoordinator = false;
         private NumericUpDown _abmAddVidInput;
@@ -3752,17 +3753,9 @@ namespace Kingdoms.Bot.UI
             tgtLbl.Location = new Point(6, 11);
             _abmCtrlPanel.Controls.Add(tgtLbl);
 
-            Label sdLbl = new Label();
-            sdLbl.Text = "Stack Delay:";
-            sdLbl.Font = new Font("Segoe UI", 7.5f);
-            sdLbl.ForeColor = TextSec;
-            sdLbl.AutoSize = true;
-            sdLbl.Location = new Point(168, 11);
-            _abmCtrlPanel.Controls.Add(sdLbl);
-
             // ── Village column headers ────────────────────────────────────────
-            string[] vCols = { "", "Village", "Travel", "Card", "Cpt", "Formation", "P", "Arch", "Pike", "Sw", "Cat", "Cap", "Stack", "Type", "Status" };
-            int[]    vColX = { 4, 26, 202, 282, 344, 372, 554, 588, 622, 656, 690, 722, 754, 798, 874 };
+            string[] vCols = { "", "Village", "Travel", "Card", "Cpt", "Formation", "P", "Arch", "Pike", "Sw", "Cat", "Cap", "Stack", "Type", "Mod (S/A)", "Status" };
+            int[]    vColX = { 4, 26, 202, 282, 344, 372, 554, 588, 622, 656, 690, 722, 754, 798, 874, 1028 };
             for (int i = 0; i < vCols.Length; i++)
             {
                 Label cl = new Label();
@@ -3772,6 +3765,7 @@ namespace Kingdoms.Bot.UI
                 cl.AutoSize = true;
                 cl.Location = new Point(vColX[i], 2);
                 _abmVillageColHeader.Controls.Add(cl);
+                if (vCols[i] == "Stack") _abmStackColHeaderLabel = cl;
             }
 
             // ── Pending column headers ────────────────────────────────────────
@@ -3854,6 +3848,11 @@ namespace Kingdoms.Bot.UI
             _abmQueueLoadBtn.Click              += delegate { AbmQueueLoad(); };
             _abmQueueRefreshBtn.Click           += delegate { AbmQueueRefreshTargets(); };
             _abmQueueResetBtn.Click             += delegate { AbmQueueReset(); };
+
+            // Live travel display: recalc all rows when the target or stack delay changes
+            _abmTargetVidBox.TextChanged        += delegate { AbmRecalcAllRowTravel(); };
+            _abmStackDelayInput.ValueChanged    += delegate { AbmRecalcAllRowTravel(); };
+            _abmDelayModeCombo.SelectedIndexChanged += delegate { AbmApplyDelayMode(); };
 
             // ── Add Village strip (dynamic — sits between column header and village list) ──
             Panel addVillageStrip = new Panel();
@@ -3979,6 +3978,7 @@ namespace Kingdoms.Bot.UI
             _abmFakeSendCheck.Checked      = s.FakeSendEnabled;
             _abmStackDelayInput.Value = Math.Max(_abmStackDelayInput.Minimum,
                 Math.Min(_abmStackDelayInput.Maximum, s.StackDelaySeconds));
+            _abmDelayModeCombo.SelectedIndex = s.DelayMode == 1 ? 1 : 0;
             _abmPreRefreshCheck.Checked      = s.PreRefreshVillages;
             _abmIncludeVassalsCheck.Checked  = s.IncludeVassals;
             _abmPlayCardsCheck.Checked       = s.PlayCards;
@@ -3998,6 +3998,7 @@ namespace Kingdoms.Bot.UI
             s.AutoCancelOnInterdict = _abmAutoInterdictCheck.Checked;
             s.FakeSendEnabled      = _abmFakeSendCheck.Checked;
             s.StackDelaySeconds    = (int)_abmStackDelayInput.Value;
+            s.DelayMode            = _abmDelayModeCombo.SelectedIndex == 1 ? 1 : 0;
             s.PreRefreshVillages   = _abmPreRefreshCheck.Checked;
             s.IncludeVassals       = _abmIncludeVassalsCheck.Checked;
             s.PlayCards            = _abmPlayCardsCheck.Checked;
@@ -4048,6 +4049,7 @@ namespace Kingdoms.Bot.UI
                 {
                     // v2 format: villageId|playerName|villageName|isVassal|parentVillageId|
                     //            formation|cardIndex|useCaptains|stack|attackTypeIndex|selected
+                    //            [|manualDelay]   (12th field added later — readers accept 11 or 12)
                     int attackTypeIndex = 0;
                     int at = row.SelectedAttackType;
                     if (at == 9) attackTypeIndex = 1;
@@ -4065,7 +4067,8 @@ namespace Kingdoms.Bot.UI
                         row.UseCaptains ? "1" : "0",
                         row.StackOrder.ToString(),
                         attackTypeIndex.ToString(),
-                        row.Selected ? "1" : "0"
+                        row.Selected ? "1" : "0",
+                        row.ManualDelay.ToString()
                     }));
                 }
                 System.IO.File.WriteAllText(path, lines.ToString(), System.Text.Encoding.UTF8);
@@ -4147,6 +4150,8 @@ namespace Kingdoms.Bot.UI
                     bool isVassal      = p[3] == "1";
                     bool useCaptains   = p[7] == "1";
                     bool selected      = p[10] == "1";
+                    int manualDelay    = 0;
+                    if (p.Length >= 12) int.TryParse(p[11], out manualDelay);
 
                     // Don't add the same village+type twice (player and vassal entries are distinct)
                     bool alreadyAdded = false;
@@ -4178,7 +4183,7 @@ namespace Kingdoms.Bot.UI
 
                     // Apply saved config to the row we just added
                     MultiBombVillageRow newRow = _abmVillageRows[_abmVillageRows.Count - 1];
-                    newRow.ApplyConfig(p[5], cardIndex, useCaptains, stack, attackTypeIndex);
+                    newRow.ApplyConfig(p[5], cardIndex, useCaptains, stack, attackTypeIndex, manualDelay);
                     newRow.Selected = selected;
                 }
 
@@ -4223,6 +4228,7 @@ namespace Kingdoms.Bot.UI
             s.SessionKey = _abmSessionKeyBox.Text;
             s.AutoCancelOnInterdict = _abmAutoInterdictCheck.Checked;
             s.StackDelaySeconds = (int)_abmStackDelayInput.Value;
+            s.DelayMode = _abmDelayModeCombo.SelectedIndex == 1 ? 1 : 0;
             s.FakeSendEnabled = _abmFakeSendCheck.Checked;
             s.PreRefreshVillages = _abmPreRefreshCheck.Checked;
             s.IncludeVassals = _abmIncludeVassalsCheck.Checked;
@@ -4299,6 +4305,7 @@ namespace Kingdoms.Bot.UI
                     CaptainsOnly      = row.UseCaptains,
                     AttackType        = row.SelectedAttackType,
                     TravelTimeSeconds = effectiveTravel,
+                    ManualDelaySeconds = row.ManualDelay,
                     Selected          = true,
                 });
             }
@@ -4313,16 +4320,9 @@ namespace Kingdoms.Bot.UI
                 if (s2 != null) s2.TargetVillageId = targetVid;
 
                 // Update travel time labels in-place — don't rebuild rows (would lose UI selections).
-                // Use local calc for own villages, posted API value for remote villages.
-                foreach (MultiBombVillageRow row in _abmVillageRows)
-                {
-                    double baseTravel;
-                    if (row.OwnerPlayerName == localPlayerName)
-                        baseTravel = AutoBombModule.CalculateBaseTravelTime(row.SourceVillageId, targetVid, false);
-                    else
-                        baseTravel = AbmLookupRemoteTravel(s, row.SourceVillageId, false);
-                    row.UpdateTravelTime(baseTravel);
-                }
+                // Live recalc applies card/captain/stack to the display; local rows use local
+                // research, remote rows assume max research.
+                AbmRecalcAllRowTravel();
 
                 AbmSaveSetup();
             }
@@ -4731,7 +4731,8 @@ namespace Kingdoms.Bot.UI
 
             bool coordControls = isCoord && modEnabled;
             _abmTargetVidBox.Enabled        = coordControls;
-            _abmStackDelayInput.Enabled     = coordControls;
+            _abmDelayModeCombo.Enabled      = coordControls;
+            _abmStackDelayInput.Enabled     = coordControls && _abmDelayModeCombo.SelectedIndex != 1;
             _abmFakeSendCheck.Enabled       = coordControls;
             _abmAutoInterdictCheck.Enabled  = coordControls;
             _abmPreRefreshCheck.Enabled      = modEnabled;
@@ -4881,9 +4882,83 @@ namespace Kingdoms.Bot.UI
                 AbmRepositionVillageRows();
                 AbmSaveSetup();
             };
+            row.ConfigChanged += r => AbmRecalcRowTravel(r);
+
+            // New rows must match the current launch-timing mode
+            row.SetDelayMode(_abmDelayModeCombo.SelectedIndex == 1);
 
             _abmVillageListPanel.Controls.Add(row);
             _abmVillageRows.Add(row);
+
+            // Live travel display: calculate immediately if a target VID is already set
+            AbmRecalcRowTravel(row);
+        }
+
+        /// <summary>
+        /// Recalculates and refreshes a row's travel + modified-time display from the current
+        /// target VID, card, captains, stack, and stack delay. Local villages use the local
+        /// player's research; remote villages assume max army/captain speed research.
+        /// Shows "—" when the target VID box is empty/invalid.
+        /// </summary>
+        private void AbmRecalcRowTravel(MultiBombVillageRow row)
+        {
+            if (row == null) return;
+            int stackDelay = (int)_abmStackDelayInput.Value;
+
+            int targetVid;
+            if (!int.TryParse(_abmTargetVidBox.Text.Trim(), out targetVid) || targetVid <= 0)
+            {
+                row.RefreshTravelDisplay(stackDelay, false);
+                return;
+            }
+
+            try
+            {
+                double army, captain;
+                if (row.IsLocalPlayer)
+                {
+                    army    = AutoBombModule.CalculateBaseTravelTime(row.SourceVillageId, targetVid, false);
+                    captain = AutoBombModule.CalculateBaseTravelTime(row.SourceVillageId, targetVid, true);
+                }
+                else
+                {
+                    army    = AutoBombModule.CalculateBaseTravelTimeMaxResearch(row.SourceVillageId, targetVid, false);
+                    captain = AutoBombModule.CalculateBaseTravelTimeMaxResearch(row.SourceVillageId, targetVid, true);
+                }
+                row.SetBaseTravelTimes(army, captain);
+                row.RefreshTravelDisplay(stackDelay, true);
+            }
+            catch
+            {
+                row.RefreshTravelDisplay(stackDelay, false);
+            }
+        }
+
+        private void AbmRecalcAllRowTravel()
+        {
+            foreach (MultiBombVillageRow row in _abmVillageRows)
+                AbmRecalcRowTravel(row);
+        }
+
+        /// <summary>
+        /// Applies the launch timing mode (stack delay vs per-village manual ± delay) to the
+        /// settings, every village row, the column header, and the stack-delay input state.
+        /// </summary>
+        private void AbmApplyDelayMode()
+        {
+            bool manual = _abmDelayModeCombo.SelectedIndex == 1;
+
+            AutoBombMultiSettings s = AbmSettings;
+            if (s != null) s.DelayMode = manual ? 1 : 0;
+
+            foreach (MultiBombVillageRow row in _abmVillageRows)
+                row.SetDelayMode(manual);
+
+            if (_abmStackColHeaderLabel != null)
+                _abmStackColHeaderLabel.Text = manual ? "Delay ±" : "Stack";
+
+            AbmRecalcAllRowTravel();
+            AbmSaveSetup();
         }
 
         private void AbmRepositionVillageRows()

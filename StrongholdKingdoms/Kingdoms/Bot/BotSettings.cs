@@ -875,6 +875,10 @@ namespace Kingdoms.Bot
         public string SessionKey = "";
         public bool AutoCancelOnInterdict = true;
         public int StackDelaySeconds = 1;
+        // Launch timing mode: 0 = stack delay (arrival spacing by stack number),
+        // 1 = manual per-village ± delay (stack spacing ignored; each row's delay shifts
+        // its send: positive = sends earlier than exact = lands first).
+        public int DelayMode = 0;
         public bool FakeSendEnabled;
         public bool TargetQueueEnabled;
         // Force-refresh each attacking village ~5s before prepare to reduce server callback errors
