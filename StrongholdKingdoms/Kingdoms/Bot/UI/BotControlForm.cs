@@ -128,6 +128,7 @@ namespace Kingdoms.Bot.UI
         // Monk Interdict sub-tab (controls created programmatically, no persistence)
         private CheckedListBox _mkIdVillageList;
         private NumericUpDown _mkIdMonkCountInput;
+        private NumericUpDown _mkIdDelayInput;
         private CheckBox _mkIdAllowHireCheck;
         private CheckBox _mkIdReduceCheck;
         private Button _mkIdInterdictBtn;
@@ -7796,6 +7797,26 @@ namespace Kingdoms.Bot.UI
             _mkIdInterdictBtn.Click += delegate { MkIdInterdictClick(); };
             strip.Controls.Add(_mkIdInterdictBtn);
 
+            Label delayLabel = new Label();
+            delayLabel.Text      = "Delay Between Interdicts (ms):";
+            delayLabel.Font      = new Font("Segoe UI", 8.5f);
+            delayLabel.ForeColor = TextSec;
+            delayLabel.AutoSize  = true;
+            delayLabel.Location  = new Point(340, 44);
+            strip.Controls.Add(delayLabel);
+
+            _mkIdDelayInput = new NumericUpDown();
+            _mkIdDelayInput.Minimum     = 0;
+            _mkIdDelayInput.Maximum     = 60000;
+            _mkIdDelayInput.Increment   = 100;
+            _mkIdDelayInput.Value       = 1000;
+            _mkIdDelayInput.BackColor   = inputBg;
+            _mkIdDelayInput.ForeColor   = TextPri;
+            _mkIdDelayInput.BorderStyle = BorderStyle.FixedSingle;
+            _mkIdDelayInput.Size        = new Size(70, 23);
+            _mkIdDelayInput.Location    = new Point(513, 41);
+            strip.Controls.Add(_mkIdDelayInput);
+
             _mkIdVillageList = new CheckedListBox();
             _mkIdVillageList.Dock         = DockStyle.Fill;
             _mkIdVillageList.BackColor    = inputBg;
@@ -7860,7 +7881,8 @@ namespace Kingdoms.Bot.UI
             Modules.MonkModule mm = BotEngine.Instance.GetModule<Modules.MonkModule>();
             if (mm == null) return;
             if (mm.InterdictVillages(ids, (int)_mkIdMonkCountInput.Value,
-                    _mkIdAllowHireCheck.Checked, _mkIdReduceCheck.Checked))
+                    _mkIdAllowHireCheck.Checked, _mkIdReduceCheck.Checked,
+                    (int)_mkIdDelayInput.Value))
             {
                 _mkIdInterdictBtn.Enabled = false;
                 _mkIdInterdictBtn.Text = "Running...";

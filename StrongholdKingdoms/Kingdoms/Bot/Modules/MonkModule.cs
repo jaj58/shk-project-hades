@@ -514,7 +514,7 @@ namespace Kingdoms.Bot.Modules
         // selected village on a background thread.
         // =================================================================
 
-        public bool InterdictVillages(List<int> villageIds, int monkCount, bool allowHire, bool reduceIfInterdicted)
+        public bool InterdictVillages(List<int> villageIds, int monkCount, bool allowHire, bool reduceIfInterdicted, int delayMs)
         {
             if (villageIds == null || villageIds.Count == 0)
             {
@@ -529,11 +529,12 @@ namespace Kingdoms.Bot.Modules
 
             List<int> ids = new List<int>(villageIds);
             if (monkCount < 1) monkCount = 1;
+            if (delayMs < 0) delayMs = 0;
             _interdictCancel = false;
 
             Thread t = new Thread(delegate ()
             {
-                try { InterdictCycle(ids, monkCount, allowHire, reduceIfInterdicted); }
+                try { InterdictCycle(ids, monkCount, allowHire, reduceIfInterdicted, delayMs); }
                 catch (Exception ex) { LogError("Interdict cycle failed: " + ex.Message); }
                 finally { Interlocked.Exchange(ref _interdictRunning, 0); }
             });
@@ -543,9 +544,10 @@ namespace Kingdoms.Bot.Modules
             return true;
         }
 
-        private void InterdictCycle(List<int> ids, int monkCount, bool allowHire, bool reduceIfInterdicted)
+        private void InterdictCycle(List<int> ids, int monkCount, bool allowHire, bool reduceIfInterdicted, int delayMs)
         {
-            LogInfo("Interdict: starting cycle for " + ids.Count + " village(s), " + monkCount + " monk(s) each.");
+            LogInfo("Interdict: starting cycle for " + ids.Count + " village(s), " + monkCount + " monk(s) each, "
+                + delayMs + "ms delay between interdicts.");
 
             if (GameEngine.Instance == null || GameEngine.Instance.World == null)
             {
@@ -572,7 +574,7 @@ namespace Kingdoms.Bot.Modules
                 GameEngine.Instance.cardsManager.UserCardData, 4);
             if (hoursPerMonk <= 0) hoursPerMonk = 4;
 
-            foreach (int villageId in ids)
+            for (int i = 0; i < ids.Count; i++)
             {
                 if (_interdictCancel)
                 {
@@ -580,6 +582,7 @@ namespace Kingdoms.Bot.Modules
                     break;
                 }
 
+                int villageId = ids[i];
                 string name = GameEngine.Instance.World.getVillageName(villageId);
                 LogInfo("Interdict: checking village " + name);
 
@@ -669,7 +672,10 @@ namespace Kingdoms.Bot.Modules
                     LogError("Interdict send failed for " + name + ": " + ex.Message);
                 }
 
-                Thread.Sleep(700 + _interdictRand.Next(800));
+                // User-set spacing plus a little jitter so sends aren't perfectly uniform;
+                // skipped after the last village so the cycle ends promptly.
+                if (i < ids.Count - 1)
+                    Thread.Sleep(delayMs + _interdictRand.Next(400));
             }
 
             LogInfo("Interdict: cycle finished.");
