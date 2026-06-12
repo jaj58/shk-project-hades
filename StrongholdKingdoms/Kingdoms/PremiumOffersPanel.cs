@@ -409,7 +409,7 @@ namespace Kingdoms
       int result;
       this.labelTitle.Text = this.selectedOffer.OfferType != 1 || !int.TryParse(this.selectedOffer.Name, out result) ? this.selectedOffer.Name : Rankings.getRankingName(result, RemoteServices.Instance.UserAvatar.male);
       this.labelTitle.Text += ": ";
-      this.labelTitle.Text += (string) (object) this.selectedOffer.CrownsPrice;
+      this.labelTitle.Text += this.selectedOffer.CrownsPrice.ToString();
       CustomSelfDrawPanel.CSDLabel labelTitle1 = this.labelTitle;
       labelTitle1.Text = labelTitle1.Text + " " + SK.Text("BuyCrownsPanel_Crowns", "Crowns");
       this.labelTitle.Text += " (";

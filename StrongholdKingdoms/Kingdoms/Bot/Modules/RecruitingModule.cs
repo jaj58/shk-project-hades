@@ -165,28 +165,36 @@ namespace Kingdoms.Bot.Modules
         private int _currentVillageIndex;
         private List<int> _villageQueue = new List<int>();
         private DateTime _lastVillageAction = DateTime.MinValue;
+        // Consecutive re-visits of the current village this cycle (one unit type recruits per
+        // visit). Capped so a village that can always recruit a trickle (e.g. gold regen)
+        // can't starve the rest of the queue.
+        private int _villageRevisits;
 
-        // Time-stamped ledger of troops we've queued, persisted across cycle boundaries.
-        // Each village is visited only once per cycle, so a per-cycle dict is useless —
-        // the protection must survive into the NEXT cycle.  Records expire after
-        // RecruitGuardSeconds; by then the server will have confirmed and m_numArchers
-        // will be correct, so we can trust GetCurrentCount again.
-        private struct RecruitRecord { public int Amount; public DateTime RecordedAt; }
+        // Expected-count floor for troops we've queued, persisted across cycle boundaries.
+        // The server confirms a makeTroops within seconds (m_numX then already includes the
+        // new troops), but a stale importResourcesAndStats from another RPC can briefly drop
+        // the count back down after LocallyMade_* was zeroed. Each record stores the total we
+        // expect to exist (count at recruit time + amount queued); reads clamp the live count
+        // UP to that floor. Because the floor is never subtracted from the live count it can
+        // neither double-count confirmed troops nor accumulate across recruits — both of which
+        // the previous "subtract recently queued" ledger did, causing high-priority units to be
+        // skipped. Records expire after RecruitGuardSeconds.
+        private struct RecruitRecord { public int ExpectedCount; public DateTime RecordedAt; }
         private Dictionary<int, Dictionary<string, RecruitRecord>> _recentlyRecruited =
             new Dictionary<int, Dictionary<string, RecruitRecord>>();
         private const int RecruitGuardSeconds = 90;
 
-        private int GetRecentlyRecruited(int villageId, string unitKey)
+        private int GetExpectedCountFloor(int villageId, string unitKey)
         {
             Dictionary<string, RecruitRecord> byUnit;
             if (!_recentlyRecruited.TryGetValue(villageId, out byUnit)) return 0;
             RecruitRecord rec;
             if (!byUnit.TryGetValue(unitKey, out rec)) return 0;
             if ((DateTime.Now - rec.RecordedAt).TotalSeconds > RecruitGuardSeconds) return 0;
-            return rec.Amount;
+            return rec.ExpectedCount;
         }
 
-        private void RecordRecruitment(int villageId, string unitKey, int amount)
+        private void RecordRecruitment(int villageId, string unitKey, int expectedCount)
         {
             Dictionary<string, RecruitRecord> byUnit;
             if (!_recentlyRecruited.TryGetValue(villageId, out byUnit))
@@ -194,9 +202,7 @@ namespace Kingdoms.Bot.Modules
                 byUnit = new Dictionary<string, RecruitRecord>();
                 _recentlyRecruited[villageId] = byUnit;
             }
-            RecruitRecord existing;
-            int total = byUnit.TryGetValue(unitKey, out existing) ? existing.Amount + amount : amount;
-            byUnit[unitKey] = new RecruitRecord { Amount = total, RecordedAt = DateTime.Now };
+            byUnit[unitKey] = new RecruitRecord { ExpectedCount = expectedCount, RecordedAt = DateTime.Now };
         }
 
         // Vassal state
@@ -207,7 +213,12 @@ namespace Kingdoms.Bot.Modules
         private int _pendingVassalVillageId = -1;
         private GetVassalArmyInfo_ReturnType _pendingVassalArmyInfo;
         private DateTime _lastVassalAction = DateTime.MinValue;
+        private DateTime _vassalRequestTime = DateTime.MinValue;
         private bool _vassalLoadRequested;
+        // Without a timeout a lost GetVassalArmyInfo reply (or another component overwriting
+        // the global callback) would leave the module in WaitingForArmyInfo forever and no
+        // new recruiting cycle would ever start.
+        private const int VassalArmyInfoTimeoutSeconds = 30;
 
         public override string ModuleName
         {
@@ -232,6 +243,7 @@ namespace Kingdoms.Bot.Modules
         protected override void OnInitialize()
         {
             _currentVillageIndex = 0;
+            _villageRevisits = 0;
             _villageQueue.Clear();
             _recentlyRecruited.Clear();
         }
@@ -257,6 +269,7 @@ namespace Kingdoms.Bot.Modules
                 RefreshVillageQueue();
                 RefreshVassalQueue();
                 _currentVillageIndex = 0;
+                _villageRevisits = 0;
                 _vassalState = VassalState.Idle;
                 _lastFullCycle = DateTime.Now;
 
@@ -279,10 +292,19 @@ namespace Kingdoms.Bot.Modules
                 return;
 
             int villageId = _villageQueue[_currentVillageIndex];
-            _currentVillageIndex++;
             _lastVillageAction = DateTime.Now;
 
-            ProcessVillage(villageId, settings);
+            // Stay on the same village while it keeps recruiting — one unit type per visit,
+            // DelayBetweenVillagesMs apart — so all deficit types fill within one cycle
+            // (mirrors the old module's single pass with sleeps between types).
+            bool recruited = ProcessVillage(villageId, settings);
+            if (recruited && _villageRevisits < AllUnitKeys.Length)
+            {
+                _villageRevisits++;
+                return;
+            }
+            _villageRevisits = 0;
+            _currentVillageIndex++;
         }
 
         private void RefreshVillageQueue()
@@ -303,25 +325,24 @@ namespace Kingdoms.Bot.Modules
             }
         }
 
-        private void ProcessVillage(int villageId, RecruitingSettings settings)
+        /// <returns>True if a recruit action was queued; the caller revisits the village
+        /// until this returns false so every deficit type gets filled within one cycle.</returns>
+        private bool ProcessVillage(int villageId, RecruitingSettings settings)
         {
             VillageMap village = GameEngine.Instance.getVillage(villageId);
             if (village == null)
             {
                 LogDebug("Village " + villageId + " not loaded, skipping.");
-                return;
+                return false;
             }
 
             // Capitals use a completely different gold source, cost formula, army cap, and
             // research tree — route them to their own method rather than bolting on conditionals.
             if (GameEngine.Instance.World != null && GameEngine.Instance.World.isCapital(villageId))
-            {
-                ProcessCapital(villageId, settings, village);
-                return;
-            }
+                return ProcessCapital(villageId, settings, village);
 
             VillageRecruitSettings villageSetting = settings.GetVillageSettings(villageId);
-            if (villageSetting == null) return;
+            if (villageSetting == null) return false;
 
             // Sum of locally queued army troops (not yet server-confirmed).
             // These consume spare workers and army slots immediately on queue, so subtract
@@ -347,7 +368,7 @@ namespace Kingdoms.Bot.Modules
             if (spareUnitSpace <= 0)
             {
                 LogDebug("Village " + villageId + " has no spare unit space, skipping.");
-                return;
+                return false;
             }
 
             int currentGold = (int)GameEngine.Instance.World.getCurrentGold();
@@ -374,15 +395,17 @@ namespace Kingdoms.Bot.Modules
                 return a.Priority.CompareTo(b.Priority);
             });
 
+            bool recruited = false;
             foreach (UnitRecruitEntry entry in sorted)
             {
                 if (entry.TargetCount <= 0) continue;
 
                 int current = GetCurrentCount(village, entry.UnitKey);
-                // Add troops already queued this cycle in case m_numArchers was overwritten
-                // by a stale importResourcesAndStats call after LocallyMade_* was zeroed.
-                int guardQueued = GetRecentlyRecruited(villageId, entry.UnitKey);
-                int needed  = entry.TargetCount - current - guardQueued;
+                // Clamp up to the expected-count floor in case m_numX was overwritten by a
+                // stale importResourcesAndStats call after LocallyMade_* was zeroed.
+                int floor = GetExpectedCountFloor(villageId, entry.UnitKey);
+                if (current < floor) current = floor;
+                int needed = entry.TargetCount - current;
                 if (needed <= 0) continue;
 
                 // Monks/Traders/Scouts are people/special types: no research gate, no gold
@@ -442,7 +465,10 @@ namespace Kingdoms.Bot.Modules
                                      " (need " + captainCost + ", have " + currentGold + ").");
                             continue;
                         }
-                        canRecruit = 1; // always hire one captain at a time
+                        // Captains are gold-only (no peasant cost) but still occupy unit space;
+                        // hire one at a time and don't override the limits computed above.
+                        if (canRecruit > 0)
+                            canRecruit = 1;
                     }
                     else
                     {
@@ -467,9 +493,10 @@ namespace Kingdoms.Bot.Modules
                     try
                     {
                         village.makeTroops(GetTroopTypeId(entry.UnitKey), canRecruit, true);
-                        RecordRecruitment(villageId, entry.UnitKey, canRecruit);
+                        RecordRecruitment(villageId, entry.UnitKey, current + canRecruit);
+                        recruited = true;
                         LogInfo("Village " + villageId + ": recruiting " + canRecruit + " " + entry.UnitKey +
-                                " (have " + current + "/" + entry.TargetCount + ", guard=" + guardQueued + ")");
+                                " (have " + current + "/" + entry.TargetCount + ")");
                     }
                     catch (Exception ex)
                     {
@@ -495,24 +522,27 @@ namespace Kingdoms.Bot.Modules
                         {
                             int monkAmount = Math.Min(canRecruit, 4);
                             village.makePeople(1000 + monkAmount);
-                            RecordRecruitment(villageId, entry.UnitKey, monkAmount);
+                            RecordRecruitment(villageId, entry.UnitKey, current + monkAmount);
+                            recruited = true;
                             LogInfo("Village " + villageId + ": recruiting " + monkAmount + " " + entry.UnitKey +
-                                    " (have " + current + "/" + entry.TargetCount + ", guard=" + guardQueued + ")");
+                                    " (have " + current + "/" + entry.TargetCount + ")");
                         }
                         else if (entry.UnitKey == "Traders")
                         {
                             int traderAmount = Math.Min(canRecruit, 4);
                             village.makeTroops(-5, traderAmount, true);
-                            RecordRecruitment(villageId, entry.UnitKey, traderAmount);
+                            RecordRecruitment(villageId, entry.UnitKey, current + traderAmount);
+                            recruited = true;
                             LogInfo("Village " + villageId + ": recruiting " + traderAmount + " " + entry.UnitKey +
-                                    " (have " + current + "/" + entry.TargetCount + ", guard=" + guardQueued + ")");
+                                    " (have " + current + "/" + entry.TargetCount + ")");
                         }
                         else
                         {
                             village.makeTroops(GetTroopTypeId(entry.UnitKey), canRecruit, true);
-                            RecordRecruitment(villageId, entry.UnitKey, canRecruit);
+                            RecordRecruitment(villageId, entry.UnitKey, current + canRecruit);
+                            recruited = true;
                             LogInfo("Village " + villageId + ": recruiting " + canRecruit + " " + entry.UnitKey +
-                                    " (have " + current + "/" + entry.TargetCount + ", guard=" + guardQueued + ")");
+                                    " (have " + current + "/" + entry.TargetCount + ")");
                         }
                     }
                     catch (Exception ex)
@@ -521,8 +551,10 @@ namespace Kingdoms.Bot.Modules
                     }
                 }
 
-                break; // one type per tick; next tick picks up the next deficit
+                break; // one type per visit; OnTick revisits this village until nothing recruits
             }
+
+            return recruited;
         }
 
         /// <summary>
@@ -534,20 +566,20 @@ namespace Kingdoms.Bot.Modules
         ///   4. Army cap = (parishCapitalResearchData.Research_Command + 1) × 25
         ///   5. Research is checked against the capital's own research tree
         /// </summary>
-        private void ProcessCapital(int villageId, RecruitingSettings settings, VillageMap village)
+        private bool ProcessCapital(int villageId, RecruitingSettings settings, VillageMap village)
         {
             VillageRecruitSettings villageSetting = settings.GetVillageSettings(villageId);
             if (villageSetting == null)
             {
                 LogDebug("Capital " + villageId + ": no settings configured, skipping.");
-                return;
+                return false;
             }
 
             int capitalGold = (int)village.m_capitalGold;
             if (capitalGold <= 0)
             {
                 LogDebug("Capital " + villageId + ": no capital gold available, skipping.");
-                return;
+                return false;
             }
 
             // Capital army limit from parish research — not the global command research
@@ -564,16 +596,21 @@ namespace Kingdoms.Bot.Modules
             if (spareArmySlots <= 0)
             {
                 LogDebug("Capital " + villageId + " at max army size (" + maxArmySize + "), skipping.");
-                return;
+                return false;
             }
 
-            WorldData wd          = GameEngine.Instance.LocalWorldData;
-            int costMultiplier    = wd.MercenaryCostMultiplier;
-            if (GameEngine.Instance.World.SixthAgeWorld)
-                costMultiplier /= 2;
+            WorldData wd = GameEngine.Instance.LocalWorldData;
+            bool sixthAge = GameEngine.Instance.World.SixthAgeWorld;
 
-            // Capitals have their own research tree (parish/county/province research)
-            ResearchData capitalResearch = GameEngine.Instance.World.GetResearchDataForCurrentVillage();
+            // Capitals have their own research tree (parish/county/province research).
+            // GetResearchDataForCurrentVillage() would return whichever village the player
+            // happens to be viewing — m_parishCapitalResearchData is this capital's own tree.
+            ResearchData capitalResearch = village.m_parishCapitalResearchData;
+            if (capitalResearch == null)
+            {
+                LogDebug("Capital " + villageId + ": capital research data not loaded, skipping.");
+                return false;
+            }
 
             List<UnitRecruitEntry> sorted = new List<UnitRecruitEntry>(villageSetting.Units);
             sorted.Sort(delegate(UnitRecruitEntry a, UnitRecruitEntry b)
@@ -581,6 +618,7 @@ namespace Kingdoms.Bot.Modules
                 return a.Priority.CompareTo(b.Priority);
             });
 
+            bool recruited = false;
             foreach (UnitRecruitEntry entry in sorted)
             {
                 // Capitals only take the 5 standard barracks types — no Captains (barracks-only),
@@ -598,9 +636,12 @@ namespace Kingdoms.Bot.Modules
                 int needed  = entry.TargetCount - current;
                 if (needed <= 0) continue;
 
-                // Mercenary cost (no armoury check — capitals buy troops directly)
-                int baseCost = GetBarracksCost(entry.UnitKey);
-                int mercCost = baseCost * costMultiplier;
+                // Mercenary cost (no armoury check — capitals buy troops directly).
+                // Halve AFTER multiplying on 6th-age worlds, matching the game's own
+                // (base * multiplier) / 2 rounding.
+                int mercCost = GetBarracksCost(entry.UnitKey) * wd.MercenaryCostMultiplier;
+                if (sixthAge)
+                    mercCost /= 2;
 
                 int canRecruit = Math.Min(needed, spareArmySlots);
                 if (mercCost > 0 && capitalGold < canRecruit * mercCost)
@@ -620,6 +661,7 @@ namespace Kingdoms.Bot.Modules
                 try
                 {
                     village.makeTroops(GetTroopTypeId(entry.UnitKey), canRecruit, true);
+                    recruited = true;
                     LogInfo("Capital " + villageId + ": recruiting " + canRecruit + " " + entry.UnitKey +
                             " (have " + current + "/" + entry.TargetCount + ")" +
                             " for " + (canRecruit * mercCost) + " capital gold");
@@ -629,8 +671,10 @@ namespace Kingdoms.Bot.Modules
                     LogError("Capital " + villageId + ": failed to recruit " + entry.UnitKey + ": " + ex.Message);
                 }
 
-                break; // one type per tick
+                break; // one type per visit; OnTick revisits this capital until nothing recruits
             }
+
+            return recruited;
         }
 
         private void RefreshVassalQueue()
@@ -710,7 +754,17 @@ namespace Kingdoms.Bot.Modules
             if (_vassalState == VassalState.WaitingForArmyInfo)
             {
                 if (_pendingVassalArmyInfo == null)
+                {
+                    if ((DateTime.Now - _vassalRequestTime).TotalSeconds > VassalArmyInfoTimeoutSeconds)
+                    {
+                        LogWarning("Vassal " + _pendingVassalVillageId + ": army info request timed out, skipping.");
+                        _pendingVassalVillageId = -1;
+                        _vassalState = VassalState.Idle;
+                        _currentVassalIndex++;
+                        _lastVassalAction = DateTime.Now;
+                    }
                     return; // still waiting for callback
+                }
 
                 ProcessVassalArmyInfo(_pendingVassalArmyInfo, vassalSettings);
                 _pendingVassalArmyInfo = null;
@@ -774,6 +828,7 @@ namespace Kingdoms.Bot.Modules
             _pendingVassalVillageId = vassalVillageId;
             _pendingVassalArmyInfo = null;
             _vassalState = VassalState.WaitingForArmyInfo;
+            _vassalRequestTime = DateTime.Now;
 
             try
             {
@@ -1005,6 +1060,7 @@ namespace Kingdoms.Bot.Modules
         {
             _villageQueue.Clear();
             _currentVillageIndex = 0;
+            _villageRevisits = 0;
             _recentlyRecruited.Clear();
             _vassalQueue.Clear();
             _currentVassalIndex = 0;
