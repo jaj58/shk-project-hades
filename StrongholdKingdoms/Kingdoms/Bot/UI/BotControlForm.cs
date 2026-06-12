@@ -125,6 +125,15 @@ namespace Kingdoms.Bot.UI
         private int _mkSelectedRouteIndex = -1;
         private Timer _mkSyncTimer;
 
+        // Monk Interdict sub-tab (controls created programmatically, no persistence)
+        private CheckedListBox _mkIdVillageList;
+        private NumericUpDown _mkIdMonkCountInput;
+        private NumericUpDown _mkIdDelayInput;
+        private CheckBox _mkIdAllowHireCheck;
+        private CheckBox _mkIdReduceCheck;
+        private Button _mkIdInterdictBtn;
+        private Button _mkIdRefreshBtn;
+
         // Auto tab runtime state. The control fields (_autoProd*/_autoModule* panels, interval
         // inputs and server-time label) are declared in BotControlForm.Designer.cs.
         private Timer _autoRefreshTimer;
@@ -7461,8 +7470,10 @@ namespace Kingdoms.Bot.UI
             // on quest complete) back to the UI checkboxes without a full list rebuild.
             _mkSyncTimer = new Timer();
             _mkSyncTimer.Interval = 1500;
-            _mkSyncTimer.Tick += delegate { try { MkSyncRouteStates(); } catch { } };
+            _mkSyncTimer.Tick += delegate { try { MkSyncRouteStates(); MkIdSyncButtonState(); } catch { } };
             _mkSyncTimer.Start();
+
+            MkIdBuildInterdictTab();
 
             MkLoadFromSettings();
         }
@@ -7686,6 +7697,218 @@ namespace Kingdoms.Bot.UI
             MonkSettings s = BotEngine.Instance.Settings.Monk;
             for (int i = 0; i < _mkRouteRows.Count && i < s.Routes.Count; i++)
                 _mkRouteRows[i].SyncState(s.Routes[i]);
+        }
+
+        // =====================================================================
+        // Monk Interdict sub-tab — manual bulk self-interdict of own villages
+        // =====================================================================
+
+        private void MkIdBuildInterdictTab()
+        {
+            Color panelBg = Color.FromArgb(30, 30, 40);
+            Color inputBg = Color.FromArgb(50, 52, 64);
+
+            Panel strip = new Panel();
+            strip.Dock      = DockStyle.Top;
+            strip.Height    = 72;
+            strip.BackColor = panelBg;
+
+            Label countLabel = new Label();
+            countLabel.Text      = "Number of Monks:";
+            countLabel.Font      = new Font("Segoe UI", 8.5f);
+            countLabel.ForeColor = TextSec;
+            countLabel.AutoSize  = true;
+            countLabel.Location  = new Point(10, 13);
+            strip.Controls.Add(countLabel);
+
+            _mkIdMonkCountInput = new NumericUpDown();
+            _mkIdMonkCountInput.Minimum     = 1;
+            _mkIdMonkCountInput.Maximum     = 8;
+            _mkIdMonkCountInput.Value       = 2;
+            _mkIdMonkCountInput.BackColor   = inputBg;
+            _mkIdMonkCountInput.ForeColor   = TextPri;
+            _mkIdMonkCountInput.BorderStyle = BorderStyle.FixedSingle;
+            _mkIdMonkCountInput.Size        = new Size(52, 23);
+            _mkIdMonkCountInput.Location    = new Point(118, 10);
+            strip.Controls.Add(_mkIdMonkCountInput);
+
+            _mkIdAllowHireCheck = new CheckBox();
+            _mkIdAllowHireCheck.Text      = "Allow Hire Monks";
+            _mkIdAllowHireCheck.Font      = new Font("Segoe UI", 8.5f);
+            _mkIdAllowHireCheck.ForeColor = TextPri;
+            _mkIdAllowHireCheck.AutoSize  = true;
+            _mkIdAllowHireCheck.Checked   = true;
+            _mkIdAllowHireCheck.Location  = new Point(195, 11);
+            strip.Controls.Add(_mkIdAllowHireCheck);
+
+            _mkIdReduceCheck = new CheckBox();
+            _mkIdReduceCheck.Text      = "Reduce number of monks if village is already interdicted";
+            _mkIdReduceCheck.Font      = new Font("Segoe UI", 8.5f);
+            _mkIdReduceCheck.ForeColor = TextPri;
+            _mkIdReduceCheck.AutoSize  = true;
+            _mkIdReduceCheck.Location  = new Point(330, 11);
+            strip.Controls.Add(_mkIdReduceCheck);
+
+            _mkIdRefreshBtn = new Button();
+            _mkIdRefreshBtn.Text      = "Refresh";
+            _mkIdRefreshBtn.BackColor = Color.FromArgb(50, 50, 70);
+            _mkIdRefreshBtn.ForeColor = TextPri;
+            _mkIdRefreshBtn.FlatStyle = FlatStyle.Flat;
+            _mkIdRefreshBtn.Font      = new Font("Segoe UI", 8.5f);
+            _mkIdRefreshBtn.Size      = new Size(75, 26);
+            _mkIdRefreshBtn.Location  = new Point(10, 40);
+            _mkIdRefreshBtn.UseVisualStyleBackColor = false;
+            _mkIdRefreshBtn.Click += delegate { MkIdPopulateVillages(); };
+            strip.Controls.Add(_mkIdRefreshBtn);
+
+            Button allBtn = new Button();
+            allBtn.Text      = "All";
+            allBtn.BackColor = Color.FromArgb(44, 46, 58);
+            allBtn.ForeColor = TextSec;
+            allBtn.FlatStyle = FlatStyle.Flat;
+            allBtn.Font      = new Font("Segoe UI", 8.5f);
+            allBtn.Size      = new Size(45, 26);
+            allBtn.Location  = new Point(95, 40);
+            allBtn.UseVisualStyleBackColor = false;
+            allBtn.Click += delegate { MkIdSetAllChecked(true); };
+            strip.Controls.Add(allBtn);
+
+            Button noneBtn = new Button();
+            noneBtn.Text      = "None";
+            noneBtn.BackColor = Color.FromArgb(44, 46, 58);
+            noneBtn.ForeColor = TextSec;
+            noneBtn.FlatStyle = FlatStyle.Flat;
+            noneBtn.Font      = new Font("Segoe UI", 8.5f);
+            noneBtn.Size      = new Size(50, 26);
+            noneBtn.Location  = new Point(146, 40);
+            noneBtn.UseVisualStyleBackColor = false;
+            noneBtn.Click += delegate { MkIdSetAllChecked(false); };
+            strip.Controls.Add(noneBtn);
+
+            _mkIdInterdictBtn = new Button();
+            _mkIdInterdictBtn.Text      = "Interdict";
+            _mkIdInterdictBtn.BackColor = Color.FromArgb(50, 80, 50);
+            _mkIdInterdictBtn.ForeColor = TextPri;
+            _mkIdInterdictBtn.FlatStyle = FlatStyle.Flat;
+            _mkIdInterdictBtn.Font      = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            _mkIdInterdictBtn.Size      = new Size(110, 26);
+            _mkIdInterdictBtn.Location  = new Point(210, 40);
+            _mkIdInterdictBtn.UseVisualStyleBackColor = false;
+            _mkIdInterdictBtn.Click += delegate { MkIdInterdictClick(); };
+            strip.Controls.Add(_mkIdInterdictBtn);
+
+            Label delayLabel = new Label();
+            delayLabel.Text      = "Delay Between Interdicts (ms):";
+            delayLabel.Font      = new Font("Segoe UI", 8.5f);
+            delayLabel.ForeColor = TextSec;
+            delayLabel.AutoSize  = true;
+            delayLabel.Location  = new Point(340, 44);
+            strip.Controls.Add(delayLabel);
+
+            _mkIdDelayInput = new NumericUpDown();
+            _mkIdDelayInput.Minimum     = 0;
+            _mkIdDelayInput.Maximum     = 60000;
+            _mkIdDelayInput.Increment   = 100;
+            _mkIdDelayInput.Value       = 1000;
+            _mkIdDelayInput.BackColor   = inputBg;
+            _mkIdDelayInput.ForeColor   = TextPri;
+            _mkIdDelayInput.BorderStyle = BorderStyle.FixedSingle;
+            _mkIdDelayInput.Size        = new Size(70, 23);
+            _mkIdDelayInput.Location    = new Point(513, 41);
+            strip.Controls.Add(_mkIdDelayInput);
+
+            _mkIdVillageList = new CheckedListBox();
+            _mkIdVillageList.Dock         = DockStyle.Fill;
+            _mkIdVillageList.BackColor    = inputBg;
+            _mkIdVillageList.ForeColor    = TextPri;
+            _mkIdVillageList.Font         = new Font("Segoe UI", 8.5f);
+            _mkIdVillageList.BorderStyle  = BorderStyle.FixedSingle;
+            _mkIdVillageList.CheckOnClick = true;
+
+            // Fill list added first, Top strip last — reverse-dock order
+            _mkInterdictTab.Controls.Add(_mkIdVillageList);
+            _mkInterdictTab.Controls.Add(strip);
+
+            // Lazily fill the village list the first time the sub-tab is opened
+            _mkSubTabs.Selected += delegate (object s, TabControlEventArgs e)
+            {
+                if (e.TabPage == _mkInterdictTab && _mkIdVillageList.Items.Count == 0)
+                    MkIdPopulateVillages();
+            };
+
+            MkIdPopulateVillages();
+        }
+
+        private void MkIdPopulateVillages()
+        {
+            _mkIdVillageList.Items.Clear();
+            try
+            {
+                if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+                List<WorldMap.UserVillageData> uvds = GameEngine.Instance.World.getUserVillageList();
+                if (uvds == null) return;
+                foreach (WorldMap.UserVillageData uvd in uvds)
+                {
+                    // Capitals can't be interdicted
+                    if (GameEngine.Instance.World.isCapital(uvd.villageID)) continue;
+                    string display = "[" + uvd.villageID + "] "
+                        + GameEngine.Instance.World.getVillageName(uvd.villageID);
+                    _mkIdVillageList.Items.Add(new MkIdVillageItem(uvd.villageID, display));
+                }
+            }
+            catch { }
+        }
+
+        private void MkIdSetAllChecked(bool check)
+        {
+            for (int i = 0; i < _mkIdVillageList.Items.Count; i++)
+                _mkIdVillageList.SetItemChecked(i, check);
+        }
+
+        private void MkIdInterdictClick()
+        {
+            if (BotEngine.Instance == null) return;
+
+            List<int> ids = new List<int>();
+            foreach (int i in _mkIdVillageList.CheckedIndices)
+                ids.Add(((MkIdVillageItem)_mkIdVillageList.Items[i]).VillageId);
+            if (ids.Count == 0)
+            {
+                BotLogger.Log("Monk", BotLogLevel.Warning, "Interdict: no villages selected.");
+                return;
+            }
+
+            Modules.MonkModule mm = BotEngine.Instance.GetModule<Modules.MonkModule>();
+            if (mm == null) return;
+            if (mm.InterdictVillages(ids, (int)_mkIdMonkCountInput.Value,
+                    _mkIdAllowHireCheck.Checked, _mkIdReduceCheck.Checked,
+                    (int)_mkIdDelayInput.Value))
+            {
+                _mkIdInterdictBtn.Enabled = false;
+                _mkIdInterdictBtn.Text = "Running...";
+            }
+        }
+
+        // Re-enables the Interdict button once the module's cycle thread finishes.
+        // Runs on the UI thread via _mkSyncTimer.
+        private void MkIdSyncButtonState()
+        {
+            if (_mkIdInterdictBtn == null || _mkIdInterdictBtn.Enabled) return;
+            Modules.MonkModule mm = BotEngine.Instance != null
+                ? BotEngine.Instance.GetModule<Modules.MonkModule>() : null;
+            if (mm == null || !mm.InterdictRunning)
+            {
+                _mkIdInterdictBtn.Enabled = true;
+                _mkIdInterdictBtn.Text = "Interdict";
+            }
+        }
+
+        private class MkIdVillageItem
+        {
+            public readonly int VillageId;
+            private readonly string _label;
+            public MkIdVillageItem(int id, string label) { VillageId = id; _label = label; }
+            public override string ToString() { return _label; }
         }
     }
 }

@@ -375,6 +375,9 @@ namespace Kingdoms.Bot.UI
             this._dfRestoreTroopsCheck = new System.Windows.Forms.CheckBox();
             this._dfRestoreInfraCheck = new System.Windows.Forms.CheckBox();
             this._mkPage = new System.Windows.Forms.TabPage();
+            this._mkSubTabs = new System.Windows.Forms.TabControl();
+            this._mkRoutesTab = new System.Windows.Forms.TabPage();
+            this._mkInterdictTab = new System.Windows.Forms.TabPage();
             this._mkSettingsPanel = new System.Windows.Forms.Panel();
             this._mkColHeader = new System.Windows.Forms.Panel();
             this._mkRouteListPanel = new System.Windows.Forms.Panel();
@@ -573,6 +576,8 @@ namespace Kingdoms.Bot.UI
             this._dfActionsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._dfDurationInput)).BeginInit();
             this._mkPage.SuspendLayout();
+            this._mkSubTabs.SuspendLayout();
+            this._mkRoutesTab.SuspendLayout();
             this._mkColHeader.SuspendLayout();
             this._mkSettingsPanel.SuspendLayout();
             this._mkRouteButtonPanel.SuspendLayout();
@@ -5027,18 +5032,50 @@ namespace Kingdoms.Bot.UI
             // _mkPage
             //
             this._mkPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
-            // Add order is intentional: last-added Top panel docks to the very top first.
-            // RouteListPanel (Fill) → remaining area; RouteButtonPanel (Bottom) → very bottom;
-            // ColHeader (Top) → below separator; SettingsPanel (Top, last) → very top.
-            this._mkPage.Controls.Add(this._mkRouteListPanel);
-            this._mkPage.Controls.Add(this._mkRouteButtonPanel);
-            this._mkPage.Controls.Add(this._mkColHeader);
+            // Add order is intentional: last-added Top panel docks to the very top first,
+            // then the sub-tab control (Fill) takes the remaining area.
+            this._mkPage.Controls.Add(this._mkSubTabs);
             this._mkPage.Controls.Add(this._mkSettingsPanel);
             this._mkPage.Location = new System.Drawing.Point(4, 24);
             this._mkPage.Name = "_mkPage";
             this._mkPage.Size = new System.Drawing.Size(1142, 497);
             this._mkPage.TabIndex = 14;
             this._mkPage.Text = "Monks";
+            //
+            // _mkSubTabs
+            //
+            this._mkSubTabs.Controls.Add(this._mkRoutesTab);
+            this._mkSubTabs.Controls.Add(this._mkInterdictTab);
+            this._mkSubTabs.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._mkSubTabs.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._mkSubTabs.Location = new System.Drawing.Point(0, 68);
+            this._mkSubTabs.Name = "_mkSubTabs";
+            this._mkSubTabs.SelectedIndex = 0;
+            this._mkSubTabs.Size = new System.Drawing.Size(1142, 429);
+            this._mkSubTabs.TabIndex = 1;
+            //
+            // _mkRoutesTab
+            //
+            this._mkRoutesTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            // Same reverse-dock order as the old _mkPage layout: Fill list first,
+            // Bottom buttons, Top header last-but-one position relative to each other.
+            this._mkRoutesTab.Controls.Add(this._mkRouteListPanel);
+            this._mkRoutesTab.Controls.Add(this._mkRouteButtonPanel);
+            this._mkRoutesTab.Controls.Add(this._mkColHeader);
+            this._mkRoutesTab.Location = new System.Drawing.Point(4, 22);
+            this._mkRoutesTab.Name = "_mkRoutesTab";
+            this._mkRoutesTab.Size = new System.Drawing.Size(1134, 403);
+            this._mkRoutesTab.TabIndex = 0;
+            this._mkRoutesTab.Text = "Routes";
+            //
+            // _mkInterdictTab
+            //
+            this._mkInterdictTab.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._mkInterdictTab.Location = new System.Drawing.Point(4, 22);
+            this._mkInterdictTab.Name = "_mkInterdictTab";
+            this._mkInterdictTab.Size = new System.Drawing.Size(1134, 403);
+            this._mkInterdictTab.TabIndex = 1;
+            this._mkInterdictTab.Text = "Interdict";
             //
             // _mkSettingsPanel
             //
@@ -6173,6 +6210,8 @@ namespace Kingdoms.Bot.UI
             this._dfActionsPanel.ResumeLayout(false);
             this._dfActionsPanel.PerformLayout();
             this._mkPage.ResumeLayout(false);
+            this._mkSubTabs.ResumeLayout(false);
+            this._mkRoutesTab.ResumeLayout(false);
             this._mkColHeader.ResumeLayout(false);
             this._mkSettingsPanel.ResumeLayout(false);
             this._mkSettingsPanel.PerformLayout();
@@ -7012,6 +7051,9 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _dfRestoreInfraCheck;
         // Monk tab controls
         private System.Windows.Forms.TabPage _mkPage;
+        private System.Windows.Forms.TabControl _mkSubTabs;
+        private System.Windows.Forms.TabPage _mkRoutesTab;
+        private System.Windows.Forms.TabPage _mkInterdictTab;
         private System.Windows.Forms.Panel _mkSettingsPanel;
         private System.Windows.Forms.Panel _mkColHeader;
         private System.Windows.Forms.Panel _mkRouteListPanel;

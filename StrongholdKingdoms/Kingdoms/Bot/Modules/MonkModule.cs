@@ -9,6 +9,13 @@ namespace Kingdoms.Bot.Modules
     {
         private int _lastRouteIndex = -1;
 
+        // Manual interdict cycle (Interdict sub-tab)
+        private int _interdictRunning;              // 0/1, Interlocked guard
+        private volatile bool _interdictCancel;
+        private readonly Random _interdictRand = new Random();
+
+        public bool InterdictRunning { get { return _interdictRunning != 0; } }
+
         public override string ModuleName => "Monk";
 
         public override TimeSpan Interval
@@ -28,6 +35,11 @@ namespace Kingdoms.Bot.Modules
         }
 
         public void RunNow() { Tick(); }
+
+        protected override void OnShutdown()
+        {
+            _interdictCancel = true;
+        }
 
         protected override void OnTick()
         {
@@ -495,6 +507,214 @@ namespace Kingdoms.Bot.Modules
             });
 
             return targets;
+        }
+
+        // =================================================================
+        // Manual interdict (Interdict sub-tab) — self-interdicts each
+        // selected village on a background thread.
+        // =================================================================
+
+        public bool InterdictVillages(List<int> villageIds, int monkCount, bool allowHire, bool reduceIfInterdicted, int delayMs)
+        {
+            if (villageIds == null || villageIds.Count == 0)
+            {
+                LogWarning("Interdict: no villages selected.");
+                return false;
+            }
+            if (Interlocked.CompareExchange(ref _interdictRunning, 1, 0) != 0)
+            {
+                LogWarning("Interdict: cycle already running.");
+                return false;
+            }
+
+            List<int> ids = new List<int>(villageIds);
+            if (monkCount < 1) monkCount = 1;
+            if (delayMs < 0) delayMs = 0;
+            _interdictCancel = false;
+
+            Thread t = new Thread(delegate ()
+            {
+                try { InterdictCycle(ids, monkCount, allowHire, reduceIfInterdicted, delayMs); }
+                catch (Exception ex) { LogError("Interdict cycle failed: " + ex.Message); }
+                finally { Interlocked.Exchange(ref _interdictRunning, 0); }
+            });
+            t.IsBackground = true;
+            t.Name = "Monk Interdict";
+            t.Start();
+            return true;
+        }
+
+        private void InterdictCycle(List<int> ids, int monkCount, bool allowHire, bool reduceIfInterdicted, int delayMs)
+        {
+            LogInfo("Interdict: starting cycle for " + ids.Count + " village(s), " + monkCount + " monk(s) each, "
+                + delayMs + "ms delay between interdicts.");
+
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+            {
+                LogWarning("Interdict: world not loaded.");
+                return;
+            }
+            if (GameEngine.Instance.World.UserResearchData.Research_Ordination == 0)
+            {
+                LogWarning("Interdict: Ordination not researched. Cannot use monks.");
+                return;
+            }
+            if (GameEngine.Instance.World.UserResearchData.Research_Eucharist <= 0)
+            {
+                LogWarning("Interdict: Eucharist not researched. Cannot interdict.");
+                return;
+            }
+            if (GameEngine.Instance.LocalWorldData.Alternate_Ruleset == 1)
+            {
+                LogWarning("Interdict: interdiction is disabled on this ruleset.");
+                return;
+            }
+
+            int hoursPerMonk = CardTypes.adjustInterdictionLevel(
+                GameEngine.Instance.cardsManager.UserCardData, 4);
+            if (hoursPerMonk <= 0) hoursPerMonk = 4;
+
+            for (int i = 0; i < ids.Count; i++)
+            {
+                if (_interdictCancel)
+                {
+                    LogInfo("Interdict: cycle cancelled.");
+                    break;
+                }
+
+                int villageId = ids[i];
+                string name = GameEngine.Instance.World.getVillageName(villageId);
+                LogInfo("Interdict: checking village " + name);
+
+                if (GameEngine.Instance.World.isCapital(villageId))
+                {
+                    LogInfo("Interdict: skipping capital " + name);
+                    continue;
+                }
+
+                VillageMap village = GameEngine.Instance.getVillage(villageId);
+                if (village == null)
+                {
+                    LogWarning("Interdict: village not loaded: " + villageId);
+                    continue;
+                }
+                if (GameEngine.Instance.World.isVillageExcommunicated(villageId))
+                {
+                    LogWarning("Interdict: " + name + " is excommunicated, skipping.");
+                    continue;
+                }
+
+                int desired = monkCount;
+
+                // Top-up: only send enough monks to reach the desired duration
+                if (reduceIfInterdicted)
+                {
+                    DateTime interdictEnd = GameEngine.Instance.World.getInterdictTime(villageId);
+                    DateTime now = VillageMap.getCurrentServerTime();
+                    if (interdictEnd > now)
+                    {
+                        int remainingSecs = (int)(interdictEnd - now).TotalSeconds;
+                        int deficitSecs = monkCount * hoursPerMonk * 3600 - remainingSecs;
+                        if (deficitSecs <= 0)
+                        {
+                            LogInfo("Interdict: " + name + " already has enough interdiction time, skipping.");
+                            continue;
+                        }
+                        desired = deficitSecs / (hoursPerMonk * 3600);
+                        if (desired < 8) desired++;
+                        if (desired > monkCount) desired = monkCount;
+                        LogInfo("Interdict: " + name + " has " + (remainingSecs / 3600) + "h interdict left, sending " + desired + " monk(s) to top up.");
+                    }
+                }
+
+                // Faith point check
+                try
+                {
+                    int costPerMonk = TradingCalcs.adjustInterdictionCostByTargetRank(
+                        GameEngine.Instance.LocalWorldData.MonkCommandPointsCost_Interdicts,
+                        GameEngine.Instance.World.getRank(),
+                        GameEngine.Instance.World.SecondAgeWorld);
+                    int totalCost = costPerMonk * desired;
+                    double currentFaith = GameEngine.Instance.World.getCurrentFaithPoints();
+                    if (totalCost > currentFaith)
+                    {
+                        LogWarning("Interdict: not enough faith points for " + name + " (" + currentFaith + " < " + totalCost + ").");
+                        continue;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogWarning("Interdict: faith point check failed: " + ex.Message);
+                }
+
+                // Monk availability + optional hire
+                int atHome = village.calcTotalMonksAtHome();
+                if (atHome < desired && allowHire)
+                {
+                    LogInfo("Interdict: hiring " + (desired - atHome) + " monk(s) at " + name);
+                    atHome += MakeMonksMore(villageId, desired - atHome);
+                }
+                if (atHome <= 0)
+                {
+                    LogWarning("Interdict: no monks available at " + name + ", skipping.");
+                    continue;
+                }
+                if (desired > atHome) desired = atHome;
+
+                LogInfo("Interdict: sending " + desired + " monk(s) to self-interdict " + name);
+                try
+                {
+                    RemoteServices.Instance.set_SendPeople_UserCallBack(OnInterdictSendCallback);
+                    RemoteServices.Instance.SendPeople(villageId, villageId, 4, desired, 4, -1);
+                }
+                catch (Exception ex)
+                {
+                    LogError("Interdict send failed for " + name + ": " + ex.Message);
+                }
+
+                // User-set spacing plus a little jitter so sends aren't perfectly uniform;
+                // skipped after the last village so the cycle ends promptly.
+                if (i < ids.Count - 1)
+                    Thread.Sleep(delayMs + _interdictRand.Next(400));
+            }
+
+            LogInfo("Interdict: cycle finished.");
+        }
+
+        // Recruits `more` additional monks on top of the village's current
+        // total, reusing MakeMonks' research/worker/space caps.
+        private int MakeMonksMore(int villageId, int more)
+        {
+            if (more <= 0) return 0;
+            int atHome = 0;
+            int total = GameEngine.Instance.World.countVillagePeople(villageId, 4, ref atHome);
+            return MakeMonks(villageId, total + more);
+        }
+
+        private void OnInterdictSendCallback(SendPeople_ReturnType result)
+        {
+            try
+            {
+                if (result.Success)
+                {
+                    GameEngine.Instance.World.importOrphanedPeople(
+                        result.people, result.currentTime, -2);
+                    GameEngine.Instance.World.setFaithPointsData(
+                        result.currentFaithPointsLevel, result.currentFaithPointsRate);
+                    LogInfo("Interdict: successful interdict at " +
+                        GameEngine.Instance.World.getVillageName(result.targetVillageID));
+                }
+                else
+                {
+                    string err = ErrorCodes.getErrorString(result.m_errorCode, result.m_errorID);
+                    LogError("Interdict failed for " +
+                        GameEngine.Instance.World.getVillageName(result.targetVillageID) + ": " + err);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("Interdict callback error: " + ex.Message);
+            }
         }
     }
 }
