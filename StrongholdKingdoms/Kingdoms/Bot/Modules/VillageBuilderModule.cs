@@ -8,6 +8,122 @@ namespace Kingdoms.Bot.Modules
 {
     public class VillageBuilderModule : BotModuleBase
     {
+        // =====================================================================
+        // Build categories — type lists extracted from the game's own build menu
+        // (VillageMapPanel placeBuilding tabs). Stockpile (2) and granary (3) are
+        // NOT in any category: a village can't store resources without them, so
+        // they form a hardcoded always-first tier above all category settings.
+        // =====================================================================
+
+        public class BuildCategory
+        {
+            public string Key;
+            public string DisplayName;
+            public int[] Types;
+
+            public BuildCategory(string key, string displayName, int[] types)
+            {
+                Key = key;
+                DisplayName = displayName;
+                Types = types;
+            }
+        }
+
+        public const int AlwaysFirstRank = -1;
+
+        public static readonly int[] AlwaysFirstTypes = new int[] { 2, 3 }; // stockpile, granary
+
+        public static readonly BuildCategory[] Categories = new BuildCategory[]
+        {
+            new BuildCategory("Food", "Food production", new int[]
+                { 35, 13, 17, 16, 14, 15, 18, 12, 83, 84, 85, 86, 87, 88, 89 }),
+            new BuildCategory("Hovels", "Hovels & popularity", new int[]
+                { 1, 39, 40, 76, 77, 67, 68, 66, 69, 65 }),
+            new BuildCategory("Industry", "Industry", new int[]
+                { 6, 7, 8, 9, 79, 80, 81, 82 }),
+            new BuildCategory("Markets", "Markets", new int[]
+                { 78 }),
+            new BuildCategory("Weapons", "Weapon production", new int[]
+                { 29, 31, 28, 30, 32, 90, 91, 92, 93, 94 }),
+            new BuildCategory("Banquet", "Banquet production", new int[]
+                { 22, 21, 26, 19, 33, 23, 24, 25, 95, 96, 97, 98, 99, 100, 101, 102 }),
+            new BuildCategory("Faith", "Faith production", new int[]
+                { 34, 36, 37, 70, 71, 72, 73, 74, 75 }),
+        };
+
+        /// <summary>
+        /// Returns the saved category priority normalized against the catalog:
+        /// unknown keys dropped, missing categories appended (enabled) in default
+        /// order. Safe to call with a null/empty saved list.
+        /// </summary>
+        public static List<BuilderCategoryPref> NormalizeCategoryPriority(List<BuilderCategoryPref> saved)
+        {
+            List<BuilderCategoryPref> result = new List<BuilderCategoryPref>();
+            if (saved != null)
+            {
+                foreach (BuilderCategoryPref pref in saved)
+                {
+                    if (pref == null) continue;
+                    bool known = false;
+                    foreach (BuildCategory cat in Categories)
+                        if (cat.Key == pref.Key) { known = true; break; }
+                    bool duplicate = false;
+                    foreach (BuilderCategoryPref existing in result)
+                        if (existing.Key == pref.Key) { duplicate = true; break; }
+                    if (known && !duplicate)
+                        result.Add(pref);
+                }
+            }
+            foreach (BuildCategory cat in Categories)
+            {
+                bool present = false;
+                foreach (BuilderCategoryPref existing in result)
+                    if (existing.Key == cat.Key) { present = true; break; }
+                if (!present)
+                {
+                    BuilderCategoryPref pref = new BuilderCategoryPref();
+                    pref.Key = cat.Key;
+                    pref.Enabled = true;
+                    result.Add(pref);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Building type -> rank for the given settings. AlwaysFirstRank (-1) for
+        /// stockpile/granary, 0..n-1 for enabled categories in priority order;
+        /// types absent from the dictionary build last in layout order.
+        /// </summary>
+        public static Dictionary<int, int> BuildTypeRanks(VillageBuilderSettings settings)
+        {
+            Dictionary<int, int> ranks = new Dictionary<int, int>();
+            foreach (int type in AlwaysFirstTypes)
+                ranks[type] = AlwaysFirstRank;
+
+            List<BuilderCategoryPref> prefs = NormalizeCategoryPriority(
+                settings != null ? settings.CategoryPriority : null);
+            int rank = 0;
+            foreach (BuilderCategoryPref pref in prefs)
+            {
+                if (!pref.Enabled) continue;
+                foreach (BuildCategory cat in Categories)
+                {
+                    if (cat.Key == pref.Key)
+                    {
+                        foreach (int type in cat.Types)
+                            if (!ranks.ContainsKey(type))
+                                ranks[type] = rank;
+                        break;
+                    }
+                }
+                rank++;
+            }
+            return ranks;
+        }
+
+        private Dictionary<int, int> _typeRank = new Dictionary<int, int>();
+
         private DateTime _lastCycleEnd = DateTime.MinValue;
         private bool _cycleComplete = true;
         private int _currentVillageIndex;
@@ -112,6 +228,7 @@ namespace Kingdoms.Bot.Modules
         private void BuildVillageQueue(VillageBuilderSettings settings)
         {
             _villageQueue.Clear();
+            _typeRank = BuildTypeRanks(settings); // pick up priority changes each cycle
 
             foreach (VillageBuildLayout layout in settings.Layouts)
             {
@@ -153,9 +270,10 @@ namespace Kingdoms.Bot.Modules
                 return;
             }
 
-            for (int i = 0; i < layout.Buildings.Count; i++)
+            List<BuildingEntry> ordered = GetOrderedEntries(layout);
+            for (int i = 0; i < ordered.Count; i++)
             {
-                BuildingEntry entry = layout.Buildings[i];
+                BuildingEntry entry = ordered[i];
 
                 if (entry.Placed)
                     continue;
@@ -297,6 +415,31 @@ namespace Kingdoms.Bot.Modules
             {
                 _completeLayoutsLogged.Remove(villageId);
             }
+        }
+
+        /// <summary>
+        /// Processing order for a layout: always-first tier (stockpile/granary),
+        /// then enabled categories by priority rank, then everything else — stable
+        /// within each tier (original layout order). Does not mutate the stored list.
+        /// </summary>
+        private List<BuildingEntry> GetOrderedEntries(VillageBuildLayout layout)
+        {
+            List<BuildingEntry> ordered = new List<BuildingEntry>(layout.Buildings.Count);
+            ordered.AddRange(layout.Buildings);
+            // Indices snapshot for a stable sort (List<T>.Sort is unstable).
+            Dictionary<BuildingEntry, int> originalIndex = new Dictionary<BuildingEntry, int>();
+            for (int i = 0; i < layout.Buildings.Count; i++)
+                originalIndex[layout.Buildings[i]] = i;
+
+            ordered.Sort(delegate (BuildingEntry a, BuildingEntry b)
+            {
+                int rankA, rankB;
+                if (!_typeRank.TryGetValue(a.BuildingType, out rankA)) rankA = int.MaxValue;
+                if (!_typeRank.TryGetValue(b.BuildingType, out rankB)) rankB = int.MaxValue;
+                if (rankA != rankB) return rankA.CompareTo(rankB);
+                return originalIndex[a].CompareTo(originalIndex[b]);
+            });
+            return ordered;
         }
 
         // Called from VillageMap.botBuildingPlacedCallback on the main thread once the

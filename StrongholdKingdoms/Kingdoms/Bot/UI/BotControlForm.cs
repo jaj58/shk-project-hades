@@ -3307,6 +3307,7 @@ namespace Kingdoms.Bot.UI
             _bldVillageEnabledCheck.CheckedChanged += delegate { BldVillageEnabledChanged(); };
             _bldCopySettingsBtn.Click += delegate { BldCopySettingsClick(); };
             _bldImportFileBtn.Click += delegate { BldImportFromFile(); };
+            _bldPriorityBtn.Click += delegate { BldEditPriorities(); };
             _bldRefreshStateBtn.Click += delegate { BldRefreshState(); };
             _bldExportFileBtn.Click += delegate { BldExportToFile(); };
             _bldClearLayoutBtn.Click += delegate { BldClearLayout(); };
@@ -3453,9 +3454,15 @@ namespace Kingdoms.Bot.UI
                 return;
             }
 
+            Dictionary<int, int> typeRanks = VillageBuilderModule.BuildTypeRanks(
+                BotEngine.Instance.Settings.VillageBuilder);
+
             for (int i = layout.Buildings.Count - 1; i >= 0; i--)
             {
-                BuildingListRow row = new BuildingListRow(layout.Buildings[i], i);
+                int rank;
+                if (!typeRanks.TryGetValue(layout.Buildings[i].BuildingType, out rank))
+                    rank = int.MinValue;
+                BuildingListRow row = new BuildingListRow(layout.Buildings[i], i, rank);
                 row.Dock = DockStyle.Top;
                 _bldBuildingListPanel.Controls.Add(row);
                 _bldBuildingRows.Add(row);
@@ -3649,6 +3656,14 @@ namespace Kingdoms.Bot.UI
             }
 
             BldRefreshBuildingList();
+        }
+
+        private void BldEditPriorities()
+        {
+            BuilderPriorityForm form = new BuilderPriorityForm();
+            form.ShowDialog(this);
+            if (form.Saved)
+                BldRefreshBuildingList();
         }
 
         private void BldCopySettingsClick()

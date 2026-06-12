@@ -647,6 +647,13 @@ namespace Kingdoms.Bot
     }
 
     [Serializable]
+    public class BuilderCategoryPref
+    {
+        public string Key = "";
+        public bool Enabled = true;
+    }
+
+    [Serializable]
     public class VillageBuilderSettings
     {
         public bool Enabled;
@@ -654,6 +661,11 @@ namespace Kingdoms.Bot
         public int DelayBetweenVillagesMs = 5000;
         public bool WaitForResources = true;
         public List<VillageBuildLayout> Layouts = new List<VillageBuildLayout>();
+
+        // Ordered category priority for the builder (index 0 = highest). Unchecked
+        // categories build last in layout order. Normalized against the module's
+        // category catalog on use, so missing/unknown keys are harmless.
+        public List<BuilderCategoryPref> CategoryPriority = new List<BuilderCategoryPref>();
 
         public VillageBuildLayout GetLayout(int villageId)
         {
