@@ -3307,6 +3307,7 @@ namespace Kingdoms.Bot.UI
             _bldVillageEnabledCheck.CheckedChanged += delegate { BldVillageEnabledChanged(); };
             _bldCopySettingsBtn.Click += delegate { BldCopySettingsClick(); };
             _bldImportFileBtn.Click += delegate { BldImportFromFile(); };
+            _bldPriorityBtn.Click += delegate { BldEditPriorities(); };
             _bldRefreshStateBtn.Click += delegate { BldRefreshState(); };
             _bldExportFileBtn.Click += delegate { BldExportToFile(); };
             _bldClearLayoutBtn.Click += delegate { BldClearLayout(); };
@@ -3364,12 +3365,9 @@ namespace Kingdoms.Bot.UI
             s.DelayBetweenVillagesMs = (int)_bldDelayInput.Value;
             s.WaitForResources = _bldWaitForResourcesCheck.Checked;
 
-            // Save current village enabled state
-            if (_bldSelectedVillageId > 0)
-            {
-                VillageBuildLayout layout = s.GetOrCreateLayout(_bldSelectedVillageId);
-                layout.Enabled = _bldVillageEnabledCheck.Checked;
-            }
+            // Per-village layout enable is handled solely by BldVillageEnabledChanged;
+            // writing it here too let unrelated control changes (including programmatic
+            // ones) clobber layout.Enabled with a stale checkbox value.
 
             foreach (IBotModule m in BotEngine.Instance.Modules)
             {
@@ -3409,7 +3407,9 @@ namespace Kingdoms.Bot.UI
             if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
             {
                 VillageBuildLayout layout = BotEngine.Instance.Settings.VillageBuilder.GetLayout(_bldSelectedVillageId);
-                _bldVillageEnabledCheck.Checked = layout != null && layout.Enabled;
+                _bldLoading = true;
+                try { _bldVillageEnabledCheck.Checked = layout != null && layout.Enabled; }
+                finally { _bldLoading = false; }
 
                 // Auto-load current village buildings if no layout exists yet
                 if (layout == null || layout.Buildings.Count == 0)
@@ -3423,6 +3423,7 @@ namespace Kingdoms.Bot.UI
 
         private void BldVillageEnabledChanged()
         {
+            if (_bldLoading) return;
             if (_bldSelectedVillageId <= 0) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
 
@@ -3453,9 +3454,15 @@ namespace Kingdoms.Bot.UI
                 return;
             }
 
+            Dictionary<int, int> typeRanks = VillageBuilderModule.BuildTypeRanks(
+                BotEngine.Instance.Settings.VillageBuilder);
+
             for (int i = layout.Buildings.Count - 1; i >= 0; i--)
             {
-                BuildingListRow row = new BuildingListRow(layout.Buildings[i], i);
+                int rank;
+                if (!typeRanks.TryGetValue(layout.Buildings[i].BuildingType, out rank))
+                    rank = int.MinValue;
+                BuildingListRow row = new BuildingListRow(layout.Buildings[i], i, rank);
                 row.Dock = DockStyle.Top;
                 _bldBuildingListPanel.Controls.Add(row);
                 _bldBuildingRows.Add(row);
@@ -3476,11 +3483,24 @@ namespace Kingdoms.Bot.UI
 
             try
             {
-                List<BuildingEntry> buildings = VillageBuilderModule.ImportLayoutFromFile(dlg.FileName);
+                int fileTerrainType;
+                List<BuildingEntry> buildings = VillageBuilderModule.ImportLayoutFromFile(dlg.FileName, out fileTerrainType);
                 if (buildings.Count == 0)
                 {
                     BotLogger.Log("Village Builder", BotLogLevel.Warning, "No buildings found in file.");
                     return;
+                }
+
+                if (fileTerrainType >= 0 && GameEngine.Instance != null && GameEngine.Instance.World != null)
+                {
+                    int villageTerrainType = GameEngine.Instance.World.getVillageTerrainType(_bldSelectedVillageId);
+                    if (fileTerrainType != villageTerrainType)
+                    {
+                        BotLogger.Log("Village Builder", BotLogLevel.Warning,
+                            "Import aborted: file terrain type (" + fileTerrainType +
+                            ") does not match village terrain type (" + villageTerrainType + ").");
+                        return;
+                    }
                 }
 
                 VillageBuildLayout layout = BotEngine.Instance.Settings.VillageBuilder.GetOrCreateLayout(_bldSelectedVillageId);
@@ -3638,6 +3658,14 @@ namespace Kingdoms.Bot.UI
             BldRefreshBuildingList();
         }
 
+        private void BldEditPriorities()
+        {
+            BuilderPriorityForm form = new BuilderPriorityForm();
+            form.ShowDialog(this);
+            if (form.Saved)
+                BldRefreshBuildingList();
+        }
+
         private void BldCopySettingsClick()
         {
             BldWriteToSettings();
@@ -3655,7 +3683,13 @@ namespace Kingdoms.Bot.UI
             {
                 bool moduleEnabled = BotEngine.Instance.Settings.VillageBuilder.Enabled;
                 if (_bldEnabledCheck.Checked != moduleEnabled)
-                    _bldEnabledCheck.Checked = moduleEnabled;
+                {
+                    // Programmatic sync (e.g. scheduler toggled the module) — suppress
+                    // the CheckedChanged write-back so it can't echo stale UI state.
+                    _bldLoading = true;
+                    try { _bldEnabledCheck.Checked = moduleEnabled; }
+                    finally { _bldLoading = false; }
+                }
             }
 
             bool enabled = _bldEnabledCheck.Checked;

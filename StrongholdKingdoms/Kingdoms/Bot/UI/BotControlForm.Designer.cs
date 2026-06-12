@@ -225,6 +225,7 @@ namespace Kingdoms.Bot.UI
             this._bldExportFileBtn = new System.Windows.Forms.Button();
             this._bldRefreshStateBtn = new System.Windows.Forms.Button();
             this._bldImportFileBtn = new System.Windows.Forms.Button();
+            this._bldPriorityBtn = new System.Windows.Forms.Button();
             this._bldVillageEnabledCheck = new System.Windows.Forms.CheckBox();
             this._bldVillageCombo = new System.Windows.Forms.ComboBox();
             this._bldSettingsPanel = new System.Windows.Forms.Panel();
@@ -2982,6 +2983,7 @@ namespace Kingdoms.Bot.UI
             // _bldNavPanel
             // 
             this._bldNavPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(32)))), ((int)(((byte)(40)))));
+            this._bldNavPanel.Controls.Add(this._bldPriorityBtn);
             this._bldNavPanel.Controls.Add(this._bldClearLayoutBtn);
             this._bldNavPanel.Controls.Add(this._bldExportFileBtn);
             this._bldNavPanel.Controls.Add(this._bldRefreshStateBtn);
@@ -3053,7 +3055,22 @@ namespace Kingdoms.Bot.UI
             this._bldImportFileBtn.TabIndex = 2;
             this._bldImportFileBtn.Text = "Import From File";
             this._bldImportFileBtn.UseVisualStyleBackColor = false;
-            // 
+            //
+            // _bldPriorityBtn
+            //
+            this._bldPriorityBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(160)))), ((int)(((byte)(255)))));
+            this._bldPriorityBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._bldPriorityBtn.FlatAppearance.BorderSize = 0;
+            this._bldPriorityBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bldPriorityBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._bldPriorityBtn.ForeColor = System.Drawing.Color.White;
+            this._bldPriorityBtn.Location = new System.Drawing.Point(1000, 6);
+            this._bldPriorityBtn.Name = "_bldPriorityBtn";
+            this._bldPriorityBtn.Size = new System.Drawing.Size(110, 24);
+            this._bldPriorityBtn.TabIndex = 6;
+            this._bldPriorityBtn.Text = "Priorities";
+            this._bldPriorityBtn.UseVisualStyleBackColor = false;
+            //
             // _bldVillageEnabledCheck
             // 
             this._bldVillageEnabledCheck.AutoSize = true;
@@ -6767,6 +6784,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.ComboBox _bldVillageCombo;
         private System.Windows.Forms.CheckBox _bldVillageEnabledCheck;
         private System.Windows.Forms.Button _bldImportFileBtn;
+        private System.Windows.Forms.Button _bldPriorityBtn;
         private System.Windows.Forms.Button _bldRefreshStateBtn;
         private System.Windows.Forms.Button _bldExportFileBtn;
         private System.Windows.Forms.Button _bldClearLayoutBtn;

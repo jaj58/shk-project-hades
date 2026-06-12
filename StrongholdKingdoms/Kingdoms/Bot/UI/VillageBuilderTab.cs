@@ -26,13 +26,17 @@ namespace Kingdoms.Bot.UI
 
         public BuildingEntry Entry { get { return _entry; } }
 
-        public BuildingListRow(BuildingEntry entry, int index)
+        public BuildingListRow(BuildingEntry entry, int index, int priorityRank = int.MinValue)
         {
             _entry = entry;
             this.Height = 22;
             this.BackColor = index % 2 == 0 ? BgEven : BgOdd;
 
             string buildingName = VillageBuilderModule.GetBuildingName(entry.BuildingType);
+            if (priorityRank == VillageBuilderModule.AlwaysFirstRank)
+                buildingName = "[*] " + buildingName;
+            else if (priorityRank != int.MinValue)
+                buildingName = "[" + (priorityRank + 1) + "] " + buildingName;
 
             AddLabel(buildingName, 8, 200, TextPri);
             AddLabel(entry.BuildingType.ToString(), 216, 40, TextSec);
@@ -69,7 +73,7 @@ namespace Kingdoms.Bot.UI
         {
             if (entry.Placed) return StatusOk;
             string s = entry.Status;
-            if (s == "Constructing" || s == "Waiting for resources") return StatusWarn;
+            if (s == "Constructing" || s == "Waiting for resources" || s == "Placing...") return StatusWarn;
             if (!string.IsNullOrEmpty(s) && s != "Pending" && s != "") return StatusErr;
             return Color.FromArgb(160, 165, 180);
         }
@@ -240,17 +244,34 @@ namespace Kingdoms.Bot.UI
             VillageBuilderSettings s = BotEngine.Instance.Settings.VillageBuilder;
             VillageBuildLayout source = s.GetOrCreateLayout(sourceItem.VillageId);
 
+            int sourceTerrain = -1;
+            if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                sourceTerrain = GameEngine.Instance.World.getVillageTerrainType(sourceItem.VillageId);
+
             int count = 0;
+            int skipped = 0;
             foreach (int targetId in targetIds)
             {
+                // A layout only makes sense on matching terrain — terrain-specific
+                // buildings would be permanently unplaceable on the wrong type.
+                if (sourceTerrain >= 0 &&
+                    GameEngine.Instance.World.getVillageTerrainType(targetId) != sourceTerrain)
+                {
+                    skipped++;
+                    continue;
+                }
+
                 VillageBuildLayout target = s.GetOrCreateLayout(targetId);
                 target.CopyBuildingsFrom(source);
                 target.Enabled = source.Enabled;
                 count++;
             }
 
-            _copied = true;
-            ShowStatus("Copied layout to " + count + " village(s).", false);
+            _copied = count > 0;
+            if (skipped > 0)
+                ShowStatus("Copied to " + count + " village(s); skipped " + skipped + " with different terrain.", count == 0);
+            else
+                ShowStatus("Copied layout to " + count + " village(s).", false);
         }
 
         private void ShowStatus(string text, bool isError)
@@ -308,6 +329,198 @@ namespace Kingdoms.Bot.UI
             public string Display;
             public BldVillageItem(int id, string display) { VillageId = id; Display = display; }
             public override string ToString() { return Display; }
+        }
+    }
+
+    // =========================================================================
+    // Build Priority Form — reorderable category list (check = prioritized)
+    // =========================================================================
+
+    internal class BuilderPriorityForm : Form
+    {
+        private static readonly Color FormBg = Color.FromArgb(28, 30, 38);
+        private static readonly Color InputBg = Color.FromArgb(50, 52, 64);
+        private static readonly Color TextPri = Color.FromArgb(230, 230, 240);
+        private static readonly Color TextSec = Color.FromArgb(160, 165, 180);
+        private static readonly Color AccentCol = Color.FromArgb(80, 160, 255);
+
+        private CheckedListBox _categoryList;
+        private Label _contentsLabel;
+
+        private bool _saved;
+        public bool Saved { get { return _saved; } }
+
+        public BuilderPriorityForm()
+        {
+            this.Text = "Build Priority";
+            this.BackColor = FormBg;
+            this.ForeColor = TextPri;
+            this.Font = new Font("Segoe UI", 9f);
+            this.ClientSize = new Size(420, 420);
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.ShowInTaskbar = false;
+
+            BuildUI();
+            LoadFromSettings();
+        }
+
+        private void BuildUI()
+        {
+            Label pinnedTop = MakeLabel("Stockpile & Granary — always built first", 14, 12);
+            pinnedTop.ForeColor = Color.FromArgb(100, 220, 100);
+            this.Controls.Add(pinnedTop);
+
+            Label orderLbl = MakeLabel("Build order (top = highest, check = prioritised):", 14, 36);
+            this.Controls.Add(orderLbl);
+
+            _categoryList = new CheckedListBox();
+            _categoryList.BackColor = InputBg;
+            _categoryList.ForeColor = TextPri;
+            _categoryList.Font = new Font("Segoe UI", 9f);
+            _categoryList.BorderStyle = BorderStyle.FixedSingle;
+            _categoryList.CheckOnClick = true;
+            _categoryList.IntegralHeight = false;
+            _categoryList.Location = new Point(14, 56);
+            _categoryList.Size = new Size(310, 160);
+            _categoryList.SelectedIndexChanged += delegate { ShowCategoryContents(); };
+            this.Controls.Add(_categoryList);
+
+            Button upBtn = MakeBtn("Up", Color.FromArgb(70, 72, 84), 334, 56);
+            upBtn.Size = new Size(70, 28);
+            upBtn.Click += delegate { MoveSelected(-1); };
+            this.Controls.Add(upBtn);
+
+            Button downBtn = MakeBtn("Down", Color.FromArgb(70, 72, 84), 334, 90);
+            downBtn.Size = new Size(70, 28);
+            downBtn.Click += delegate { MoveSelected(1); };
+            this.Controls.Add(downBtn);
+
+            Label pinnedBottom = MakeLabel("Everything else — built last, in layout order", 14, 222);
+            this.Controls.Add(pinnedBottom);
+
+            _contentsLabel = new Label();
+            _contentsLabel.Font = new Font("Segoe UI", 8f);
+            _contentsLabel.ForeColor = TextSec;
+            _contentsLabel.Location = new Point(14, 246);
+            _contentsLabel.Size = new Size(392, 124);
+            _contentsLabel.Text = "Select a category to see which buildings it includes.";
+            this.Controls.Add(_contentsLabel);
+
+            Button okBtn = MakeBtn("OK", AccentCol, 200, 382);
+            okBtn.Click += delegate { SaveToSettings(); this.Close(); };
+            this.Controls.Add(okBtn);
+
+            Button cancelBtn = MakeBtn("Cancel", Color.FromArgb(70, 72, 84), 310, 382);
+            cancelBtn.Click += delegate { this.Close(); };
+            this.Controls.Add(cancelBtn);
+        }
+
+        private void LoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            List<BuilderCategoryPref> prefs = VillageBuilderModule.NormalizeCategoryPriority(
+                BotEngine.Instance.Settings.VillageBuilder.CategoryPriority);
+
+            _categoryList.Items.Clear();
+            foreach (BuilderCategoryPref pref in prefs)
+            {
+                VillageBuilderModule.BuildCategory cat = FindCategory(pref.Key);
+                if (cat != null)
+                    _categoryList.Items.Add(new CategoryItem(cat), pref.Enabled);
+            }
+
+            if (_categoryList.Items.Count > 0)
+                _categoryList.SelectedIndex = 0;
+        }
+
+        private void SaveToSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null)
+                return;
+
+            List<BuilderCategoryPref> prefs = new List<BuilderCategoryPref>();
+            for (int i = 0; i < _categoryList.Items.Count; i++)
+            {
+                CategoryItem item = (CategoryItem)_categoryList.Items[i];
+                BuilderCategoryPref pref = new BuilderCategoryPref();
+                pref.Key = item.Category.Key;
+                pref.Enabled = _categoryList.GetItemChecked(i);
+                prefs.Add(pref);
+            }
+
+            BotEngine.Instance.Settings.VillageBuilder.CategoryPriority = prefs;
+            _saved = true;
+        }
+
+        private void MoveSelected(int direction)
+        {
+            int index = _categoryList.SelectedIndex;
+            if (index < 0) return;
+            int target = index + direction;
+            if (target < 0 || target >= _categoryList.Items.Count) return;
+
+            object item = _categoryList.Items[index];
+            bool isChecked = _categoryList.GetItemChecked(index);
+            _categoryList.Items.RemoveAt(index);
+            _categoryList.Items.Insert(target, item);
+            _categoryList.SetItemChecked(target, isChecked);
+            _categoryList.SelectedIndex = target;
+        }
+
+        private void ShowCategoryContents()
+        {
+            CategoryItem item = _categoryList.SelectedItem as CategoryItem;
+            if (item == null) return;
+
+            List<string> names = new List<string>();
+            foreach (int type in item.Category.Types)
+                names.Add(VillageBuilderModule.GetBuildingName(type));
+            _contentsLabel.Text = item.Category.DisplayName + " includes: " + string.Join(", ", names.ToArray());
+        }
+
+        private static VillageBuilderModule.BuildCategory FindCategory(string key)
+        {
+            foreach (VillageBuilderModule.BuildCategory cat in VillageBuilderModule.Categories)
+                if (cat.Key == key) return cat;
+            return null;
+        }
+
+        private static Label MakeLabel(string text, int x, int y)
+        {
+            Label lbl = new Label();
+            lbl.Text = text;
+            lbl.Font = new Font("Segoe UI", 8.5f);
+            lbl.ForeColor = TextSec;
+            lbl.AutoSize = true;
+            lbl.Location = new Point(x, y);
+            return lbl;
+        }
+
+        private static Button MakeBtn(string text, Color bg, int x, int y)
+        {
+            Button btn = new Button();
+            btn.Text = text;
+            btn.BackColor = bg;
+            btn.ForeColor = Color.White;
+            btn.FlatStyle = FlatStyle.Flat;
+            btn.FlatAppearance.BorderSize = 0;
+            btn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            btn.Size = new Size(100, 30);
+            btn.Location = new Point(x, y);
+            btn.Cursor = Cursors.Hand;
+            return btn;
+        }
+
+        private class CategoryItem
+        {
+            public VillageBuilderModule.BuildCategory Category;
+            public CategoryItem(VillageBuilderModule.BuildCategory cat) { Category = cat; }
+            public override string ToString() { return Category.DisplayName; }
         }
     }
 }

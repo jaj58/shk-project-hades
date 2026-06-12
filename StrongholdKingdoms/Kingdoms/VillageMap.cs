@@ -4489,6 +4489,55 @@ namespace Kingdoms
       return 0;
     }
 
+    // Bot-safe mirror of the optimistic insert in placeBuilding(): adds a temporary
+    // building (buildingID -1, incomplete) so countNumBuildingsConstructing() and the
+    // layout.mapData occupancy bits reflect the in-flight placement until the server
+    // response arrives. botBuildingPlacedCallback removes it on success or failure.
+    public void BotAddPendingBuilding(int buildingType, Point mapTile)
+    {
+      VillageMapBuilding newBuilding = new VillageMapBuilding();
+      newBuilding.buildingLocation = mapTile;
+      newBuilding.buildingType = buildingType;
+      newBuilding.buildingID = -1L;
+      newBuilding.complete = false;
+      newBuilding.completionTime = DateTime.Now.AddDays(1000.0);
+      this.addBuildingToMap(newBuilding, mapTile, buildingType);
+      newBuilding.updateConstructionGFX(VillageMap.localBaseTime, VillageMap.baseServerTime, true, this);
+    }
+
+    // Bot-safe mirror of buildingPlacedCallback(): applies the server response to game
+    // state without the UI side effects (no build-info panel, no placement sounds).
+    // Must be registered on the TARGET village instance so this.gfx is correct.
+    public void botBuildingPlacedCallback(PlaceVillageBuilding_ReturnType returnData)
+    {
+      VillageMap village = GameEngine.Instance.getVillage(returnData.villageID);
+      if (village != null)
+      {
+        village.inPlaceBuilding = false;
+        village.removeBuildingFromMap((Point) returnData.buildingLocation, returnData.buildingType, -1L);
+        if (returnData.Success)
+        {
+          VillageMapBuilding newBuilding = new VillageMapBuilding();
+          newBuilding.createFromReturnData(returnData.villageBuilding);
+          village.addBuildingToMap(newBuilding, (Point) returnData.buildingLocation, returnData.buildingType);
+          newBuilding.initStorageBuilding(this.gfx, this);
+          VillageMap.setServerTime(returnData.currentTime);
+          newBuilding.updateConstructionGFX(VillageMap.localBaseTime, VillageMap.baseServerTime, true, this);
+          newBuilding.updateSymbolGFX();
+          village.importResourcesAndStats(returnData.villageResourcesAndStats, returnData.currentTime);
+          GameEngine.Instance.World.setGoldData(returnData.currentGoldLevel, returnData.currentGoldRate);
+          GameEngine.Instance.World.setPoints(returnData.currentPoints);
+          if (returnData.m_cardData != null)
+            GameEngine.Instance.cardsManager.UserCardData = returnData.m_cardData;
+          if (GameEngine.Instance.Village == village)
+            InterfaceMgr.Instance.updateSidepanelAfterBuildingPlaced();
+        }
+      }
+      Kingdoms.Bot.Modules.VillageBuilderModule builderModule = Kingdoms.Bot.BotEngine.Instance?.GetModule<Kingdoms.Bot.Modules.VillageBuilderModule>();
+      if (builderModule != null)
+        builderModule.OnPlacementResult(returnData);
+    }
+
     public bool movePlacementBuildingToScreenPos(Point mousePos)
     {
       return this.movePlacementBuildingToTile(this.Camera.WorldSpaceToMapTile(this.Camera.ScreenToWorldSpace(mousePos)));
