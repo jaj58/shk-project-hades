@@ -8,10 +8,22 @@ namespace Kingdoms.Bot.Modules
 {
     public class VillageBuilderModule : BotModuleBase
     {
-        private DateTime _lastFullCycle = DateTime.MinValue;
+        private DateTime _lastCycleEnd = DateTime.MinValue;
+        private bool _cycleComplete = true;
         private int _currentVillageIndex;
         private List<int> _villageQueue = new List<int>();
         private DateTime _lastVillageAction = DateTime.MinValue;
+        private readonly HashSet<int> _completeLayoutsLogged = new HashSet<int>();
+
+        // In-flight placement awaiting its server response. The RemoteServices user
+        // callback slot is global, so at most one bot placement is in flight at a time.
+        private bool _placementPending;
+        private int _pendingVillageId;
+        private int _pendingBuildingType;
+        private int _pendingX;
+        private int _pendingY;
+        private BuildingEntry _pendingEntry;
+        private DateTime _pendingSentAt;
 
         public override string ModuleName
         {
@@ -37,6 +49,9 @@ namespace Kingdoms.Bot.Modules
         {
             _currentVillageIndex = 0;
             _villageQueue.Clear();
+            _cycleComplete = true;
+            _placementPending = false;
+            _pendingEntry = null;
         }
 
         protected override void OnTick()
@@ -44,22 +59,44 @@ namespace Kingdoms.Bot.Modules
             VillageBuilderSettings settings = Settings;
             if (settings == null) return;
 
-            double elapsed = (DateTime.Now - _lastFullCycle).TotalSeconds;
-            if (elapsed >= settings.CycleIntervalSeconds || _villageQueue.Count == 0)
+            // Expire a placement whose response never arrived so the cycle can't wedge.
+            if (_placementPending)
             {
+                if ((DateTime.Now - _pendingSentAt).TotalSeconds < 30)
+                    return;
+                if (_pendingEntry != null)
+                    _pendingEntry.Status = "No response (timed out)";
+                LogWarning("Placement response timed out for village " + _pendingVillageId + ".");
+                _placementPending = false;
+                _pendingEntry = null;
+            }
+
+            if (_cycleComplete)
+            {
+                if ((DateTime.Now - _lastCycleEnd).TotalSeconds < settings.CycleIntervalSeconds)
+                    return;
+
                 BuildVillageQueue(settings);
-                _lastFullCycle = DateTime.Now;
                 _currentVillageIndex = 0;
+                _cycleComplete = false;
 
                 if (_villageQueue.Count == 0)
                 {
                     LogDebug("No villages with building layouts enabled.");
+                    _cycleComplete = true;
+                    _lastCycleEnd = DateTime.Now;
                     return;
                 }
             }
 
+            // Process the whole queue before starting the cycle-interval wait, so
+            // villages late in the list are never starved by the cycle timer.
             if (_currentVillageIndex >= _villageQueue.Count)
+            {
+                _cycleComplete = true;
+                _lastCycleEnd = DateTime.Now;
                 return;
+            }
 
             double delaySec = settings.DelayBetweenVillagesMs / 1000.0;
             if ((DateTime.Now - _lastVillageAction).TotalSeconds < delaySec)
@@ -194,16 +231,30 @@ namespace Kingdoms.Bot.Modules
                     return;
                 }
 
-                // Place the building
+                // Place the building. Mirror the client flow: register the response
+                // callback on the target village, optimistically add a pending
+                // building (keeps queue count and occupancy map honest in-flight),
+                // then send. The entry is only marked Placed when the server confirms
+                // via OnPlacementResult — dispatch is not success.
                 string buildingName = GetBuildingName(entry.BuildingType);
 
                 try
                 {
+                    RemoteServices.Instance.set_PlaceVillageBuilding_UserCallBack(
+                        new RemoteServices.PlaceVillageBuilding_UserCallBack(village.botBuildingPlacedCallback));
+                    village.BotAddPendingBuilding(entry.BuildingType, mapTile);
                     RemoteServices.Instance.PlaceVillageBuilding(villageId, entry.BuildingType, mapTile);
 
-                    entry.Placed = true;
-                    entry.Status = "Placed";
-                    LogInfo(villageName + ": Placed " + buildingName + " at (" + entry.X + ", " + entry.Y + ").");
+                    _placementPending = true;
+                    _pendingVillageId = villageId;
+                    _pendingBuildingType = entry.BuildingType;
+                    _pendingX = entry.X;
+                    _pendingY = entry.Y;
+                    _pendingEntry = entry;
+                    _pendingSentAt = DateTime.Now;
+
+                    entry.Status = "Placing...";
+                    LogInfo(villageName + ": Placing " + buildingName + " at (" + entry.X + ", " + entry.Y + ")...");
 
                     // Only place one building per tick to avoid rate limiting
                     return;
@@ -216,21 +267,84 @@ namespace Kingdoms.Bot.Modules
                 }
             }
 
-            // All buildings processed
+            // Nothing left to place this pass. The layout stays enabled (maintain
+            // mode): Placed flags are cleared every cycle, so demolished buildings
+            // are detected and rebuilt. Log completion only on the transition.
             bool allDone = true;
+            int atCountLimit = 0;
             for (int i = 0; i < layout.Buildings.Count; i++)
             {
-                if (!layout.Buildings[i].Placed)
+                BuildingEntry e = layout.Buildings[i];
+                if (!e.Placed)
                 {
                     allDone = false;
                     break;
                 }
+                if (e.Status == "Count limit reached")
+                    atCountLimit++;
             }
 
             if (allDone)
             {
-                LogInfo(villageName + ": All buildings in layout have been placed!");
-                layout.Enabled = false;
+                if (!_completeLayoutsLogged.Contains(villageId))
+                {
+                    _completeLayoutsLogged.Add(villageId);
+                    LogInfo(villageName + ": Layout complete (" + (layout.Buildings.Count - atCountLimit) +
+                        " built, " + atCountLimit + " at count limit). Maintaining.");
+                }
+            }
+            else
+            {
+                _completeLayoutsLogged.Remove(villageId);
+            }
+        }
+
+        // Called from VillageMap.botBuildingPlacedCallback on the main thread once the
+        // server has answered the placement request sent above.
+        public void OnPlacementResult(PlaceVillageBuilding_ReturnType returnData)
+        {
+            if (!_placementPending || returnData == null)
+                return;
+
+            Point loc = (Point)returnData.buildingLocation;
+            if (returnData.villageID != _pendingVillageId ||
+                returnData.buildingType != _pendingBuildingType ||
+                loc.X != _pendingX || loc.Y != _pendingY)
+                return; // response to a manual placement, not ours
+
+            BuildingEntry entry = _pendingEntry;
+            _placementPending = false;
+            _pendingEntry = null;
+
+            string villageName = GetVillageName(returnData.villageID);
+            string buildingName = GetBuildingName(returnData.buildingType);
+
+            if (returnData.Success)
+            {
+                if (entry != null)
+                {
+                    entry.Placed = true;
+                    entry.Status = "Queued";
+                }
+                LogInfo(villageName + ": Placed " + buildingName + " at (" + loc.X + ", " + loc.Y + ").");
+            }
+            else
+            {
+                if (entry != null)
+                    entry.Status = "Rejected: " + returnData.m_errorCode;
+                LogWarning(villageName + ": Server rejected " + buildingName + " at (" + loc.X + ", " + loc.Y + "): " +
+                    returnData.m_errorCode);
+
+                if (returnData.m_errorCode == ErrorCodes.ErrorCode.VILLAGE_BUILDINGS_NO_LONGER_OWNER)
+                {
+                    VillageBuilderSettings settings = Settings;
+                    VillageBuildLayout layout = settings != null ? settings.GetLayout(returnData.villageID) : null;
+                    if (layout != null)
+                    {
+                        layout.Enabled = false;
+                        LogWarning(villageName + ": No longer owner — layout disabled.");
+                    }
+                }
             }
         }
 
@@ -293,6 +407,15 @@ namespace Kingdoms.Bot.Modules
 
         public static List<BuildingEntry> ImportLayoutFromFile(string filePath)
         {
+            int terrainType;
+            return ImportLayoutFromFile(filePath, out terrainType);
+        }
+
+        // terrainType is parsed from the old-format header line "selected;terrainType;name"
+        // when present, otherwise -1 (file gives no terrain information).
+        public static List<BuildingEntry> ImportLayoutFromFile(string filePath, out int terrainType)
+        {
+            terrainType = -1;
             List<BuildingEntry> buildings = new List<BuildingEntry>();
             if (!File.Exists(filePath))
                 return buildings;
@@ -300,8 +423,17 @@ namespace Kingdoms.Bot.Modules
             string[] lines = File.ReadAllLines(filePath);
             foreach (string line in lines)
             {
-                if (string.IsNullOrEmpty(line) || line.Contains(";"))
-                    continue; // Skip header lines
+                if (string.IsNullOrEmpty(line))
+                    continue;
+
+                if (line.Contains(";"))
+                {
+                    string[] headerParts = line.Split(';');
+                    int parsed;
+                    if (terrainType == -1 && headerParts.Length >= 2 && int.TryParse(headerParts[1], out parsed))
+                        terrainType = parsed;
+                    continue;
+                }
 
                 string[] parts = line.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length < 3) continue;
@@ -325,6 +457,17 @@ namespace Kingdoms.Bot.Modules
         public static void ExportLayoutToFile(string filePath, VillageMap village)
         {
             List<string> lines = new List<string>();
+
+            // Old-format header carries the terrain type so imports can be validated.
+            // Both importers (this bot and the old one) skip ';' lines for buildings.
+            int terrainType = 0;
+            string villageName = "";
+            if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+            {
+                terrainType = GameEngine.Instance.World.getVillageTerrainType(village.VillageID);
+                villageName = GameEngine.Instance.World.getVillageName(village.VillageID);
+            }
+            lines.Add("1;" + terrainType + ";" + villageName);
 
             foreach (VillageMapBuilding b in village.Buildings)
             {

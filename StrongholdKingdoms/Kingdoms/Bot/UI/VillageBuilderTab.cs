@@ -69,7 +69,7 @@ namespace Kingdoms.Bot.UI
         {
             if (entry.Placed) return StatusOk;
             string s = entry.Status;
-            if (s == "Constructing" || s == "Waiting for resources") return StatusWarn;
+            if (s == "Constructing" || s == "Waiting for resources" || s == "Placing...") return StatusWarn;
             if (!string.IsNullOrEmpty(s) && s != "Pending" && s != "") return StatusErr;
             return Color.FromArgb(160, 165, 180);
         }
@@ -240,17 +240,34 @@ namespace Kingdoms.Bot.UI
             VillageBuilderSettings s = BotEngine.Instance.Settings.VillageBuilder;
             VillageBuildLayout source = s.GetOrCreateLayout(sourceItem.VillageId);
 
+            int sourceTerrain = -1;
+            if (GameEngine.Instance != null && GameEngine.Instance.World != null)
+                sourceTerrain = GameEngine.Instance.World.getVillageTerrainType(sourceItem.VillageId);
+
             int count = 0;
+            int skipped = 0;
             foreach (int targetId in targetIds)
             {
+                // A layout only makes sense on matching terrain — terrain-specific
+                // buildings would be permanently unplaceable on the wrong type.
+                if (sourceTerrain >= 0 &&
+                    GameEngine.Instance.World.getVillageTerrainType(targetId) != sourceTerrain)
+                {
+                    skipped++;
+                    continue;
+                }
+
                 VillageBuildLayout target = s.GetOrCreateLayout(targetId);
                 target.CopyBuildingsFrom(source);
                 target.Enabled = source.Enabled;
                 count++;
             }
 
-            _copied = true;
-            ShowStatus("Copied layout to " + count + " village(s).", false);
+            _copied = count > 0;
+            if (skipped > 0)
+                ShowStatus("Copied to " + count + " village(s); skipped " + skipped + " with different terrain.", count == 0);
+            else
+                ShowStatus("Copied layout to " + count + " village(s).", false);
         }
 
         private void ShowStatus(string text, bool isError)
