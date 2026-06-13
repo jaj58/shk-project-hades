@@ -93,6 +93,7 @@
     <Compile Include="Kingdoms\Bot\BotLogger.cs" />
     <Compile Include="Kingdoms\Bot\BotModuleBase.cs" />
     <Compile Include="Kingdoms\Bot\BotSettings.cs" />
+    <Compile Include="Kingdoms\Bot\TimingSearch.cs" />
     <Compile Include="Kingdoms\Bot\ProductionCardCatalog.cs" />
     <Compile Include="Kingdoms\Bot\ModuleCardCatalog.cs" />
     <Compile Include="Kingdoms\Bot\DiscordNotifier.cs" />
@@ -126,6 +127,9 @@
     </Compile>
     <Compile Include="Kingdoms\Bot\UI\BotControlForm.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\BotControlForm.TimingTool.cs">
+      <DependentUpon>BotControlForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Kingdoms\Bot\UI\CopyRecruitSettingsForm.cs">
       <SubType>Form</SubType>

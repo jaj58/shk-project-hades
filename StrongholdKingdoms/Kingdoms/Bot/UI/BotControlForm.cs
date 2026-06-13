@@ -225,6 +225,7 @@ namespace Kingdoms.Bot.UI
                 WireUpScoutTab();
                 WireUpDefenderTab();
                 WireUpMonkTab();
+                WireUpTimingTab();
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -247,6 +248,7 @@ namespace Kingdoms.Bot.UI
                 AutoLoadFromSettings();
                 ScLoadFromSettings();
                 DfLoadFromSettings();
+                TtLoadFromSettings();
             }
         }
 
