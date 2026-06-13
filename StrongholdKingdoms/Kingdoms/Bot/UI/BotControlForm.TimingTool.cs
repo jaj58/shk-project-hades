@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 using Kingdoms.Bot;
 using Kingdoms.Bot.Modules;
@@ -29,9 +30,13 @@ namespace Kingdoms.Bot.UI
         private ListBox _ttSourceListBox;
         private TextBox _ttAddIdsBox;
         private Button  _ttAddIdsBtn;
-        private Button  _ttAddMapBtn;
+        private Button  _ttAddMapVillageBtn;
+        private Button  _ttAddMapPlayerBtn;
         private Button  _ttRemoveBtn;
         private Button  _ttClearBtn;
+        private Button  _ttSaveBtn;
+        private Button  _ttLoadBtn;
+        private Button  _ttCopyBtn;
         private NumericUpDown _ttMinNormalInput;
         private NumericUpDown _ttMinCaptainInput;
         private NumericUpDown _ttMaxWindowInput;
@@ -85,32 +90,44 @@ namespace Kingdoms.Bot.UI
             _ttSourceListBox.Size = new Size(248, 210);
             _timingPage.Controls.Add(_ttSourceListBox);
 
-            _ttRemoveBtn = TtMakeButton("Remove", 8, 276, 76);
+            _ttRemoveBtn = TtMakeButton("Remove", 8, 274, 76);
             _ttRemoveBtn.Click += delegate { TtRemoveSelected(); };
             _timingPage.Controls.Add(_ttRemoveBtn);
 
-            _ttClearBtn = TtMakeButton("Clear", 90, 276, 76);
+            _ttClearBtn = TtMakeButton("Clear", 88, 274, 76);
             _ttClearBtn.Click += delegate { TtClearSources(); };
             _timingPage.Controls.Add(_ttClearBtn);
 
-            _timingPage.Controls.Add(TtMakeLabel("Add IDs (comma/space separated):", 8, 308, 250));
+            _ttSaveBtn = TtMakeButton("Save List", 8, 300, 76);
+            _ttSaveBtn.Click += delegate { TtSaveSources(); };
+            _timingPage.Controls.Add(_ttSaveBtn);
+
+            _ttLoadBtn = TtMakeButton("Load List", 88, 300, 76);
+            _ttLoadBtn.Click += delegate { TtLoadSources(); };
+            _timingPage.Controls.Add(_ttLoadBtn);
+
+            _ttAddMapVillageBtn = TtMakeButton("Add Village From Map", 8, 326, 180);
+            _ttAddMapVillageBtn.Click += delegate { TtAddVillageFromMap(); };
+            _timingPage.Controls.Add(_ttAddMapVillageBtn);
+
+            _ttAddMapPlayerBtn = TtMakeButton("Add Player From Map", 8, 352, 180);
+            _ttAddMapPlayerBtn.Click += delegate { TtAddPlayerFromMap(); };
+            _timingPage.Controls.Add(_ttAddMapPlayerBtn);
+
+            _timingPage.Controls.Add(TtMakeLabel("Add IDs (comma/space separated):", 8, 380, 250));
             _ttAddIdsBox = new TextBox();
             _ttAddIdsBox.Multiline = true;
             _ttAddIdsBox.BackColor = TtInputBg;
             _ttAddIdsBox.ForeColor = TtText;
             _ttAddIdsBox.BorderStyle = BorderStyle.FixedSingle;
             _ttAddIdsBox.Font = new Font("Segoe UI", 8f);
-            _ttAddIdsBox.Location = new Point(8, 326);
-            _ttAddIdsBox.Size = new Size(180, 48);
+            _ttAddIdsBox.Location = new Point(8, 398);
+            _ttAddIdsBox.Size = new Size(180, 40);
             _timingPage.Controls.Add(_ttAddIdsBox);
 
-            _ttAddIdsBtn = TtMakeButton("Add IDs", 194, 326, 62);
+            _ttAddIdsBtn = TtMakeButton("Add IDs", 194, 398, 62);
             _ttAddIdsBtn.Click += delegate { TtAddTypedIds(); };
             _timingPage.Controls.Add(_ttAddIdsBtn);
-
-            _ttAddMapBtn = TtMakeButton("Add Selected From Map", 8, 380, 180);
-            _ttAddMapBtn.Click += delegate { TtAddFromMap(); };
-            _timingPage.Controls.Add(_ttAddMapBtn);
 
             // ---- Search settings (middle column) ----
             int mx = 290;
@@ -179,7 +196,11 @@ namespace Kingdoms.Bot.UI
             _ttNextBtn.Click += delegate { TtStep(1); };
             _timingPage.Controls.Add(_ttNextBtn);
 
-            _ttPushBtn = TtMakeButton("Push to Auto Bomb Multi", mx + 170, 268, 200);
+            _ttCopyBtn = TtMakeButton("Copy to Clipboard", mx + 164, 268, 140);
+            _ttCopyBtn.Click += delegate { TtCopySetup(); };
+            _timingPage.Controls.Add(_ttCopyBtn);
+
+            _ttPushBtn = TtMakeButton("Push to Auto Bomb Multi", mx + 308, 268, 190);
             _ttPushBtn.Click += delegate { TtPushToAbm(); };
             _timingPage.Controls.Add(_ttPushBtn);
 
@@ -289,14 +310,138 @@ namespace Kingdoms.Bot.UI
             SaveSettingsSafe();
         }
 
-        private void TtAddFromMap()
+        private void TtAddVillageFromMap()
         {
             if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
             int vid = GameEngine.Instance.World.LastClickedVillage;
-            if (vid <= 0) return;
+            if (vid <= 0) { TtSetStatus("No village selected on the map."); return; }
             TtAddSource(vid);
             TtRefreshSourceList();
             SaveSettingsSafe();
+        }
+
+        /// <summary>
+        /// Adds every village belonging to the owner of the map's last-clicked village.
+        /// The player-village lookup is a blocking server call, so it runs on a background thread.
+        /// </summary>
+        private void TtAddPlayerFromMap()
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+            int vid = GameEngine.Instance.World.LastClickedVillage;
+            if (vid <= 0) { TtSetStatus("No village selected on the map."); return; }
+
+            int userId = GameEngine.Instance.World.getVillageUserID(vid);
+            if (userId < 0) { TtSetStatus("Could not resolve the village's owner."); return; }
+
+            string playerName = null;
+            try
+            {
+                WorldMap.CachedUserInfo info = GameEngine.Instance.World.getStoredUserInfo(userId);
+                if (info != null && !string.IsNullOrEmpty(info.userName)) playerName = info.userName;
+            }
+            catch { }
+            if (string.IsNullOrEmpty(playerName)) { TtSetStatus("Could not resolve the player name."); return; }
+
+            // Find the AutoBombModule (owns the player-village lookup).
+            AutoBombModule abMod = null;
+            if (BotEngine.Instance != null)
+                foreach (IBotModule m in BotEngine.Instance.Modules)
+                    if (m is AutoBombModule) { abMod = (AutoBombModule)m; break; }
+            if (abMod == null) { TtSetStatus("Auto Bomb module unavailable."); return; }
+
+            _ttAddMapPlayerBtn.Enabled = false;
+            _ttAddMapPlayerBtn.Text = "Looking up...";
+            TtSetStatus("Looking up villages for '" + playerName + "'...");
+
+            System.Threading.Thread t = new System.Threading.Thread(delegate()
+            {
+                List<int> villages = abMod.ResolvePlayerVillages(playerName);
+                this.BeginInvoke((MethodInvoker)delegate
+                {
+                    int before = TtSettings != null ? TtSettings.SourceVillages.Count : 0;
+                    foreach (int v in villages) TtAddSource(v);
+                    int added = (TtSettings != null ? TtSettings.SourceVillages.Count : 0) - before;
+                    TtRefreshSourceList();
+                    SaveSettingsSafe();
+                    _ttAddMapPlayerBtn.Enabled = true;
+                    _ttAddMapPlayerBtn.Text = "Add Player From Map";
+                    TtSetStatus("Added " + added + " village(s) for '" + playerName + "'.");
+                });
+            });
+            t.IsBackground = true;
+            t.Name = "TtPlayerLookup";
+            t.Start();
+        }
+
+        // =====================================================================
+        // Save / load source village list
+        // =====================================================================
+
+        private void TtSaveSources()
+        {
+            TimingToolSettings s = TtSettings;
+            if (s == null || s.SourceVillages.Count == 0)
+            { TtSetStatus("No source villages to save."); return; }
+
+            SaveFileDialog dlg = new SaveFileDialog();
+            dlg.Filter = "Source List (*.txt)|*.txt|All Files (*.*)|*.*";
+            dlg.DefaultExt = "txt";
+            dlg.Title = "Save Source Villages";
+            if (dlg.ShowDialog() != DialogResult.OK) return;
+
+            try
+            {
+                using (StreamWriter w = new StreamWriter(dlg.FileName))
+                {
+                    w.WriteLine("# Timing Tool source villages (villageId,name)");
+                    foreach (int vid in s.SourceVillages)
+                        w.WriteLine(vid + "," + TtVillageName(vid));
+                }
+                TtSetStatus("Saved " + s.SourceVillages.Count + " source village(s).");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Save failed: " + ex.Message, "Timing Tool",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void TtLoadSources()
+        {
+            TimingToolSettings s = TtSettings;
+            if (s == null) return;
+
+            OpenFileDialog dlg = new OpenFileDialog();
+            dlg.Filter = "Source List (*.txt)|*.txt|All Files (*.*)|*.*";
+            dlg.Title = "Load Source Villages";
+            if (dlg.ShowDialog() != DialogResult.OK) return;
+
+            try
+            {
+                int added = 0;
+                using (StreamReader r = new StreamReader(dlg.FileName))
+                {
+                    string line;
+                    while ((line = r.ReadLine()) != null)
+                    {
+                        line = line.Trim();
+                        if (line.Length == 0 || line.StartsWith("#")) continue;
+                        // Accept "villageId" or "villageId,name".
+                        string[] parts = line.Split(new char[] { ',' }, 2);
+                        int vid;
+                        if (!int.TryParse(parts[0].Trim(), out vid) || vid <= 0) continue;
+                        if (!s.SourceVillages.Contains(vid)) { s.SourceVillages.Add(vid); added++; }
+                    }
+                }
+                TtRefreshSourceList();
+                SaveSettingsSafe();
+                TtSetStatus("Loaded " + added + " new source village(s).");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Load failed: " + ex.Message, "Timing Tool",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void TtRemoveSelected()
@@ -558,7 +703,68 @@ namespace Kingdoms.Bot.UI
             _ttPrevBtn.Enabled = any && _ttResultIdx > 0;
             _ttNextBtn.Enabled = any && _ttResultIdx < _ttResults.Count - 1;
             _ttPushBtn.Enabled = any;
+            _ttCopyBtn.Enabled = any;
         }
+
+        // =====================================================================
+        // Copy current setup to clipboard
+        // =====================================================================
+
+        private void TtCopySetup()
+        {
+            if (_ttResults.Count == 0) { TtSetStatus("Nothing to copy."); return; }
+            TimingSearch.TtSetup setup = _ttResults[_ttResultIdx];
+
+            int target = 0;
+            int.TryParse(_ttTargetVidBox.Text.Trim(), out target);
+
+            // Column widths.
+            const int wNo = 3, wId = 10, wName = 18, wType = 8, wCard = 8, wTravel = 12;
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            sb.AppendLine("TARGET ID : " + target);
+            sb.AppendLine("Setup " + (_ttResultIdx + 1) + " / " + _ttResults.Count
+                + "   Window: " + AutoBombModule.FormatTimeSpan(TimeSpan.FromSeconds(setup.Window))
+                + " (" + setup.Window.ToString("0") + "s)");
+            sb.AppendLine();
+            sb.AppendLine(
+                Pad("#", wNo) + " | " + Pad("Village ID", wId) + " | " + Pad("Name", wName)
+                + " | " + Pad("Type", wType) + " | " + Pad("Card", wCard) + " | " + Pad("Travel", wTravel));
+            sb.AppendLine(
+                Dash(wNo) + "-+-" + Dash(wId) + "-+-" + Dash(wName)
+                + "-+-" + Dash(wType) + "-+-" + Dash(wCard) + "-+-" + Dash(wTravel));
+
+            int i = 1;
+            foreach (TimingSearch.TtAttack a in setup.Attacks)
+            {
+                string name = TtVillageName(a.VillageId);
+                if (name.Length > wName) name = name.Substring(0, wName);
+                sb.AppendLine(
+                    Pad(i.ToString(), wNo) + " | " + Pad(a.VillageId.ToString(), wId) + " | " + Pad(name, wName)
+                    + " | " + Pad(a.IsCaptain ? "Captain" : "Normal", wType)
+                    + " | " + Pad(TtCardLabel(a.CardType), wCard)
+                    + " | " + Pad(AutoBombModule.FormatTimeSpan(TimeSpan.FromSeconds(a.Time)), wTravel));
+                i++;
+            }
+
+            try
+            {
+                Clipboard.SetText(sb.ToString());
+                TtSetStatus("Copied setup to clipboard.");
+            }
+            catch (Exception ex)
+            {
+                TtSetStatus("Copy failed: " + ex.Message);
+            }
+        }
+
+        private static string Pad(string s, int w)
+        {
+            if (s == null) s = "";
+            if (s.Length >= w) return s;
+            return s + new string(' ', w - s.Length);
+        }
+
+        private static string Dash(int w) { return new string('-', w); }
 
         // =====================================================================
         // Push to Auto Bomb Multi
