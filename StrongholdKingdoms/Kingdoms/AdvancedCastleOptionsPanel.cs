@@ -27,6 +27,7 @@ namespace Kingdoms
     private CustomSelfDrawPanel.CSDButton deletePitsButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton deleteMoatButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton deleteOilPotsButton = new CustomSelfDrawPanel.CSDButton();
+    private CustomSelfDrawPanel.CSDButton deleteSmeltersButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDLabel infoLabel = new CustomSelfDrawPanel.CSDLabel();
     private CustomSelfDrawPanel.CSDLabel setup1Label = new CustomSelfDrawPanel.CSDLabel();
     private CustomSelfDrawPanel.CSDLabel setup2Label = new CustomSelfDrawPanel.CSDLabel();
@@ -145,7 +146,7 @@ namespace Kingdoms
         this.deleteCastleButton.ImageNorm = (Image) GFXLibrary.misc_button_blue_210wide_normal;
         this.deleteCastleButton.ImageOver = (Image) GFXLibrary.misc_button_blue_210wide_over;
         this.deleteCastleButton.ImageClick = (Image) GFXLibrary.misc_button_blue_210wide_pushed;
-        this.deleteCastleButton.Position = new Point(70, 200);
+        this.deleteCastleButton.Position = new Point(70, 190);
         this.deleteCastleButton.Text.Text = SK.Text("Advanced_Castle_Delete_Castle", "Delete All Castle Infrastructure");
         this.deleteCastleButton.Text.Font = Program.mySettings.LanguageIdent == "it" || Program.mySettings.LanguageIdent == "pt" ? FontManager.GetFont("Arial", 8f, FontStyle.Regular) : FontManager.GetFont("Arial", 10f, FontStyle.Regular);
         this.deleteCastleButton.Text.Color = ARGBColors.Black;
@@ -154,7 +155,7 @@ namespace Kingdoms
         this.deleteMoatButton.ImageNorm = (Image) GFXLibrary.misc_button_blue_210wide_normal;
         this.deleteMoatButton.ImageOver = (Image) GFXLibrary.misc_button_blue_210wide_over;
         this.deleteMoatButton.ImageClick = (Image) GFXLibrary.misc_button_blue_210wide_pushed;
-        this.deleteMoatButton.Position = new Point(70, 230);
+        this.deleteMoatButton.Position = new Point(70, 217);
         this.deleteMoatButton.Text.Text = SK.Text("Advanced_Castle_Delete_Castle_moat", "Delete All Moat");
         this.deleteMoatButton.Text.Font = !(Program.mySettings.LanguageIdent == "pt") ? FontManager.GetFont("Arial", 10f, FontStyle.Regular) : FontManager.GetFont("Arial", 8f, FontStyle.Regular);
         this.deleteMoatButton.Text.Color = ARGBColors.Black;
@@ -163,7 +164,7 @@ namespace Kingdoms
         this.deletePitsButton.ImageNorm = (Image) GFXLibrary.misc_button_blue_210wide_normal;
         this.deletePitsButton.ImageOver = (Image) GFXLibrary.misc_button_blue_210wide_over;
         this.deletePitsButton.ImageClick = (Image) GFXLibrary.misc_button_blue_210wide_pushed;
-        this.deletePitsButton.Position = new Point(70, 260);
+        this.deletePitsButton.Position = new Point(70, 244);
         this.deletePitsButton.Text.Text = SK.Text("Advanced_Castle_Delete_Castle_pits", "Delete All Killing Pits");
         this.deletePitsButton.Text.Font = !(Program.mySettings.LanguageIdent == "pt") ? FontManager.GetFont("Arial", 10f, FontStyle.Regular) : FontManager.GetFont("Arial", 8f, FontStyle.Regular);
         this.deletePitsButton.Text.Color = ARGBColors.Black;
@@ -172,18 +173,28 @@ namespace Kingdoms
         this.deleteOilPotsButton.ImageNorm = (Image) GFXLibrary.misc_button_blue_210wide_normal;
         this.deleteOilPotsButton.ImageOver = (Image) GFXLibrary.misc_button_blue_210wide_over;
         this.deleteOilPotsButton.ImageClick = (Image) GFXLibrary.misc_button_blue_210wide_pushed;
-        this.deleteOilPotsButton.Position = new Point(70, 290);
+        this.deleteOilPotsButton.Position = new Point(70, 271);
         this.deleteOilPotsButton.Text.Text = SK.Text("Advanced_Castle_Delete_Castle_oil_pots", "Delete All Oil Pots");
         this.deleteOilPotsButton.Text.Font = !(Program.mySettings.LanguageIdent == "pt") ? FontManager.GetFont("Arial", 10f, FontStyle.Regular) : FontManager.GetFont("Arial", 8f, FontStyle.Regular);
         this.deleteOilPotsButton.Text.Color = ARGBColors.Black;
         this.deleteOilPotsButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.deleteOilPotsClicked), "CastleMapPanel_delete_constructing");
         this.backgroundImage.addControl((CustomSelfDrawPanel.CSDControl) this.deleteOilPotsButton);
+        this.deleteSmeltersButton.ImageNorm = (Image) GFXLibrary.misc_button_blue_210wide_normal;
+        this.deleteSmeltersButton.ImageOver = (Image) GFXLibrary.misc_button_blue_210wide_over;
+        this.deleteSmeltersButton.ImageClick = (Image) GFXLibrary.misc_button_blue_210wide_pushed;
+        this.deleteSmeltersButton.Position = new Point(70, 298);
+        this.deleteSmeltersButton.Text.Text = SK.Text("Advanced_Castle_Delete_Castle_smelters", "Delete All Smelters");
+        this.deleteSmeltersButton.Text.Font = !(Program.mySettings.LanguageIdent == "pt") ? FontManager.GetFont("Arial", 10f, FontStyle.Regular) : FontManager.GetFont("Arial", 8f, FontStyle.Regular);
+        this.deleteSmeltersButton.Text.Color = ARGBColors.Black;
+        this.deleteSmeltersButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.deleteSmeltersClicked), "CastleMapPanel_delete_constructing");
+        this.backgroundImage.addControl((CustomSelfDrawPanel.CSDControl) this.deleteSmeltersButton);
         if (GameEngine.Instance.World.WorldEnded)
         {
           this.deleteCastleButton.Visible = false;
           this.deleteMoatButton.Visible = false;
           this.deletePitsButton.Visible = false;
           this.deleteOilPotsButton.Visible = false;
+          this.deleteSmeltersButton.Visible = false;
         }
         else
         {
@@ -191,6 +202,7 @@ namespace Kingdoms
           this.deleteMoatButton.Visible = true;
           this.deletePitsButton.Visible = true;
           this.deleteOilPotsButton.Visible = true;
+          this.deleteSmeltersButton.Visible = true;
         }
         this.memoriseTroopsButton.Enabled = true;
         this.memoriseCastleButton.Enabled = true;
@@ -211,6 +223,8 @@ namespace Kingdoms
             this.deletePitsButton.Enabled = false;
           if (GameEngine.Instance.Castle.countPlacedOilPots() <= 0)
             this.deleteOilPotsButton.Enabled = false;
+          if (GameEngine.Instance.Castle.countPlacedSmelters() <= 0)
+            this.deleteSmeltersButton.Enabled = false;
           if (!GameEngine.Instance.Castle.gotInfrastructureSave())
             this.restoreCastleButton.Enabled = false;
           if (!GameEngine.Instance.Castle.gotTroopsSave())
@@ -221,6 +235,7 @@ namespace Kingdoms
             this.deleteMoatButton.Enabled = false;
             this.deletePitsButton.Enabled = false;
             this.deleteOilPotsButton.Enabled = false;
+            this.deleteSmeltersButton.Enabled = false;
           }
         }
       }
@@ -523,6 +538,21 @@ namespace Kingdoms
         return;
       GameEngine.Instance.Castle.deleteAllOilPotElements();
       this.deleteOilPotsButton.Enabled = false;
+    }
+
+    public void deleteSmeltersClicked()
+    {
+      if (MyMessageBox.Show(SK.Text("Advanced_Castle_Delete_Castle_message_smelters", "You are about to delete all your Smelters from your castle. Are you really sure about this?"), SK.Text("Advanced_Castle_Delete_Castle_smelters", "Delete All Smelters"), MessageBoxButtons.YesNo) != DialogResult.Yes)
+        return;
+      this.DeleteSmelters();
+    }
+
+    private void DeleteSmelters()
+    {
+      if (GameEngine.Instance.Castle == null)
+        return;
+      GameEngine.Instance.Castle.deleteAllSmelterElements();
+      this.deleteSmeltersButton.Enabled = false;
     }
 
     private void memoriseAttackClicked()
