@@ -32,6 +32,7 @@ namespace Kingdoms.Bot
         public BanquetSettings Banquet = new BanquetSettings();
         public DefenderSettings Defender = new DefenderSettings();
         public MonkSettings Monk = new MonkSettings();
+        public TimingToolSettings TimingTool = new TimingToolSettings();
 
         // XmlSerializer generates and compiles a dynamic serialization assembly the first time
         // it is constructed for a given type. For a complex type like BotSettings this takes
@@ -922,6 +923,26 @@ namespace Kingdoms.Bot
         public int InterdictCount;
         [System.Xml.Serialization.XmlIgnore]
         public double ServerClockOffsetSeconds;
+    }
+
+    // =========================================================================
+    // Timing Tool Settings
+    // =========================================================================
+
+    [Serializable]
+    public class TimingToolSettings
+    {
+        public int TargetVillageId;
+        public List<int> SourceVillages = new List<int>();
+        public int MinNormalAttacks;
+        public int MinCaptainAttacks;
+        // Speed-card cardType ints to try: 1=x2, 2=x4, 3=x6, 5=x3, 6=x5.
+        // cardType 0 (no card) is always tried in addition, regardless of this list.
+        public List<int> AllowedCards = new List<int>();
+        public int MaxAttackWindowSeconds = 60;
+        // When enabled a village may supply (1 captain + 1 normal) OR (2 normal) attacks.
+        // When disabled a village supplies at most one attack (captain OR normal).
+        public bool VassalSending;
     }
 
     public enum PopularityMode
