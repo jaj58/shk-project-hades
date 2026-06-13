@@ -2005,6 +2005,17 @@ namespace Kingdoms
       return num;
     }
 
+    public int countPlacedSmelters()
+    {
+      int num = 0;
+      foreach (CastleElement element in this.elements)
+      {
+        if (element.elementType == (byte) 32)
+          ++num;
+      }
+      return num;
+    }
+
     public int countOwnPlacedCaptains()
     {
       int num = 0;
@@ -8041,6 +8052,28 @@ namespace Kingdoms
       this.lastDeleteConstructing = DateTime.Now;
       RemoteServices.Instance.set_DeleteCastleElement_UserCallBack(new RemoteServices.DeleteCastleElement_UserCallBack(this.DeleteElementCallback));
       RemoteServices.Instance.DeleteAllCastleOilPotsElements(this.m_villageID);
+      this.stopPlaceElement();
+    }
+
+    public void deleteAllSmelterElements()
+    {
+      if (this.inDeleteConstructing && (DateTime.Now - this.lastDeleteConstructing).TotalMinutes > 2.0)
+        this.inDeleteConstructing = false;
+      if (this.inDeleteConstructing)
+        return;
+      List<long> smelterElements = new List<long>();
+      foreach (CastleElement element in this.elements)
+      {
+        if (element.elementType == (byte) 32)
+          smelterElements.Add(element.elementID);
+      }
+      if (smelterElements.Count == 0)
+        return;
+      this.inDeleting = true;
+      this.inDeleteConstructing = true;
+      this.lastDeleteConstructing = DateTime.Now;
+      RemoteServices.Instance.set_DeleteCastleElement_UserCallBack(new RemoteServices.DeleteCastleElement_UserCallBack(this.DeleteElementCallback));
+      RemoteServices.Instance.DeleteCastleElement(this.m_villageID, smelterElements);
       this.stopPlaceElement();
     }
 
