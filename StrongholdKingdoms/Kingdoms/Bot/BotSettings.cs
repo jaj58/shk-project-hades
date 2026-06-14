@@ -1116,7 +1116,7 @@ namespace Kingdoms.Bot
     public class VillageScoutSettings
     {
         public int VillageId;
-        public bool ScoutingEnabled = true;
+        public bool ScoutingEnabled = false;
         public List<int> ResourceTypesToScout = new List<int>();
         public List<int> ResourceTypesToIgnore = new List<int>();
 

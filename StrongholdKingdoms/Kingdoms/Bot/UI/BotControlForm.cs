@@ -2315,6 +2315,9 @@ namespace Kingdoms.Bot.UI
             TrBuildStatsTab();
 
             _trEnabledCheck.CheckedChanged += delegate { TrWriteToSettings(); };
+            // Persist the per-village "Should this village trade?" toggle immediately,
+            // otherwise the change is lost unless the user switches village or saves.
+            _trVillageTradingCheck.CheckedChanged += delegate { if (!_trLoading) TrSaveCurrentVillage(); };
             _trAddMarketsBtn.Click += delegate { TrAddMarketsClick(); };
             _trMarketRefreshBtn.Click += delegate { TrRefreshMarkets(); };
 
@@ -3056,15 +3059,23 @@ namespace Kingdoms.Bot.UI
                 settings = BotEngine.Instance.Settings.Trade;
             if (settings == null) return;
 
-            VillageMarketTradeInfo info = settings.GetVillageMarketInfo(_trSelectedVillageId);
-            _trVillageTradingCheck.Checked = info.IsTrading;
-            _trResourceGrid.LoadVillage(info);
+            _trLoading = true;
+            try
+            {
+                VillageMarketTradeInfo info = settings.GetVillageMarketInfo(_trSelectedVillageId);
+                _trVillageTradingCheck.Checked = info.IsTrading;
+                _trResourceGrid.LoadVillage(info);
 
-            // Populate markets list
-            _trMarketsListBox.Items.Clear();
-            foreach (int marketId in info.MarketTargets)
-                _trMarketsListBox.Items.Add(marketId);
-            _trMarketCountLabel.Text = "Total Markets: " + info.MarketTargets.Count;
+                // Populate markets list
+                _trMarketsListBox.Items.Clear();
+                foreach (int marketId in info.MarketTargets)
+                    _trMarketsListBox.Items.Add(marketId);
+                _trMarketCountLabel.Text = "Total Markets: " + info.MarketTargets.Count;
+            }
+            finally
+            {
+                _trLoading = false;
+            }
         }
 
         private void TrSaveCurrentVillage()
