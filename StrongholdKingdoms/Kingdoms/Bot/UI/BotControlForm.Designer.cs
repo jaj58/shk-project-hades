@@ -434,6 +434,7 @@ namespace Kingdoms.Bot.UI
             this._scPriorityRangeRadio = new System.Windows.Forms.RadioButton();
             this._scSendOneScoutCheck = new System.Windows.Forms.CheckBox();
             this._scSendOneOnNewCheck = new System.Windows.Forms.CheckBox();
+            this._scWaitForFreeSpaceCheck = new System.Windows.Forms.CheckBox();
             this._scVillageListBox = new System.Windows.Forms.ListBox();
             this._scVillageHeaderLabel = new System.Windows.Forms.Label();
             this._scVillageEnabledCheck = new System.Windows.Forms.CheckBox();
@@ -5525,11 +5526,12 @@ namespace Kingdoms.Bot.UI
             this._scSettingsPanel.Controls.Add(this._scPriorityRangeRadio);
             this._scSettingsPanel.Controls.Add(this._scSendOneScoutCheck);
             this._scSettingsPanel.Controls.Add(this._scSendOneOnNewCheck);
+            this._scSettingsPanel.Controls.Add(this._scWaitForFreeSpaceCheck);
             this._scSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._scSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._scSettingsPanel.Name = "_scSettingsPanel";
             this._scSettingsPanel.Padding = new System.Windows.Forms.Padding(8, 6, 8, 6);
-            this._scSettingsPanel.Size = new System.Drawing.Size(1142, 90);
+            this._scSettingsPanel.Size = new System.Drawing.Size(1142, 116);
             this._scSettingsPanel.TabIndex = 0;
             //
             // _scEnabledCheck
@@ -5709,6 +5711,17 @@ namespace Kingdoms.Bot.UI
             this._scSendOneOnNewCheck.Size = new System.Drawing.Size(300, 19);
             this._scSendOneOnNewCheck.TabIndex = 15;
             this._scSendOneOnNewCheck.Text = "Send 1 scout on New Stash (to discover type)";
+            //
+            // _scWaitForFreeSpaceCheck
+            //
+            this._scWaitForFreeSpaceCheck.AutoSize = true;
+            this._scWaitForFreeSpaceCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scWaitForFreeSpaceCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scWaitForFreeSpaceCheck.Location = new System.Drawing.Point(570, 88);
+            this._scWaitForFreeSpaceCheck.Name = "_scWaitForFreeSpaceCheck";
+            this._scWaitForFreeSpaceCheck.Size = new System.Drawing.Size(320, 19);
+            this._scWaitForFreeSpaceCheck.TabIndex = 16;
+            this._scWaitForFreeSpaceCheck.Text = "Wait for free space (don\'t forage into a full store)";
             //
             // _scSeparator  (docked Top — docks just below _scSettingsPanel)
             //
@@ -7027,6 +7040,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.RadioButton _scPriorityRangeRadio;
         private System.Windows.Forms.CheckBox _scSendOneScoutCheck;
         private System.Windows.Forms.CheckBox _scSendOneOnNewCheck;
+        private System.Windows.Forms.CheckBox _scWaitForFreeSpaceCheck;
         private System.Windows.Forms.ListBox _scVillageListBox;
         private System.Windows.Forms.Label _scVillageHeaderLabel;
         private System.Windows.Forms.CheckBox _scVillageEnabledCheck;

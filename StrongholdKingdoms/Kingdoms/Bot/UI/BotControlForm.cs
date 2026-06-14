@@ -6737,6 +6737,7 @@ namespace Kingdoms.Bot.UI
             _scPriorityRangeRadio.CheckedChanged += delegate { ScPushGlobalSettings(); };
             _scSendOneScoutCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
             _scSendOneOnNewCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
+            _scWaitForFreeSpaceCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
 
             _scVillageListBox.SelectedIndexChanged += delegate { ScOnVillageSelected(); };
             _scVillageEnabledCheck.CheckedChanged += delegate { ScSaveCurrentVillage(); };
@@ -6797,6 +6798,7 @@ namespace Kingdoms.Bot.UI
                 _scPriorityRangeRadio.Checked = s.Priority == ScoutPriority.RangePriority;
                 _scSendOneScoutCheck.Checked = s.SendOneScout;
                 _scSendOneOnNewCheck.Checked = s.SendOneOnNewStash;
+                _scWaitForFreeSpaceCheck.Checked = s.WaitForFreeSpace;
                 ScUpdateStatusLabel();
                 ScPopulateVillageList();
             }
@@ -6821,6 +6823,7 @@ namespace Kingdoms.Bot.UI
             s.Priority = _scPriorityResourceRadio.Checked ? ScoutPriority.ResourcePriority : ScoutPriority.RangePriority;
             s.SendOneScout = _scSendOneScoutCheck.Checked;
             s.SendOneOnNewStash = _scSendOneOnNewCheck.Checked;
+            s.WaitForFreeSpace = _scWaitForFreeSpaceCheck.Checked;
 
             foreach (IBotModule module in BotEngine.Instance.Modules)
             {

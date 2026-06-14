@@ -9,6 +9,11 @@ namespace Kingdoms.Bot.Modules
         private DateTime _lastSendTime = DateTime.MinValue;
         private DateTime _lastCycleTime = DateTime.MinValue;
         private bool _cycleComplete = true;
+        private readonly Random _rng = new Random();
+
+        // Sentinel ResourceLevel values on StashTarget:
+        private const int LEVEL_NEW_STASH   = -1; // type 100 — unknown type/size, no fetch possible
+        private const int LEVEL_NEEDS_FETCH = -2; // known type but size not yet in the special-village cache
 
         public override string ModuleName
         {
@@ -42,12 +47,16 @@ namespace Kingdoms.Bot.Modules
             ScoutSettings settings = Settings;
             if (settings == null) return;
 
-            // Respect the delay between individual scout sends (within-cycle pacing)
+            // Respect the delay between individual scout actions (send / fetch / cancel)
             if ((DateTime.Now - _lastSendTime).TotalMilliseconds < settings.DelayBetweenSendsMs)
                 return;
 
             // Once the current cycle drains to nothing, wait the full interval before starting again
             if (_cycleComplete && (DateTime.Now - _lastCycleTime).TotalSeconds < settings.CycleIntervalSeconds)
+                return;
+
+            // Recall scouts stranded on a despawned stash — at most one cancel per tick.
+            if (TryCancelStrandedScout())
                 return;
 
             List<WorldMap.UserVillageData> villages;
@@ -62,16 +71,14 @@ namespace Kingdoms.Bot.Modules
 
             // Shuffle so we don't always favour the same village
             List<WorldMap.UserVillageData> shuffled = new List<WorldMap.UserVillageData>(villages);
-            Random rng = new Random();
             for (int i = shuffled.Count - 1; i > 0; i--)
             {
-                int j = rng.Next(i + 1);
+                int j = _rng.Next(i + 1);
                 WorldMap.UserVillageData tmp = shuffled[i];
                 shuffled[i] = shuffled[j];
                 shuffled[j] = tmp;
             }
 
-            bool sentAnything = false;
             foreach (WorldMap.UserVillageData uvd in shuffled)
             {
                 VillageScoutSettings vs = settings.GetVillageSettings(uvd.villageID);
@@ -85,20 +92,29 @@ namespace Kingdoms.Bot.Modules
                 if (settings.AutoHireScouts > 0)
                     TryHireScouts(village, settings.AutoHireScouts);
 
-                // Use army array as source of truth — m_numScouts can be reset by VillageSync
-                int allEnRoute = GetAllScoutsEnRouteFromVillage(uvd.villageID);
-                int availableScouts = Math.Max(0, village.m_numScouts - allEnRoute);
-                if (availableScouts <= 0) continue;
+                if (GetAvailableScouts(village) <= 0) continue;
 
                 List<StashTarget> targets = GetStashTargets(uvd.villageID, vs,
                     settings.MaxScoutTimeSeconds, settings.Priority);
 
                 foreach (StashTarget target in targets)
                 {
-                    allEnRoute = GetAllScoutsEnRouteFromVillage(uvd.villageID);
-                    availableScouts = Math.Max(0, village.m_numScouts - allEnRoute);
-                    if (availableScouts <= 0) break;
-                    if (SendScout(village, target, availableScouts, settings.SendOneScout, settings.SendOneOnNewStash))
+                    if (GetAvailableScouts(village) <= 0) break;
+
+                    // Known-type stash whose size isn't cached yet — fetch exactly one per tick
+                    // from the server (never burst), then process it on a later tick from cache.
+                    if (target.ResourceLevel == LEVEL_NEEDS_FETCH)
+                    {
+                        try { GameEngine.Instance.World.getSpecialVillageData(target.StashId, true); }
+                        catch { continue; }
+                        LogDebug("Fetching stash size for " + target.StashId
+                            + " (" + GetStashDisplayName(target.StashId) + ")");
+                        _lastSendTime = DateTime.Now;
+                        _cycleComplete = false;
+                        return;
+                    }
+
+                    if (SendScout(village, target, GetAvailableScouts(village), settings))
                     {
                         // One send per tick — come back next tick for the next target
                         _lastSendTime = DateTime.Now;
@@ -108,13 +124,21 @@ namespace Kingdoms.Bot.Modules
                 }
             }
 
-            // Iterated everything without finding a target to send — cycle is done
-            if (!sentAnything)
-            {
-                _cycleComplete = true;
-                _lastCycleTime = DateTime.Now;
-                LogDebug("Scout cycle complete. Next cycle in " + settings.CycleIntervalSeconds + "s.");
-            }
+            // Iterated everything without taking an action — cycle is done
+            _cycleComplete = true;
+            _lastCycleTime = DateTime.Now;
+            LogDebug("Scout cycle complete. Next cycle in " + settings.CycleIntervalSeconds + "s.");
+        }
+
+        // Scouts genuinely available to send from this village right now.
+        // m_numScouts is scouts *at home* (traveling ones live in the army array), so we must NOT
+        // subtract traveling scouts from it. We do cap by (research max - traveling) to guard the
+        // race where a VillageSync refresh writes a pre-send m_numScouts back as stale-high.
+        private static int GetAvailableScouts(VillageMap village)
+        {
+            int traveling = GetTravelingScoutsFromVillage(village.VillageID);
+            int maxScouts = (int)GameEngine.Instance.World.UserResearchData.Research_Scouts;
+            return Math.Min(village.m_numScouts, Math.Max(0, maxScouts - traveling));
         }
 
         private List<StashTarget> GetStashTargets(int villageId, VillageScoutSettings vs,
@@ -144,20 +168,20 @@ namespace Kingdoms.Bot.Modules
                 int resourceLevel;
                 if (special == 100)
                 {
-                    // New/undiscovered stash — type and size unknown, no map data to fetch
-                    resourceLevel = -1;
+                    // New/undiscovered stash. Only the closest enabled village should claim it,
+                    // and only if we'd arrive before any scout already heading there.
+                    if (IsAnotherVillageCloser(villageId, vd.id, travelTime)) continue;
+                    if (!IsFirstToStash(vd.id, travelTime)) continue;
+                    resourceLevel = LEVEL_NEW_STASH;
                 }
                 else
                 {
-                    // Known resource stash — level is visible on the map
-                    try
-                    {
-                        WorldMap.SpecialVillageCache svc =
-                            GameEngine.Instance.World.getSpecialVillageData(vd.id, false);
-                        if (svc == null) continue; // map data not loaded yet, skip this cycle
-                        resourceLevel = svc.resourceLevel;
-                    }
+                    // Known resource stash — read size from cache only (never fire a server
+                    // request here). Uncached stashes are marked for a one-at-a-time fetch in OnTick.
+                    WorldMap.SpecialVillageCache svc;
+                    try { svc = GameEngine.Instance.World.peekSpecialVillageData(vd.id); }
                     catch { continue; }
+                    resourceLevel = svc != null ? svc.resourceLevel : LEVEL_NEEDS_FETCH;
                 }
 
                 result.Add(new StashTarget
@@ -184,6 +208,57 @@ namespace Kingdoms.Bot.Modules
             }
 
             return result;
+        }
+
+        // Is some other enabled user village closer to this (new) stash than we are?
+        // Ensures only the nearest village claims a freshly-spawned stash.
+        private bool IsAnotherVillageCloser(int ourVillageId, int stashId, double ourTime)
+        {
+            ScoutSettings settings = Settings;
+            if (settings == null) return false;
+            foreach (VillageScoutSettings other in settings.Villages)
+            {
+                if (other.VillageId == ourVillageId) continue;
+                if (!other.ScoutingEnabled) continue;
+                try
+                {
+                    if (!GameEngine.Instance.World.isUserVillage(other.VillageId)) continue;
+                    if (CalculateTravelTime(other.VillageId, stashId) < ourTime)
+                        return true;
+                }
+                catch { }
+            }
+            return false;
+        }
+
+        // Would we reach this stash before any scout army already heading there?
+        // Conservative: on repeated enumeration failure, assume we are not first.
+        private bool IsFirstToStash(int stashId, double ourTravelTime)
+        {
+            int attempts = 0;
+            while (attempts < 3)
+            {
+                try
+                {
+                    DateTime now = VillageMap.getCurrentServerTime();
+                    foreach (object obj in GameEngine.Instance.World.getArmyArray())
+                    {
+                        WorldMap.LocalArmyData army = (WorldMap.LocalArmyData)obj;
+                        if (army.numScouts > 0 && army.lootType < 0 && army.targetVillageID == stashId)
+                        {
+                            double theirRemaining = (army.serverEndTime - now).TotalSeconds;
+                            if (theirRemaining < ourTravelTime)
+                                return false;
+                        }
+                    }
+                    return true;
+                }
+                catch (InvalidOperationException)
+                {
+                    attempts++;
+                }
+            }
+            return false;
         }
 
         private static double CalculateTravelTime(int fromVillageId, int toVillageId)
@@ -226,10 +301,28 @@ namespace Kingdoms.Bot.Modules
             return Math.Max(1, needed);
         }
 
-        // Count ALL scouts from a specific village that are currently outbound to any stash.
-        // This is the source of truth for "how many scouts are genuinely available" because
-        // village.m_numScouts can be reset by VillageSync refreshes before the server confirms the send.
-        private static int GetAllScoutsEnRouteFromVillage(int villageId)
+        // Storage cap for one resource type at this village (research cap × card multiplier).
+        // buildingType is the 0-based resource id (stashType - 100). Returns 0 if it can't be computed.
+        private static int GetResourceCap(VillageMap village, int stashType)
+        {
+            try
+            {
+                int buildingType = stashType - 100;
+                double baseCap = GameEngine.Instance.World.UserResearchData.getResourceCap(
+                    GameEngine.Instance.LocalWorldData, buildingType, false);
+                double mult = CardTypes.getResourceCapMultiplier(buildingType,
+                    GameEngine.Instance.cardsManager.UserCardData);
+                return (int)(baseCap * mult);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        // Resources of a given type already foraged and currently returning to this village.
+        // Mirrors the loot half of the reference CalcMovingScouts. lootType is the 100-based special.
+        private static int GetIncomingLoot(int villageId, int lootType)
         {
             int total = 0;
             int attempts = 0;
@@ -240,12 +333,39 @@ namespace Kingdoms.Bot.Modules
                     foreach (object obj in GameEngine.Instance.World.getArmyArray())
                     {
                         WorldMap.LocalArmyData army = (WorldMap.LocalArmyData)obj;
-                        if (army.numScouts > 0
-                            && army.lootType < 0   // outbound, not returning
-                            && army.homeVillageID == villageId)
+                        if (army.homeVillageID == villageId
+                            && army.lootType == lootType
+                            && army.lootLevel > 0.0)
                         {
-                            total += army.numScouts;
+                            total += (int)army.lootLevel;
                         }
+                    }
+                    break;
+                }
+                catch (InvalidOperationException)
+                {
+                    total = 0;
+                    attempts++;
+                }
+            }
+            return total;
+        }
+
+        // Count ALL scouts owned by a village (home + traveling). Traveling scouts live in the
+        // army array; m_numScouts is home only. Used to size availability against the research cap.
+        private static int GetTravelingScoutsFromVillage(int villageId)
+        {
+            int total = 0;
+            int attempts = 0;
+            while (attempts < 3)
+            {
+                try
+                {
+                    foreach (object obj in GameEngine.Instance.World.getArmyArray())
+                    {
+                        WorldMap.LocalArmyData army = (WorldMap.LocalArmyData)obj;
+                        if (army.numScouts > 0 && army.homeVillageID == villageId)
+                            total += army.numScouts;
                     }
                     break;
                 }
@@ -289,6 +409,61 @@ namespace Kingdoms.Bot.Modules
             return total;
         }
 
+        // Find one scout army stranded on a stash that has despawned (no longer in our map data)
+        // and recall it. At most one cancel per tick to keep request pacing consistent.
+        private bool TryCancelStrandedScout()
+        {
+            long armyId = -1;
+            int targetId = -1;
+            int attempts = 0;
+            while (attempts < 3)
+            {
+                try
+                {
+                    DateTime now = VillageMap.getCurrentServerTime();
+                    foreach (object obj in GameEngine.Instance.World.getArmyArray())
+                    {
+                        WorldMap.LocalArmyData army = (WorldMap.LocalArmyData)obj;
+                        if (!army.dead
+                            && army.lootType < 0          // outbound, hasn't foraged yet
+                            && army.isScouts()
+                            && GameEngine.Instance.World.isUserVillage(army.homeVillageID)
+                            && !GameEngine.Instance.World.isVillageVisible(army.targetVillageID)
+                            && (army.serverEndTime - now).TotalSeconds > 15.0)
+                        {
+                            armyId = army.armyID;
+                            targetId = army.targetVillageID;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                catch (InvalidOperationException)
+                {
+                    armyId = -1;
+                    attempts++;
+                }
+            }
+
+            if (armyId < 0) return false;
+
+            try
+            {
+                RemoteServices.Instance.set_CancelCastleAttack_UserCallBack(OnCancelScoutsCallback);
+                RemoteServices.Instance.CancelCastleAttack(armyId);
+                LogDebug("Recalling scouts from despawned stash " + targetId
+                    + " (" + GetStashDisplayName(targetId) + ")");
+                _lastSendTime = DateTime.Now;
+                _cycleComplete = false;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogError("CancelStrandedScout error: " + ex.Message);
+                return false;
+            }
+        }
+
         private void TryHireScouts(VillageMap village, int targetCount)
         {
             try
@@ -330,48 +505,59 @@ namespace Kingdoms.Bot.Modules
         }
 
         private bool SendScout(VillageMap village, StashTarget target, int availableScouts,
-            bool sendOne, bool sendOneOnNew)
+            ScoutSettings settings)
         {
             if (availableScouts <= 0) return false;
 
             int enRoute = GetScoutsEnRoute(target.StashId);
-
             int count;
 
             if (target.ResourceType == 100)
             {
                 // New/undiscovered stash — size unknown until scouted
                 if (enRoute > 0) return false; // already being discovered
-                count = sendOneOnNew ? 1 : availableScouts;
-            }
-            else if (sendOne)
-            {
-                // Single-scout mode: drip-feed 1 scout at a time until stash is fully covered
-                if (target.ResourceLevel > 0)
-                {
-                    try
-                    {
-                        int carryPerScout = CalculateCarryPerScout(target.ResourceType);
-                        if (enRoute * carryPerScout >= target.ResourceLevel)
-                            return false; // en-route scouts already cover the full stash
-                    }
-                    catch { }
-                }
-                count = 1;
+                count = settings.SendOneOnNewStash ? 1 : Math.Min(2, availableScouts);
             }
             else
             {
-                // Optimal mode: send exactly enough scouts to clear the remaining resources
-                try
+                int carryPerScout;
+                try { carryPerScout = CalculateCarryPerScout(target.ResourceType); }
+                catch { return false; }
+
+                int enRouteClaim = enRoute * carryPerScout;
+                int remaining = target.ResourceLevel - enRouteClaim;
+                if (target.ResourceLevel > 0 && remaining <= 0)
+                    return false; // en-route scouts already cover the full stash
+
+                // Respect village storage capacity if enabled — don't forage into a near-full store.
+                int maxBySpace = int.MaxValue;
+                if (settings.WaitForFreeSpace)
                 {
-                    int carryPerScout = CalculateCarryPerScout(target.ResourceType);
-                    int remaining = target.ResourceLevel - enRoute * carryPerScout;
-                    if (remaining <= 0) return false; // already fully covered by en-route scouts
-                    count = CalculateOptimalScouts(remaining, carryPerScout);
+                    int cap = GetResourceCap(village, target.ResourceType);
+                    if (cap > 0)
+                    {
+                        int level = (int)village.getResourceLevel(target.ResourceType - 100);
+                        int incoming = GetIncomingLoot(village.VillageID, target.ResourceType);
+                        int freeSpace = cap - level - incoming - enRouteClaim;
+                        // Effectively full: bail only when free space can't fit a scout's carry AND
+                        // is under 10% of cap (the cap/10 floor lets small-cap stores still top off).
+                        if (freeSpace < carryPerScout && freeSpace < cap / 10)
+                            return false;
+                        maxBySpace = Math.Max(1, freeSpace / carryPerScout);
+                    }
                 }
-                catch
+
+                if (settings.SendOneScout)
                 {
-                    return false;
+                    // Single-scout mode: drip-feed 1 scout at a time until stash/space is covered
+                    count = 1;
+                }
+                else
+                {
+                    if (target.ResourceLevel <= 0) return false;
+                    count = CalculateOptimalScouts(remaining, carryPerScout);
+                    if (maxBySpace != int.MaxValue)
+                        count = Math.Min(count, maxBySpace);
                 }
                 count = Math.Min(count, availableScouts);
             }
@@ -414,6 +600,13 @@ namespace Kingdoms.Bot.Modules
                 {
                     LogWarning("Cannot scout from interdicted village: " + ret.sourceVillage);
                 }
+                else
+                {
+                    LogError("SendScouts failed: "
+                        + ErrorCodes.getErrorString(ret.m_errorCode, ret.m_errorID)
+                        + " | from " + GameEngine.Instance.World.getVillageName(ret.sourceVillage)
+                        + " to " + GameEngine.Instance.World.getVillageNameOrType(ret.targetVillage));
+                }
 
                 if (ret.numScoutsNotTaken > 0)
                 {
@@ -424,6 +617,32 @@ namespace Kingdoms.Bot.Modules
             catch (Exception ex)
             {
                 LogError("SendScouts callback error: " + ex.Message);
+            }
+        }
+
+        private void OnCancelScoutsCallback(CancelCastleAttack_ReturnType ret)
+        {
+            try
+            {
+                if (ret.Success)
+                {
+                    if (ret.armyData == null) return;
+                    ArmyReturnData[] data = new ArmyReturnData[] { ret.armyData };
+                    GameEngine.Instance.World.doGetArmyData(
+                        (IEnumerable<ArmyReturnData>)data,
+                        (IEnumerable<ArmyReturnData>)null, false);
+                    GameEngine.Instance.World.addExistingArmy(ret.armyData.armyID);
+                    GameEngine.Instance.World.deleteArmy(ret.oldArmyID);
+                }
+                else
+                {
+                    LogError("CancelScouts failed: "
+                        + ErrorCodes.getErrorString(ret.m_errorCode, ret.m_errorID));
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("CancelScouts callback error: " + ex.Message);
             }
         }
 
@@ -446,7 +665,7 @@ namespace Kingdoms.Bot.Modules
             public double TravelTime;
             public int ResourceType;
             public int TypeIndex;
-            public int ResourceLevel; // -1 for type 100 (unknown); >0 for known resource stashes
+            public int ResourceLevel; // -1 = new stash (type 100); -2 = known type, size not cached; >=0 known
         }
     }
 }
