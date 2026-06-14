@@ -74,6 +74,8 @@ switch ($action) {
     case 'attack_failed':        handle_attack_failed($state, $req, false);        break;
     case 'attack_failed_prepare':handle_attack_failed($state, $req, true);         break;
     case 'report_armies_status': handle_report_armies_status($state, $req);        break;
+    case 'force_recall_all':     handle_force_recall_all($state, $req);    break;
+    case 'acknowledge_recall':   handle_acknowledge_recall($state, $req);  break;
     case 'queue_target':         handle_queue_target($state, $req);       break;
     case 'player_disconnect':    handle_player_disconnect($state, $req);  break;
     case 'reset_session':        handle_reset_session($state, $req);      break;
