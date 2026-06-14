@@ -226,6 +226,19 @@ namespace Kingdoms.Bot.UI
                 WireUpDefenderTab();
                 WireUpMonkTab();
                 WireUpTimingTab();
+
+                // Let background interdict threads marshal village-load requests
+                // (which touch InterfaceMgr/game view state) onto the UI thread.
+                InterdictRunner.UiInvoke = delegate (Action a)
+                {
+                    try
+                    {
+                        if (this.IsHandleCreated && !this.IsDisposed) this.BeginInvoke(a);
+                        else a();
+                    }
+                    catch { try { a(); } catch { } }
+                };
+
                 SubscribeToLog();
                 RefreshStatus();
                 ReplayExistingLogs();
@@ -2315,6 +2328,9 @@ namespace Kingdoms.Bot.UI
             TrBuildStatsTab();
 
             _trEnabledCheck.CheckedChanged += delegate { TrWriteToSettings(); };
+            // Persist the per-village "Should this village trade?" toggle immediately,
+            // otherwise the change is lost unless the user switches village or saves.
+            _trVillageTradingCheck.CheckedChanged += delegate { if (!_trLoading) TrSaveCurrentVillage(); };
             _trAddMarketsBtn.Click += delegate { TrAddMarketsClick(); };
             _trMarketRefreshBtn.Click += delegate { TrRefreshMarkets(); };
 
@@ -3056,15 +3072,23 @@ namespace Kingdoms.Bot.UI
                 settings = BotEngine.Instance.Settings.Trade;
             if (settings == null) return;
 
-            VillageMarketTradeInfo info = settings.GetVillageMarketInfo(_trSelectedVillageId);
-            _trVillageTradingCheck.Checked = info.IsTrading;
-            _trResourceGrid.LoadVillage(info);
+            _trLoading = true;
+            try
+            {
+                VillageMarketTradeInfo info = settings.GetVillageMarketInfo(_trSelectedVillageId);
+                _trVillageTradingCheck.Checked = info.IsTrading;
+                _trResourceGrid.LoadVillage(info);
 
-            // Populate markets list
-            _trMarketsListBox.Items.Clear();
-            foreach (int marketId in info.MarketTargets)
-                _trMarketsListBox.Items.Add(marketId);
-            _trMarketCountLabel.Text = "Total Markets: " + info.MarketTargets.Count;
+                // Populate markets list
+                _trMarketsListBox.Items.Clear();
+                foreach (int marketId in info.MarketTargets)
+                    _trMarketsListBox.Items.Add(marketId);
+                _trMarketCountLabel.Text = "Total Markets: " + info.MarketTargets.Count;
+            }
+            finally
+            {
+                _trLoading = false;
+            }
         }
 
         private void TrSaveCurrentVillage()
@@ -6726,6 +6750,7 @@ namespace Kingdoms.Bot.UI
             _scPriorityRangeRadio.CheckedChanged += delegate { ScPushGlobalSettings(); };
             _scSendOneScoutCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
             _scSendOneOnNewCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
+            _scWaitForFreeSpaceCheck.CheckedChanged += delegate { ScPushGlobalSettings(); };
 
             _scVillageListBox.SelectedIndexChanged += delegate { ScOnVillageSelected(); };
             _scVillageEnabledCheck.CheckedChanged += delegate { ScSaveCurrentVillage(); };
@@ -6786,6 +6811,7 @@ namespace Kingdoms.Bot.UI
                 _scPriorityRangeRadio.Checked = s.Priority == ScoutPriority.RangePriority;
                 _scSendOneScoutCheck.Checked = s.SendOneScout;
                 _scSendOneOnNewCheck.Checked = s.SendOneOnNewStash;
+                _scWaitForFreeSpaceCheck.Checked = s.WaitForFreeSpace;
                 ScUpdateStatusLabel();
                 ScPopulateVillageList();
             }
@@ -6810,6 +6836,7 @@ namespace Kingdoms.Bot.UI
             s.Priority = _scPriorityResourceRadio.Checked ? ScoutPriority.ResourcePriority : ScoutPriority.RangePriority;
             s.SendOneScout = _scSendOneScoutCheck.Checked;
             s.SendOneOnNewStash = _scSendOneOnNewCheck.Checked;
+            s.WaitForFreeSpace = _scWaitForFreeSpaceCheck.Checked;
 
             foreach (IBotModule module in BotEngine.Instance.Modules)
             {

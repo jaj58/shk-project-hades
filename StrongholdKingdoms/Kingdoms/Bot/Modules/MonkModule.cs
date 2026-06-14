@@ -7,7 +7,8 @@ namespace Kingdoms.Bot.Modules
 {
     public class MonkModule : BotModuleBase
     {
-        private int _lastRouteIndex = -1;
+        // Guard for route background tick — prevents overlapping cycles.
+        private volatile bool _routeTickRunning;
 
         // Manual interdict cycle (Interdict sub-tab)
         private int _interdictRunning;              // 0/1, Interlocked guard
@@ -43,9 +44,34 @@ namespace Kingdoms.Bot.Modules
 
         protected override void OnTick()
         {
+            if (_routeTickRunning)
+            {
+                LogInfo("Previous route tick still running — skipping.");
+                return;
+            }
+
             MonkSettings settings = Engine.Settings.Monk;
             List<MonkRouteSettings> routes = new List<MonkRouteSettings>(settings.Routes);
 
+            bool anyEnabled = false;
+            foreach (MonkRouteSettings r in routes)
+                if (r.Enabled) { anyEnabled = true; break; }
+            if (!anyEnabled) return;
+
+            _routeTickRunning = true;
+            Thread t = new Thread(delegate()
+            {
+                try { ProcessAllRoutes(routes, settings); }
+                catch (Exception ex) { LogError("Route tick error: " + ex.Message); }
+                finally { _routeTickRunning = false; }
+            });
+            t.IsBackground = true;
+            t.Name = "Monk Routes";
+            t.Start();
+        }
+
+        private void ProcessAllRoutes(List<MonkRouteSettings> routes, MonkSettings settings)
+        {
             bool first = true;
             for (int i = 0; i < routes.Count; i++)
             {
@@ -56,12 +82,11 @@ namespace Kingdoms.Bot.Modules
                     Thread.Sleep(settings.DelayBetweenRoutesMs);
                 first = false;
 
-                _lastRouteIndex = i;
-                ProcessRoute(route, settings);
+                ProcessRoute(route, settings, i);
             }
         }
 
-        private void ProcessRoute(MonkRouteSettings route, MonkSettings settings)
+        private void ProcessRoute(MonkRouteSettings route, MonkSettings settings, int routeIndex)
         {
             LogInfo("Processing route: " + route.Name);
 
@@ -104,8 +129,17 @@ namespace Kingdoms.Bot.Modules
 
             HashSet<int> processedTargets = new HashSet<int>();
 
+            // Monks dispatched this cycle but whose send-callback hasn't fired yet.
+            // countVillagePeople reads stale local state until the callback updates it
+            // (~seconds later), so without this we'd double-spend the same monks.
+            Dictionary<int, int> committed = new Dictionary<int, int>();
+
             foreach (int fromId in route.FromVillages)
             {
+                // Once every target has been handled, skip remaining from-villages
+                if (processedTargets.Count >= route.ToTargets.Count)
+                    break;
+
                 if (GameEngine.Instance.getVillage(fromId) == null)
                 {
                     LogWarning("Village not loaded: " + fromId);
@@ -122,10 +156,7 @@ namespace Kingdoms.Bot.Modules
                 foreach (int targetId in sortedTargets)
                 {
                     if (processedTargets.Contains(targetId))
-                    {
-                        LogInfo("Target already processed this cycle: " + targetId);
                         continue;
-                    }
 
                     int monksNeeded;
                     if (route.StopCondition == MonkStopCondition.QuestCompletion)
@@ -150,40 +181,43 @@ namespace Kingdoms.Bot.Modules
                         continue;
                     }
 
-                    int toSend = PrepareMonks(fromId, monksNeeded, settings);
+                    int toSend = PrepareMonks(fromId, monksNeeded, settings, committed);
                     if (toSend <= 0)
                     {
                         LogInfo("No monks available at " + fromId);
                         continue;
                     }
 
-                    RemoteServices.Instance.set_SendPeople_UserCallBack(OnSendPeopleCallback);
+                    // Record the commitment before the send fires so the next target in this
+                    // loop sees the correct available count from the same village.
+                    if (!committed.ContainsKey(fromId)) committed[fromId] = 0;
+                    committed[fromId] += toSend;
+
+                    // Capture per-send so the callback can correctly identify the route
+                    // even if other sends (or ticks) overlap before the response arrives.
+                    MonkRouteSettings capturedRoute = route;
+                    int capturedIdx = routeIndex;
+                    RemoteServices.Instance.set_SendPeople_UserCallBack(
+                        delegate(SendPeople_ReturnType r) { OnSendPeopleCallback(r, capturedIdx, capturedRoute); });
                     RemoteServices.Instance.SendPeople(fromId, targetId, 4, toSend, (int)route.Command, -1);
 
                     LogInfo(fromId + " sent " + toSend + " " + route.Command + " monks to " + targetId);
 
-                    // Always record the send so progress totals are visible regardless of mode
                     route.AddProgress(targetId, toSend);
 
                     if (route.StopCondition == MonkStopCondition.QuestCompletion)
                     {
                         questMonksNeeded -= toSend;
                         if (questMonksNeeded <= 0) return;
-                        // Block other villages from re-sending to this target this tick —
-                        // villages spread efficiently across different targets.
                         processedTargets.Add(targetId);
                     }
                     else if (route.StopCondition == MonkStopCondition.SendXMonksEach)
                     {
-                        // Only block once this target is fully satisfied so that multiple
-                        // from-villages can each contribute monks to the same target.
                         if (route.GetProgress(targetId) >= route.ExtraParameter)
                             processedTargets.Add(targetId);
                     }
                     else // RunOnCondition
                     {
-                        // Block re-sends within this tick to avoid over-sending since
-                        // in-transit monks are not yet reflected in the condition check.
                         processedTargets.Add(targetId);
                     }
 
@@ -192,7 +226,7 @@ namespace Kingdoms.Bot.Modules
             }
         }
 
-        private void OnSendPeopleCallback(SendPeople_ReturnType result)
+        private void OnSendPeopleCallback(SendPeople_ReturnType result, int routeIndex, MonkRouteSettings route)
         {
             try
             {
@@ -209,18 +243,17 @@ namespace Kingdoms.Bot.Modules
                     LogError(err + " | from=" + GameEngine.Instance.World.getVillageName(result.villageID)
                         + " to=" + GameEngine.Instance.World.getVillageName(result.targetVillageID));
 
-                    int idx = _lastRouteIndex;
-                    MonkSettings settings = Engine.Settings.Monk;
-                    if (idx >= 0 && idx < settings.Routes.Count)
+                    // "Not enough spare people" is transient — the committed-monks guard in
+                    // PrepareMonks should prevent it, but if it fires anyway don't kill the route.
+                    if (err.IndexOf("spare people", StringComparison.OrdinalIgnoreCase) >= 0
+                        || err.IndexOf("not enough", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
-                        LogInfo("Disabling route: " + settings.Routes[idx].Name);
-                        settings.Routes[idx].Enabled = false;
+                        LogInfo("Transient resource error — route will retry next cycle.");
+                        return;
                     }
-                    else
-                    {
-                        LogError("Invalid route index " + idx + ", disabling module.");
-                        this.Enabled = false;
-                    }
+
+                    LogInfo("Disabling route: " + route.Name);
+                    route.Enabled = false;
                 }
             }
             catch (Exception ex)
@@ -423,7 +456,7 @@ namespace Kingdoms.Bot.Modules
             return monks;
         }
 
-        private int PrepareMonks(int fromVillageId, int needed, MonkSettings settings)
+        private int PrepareMonks(int fromVillageId, int needed, MonkSettings settings, Dictionary<int, int> committed)
         {
             LogInfo("Preparing monks at " + fromVillageId + ", need " + needed);
 
@@ -433,8 +466,9 @@ namespace Kingdoms.Bot.Modules
 
             int atHome = 0;
             GameEngine.Instance.World.countVillagePeople(fromVillageId, 4, ref atHome);
-            int available = atHome - settings.MonksToKeep;
-            LogInfo("At home: " + atHome + ", keep: " + settings.MonksToKeep + ", available: " + available);
+            int alreadyCommitted = committed.ContainsKey(fromVillageId) ? committed[fromVillageId] : 0;
+            int available = atHome - alreadyCommitted - settings.MonksToKeep;
+            LogInfo("At home: " + atHome + ", committed: " + alreadyCommitted + ", keep: " + settings.MonksToKeep + ", available: " + available);
             if (available <= 0) return 0;
             return Math.Min(available, needed);
         }
@@ -592,12 +626,6 @@ namespace Kingdoms.Bot.Modules
                     continue;
                 }
 
-                VillageMap village = GameEngine.Instance.getVillage(villageId);
-                if (village == null)
-                {
-                    LogWarning("Interdict: village not loaded: " + villageId);
-                    continue;
-                }
                 if (GameEngine.Instance.World.isVillageExcommunicated(villageId))
                 {
                     LogWarning("Interdict: " + name + " is excommunicated, skipping.");
@@ -627,50 +655,15 @@ namespace Kingdoms.Bot.Modules
                     }
                 }
 
-                // Faith point check
-                try
-                {
-                    int costPerMonk = TradingCalcs.adjustInterdictionCostByTargetRank(
-                        GameEngine.Instance.LocalWorldData.MonkCommandPointsCost_Interdicts,
-                        GameEngine.Instance.World.getRank(),
-                        GameEngine.Instance.World.SecondAgeWorld);
-                    int totalCost = costPerMonk * desired;
-                    double currentFaith = GameEngine.Instance.World.getCurrentFaithPoints();
-                    if (totalCost > currentFaith)
-                    {
-                        LogWarning("Interdict: not enough faith points for " + name + " (" + currentFaith + " < " + totalCost + ").");
-                        continue;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LogWarning("Interdict: faith point check failed: " + ex.Message);
-                }
-
-                // Monk availability + optional hire
-                int atHome = village.calcTotalMonksAtHome();
-                if (atHome < desired && allowHire)
-                {
-                    LogInfo("Interdict: hiring " + (desired - atHome) + " monk(s) at " + name);
-                    atHome += MakeMonksMore(villageId, desired - atHome);
-                }
-                if (atHome <= 0)
-                {
-                    LogWarning("Interdict: no monks available at " + name + ", skipping.");
-                    continue;
-                }
-                if (desired > atHome) desired = atHome;
-
-                LogInfo("Interdict: sending " + desired + " monk(s) to self-interdict " + name);
-                try
-                {
-                    RemoteServices.Instance.set_SendPeople_UserCallBack(OnInterdictSendCallback);
-                    RemoteServices.Instance.SendPeople(villageId, villageId, 4, desired, 4, -1);
-                }
-                catch (Exception ex)
-                {
-                    LogError("Interdict send failed for " + name + ": " + ex.Message);
-                }
+                // Hire, verify, send — with retry. Runner handles loading, faith,
+                // recruit-wait and send confirmation.
+                string err;
+                bool ok = InterdictRunner.Run(villageId, desired, allowHire, 5, "Monk",
+                                              delegate { return _interdictCancel; }, out err);
+                if (ok)
+                    LogInfo("Interdict: " + name + " interdicted successfully.");
+                else
+                    LogError("Interdict: could not interdict " + name + " — " + err);
 
                 // User-set spacing plus a little jitter so sends aren't perfectly uniform;
                 // skipped after the last village so the cycle ends promptly.
@@ -681,40 +674,5 @@ namespace Kingdoms.Bot.Modules
             LogInfo("Interdict: cycle finished.");
         }
 
-        // Recruits `more` additional monks on top of the village's current
-        // total, reusing MakeMonks' research/worker/space caps.
-        private int MakeMonksMore(int villageId, int more)
-        {
-            if (more <= 0) return 0;
-            int atHome = 0;
-            int total = GameEngine.Instance.World.countVillagePeople(villageId, 4, ref atHome);
-            return MakeMonks(villageId, total + more);
-        }
-
-        private void OnInterdictSendCallback(SendPeople_ReturnType result)
-        {
-            try
-            {
-                if (result.Success)
-                {
-                    GameEngine.Instance.World.importOrphanedPeople(
-                        result.people, result.currentTime, -2);
-                    GameEngine.Instance.World.setFaithPointsData(
-                        result.currentFaithPointsLevel, result.currentFaithPointsRate);
-                    LogInfo("Interdict: successful interdict at " +
-                        GameEngine.Instance.World.getVillageName(result.targetVillageID));
-                }
-                else
-                {
-                    string err = ErrorCodes.getErrorString(result.m_errorCode, result.m_errorID);
-                    LogError("Interdict failed for " +
-                        GameEngine.Instance.World.getVillageName(result.targetVillageID) + ": " + err);
-                }
-            }
-            catch (Exception ex)
-            {
-                LogError("Interdict callback error: " + ex.Message);
-            }
-        }
     }
 }

@@ -30,6 +30,8 @@ namespace Kingdoms.Bot.UI
         private ListBox _ttSourceListBox;
         private TextBox _ttAddIdsBox;
         private Button  _ttAddIdsBtn;
+        private TextBox _ttAddNamesBox;
+        private Button  _ttAddNamesBtn;
         private Button  _ttAddMapVillageBtn;
         private Button  _ttAddMapPlayerBtn;
         private Button  _ttRemoveBtn;
@@ -87,47 +89,62 @@ namespace Kingdoms.Bot.UI
             _ttSourceListBox.BorderStyle = BorderStyle.FixedSingle;
             _ttSourceListBox.Font = new Font("Segoe UI", 8f);
             _ttSourceListBox.Location = new Point(8, 60);
-            _ttSourceListBox.Size = new Size(248, 210);
+            _ttSourceListBox.Size = new Size(248, 160);
             _timingPage.Controls.Add(_ttSourceListBox);
 
-            _ttRemoveBtn = TtMakeButton("Remove", 8, 274, 76);
+            _ttRemoveBtn = TtMakeButton("Remove", 8, 224, 76);
             _ttRemoveBtn.Click += delegate { TtRemoveSelected(); };
             _timingPage.Controls.Add(_ttRemoveBtn);
 
-            _ttClearBtn = TtMakeButton("Clear", 88, 274, 76);
+            _ttClearBtn = TtMakeButton("Clear", 88, 224, 76);
             _ttClearBtn.Click += delegate { TtClearSources(); };
             _timingPage.Controls.Add(_ttClearBtn);
 
-            _ttSaveBtn = TtMakeButton("Save List", 8, 300, 76);
+            _ttSaveBtn = TtMakeButton("Save List", 8, 250, 76);
             _ttSaveBtn.Click += delegate { TtSaveSources(); };
             _timingPage.Controls.Add(_ttSaveBtn);
 
-            _ttLoadBtn = TtMakeButton("Load List", 88, 300, 76);
+            _ttLoadBtn = TtMakeButton("Load List", 88, 250, 76);
             _ttLoadBtn.Click += delegate { TtLoadSources(); };
             _timingPage.Controls.Add(_ttLoadBtn);
 
-            _ttAddMapVillageBtn = TtMakeButton("Add Village From Map", 8, 326, 180);
+            _ttAddMapVillageBtn = TtMakeButton("Add Village From Map", 8, 276, 180);
             _ttAddMapVillageBtn.Click += delegate { TtAddVillageFromMap(); };
             _timingPage.Controls.Add(_ttAddMapVillageBtn);
 
-            _ttAddMapPlayerBtn = TtMakeButton("Add Player From Map", 8, 352, 180);
+            _ttAddMapPlayerBtn = TtMakeButton("Add Player From Map", 8, 302, 180);
             _ttAddMapPlayerBtn.Click += delegate { TtAddPlayerFromMap(); };
             _timingPage.Controls.Add(_ttAddMapPlayerBtn);
 
-            _timingPage.Controls.Add(TtMakeLabel("Add IDs (comma/space separated):", 8, 380, 250));
+            _timingPage.Controls.Add(TtMakeLabel("Add village IDs (comma/space/semicolon):", 8, 330, 250));
             _ttAddIdsBox = new TextBox();
             _ttAddIdsBox.Multiline = true;
             _ttAddIdsBox.BackColor = TtInputBg;
             _ttAddIdsBox.ForeColor = TtText;
             _ttAddIdsBox.BorderStyle = BorderStyle.FixedSingle;
             _ttAddIdsBox.Font = new Font("Segoe UI", 8f);
-            _ttAddIdsBox.Location = new Point(8, 398);
-            _ttAddIdsBox.Size = new Size(180, 40);
+            _ttAddIdsBox.Location = new Point(8, 348);
+            _ttAddIdsBox.Size = new Size(180, 34);
             _timingPage.Controls.Add(_ttAddIdsBox);
 
-            _ttAddIdsBtn = TtMakeButton("Add IDs", 194, 398, 62);
+            _ttAddIdsBtn = TtMakeButton("Add IDs", 194, 348, 62);
             _ttAddIdsBtn.Click += delegate { TtAddTypedIds(); };
             _timingPage.Controls.Add(_ttAddIdsBtn);
+
+            _timingPage.Controls.Add(TtMakeLabel("Add player names (comma/semicolon/newline):", 8, 388, 260));
+            _ttAddNamesBox = new TextBox();
+            _ttAddNamesBox.Multiline = true;
+            _ttAddNamesBox.BackColor = TtInputBg;
+            _ttAddNamesBox.ForeColor = TtText;
+            _ttAddNamesBox.BorderStyle = BorderStyle.FixedSingle;
+            _ttAddNamesBox.Font = new Font("Segoe UI", 8f);
+            _ttAddNamesBox.Location = new Point(8, 406);
+            _ttAddNamesBox.Size = new Size(180, 34);
+            _timingPage.Controls.Add(_ttAddNamesBox);
+
+            _ttAddNamesBtn = TtMakeButton("Add Players", 194, 406, 62);
+            _ttAddNamesBtn.Click += delegate { TtAddTypedPlayers(); };
+            _timingPage.Controls.Add(_ttAddNamesBtn);
 
             // ---- Search settings (middle column) ----
             int mx = 290;
@@ -308,6 +325,72 @@ namespace Kingdoms.Bot.UI
             _ttAddIdsBox.Text = "";
             TtRefreshSourceList();
             SaveSettingsSafe();
+        }
+
+        /// <summary>
+        /// Resolves a typed list of player names to their village IDs and adds them all.
+        /// Each name lookup is a blocking server call, so they run sequentially on a background thread.
+        /// </summary>
+        private void TtAddTypedPlayers()
+        {
+            TimingToolSettings s = TtSettings;
+            if (s == null) return;
+            string raw = _ttAddNamesBox.Text;
+            if (string.IsNullOrEmpty(raw)) return;
+
+            // Names may contain spaces, so only split on comma / semicolon / newline.
+            string[] rawNames = raw.Split(new char[] { ',', ';', '\r', '\n', '\t' },
+                StringSplitOptions.RemoveEmptyEntries);
+            List<string> names = new List<string>();
+            foreach (string nm in rawNames)
+            {
+                string trimmed = nm.Trim();
+                if (trimmed.Length > 0 && !names.Contains(trimmed)) names.Add(trimmed);
+            }
+            if (names.Count == 0) return;
+
+            AutoBombModule abMod = null;
+            if (BotEngine.Instance != null)
+                foreach (IBotModule m in BotEngine.Instance.Modules)
+                    if (m is AutoBombModule) { abMod = (AutoBombModule)m; break; }
+            if (abMod == null) { TtSetStatus("Auto Bomb module unavailable."); return; }
+
+            _ttAddNamesBtn.Enabled = false;
+            _ttAddNamesBtn.Text = "Looking up...";
+            TtSetStatus("Looking up " + names.Count + " player(s)...");
+
+            System.Threading.Thread t = new System.Threading.Thread(delegate()
+            {
+                int totalAdded = 0;
+                int notFound = 0;
+                foreach (string name in names)
+                {
+                    List<int> villages = abMod.ResolvePlayerVillages(name);
+                    if (villages == null || villages.Count == 0) { notFound++; continue; }
+                    this.Invoke((MethodInvoker)delegate
+                    {
+                        int before = TtSettings != null ? TtSettings.SourceVillages.Count : 0;
+                        foreach (int v in villages) TtAddSource(v);
+                        totalAdded += (TtSettings != null ? TtSettings.SourceVillages.Count : 0) - before;
+                    });
+                }
+                int nf = notFound;
+                int added = totalAdded;
+                this.BeginInvoke((MethodInvoker)delegate
+                {
+                    _ttAddNamesBox.Text = "";
+                    TtRefreshSourceList();
+                    SaveSettingsSafe();
+                    _ttAddNamesBtn.Enabled = true;
+                    _ttAddNamesBtn.Text = "Add Players";
+                    string msg = "Added " + added + " village(s) from " + names.Count + " player(s).";
+                    if (nf > 0) msg += " " + nf + " player(s) not found.";
+                    TtSetStatus(msg);
+                });
+            });
+            t.IsBackground = true;
+            t.Name = "TtPlayersLookup";
+            t.Start();
         }
 
         private void TtAddVillageFromMap()

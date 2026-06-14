@@ -1096,6 +1096,7 @@ namespace Kingdoms.Bot
         public ScoutPriority Priority = ScoutPriority.ResourcePriority;
         public bool SendOneScout = false;
         public bool SendOneOnNewStash = true;
+        public bool WaitForFreeSpace = true;   // skip/shrink sends when the village store is near cap
         public List<VillageScoutSettings> Villages = new List<VillageScoutSettings>();
 
         public VillageScoutSettings GetVillageSettings(int villageId)
@@ -1116,7 +1117,7 @@ namespace Kingdoms.Bot
     public class VillageScoutSettings
     {
         public int VillageId;
-        public bool ScoutingEnabled = true;
+        public bool ScoutingEnabled = false;
         public List<int> ResourceTypesToScout = new List<int>();
         public List<int> ResourceTypesToIgnore = new List<int>();
 

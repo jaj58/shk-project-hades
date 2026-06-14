@@ -15575,6 +15575,16 @@ namespace Kingdoms
       return villageID >= 0 && villageID < this.villageList.Length && this.villageList[villageID].rolloverInfo != null ? this.villageList[villageID].rolloverInfo.plagueLevel : -1;
     }
 
+    // Read-only peek at the special-village (stash) cache for the bot: returns whatever
+    // is already cached without ever firing a SpecialVillageInfo server request. Lets the
+    // Scout module build its target list without bursting requests. Returns null if not cached.
+    public WorldMap.SpecialVillageCache peekSpecialVillageData(int villageID)
+    {
+      if (villageID < 0)
+        return (WorldMap.SpecialVillageCache) null;
+      return (WorldMap.SpecialVillageCache) this.specialVillageCache[villageID];
+    }
+
     public WorldMap.SpecialVillageCache getSpecialVillageData(int villageID, bool download)
     {
       WorldMap.SpecialVillageCache specialVillageData = (WorldMap.SpecialVillageCache) null;
