@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using CommonTypes;
 
 namespace Kingdoms.Bot.Modules
@@ -107,6 +108,11 @@ namespace Kingdoms.Bot.Modules
         private Dictionary<long, bool> _knownPersonIds = new Dictionary<long, bool>();
         private Dictionary<long, int> _incomingAttackTargets = new Dictionary<long, int>();
         private Dictionary<int, DateTime> _villagesSentInterdict = new Dictionary<int, DateTime>();
+        // Villages with an interdict retry cycle currently running on a background
+        // thread — prevents duplicate cycles for the same village. Guarded by _interdictLock,
+        // which also guards _villagesSentInterdict (now touched from background threads).
+        private readonly HashSet<int> _interdictInProgress = new HashSet<int>();
+        private readonly object _interdictLock = new object();
         private bool _firstScan = true;
         private Dictionary<long, WorldMap.LocalArmyData> _trackedArmies = new Dictionary<long, WorldMap.LocalArmyData>();
         private Dictionary<long, int> _armyMissingTicks = new Dictionary<long, int>();
@@ -173,7 +179,7 @@ namespace Kingdoms.Bot.Modules
             _knownArmyIds.Clear();
             _knownPersonIds.Clear();
             _incomingAttackTargets.Clear();
-            _villagesSentInterdict.Clear();
+            lock (_interdictLock) { _villagesSentInterdict.Clear(); _interdictInProgress.Clear(); }
             _pendingLookups.Clear();
             _trackedArmies.Clear();
             _armyMissingTicks.Clear();
@@ -1012,9 +1018,6 @@ namespace Kingdoms.Bot.Modules
 
         private void TryAutoInterdict(int villageId, RadarSettings settings)
         {
-            int numberOfMonks = settings.AutoInterdictMonkCount;
-            if (numberOfMonks <= 0) numberOfMonks = 1;
-
             // Don't interdict capitals
             if (GameEngine.Instance.World.isCapital(villageId))
             {
@@ -1022,209 +1025,79 @@ namespace Kingdoms.Bot.Modules
                 return;
             }
 
-            // Throttle: don't re-interdict same village within 30 seconds
-            if (_villagesSentInterdict.ContainsKey(villageId))
+            lock (_interdictLock)
             {
-                if ((DateTime.Now - _villagesSentInterdict[villageId]).TotalSeconds < 30)
+                // A retry cycle for this village is already running.
+                if (_interdictInProgress.Contains(villageId))
+                {
+                    LogDebug("Auto-interdict: cycle already in progress for village " + villageId);
+                    return;
+                }
+
+                // Throttle: don't re-interdict the same village within 30 seconds.
+                DateTime last;
+                if (_villagesSentInterdict.TryGetValue(villageId, out last)
+                    && (DateTime.Now - last).TotalSeconds < 30)
                 {
                     LogDebug("Auto-interdict: throttled for village " + villageId);
                     return;
                 }
                 _villagesSentInterdict[villageId] = DateTime.Now;
+                _interdictInProgress.Add(villageId);
+            }
+
+            // Run the verify+retry cycle off the tick thread so radar keeps scanning.
+            Thread t = new Thread(delegate ()
+            {
+                try { RunAutoInterdict(villageId, settings); }
+                catch (Exception ex) { LogError("Auto-interdict cycle failed: " + ex.Message); }
+                finally
+                {
+                    lock (_interdictLock) { _interdictInProgress.Remove(villageId); }
+                }
+            });
+            t.IsBackground = true;
+            t.Name = "Radar Interdict";
+            t.Start();
+        }
+
+        private void RunAutoInterdict(int villageId, RadarSettings settings)
+        {
+            int monks = settings.AutoInterdictMonkCount;
+            if (monks <= 0) monks = 1;
+
+            string err;
+            bool ok = InterdictRunner.Run(villageId, monks, settings.AutoRecruitMonks, 5, "Radar",
+                                          delegate { return false; }, out err);
+
+            string name = GameEngine.Instance.World.getVillageName(villageId);
+
+            if (ok)
+            {
+                // Restock monks back to the research cap after a successful interdict.
+                if (settings.AutoRecruitMonks)
+                {
+                    int cap = ResearchData.ordinationResearchMonkLevels[
+                        (int)GameEngine.Instance.World.UserResearchData.Research_Ordination];
+                    int athome = 0;
+                    int total = GameEngine.Instance.World.countVillagePeople(villageId, 4, ref athome);
+                    if (cap - total > 0)
+                        InterdictRunner.MakeMonksMore(villageId, cap - total);
+                }
             }
             else
             {
-                _villagesSentInterdict[villageId] = DateTime.Now;
-            }
+                LogError("Auto-interdict: could not interdict " + name + " [" + villageId + "] — " + err);
 
-            VillageMap village = GameEngine.Instance.getVillage(villageId);
-            if (village == null)
-            {
-                LogWarning("Auto-interdict: village " + villageId + " not loaded.");
-                return;
-            }
+                // Allow a future event to retry this village.
+                lock (_interdictLock) { _villagesSentInterdict.Remove(villageId); }
 
-            // Check ordination research (required to have monks at all)
-            if (GameEngine.Instance.World.UserResearchData.Research_Ordination == 0)
-            {
-                LogWarning("Auto-interdict: Ordination not researched. Cannot use monks.");
-                return;
-            }
-
-            // Check eucharist research (required for interdict)
-            if (GameEngine.Instance.World.UserResearchData.Research_Eucharist <= 0)
-            {
-                LogWarning("Auto-interdict: Eucharist not researched. Cannot interdict.");
-                return;
-            }
-
-            // Check excommunication
-            if (GameEngine.Instance.World.isVillageExcommunicated(villageId))
-            {
-                LogWarning("Auto-interdict: village " + villageId + " is excommunicated.");
-                return;
-            }
-
-            // Check faith points cost
-            try
-            {
-                int costPerMonk = TradingCalcs.adjustInterdictionCostByTargetRank(
-                    GameEngine.Instance.LocalWorldData.MonkCommandPointsCost_Interdicts,
-                    GameEngine.Instance.World.getRank(),
-                    GameEngine.Instance.World.SecondAgeWorld);
-                int totalCost = costPerMonk * numberOfMonks;
-                double currentFaith = GameEngine.Instance.World.getCurrentFaithPoints();
-                if (totalCost > currentFaith)
-                {
-                    LogWarning("Auto-interdict: not enough faith points (" + currentFaith + " < " + totalCost + ").");
-                    return;
-                }
-            }
-            catch (Exception ex)
-            {
-                LogWarning("Auto-interdict: faith point check failed: " + ex.Message);
-            }
-
-            // Count monks at home
-            int athome = village.calcTotalMonksAtHome();
-            LogDebug("Auto-interdict: village " + villageId + " has " + athome + " monks at home.");
-
-            // If not enough monks, try to recruit
-            if (athome < numberOfMonks && settings.AutoRecruitMonks)
-            {
-                LogInfo("Auto-interdict: recruiting " + (numberOfMonks - athome) + " monk(s) for village " + villageId);
-                int made = MakeMonks(villageId, numberOfMonks - athome, village);
-                if (made > 0)
-                    athome += made;
-            }
-
-            if (athome <= 0)
-            {
-                LogWarning("Auto-interdict: no monks available at village " + villageId + ".");
-                return;
-            }
-
-            if (athome < numberOfMonks)
-                numberOfMonks = athome;
-
-            try
-            {
-                LogInfo("Auto-interdict: sending " + numberOfMonks + " monk(s) to interdict village " + villageId);
-                RemoteServices.Instance.set_SendPeople_UserCallBack(
-                    new RemoteServices.SendPeople_UserCallBack(SendPeopleCallback));
-                RemoteServices.Instance.SendPeople(villageId, villageId, 4, numberOfMonks, 4, -1);
-            }
-            catch (Exception ex)
-            {
-                LogError("Auto-interdict failed: " + ex.Message);
-            }
-        }
-
-        private int MakeMonks(int villageId, int numberOfMonks, VillageMap village)
-        {
-            try
-            {
-                if (numberOfMonks <= 0) return 0;
-
-                // Max monks from ordination research
-                int researchMonkLevel = ResearchData.ordinationResearchMonkLevels[
-                    (int)GameEngine.Instance.World.UserResearchData.Research_Ordination];
-                numberOfMonks = Math.Min(numberOfMonks, researchMonkLevel);
-
-                // How many total monks already exist for this village
-                int athome = 0;
-                int totalMonks = GameEngine.Instance.World.countVillagePeople(villageId, 4, ref athome);
-                int canMake = researchMonkLevel - totalMonks;
-                numberOfMonks = Math.Min(numberOfMonks, canMake);
-                if (numberOfMonks <= 0)
-                {
-                    LogDebug("MakeMonks: village " + villageId + " already at monk limit.");
-                    return 0;
-                }
-
-                // Check spare workers
-                int spareWorkers = village.m_spareWorkers;
-                if (numberOfMonks > spareWorkers)
-                {
-                    LogDebug("MakeMonks: only " + spareWorkers + " spare workers at village " + villageId);
-                    numberOfMonks = spareWorkers;
-                }
-
-                // Check unit capacity
-                int unitCapacity = GameEngine.Instance.LocalWorldData.Village_UnitCapacity;
-                int currentUsage = village.calcUnitUsages();
-                int unitSizeMonk = GameEngine.Instance.LocalWorldData.UnitSize_Priests;
-                int neededSpace = numberOfMonks * unitSizeMonk;
-                int availableSpace = unitCapacity - currentUsage;
-                if (availableSpace < neededSpace)
-                {
-                    numberOfMonks = availableSpace / unitSizeMonk;
-                    LogDebug("MakeMonks: unit capacity limited, can make " + numberOfMonks + " monk(s).");
-                }
-
-                if (numberOfMonks <= 0) return 0;
-
-                LogInfo("MakeMonks: recruiting " + numberOfMonks + " monk(s) at village " + villageId);
-                if (numberOfMonks == 1)
-                    village.makePeople(4);
-                else
-                    village.makePeople(1000 + numberOfMonks);
-
-                return numberOfMonks;
-            }
-            catch (Exception ex)
-            {
-                LogError("MakeMonks failed: " + ex.Message);
-                return 0;
-            }
-        }
-
-        private void SendPeopleCallback(SendPeople_ReturnType returnData)
-        {
-            try
-            {
-                if (!returnData.Success)
-                {
-                    BotLogger.Log("Radar", BotLogLevel.Warning,
-                        "Interdict failed for village " +
-                        GameEngine.Instance.World.getVillageName(returnData.targetVillageID) +
-                        ": " + CommonTypes.ErrorCodes.getErrorString(returnData.m_errorCode, returnData.m_errorID));
-                    if (_villagesSentInterdict.ContainsKey(returnData.targetVillageID))
-                        _villagesSentInterdict.Remove(returnData.targetVillageID);
-                }
-                else
-                {
-                    BotLogger.Log("Radar", BotLogLevel.Info,
-                        "Successful interdict at village " +
-                        GameEngine.Instance.World.getVillageName(returnData.targetVillageID));
-                    GameEngine.Instance.World.importOrphanedPeople(
-                        returnData.people, returnData.currentTime, -2);
-                    GameEngine.Instance.World.setFaithPointsData(
-                        returnData.currentFaithPointsLevel, returnData.currentFaithPointsRate);
-
-                    // Auto re-recruit monks after interdict
-                    if (Engine != null && Engine.Settings != null &&
-                        Engine.Settings.Radar.AutoRecruitMonks)
-                    {
-                        int monkLimit = ResearchData.ordinationResearchMonkLevels[
-                            (int)GameEngine.Instance.World.UserResearchData.Research_Ordination];
-                        int athome = 0;
-                        int totalMonks = GameEngine.Instance.World.countVillagePeople(
-                            returnData.targetVillageID, 4, ref athome);
-                        int toRecruit = monkLimit - totalMonks;
-                        if (toRecruit > 0)
-                        {
-                            VillageMap village = GameEngine.Instance.getVillage(returnData.targetVillageID);
-                            if (village != null)
-                                MakeMonks(returnData.targetVillageID, toRecruit, village);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                BotLogger.Log("Radar", BotLogLevel.Error,
-                    "SendPeople callback error: " + ex.Message);
+                if (!string.IsNullOrEmpty(settings.DiscordWebhookUrl))
+                    DiscordNotifier.SendAsync(settings.DiscordWebhookUrl,
+                        "⛔ Interdict FAILED",
+                        "Failed to interdict " + name + " [" + villageId + "] after 5 attempts.\nLast error: " + err,
+                        15548997,
+                        string.IsNullOrEmpty(settings.DiscordMentionTag) ? null : settings.DiscordMentionTag);
             }
         }
 
@@ -1477,7 +1350,7 @@ namespace Kingdoms.Bot.Modules
             _knownArmyIds.Clear();
             _knownPersonIds.Clear();
             _incomingAttackTargets.Clear();
-            _villagesSentInterdict.Clear();
+            lock (_interdictLock) { _villagesSentInterdict.Clear(); _interdictInProgress.Clear(); }
             _pendingLookups.Clear();
             _trackedArmies.Clear();
             _armyMissingTicks.Clear();

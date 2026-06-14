@@ -626,12 +626,6 @@ namespace Kingdoms.Bot.Modules
                     continue;
                 }
 
-                VillageMap village = GameEngine.Instance.getVillage(villageId);
-                if (village == null)
-                {
-                    LogWarning("Interdict: village not loaded: " + villageId);
-                    continue;
-                }
                 if (GameEngine.Instance.World.isVillageExcommunicated(villageId))
                 {
                     LogWarning("Interdict: " + name + " is excommunicated, skipping.");
@@ -661,50 +655,15 @@ namespace Kingdoms.Bot.Modules
                     }
                 }
 
-                // Faith point check
-                try
-                {
-                    int costPerMonk = TradingCalcs.adjustInterdictionCostByTargetRank(
-                        GameEngine.Instance.LocalWorldData.MonkCommandPointsCost_Interdicts,
-                        GameEngine.Instance.World.getRank(),
-                        GameEngine.Instance.World.SecondAgeWorld);
-                    int totalCost = costPerMonk * desired;
-                    double currentFaith = GameEngine.Instance.World.getCurrentFaithPoints();
-                    if (totalCost > currentFaith)
-                    {
-                        LogWarning("Interdict: not enough faith points for " + name + " (" + currentFaith + " < " + totalCost + ").");
-                        continue;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LogWarning("Interdict: faith point check failed: " + ex.Message);
-                }
-
-                // Monk availability + optional hire
-                int atHome = village.calcTotalMonksAtHome();
-                if (atHome < desired && allowHire)
-                {
-                    LogInfo("Interdict: hiring " + (desired - atHome) + " monk(s) at " + name);
-                    atHome += MakeMonksMore(villageId, desired - atHome);
-                }
-                if (atHome <= 0)
-                {
-                    LogWarning("Interdict: no monks available at " + name + ", skipping.");
-                    continue;
-                }
-                if (desired > atHome) desired = atHome;
-
-                LogInfo("Interdict: sending " + desired + " monk(s) to self-interdict " + name);
-                try
-                {
-                    RemoteServices.Instance.set_SendPeople_UserCallBack(OnInterdictSendCallback);
-                    RemoteServices.Instance.SendPeople(villageId, villageId, 4, desired, 4, -1);
-                }
-                catch (Exception ex)
-                {
-                    LogError("Interdict send failed for " + name + ": " + ex.Message);
-                }
+                // Hire, verify, send — with retry. Runner handles loading, faith,
+                // recruit-wait and send confirmation.
+                string err;
+                bool ok = InterdictRunner.Run(villageId, desired, allowHire, 5, "Monk",
+                                              delegate { return _interdictCancel; }, out err);
+                if (ok)
+                    LogInfo("Interdict: " + name + " interdicted successfully.");
+                else
+                    LogError("Interdict: could not interdict " + name + " — " + err);
 
                 // User-set spacing plus a little jitter so sends aren't perfectly uniform;
                 // skipped after the last village so the cycle ends promptly.
@@ -715,40 +674,5 @@ namespace Kingdoms.Bot.Modules
             LogInfo("Interdict: cycle finished.");
         }
 
-        // Recruits `more` additional monks on top of the village's current
-        // total, reusing MakeMonks' research/worker/space caps.
-        private int MakeMonksMore(int villageId, int more)
-        {
-            if (more <= 0) return 0;
-            int atHome = 0;
-            int total = GameEngine.Instance.World.countVillagePeople(villageId, 4, ref atHome);
-            return MakeMonks(villageId, total + more);
-        }
-
-        private void OnInterdictSendCallback(SendPeople_ReturnType result)
-        {
-            try
-            {
-                if (result.Success)
-                {
-                    GameEngine.Instance.World.importOrphanedPeople(
-                        result.people, result.currentTime, -2);
-                    GameEngine.Instance.World.setFaithPointsData(
-                        result.currentFaithPointsLevel, result.currentFaithPointsRate);
-                    LogInfo("Interdict: successful interdict at " +
-                        GameEngine.Instance.World.getVillageName(result.targetVillageID));
-                }
-                else
-                {
-                    string err = ErrorCodes.getErrorString(result.m_errorCode, result.m_errorID);
-                    LogError("Interdict failed for " +
-                        GameEngine.Instance.World.getVillageName(result.targetVillageID) + ": " + err);
-                }
-            }
-            catch (Exception ex)
-            {
-                LogError("Interdict callback error: " + ex.Message);
-            }
-        }
     }
 }
