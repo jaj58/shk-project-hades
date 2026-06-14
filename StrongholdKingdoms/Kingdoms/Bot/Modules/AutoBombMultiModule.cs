@@ -65,6 +65,16 @@ namespace Kingdoms.Bot.Modules
         // Used to resend cancel_attacks on each poll until the batch completes.
         private volatile bool _pendingManualCancel;
 
+        // Tracks the previous poll's force_recall_all flag so we only recall on the rising
+        // edge (when the coordinator newly clicks "Recall All"), not every poll cycle.
+        private volatile bool _lastForceRecallSeen;
+
+        // Bounded recall-retry state. A recall fires immediately then re-attempts a few more
+        // times over the next few seconds to catch late-registering armies, without flooding.
+        private readonly object _recallRetryLock = new object();
+        private int _recallRetriesRemaining;
+        private Thread _recallRetryThread;
+
         // The earliest time the current active card will be free (i.e. consumed by the village
         // it was played for). Set to that village's scheduled send time when a card is played.
         // Used to delay the next card play when send times are very close together.
@@ -202,7 +212,7 @@ namespace Kingdoms.Bot.Modules
                         LogWarning("Interdict detected on target! Cancelling all attacks and recalling armies.");
                         _cancelLaunchEvent.Set();
                         CancelRemainingLocalAttacks();
-                        RecallAll(settings);
+                        RecallAllWithRetries(settings);
                     }
 
                     // Notify API so other players also get the cancel signal.
@@ -371,7 +381,7 @@ namespace Kingdoms.Bot.Modules
             {
                 bool anySent = false;
                 lock (_attacksLock) { foreach (var e in _myAttacks) if (e.Sent) { anySent = true; break; } }
-                if (anySent) RecallAll(settings);
+                if (anySent) RecallAllWithRetries(settings);
             }
             _pendingManualCancel = true;
             try
@@ -529,29 +539,17 @@ namespace Kingdoms.Bot.Modules
             settings.InterdictDetected = interdictDetected;
             settings.ManualCancel = manualCancel;
 
-            // ── Cancel/Recall Signal Handling ────────────────────────────────
-            // When ANY cancel signal is detected (force recall, interdict, manual), acknowledge it
-            // so coordinator knows all remote players received the signal
-            if (forceRecall || interdictDetected || manualCancel)
+            // ── Force-recall signal (edge-triggered) ─────────────────────────
+            // The coordinator's "Recall All" button sets force_recall_all in the API state.
+            // Recall exactly once on the rising edge — NOT every poll (that floods the recall
+            // API and spams logs). Interdict/manual cancels are handled separately and
+            // edge-triggered via OnSessionCancelled on the state→cancelled transition.
+            if (forceRecall && !_lastForceRecallSeen)
             {
-                RecallAll(settings);
-                // Send acknowledgement
-                try
-                {
-                    PostAction(settings, "acknowledge_recall", new Dictionary<string, object>
-                    {
-                        ["player_name"] = GetLocalPlayerName(),
-                        ["signal_type"] = forceRecall ? "force_recall_all" :
-                                         interdictDetected ? "interdict" : "manual_cancel"
-                    });
-                    LogInfo("Acknowledged " + (forceRecall ? "force recall" :
-                           interdictDetected ? "interdict" : "manual cancel") + " signal.");
-                }
-                catch (Exception ex)
-                {
-                    LogWarning("Failed to acknowledge recall signal: " + ex.Message);
-                }
+                LogInfo("Force recall signal received — recalling all armies.");
+                RecallAllWithRetries(settings);
             }
+            _lastForceRecallSeen = forceRecall;
 
             // Clear pending cancel flags when session moves out of cancelled state
             if (newState != "cancelled")
@@ -992,6 +990,7 @@ namespace Kingdoms.Bot.Modules
             _cardFreeAt = DateTime.MinValue;
             _sentArmies.Clear();
             _recallAcknowledged.Clear();
+            lock (_recallRetryLock) { _recallRetriesRemaining = 0; } // cancel stale recall retries before a fresh batch
             DisposeFakeSendTimer();
 
             StopLaunchThread();
@@ -1025,7 +1024,7 @@ namespace Kingdoms.Bot.Modules
             // 2. InterdictDetected + AutoCancelOnInterdict: auto-cancel on interdict (respects checkbox)
             // 3. FakeSendEnabled: intentional test recall
             if (settings.ManualCancel || (settings.AutoCancelOnInterdict && settings.InterdictDetected) || settings.FakeSendEnabled)
-                RecallAll(settings);
+                RecallAllWithRetries(settings);
         }
 
         // ── Launch thread ────────────────────────────────────────────────────
@@ -1131,7 +1130,7 @@ namespace Kingdoms.Bot.Modules
                                 bool anySentNow = false;
                                 lock (_attacksLock)
                                     { foreach (var ex in _myAttacks) if (ex.Sent) { anySentNow = true; break; } }
-                                if (anySentNow) RecallAll(settings);
+                                if (anySentNow) RecallAllWithRetries(settings);
                                 try { PostAction(settings, "cancel_attacks", new Dictionary<string, object>
                                     { ["player_name"] = GetLocalPlayerName(), ["reason"] = "prepare_failed" }); }
                                 catch { }
@@ -1162,7 +1161,7 @@ namespace Kingdoms.Bot.Modules
                                     bool anySentCard = false;
                                     lock (_attacksLock)
                                         { foreach (var ex in _myAttacks) if (ex.Sent) { anySentCard = true; break; } }
-                                    if (anySentCard) RecallAll(settings);
+                                    if (anySentCard) RecallAllWithRetries(settings);
                                     try { PostAction(settings, "cancel_attacks",
                                         new Dictionary<string, object>
                                         {
@@ -1266,6 +1265,7 @@ namespace Kingdoms.Bot.Modules
                     _cardFreeAt = DateTime.MinValue;
                     _sentArmies.Clear();
                     _recallAcknowledged.Clear();
+                    lock (_recallRetryLock) { _recallRetriesRemaining = 0; } // cancel stale recall retries before next target
                     cancelled = false; // allow next iteration to fire
                 }
             }
@@ -1891,7 +1891,7 @@ namespace Kingdoms.Bot.Modules
                         _interdictDetected = true;
                         LogWarning("[Thread] Interdict detected during prepare — cancelling.");
                         CancelRemainingLocalAttacks();
-                        RecallAll(settings);
+                        RecallAllWithRetries(settings);
                         _cancelLaunchEvent.Set();
                         try { PostAction(settings, "cancel_attacks", new Dictionary<string, object>
                             { ["player_name"] = GetLocalPlayerName(), ["reason"] = "interdict" }); }
@@ -2123,7 +2123,7 @@ namespace Kingdoms.Bot.Modules
             LogWarning("[FakeSend] 4 minutes elapsed — recalling armies.");
             _cancelLaunchEvent.Set();
             CancelRemainingLocalAttacks();
-            RecallAll(settings);
+            RecallAllWithRetries(settings);
             DisposeFakeSendTimer();
         }
 
@@ -2391,6 +2391,45 @@ namespace Kingdoms.Bot.Modules
                 }
             }
             return true; // All sent attacks are still within recall window
+        }
+
+        /// <summary>
+        /// Recalls all armies immediately, then re-attempts a few more times over the next few
+        /// seconds on a background thread. The retries catch armies that hadn't yet registered in
+        /// the game array at the first attempt (server reconciliation lag) or that fired a moment
+        /// later. Bounded so it never floods the recall API the way a per-poll recall would.
+        /// Safe to call from any thread; overlapping calls just refresh the retry budget.
+        /// </summary>
+        private void RecallAllWithRetries(AutoBombMultiSettings settings)
+        {
+            const int ExtraAttempts = 4;     // attempts after the immediate one
+            const int IntervalMs    = 1200;  // ~5s of coverage total
+
+            RecallAll(settings); // immediate first attempt
+
+            lock (_recallRetryLock)
+            {
+                // Top up the budget; if a retry thread is already running it will pick this up.
+                _recallRetriesRemaining = Math.Max(_recallRetriesRemaining, ExtraAttempts);
+                if (_recallRetryThread != null && _recallRetryThread.IsAlive) return;
+
+                _recallRetryThread = new Thread(delegate()
+                {
+                    while (true)
+                    {
+                        lock (_recallRetryLock)
+                        {
+                            if (_recallRetriesRemaining <= 0) return;
+                            _recallRetriesRemaining--;
+                        }
+                        Thread.Sleep(IntervalMs);
+                        try { RecallAll(Settings); } catch { }
+                    }
+                });
+                _recallRetryThread.IsBackground = true;
+                _recallRetryThread.Name = "AbmRecallRetry";
+                _recallRetryThread.Start();
+            }
         }
 
         private void RecallAll(AutoBombMultiSettings settings)
