@@ -7054,6 +7054,70 @@ namespace Kingdoms.Bot.UI
             return "Type " + type;
         }
 
+        // =====================================================================
+        // Auto-layout for settings-panel rows
+        //
+        // Hand-positioned label+input rows overlap at high DPI because labels render
+        // wider than any fixed coordinate can predict. Instead we flow each row
+        // left-to-right at runtime using each control's REAL (already DPI-scaled)
+        // width, so a label can never overrun its input at any Windows scaling.
+        // =====================================================================
+
+        /// <summary>Positions controls left-to-right from startX using their actual
+        /// widths. Each control keeps its existing Y; only X is recalculated.</summary>
+        private void LayoutRow(int startX, int gap, params Control[] cs)
+        {
+            int x = startX;
+            foreach (Control c in cs)
+            {
+                if (c == null) continue;
+                c.Left = x;
+                x = c.Right + gap;
+            }
+        }
+
+        /// <summary>Re-flows the static settings-panel rows after the form is shown
+        /// (i.e. after DPI auto-scaling), so dense label+input rows never overlap.</summary>
+        private void RelayoutSettingsRows()
+        {
+            const int X = 16;   // left padding
+            const int G = 14;   // gap between controls
+
+            // Village Sync
+            LayoutRow(X, G, _vsEnabledCheck, _vsStatusLabel, _vsLastRunLabel);
+            LayoutRow(X, G, _vsIntervalLabel, _vsIntervalInput, _vsDelayLabel, _vsDelayInput);
+
+            // Radar
+            LayoutRow(X, G, _rdEnabledCheck, _rdStatusLabel, _rdScanIntervalLabel, _rdScanIntervalInput, _rdForceRefreshCheck);
+            LayoutRow(X, G, _rdWebhookLabel, _rdWebhookInput, _rdTestDiscordBtn);
+            LayoutRow(X, G, _rdMentionTagLabel, _rdMentionTagInput, _rdTestSoundBtn, _rdStopSoundBtn);
+            LayoutRow(X, G, _rdInterdictLabel, _rdInterdictMonkCountInput, _rdAutoRecruitMonksCheck, _rdMinArmySizeLabel, _rdMinArmySizeInput);
+            LayoutRow(X, G, _rdMinAttacksLabel, _rdMinAttacksInput, _rdMinAttacksWindowLabel, _rdMinAttacksWindowInput, _rdMinAttacksWindowUnitLabel, _rdMaxLandTimeLabel, _rdMaxLandTimeInput);
+
+            // Recruiting
+            LayoutRow(X, G, _rcEnabledCheck, _rcStatusLabel);
+            LayoutRow(X, G, _rcIntervalLabel, _rcIntervalInput, _rcDelayLabel, _rcDelayInput);
+
+            // Castle Repair
+            LayoutRow(X, G, _crEnabledCheck, _crStatusLabel);
+            LayoutRow(X, G, _crIntervalLabel, _crIntervalInput, _crDelayLabel, _crDelayInput);
+
+            // Trade
+            LayoutRow(X, G, _trEnabledCheck, _trStatusLabel);
+            LayoutRow(X, G, _trIntervalLabel, _trIntervalInput, _trDelayLabel, _trDelayInput,
+                _trMerchantsPerTradeLabel, _trMerchantsPerTradeInput, _trTradeLimitLabel, _trTradeLimitInput,
+                _trExchangeLimitLabel, _trExchangeLimitInput);
+            LayoutRow(X, G, _trAutoHireCheck, _trAutoHireLimitLabel, _trAutoHireLimitInput,
+                _trIgnoreTransactionsCheck, _trPriorityLabel, _trPriorityCombo,
+                _trDisableOnCardExpiryCheck, _trAutoSaveRouteProgressCheck);
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            try { RelayoutSettingsRows(); } catch { }
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.UserClosing)
