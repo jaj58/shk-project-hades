@@ -1378,11 +1378,11 @@ namespace Kingdoms.Bot.UI
                 headerPanel.Controls.Add(nameHdr);
 
                 Label priHdr = new Label();
-                priHdr.Text = "Priority";
+                priHdr.Text = "Pri";
                 priHdr.Font = new Font("Segoe UI", 6.5f, FontStyle.Bold);
                 priHdr.ForeColor = Color.FromArgb(120, 125, 140);
                 priHdr.AutoSize = true;
-                priHdr.Location = new Point(x + 52, 5);
+                priHdr.Location = new Point(x + 56, 5);
                 headerPanel.Controls.Add(priHdr);
             }
         }

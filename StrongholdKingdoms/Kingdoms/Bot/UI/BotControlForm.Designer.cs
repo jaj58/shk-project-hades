@@ -1220,7 +1220,7 @@ namespace Kingdoms.Bot.UI
             // 
             this._rdColSystemNotify.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._rdColSystemNotify.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdColSystemNotify.Location = new System.Drawing.Point(270, 2);
+            this._rdColSystemNotify.Location = new System.Drawing.Point(300, 2);
             this._rdColSystemNotify.Name = "_rdColSystemNotify";
             this._rdColSystemNotify.Size = new System.Drawing.Size(60, 30);
             this._rdColSystemNotify.TabIndex = 2;
@@ -1230,7 +1230,7 @@ namespace Kingdoms.Bot.UI
             // 
             this._rdColDiscordNotify.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._rdColDiscordNotify.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdColDiscordNotify.Location = new System.Drawing.Point(340, 2);
+            this._rdColDiscordNotify.Location = new System.Drawing.Point(400, 2);
             this._rdColDiscordNotify.Name = "_rdColDiscordNotify";
             this._rdColDiscordNotify.Size = new System.Drawing.Size(60, 30);
             this._rdColDiscordNotify.TabIndex = 3;
@@ -1240,7 +1240,7 @@ namespace Kingdoms.Bot.UI
             //
             this._rdColSound.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._rdColSound.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdColSound.Location = new System.Drawing.Point(410, 2);
+            this._rdColSound.Location = new System.Drawing.Point(500, 2);
             this._rdColSound.Name = "_rdColSound";
             this._rdColSound.Size = new System.Drawing.Size(70, 30);
             this._rdColSound.TabIndex = 6;
@@ -1250,7 +1250,7 @@ namespace Kingdoms.Bot.UI
             //
             this._rdColAutoInterdict.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._rdColAutoInterdict.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdColAutoInterdict.Location = new System.Drawing.Point(610, 2);
+            this._rdColAutoInterdict.Location = new System.Drawing.Point(710, 2);
             this._rdColAutoInterdict.Name = "_rdColAutoInterdict";
             this._rdColAutoInterdict.Size = new System.Drawing.Size(60, 30);
             this._rdColAutoInterdict.TabIndex = 4;
@@ -1297,7 +1297,7 @@ namespace Kingdoms.Bot.UI
             this._rdSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._rdSettingsPanel.Name = "_rdSettingsPanel";
             this._rdSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._rdSettingsPanel.Size = new System.Drawing.Size(1142, 175);
+            this._rdSettingsPanel.Size = new System.Drawing.Size(1142, 185);
             this._rdSettingsPanel.TabIndex = 0;
             // 
             // _rdMinArmySizeInput
@@ -1305,7 +1305,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinArmySizeInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._rdMinArmySizeInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMinArmySizeInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdMinArmySizeInput.Location = new System.Drawing.Point(615, 93);
+            this._rdMinArmySizeInput.Location = new System.Drawing.Point(670, 93);
             this._rdMinArmySizeInput.Maximum = new decimal(new int[] {
             10000,
             0,
@@ -1325,7 +1325,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinArmySizeLabel.AutoSize = true;
             this._rdMinArmySizeLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMinArmySizeLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdMinArmySizeLabel.Location = new System.Drawing.Point(450, 96);
+            this._rdMinArmySizeLabel.Location = new System.Drawing.Point(490, 96);
             this._rdMinArmySizeLabel.Name = "_rdMinArmySizeLabel";
             this._rdMinArmySizeLabel.Size = new System.Drawing.Size(115, 15);
             this._rdMinArmySizeLabel.TabIndex = 20;
@@ -1336,7 +1336,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinAttacksInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._rdMinAttacksInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMinAttacksInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdMinAttacksInput.Location = new System.Drawing.Point(200, 122);
+            this._rdMinAttacksInput.Location = new System.Drawing.Point(235, 122);
             this._rdMinAttacksInput.Name = "_rdMinAttacksInput";
             this._rdMinAttacksInput.Size = new System.Drawing.Size(55, 23);
             this._rdMinAttacksInput.TabIndex = 40;
@@ -1357,7 +1357,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinAttacksWindowInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._rdMinAttacksWindowInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMinAttacksWindowInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdMinAttacksWindowInput.Location = new System.Drawing.Point(325, 122);
+            this._rdMinAttacksWindowInput.Location = new System.Drawing.Point(365, 122);
             this._rdMinAttacksWindowInput.Maximum = new decimal(new int[] {
             3600,
             0,
@@ -1382,7 +1382,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinAttacksWindowLabel.AutoSize = true;
             this._rdMinAttacksWindowLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMinAttacksWindowLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdMinAttacksWindowLabel.Location = new System.Drawing.Point(275, 125);
+            this._rdMinAttacksWindowLabel.Location = new System.Drawing.Point(305, 125);
             this._rdMinAttacksWindowLabel.Name = "_rdMinAttacksWindowLabel";
             this._rdMinAttacksWindowLabel.Size = new System.Drawing.Size(40, 15);
             this._rdMinAttacksWindowLabel.TabIndex = 43;
@@ -1393,7 +1393,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinAttacksWindowUnitLabel.AutoSize = true;
             this._rdMinAttacksWindowUnitLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMinAttacksWindowUnitLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdMinAttacksWindowUnitLabel.Location = new System.Drawing.Point(385, 125);
+            this._rdMinAttacksWindowUnitLabel.Location = new System.Drawing.Point(428, 125);
             this._rdMinAttacksWindowUnitLabel.Name = "_rdMinAttacksWindowUnitLabel";
             this._rdMinAttacksWindowUnitLabel.Size = new System.Drawing.Size(12, 15);
             this._rdMinAttacksWindowUnitLabel.TabIndex = 44;
@@ -1404,7 +1404,7 @@ namespace Kingdoms.Bot.UI
             this._rdMaxLandTimeInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._rdMaxLandTimeInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMaxLandTimeInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdMaxLandTimeInput.Location = new System.Drawing.Point(620, 122);
+            this._rdMaxLandTimeInput.Location = new System.Drawing.Point(690, 122);
             this._rdMaxLandTimeInput.Maximum = new decimal(new int[] {
             168,
             0,
@@ -1419,7 +1419,7 @@ namespace Kingdoms.Bot.UI
             this._rdMaxLandTimeLabel.AutoSize = true;
             this._rdMaxLandTimeLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdMaxLandTimeLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdMaxLandTimeLabel.Location = new System.Drawing.Point(450, 125);
+            this._rdMaxLandTimeLabel.Location = new System.Drawing.Point(480, 125);
             this._rdMaxLandTimeLabel.Name = "_rdMaxLandTimeLabel";
             this._rdMaxLandTimeLabel.Size = new System.Drawing.Size(145, 15);
             this._rdMaxLandTimeLabel.TabIndex = 46;
@@ -1431,7 +1431,7 @@ namespace Kingdoms.Bot.UI
             this._rdAutoRecruitMonksCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._rdAutoRecruitMonksCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdAutoRecruitMonksCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdAutoRecruitMonksCheck.Location = new System.Drawing.Point(245, 96);
+            this._rdAutoRecruitMonksCheck.Location = new System.Drawing.Point(285, 96);
             this._rdAutoRecruitMonksCheck.Name = "_rdAutoRecruitMonksCheck";
             this._rdAutoRecruitMonksCheck.Size = new System.Drawing.Size(127, 19);
             this._rdAutoRecruitMonksCheck.TabIndex = 8;
@@ -1445,9 +1445,9 @@ namespace Kingdoms.Bot.UI
             this._rdTestDiscordBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._rdTestDiscordBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._rdTestDiscordBtn.ForeColor = System.Drawing.Color.White;
-            this._rdTestDiscordBtn.Location = new System.Drawing.Point(660, 38);
+            this._rdTestDiscordBtn.Location = new System.Drawing.Point(720, 37);
             this._rdTestDiscordBtn.Name = "_rdTestDiscordBtn";
-            this._rdTestDiscordBtn.Size = new System.Drawing.Size(110, 24);
+            this._rdTestDiscordBtn.Size = new System.Drawing.Size(120, 28);
             this._rdTestDiscordBtn.TabIndex = 10;
             this._rdTestDiscordBtn.Text = "Test Webhook";
             this._rdTestDiscordBtn.UseVisualStyleBackColor = false;
@@ -1460,9 +1460,9 @@ namespace Kingdoms.Bot.UI
             this._rdTestSoundBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._rdTestSoundBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._rdTestSoundBtn.ForeColor = System.Drawing.Color.White;
-            this._rdTestSoundBtn.Location = new System.Drawing.Point(660, 65);
+            this._rdTestSoundBtn.Location = new System.Drawing.Point(720, 66);
             this._rdTestSoundBtn.Name = "_rdTestSoundBtn";
-            this._rdTestSoundBtn.Size = new System.Drawing.Size(110, 24);
+            this._rdTestSoundBtn.Size = new System.Drawing.Size(120, 28);
             this._rdTestSoundBtn.TabIndex = 11;
             this._rdTestSoundBtn.Text = "Test Sound";
             this._rdTestSoundBtn.UseVisualStyleBackColor = false;
@@ -1475,9 +1475,9 @@ namespace Kingdoms.Bot.UI
             this._rdStopSoundBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._rdStopSoundBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._rdStopSoundBtn.ForeColor = System.Drawing.Color.White;
-            this._rdStopSoundBtn.Location = new System.Drawing.Point(780, 65);
+            this._rdStopSoundBtn.Location = new System.Drawing.Point(850, 66);
             this._rdStopSoundBtn.Name = "_rdStopSoundBtn";
-            this._rdStopSoundBtn.Size = new System.Drawing.Size(110, 24);
+            this._rdStopSoundBtn.Size = new System.Drawing.Size(120, 28);
             this._rdStopSoundBtn.TabIndex = 12;
             this._rdStopSoundBtn.Text = "Stop Sound";
             this._rdStopSoundBtn.UseVisualStyleBackColor = false;
@@ -1499,7 +1499,7 @@ namespace Kingdoms.Bot.UI
             this._rdInterdictMonkCountInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._rdInterdictMonkCountInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdInterdictMonkCountInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdInterdictMonkCountInput.Location = new System.Drawing.Point(175, 93);
+            this._rdInterdictMonkCountInput.Location = new System.Drawing.Point(205, 93);
             this._rdInterdictMonkCountInput.Minimum = new decimal(new int[] {
             1,
             0,
@@ -1531,7 +1531,7 @@ namespace Kingdoms.Bot.UI
             this._rdWebhookInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdWebhookInput.Font = new System.Drawing.Font("Consolas", 8.5F);
             this._rdWebhookInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdWebhookInput.Location = new System.Drawing.Point(160, 37);
+            this._rdWebhookInput.Location = new System.Drawing.Point(205, 37);
             this._rdWebhookInput.Name = "_rdWebhookInput";
             this._rdWebhookInput.Size = new System.Drawing.Size(480, 21);
             this._rdWebhookInput.TabIndex = 5;
@@ -1553,7 +1553,7 @@ namespace Kingdoms.Bot.UI
             this._rdMentionTagInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdMentionTagInput.Font = new System.Drawing.Font("Consolas", 8.5F);
             this._rdMentionTagInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdMentionTagInput.Location = new System.Drawing.Point(160, 64);
+            this._rdMentionTagInput.Location = new System.Drawing.Point(205, 64);
             this._rdMentionTagInput.Name = "_rdMentionTagInput";
             this._rdMentionTagInput.Size = new System.Drawing.Size(220, 21);
             this._rdMentionTagInput.TabIndex = 31;
@@ -1576,7 +1576,7 @@ namespace Kingdoms.Bot.UI
             this._rdForceRefreshCheck.CheckState = System.Windows.Forms.CheckState.Checked;
             this._rdForceRefreshCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdForceRefreshCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdForceRefreshCheck.Location = new System.Drawing.Point(500, 12);
+            this._rdForceRefreshCheck.Location = new System.Drawing.Point(575, 12);
             this._rdForceRefreshCheck.Name = "_rdForceRefreshCheck";
             this._rdForceRefreshCheck.Size = new System.Drawing.Size(187, 19);
             this._rdForceRefreshCheck.TabIndex = 30;
@@ -1587,7 +1587,7 @@ namespace Kingdoms.Bot.UI
             this._rdScanIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._rdScanIntervalInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._rdScanIntervalInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._rdScanIntervalInput.Location = new System.Drawing.Point(420, 11);
+            this._rdScanIntervalInput.Location = new System.Drawing.Point(485, 11);
             this._rdScanIntervalInput.Maximum = new decimal(new int[] {
             120,
             0,
@@ -1612,7 +1612,7 @@ namespace Kingdoms.Bot.UI
             this._rdScanIntervalLabel.AutoSize = true;
             this._rdScanIntervalLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._rdScanIntervalLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdScanIntervalLabel.Location = new System.Drawing.Point(300, 14);
+            this._rdScanIntervalLabel.Location = new System.Drawing.Point(345, 14);
             this._rdScanIntervalLabel.Name = "_rdScanIntervalLabel";
             this._rdScanIntervalLabel.Size = new System.Drawing.Size(93, 15);
             this._rdScanIntervalLabel.TabIndex = 2;
@@ -1623,7 +1623,7 @@ namespace Kingdoms.Bot.UI
             this._rdStatusLabel.AutoSize = true;
             this._rdStatusLabel.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._rdStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(200)))), ((int)(((byte)(120)))));
-            this._rdStatusLabel.Location = new System.Drawing.Point(170, 14);
+            this._rdStatusLabel.Location = new System.Drawing.Point(215, 14);
             this._rdStatusLabel.Name = "_rdStatusLabel";
             this._rdStatusLabel.Size = new System.Drawing.Size(57, 13);
             this._rdStatusLabel.TabIndex = 1;
@@ -1899,7 +1899,7 @@ namespace Kingdoms.Bot.UI
             this._vaRefreshBtn.ForeColor = System.Drawing.Color.White;
             this._vaRefreshBtn.Location = new System.Drawing.Point(220, 5);
             this._vaRefreshBtn.Name = "_vaRefreshBtn";
-            this._vaRefreshBtn.Size = new System.Drawing.Size(100, 24);
+            this._vaRefreshBtn.Size = new System.Drawing.Size(100, 30);
             this._vaRefreshBtn.TabIndex = 2;
             this._vaRefreshBtn.Text = "Refresh List";
             this._vaRefreshBtn.UseVisualStyleBackColor = false;
@@ -1972,7 +1972,7 @@ namespace Kingdoms.Bot.UI
             this._rcDisbandBtn.ForeColor = System.Drawing.Color.White;
             this._rcDisbandBtn.Location = new System.Drawing.Point(665, 70);
             this._rcDisbandBtn.Name = "_rcDisbandBtn";
-            this._rcDisbandBtn.Size = new System.Drawing.Size(70, 24);
+            this._rcDisbandBtn.Size = new System.Drawing.Size(70, 30);
             this._rcDisbandBtn.TabIndex = 8;
             this._rcDisbandBtn.Text = "Go";
             this._rcDisbandBtn.UseVisualStyleBackColor = false;
@@ -1998,7 +1998,7 @@ namespace Kingdoms.Bot.UI
             this._rcRefreshBtn.ForeColor = System.Drawing.Color.White;
             this._rcRefreshBtn.Location = new System.Drawing.Point(16, 70);
             this._rcRefreshBtn.Name = "_rcRefreshBtn";
-            this._rcRefreshBtn.Size = new System.Drawing.Size(100, 24);
+            this._rcRefreshBtn.Size = new System.Drawing.Size(100, 30);
             this._rcRefreshBtn.TabIndex = 6;
             this._rcRefreshBtn.Text = "Refresh List";
             this._rcRefreshBtn.UseVisualStyleBackColor = false;
@@ -2090,7 +2090,7 @@ namespace Kingdoms.Bot.UI
             this._rcStatusLabel.AutoSize = true;
             this._rcStatusLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._rcStatusLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(200)))), ((int)(((byte)(120)))));
-            this._rcStatusLabel.Location = new System.Drawing.Point(110, 14);
+            this._rcStatusLabel.Location = new System.Drawing.Point(165, 14);
             this._rcStatusLabel.Name = "_rcStatusLabel";
             this._rcStatusLabel.Size = new System.Drawing.Size(59, 15);
             this._rcStatusLabel.TabIndex = 1;
@@ -2193,9 +2193,9 @@ namespace Kingdoms.Bot.UI
             this._crCopySettingsBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._crCopySettingsBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._crCopySettingsBtn.ForeColor = System.Drawing.Color.White;
-            this._crCopySettingsBtn.Location = new System.Drawing.Point(716, 38);
+            this._crCopySettingsBtn.Location = new System.Drawing.Point(716, 36);
             this._crCopySettingsBtn.Name = "_crCopySettingsBtn";
-            this._crCopySettingsBtn.Size = new System.Drawing.Size(100, 24);
+            this._crCopySettingsBtn.Size = new System.Drawing.Size(100, 30);
             this._crCopySettingsBtn.TabIndex = 10;
             this._crCopySettingsBtn.Text = "Copy Settings";
             this._crCopySettingsBtn.UseVisualStyleBackColor = false;
@@ -2208,9 +2208,9 @@ namespace Kingdoms.Bot.UI
             this._crRefreshBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._crRefreshBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._crRefreshBtn.ForeColor = System.Drawing.Color.White;
-            this._crRefreshBtn.Location = new System.Drawing.Point(604, 38);
+            this._crRefreshBtn.Location = new System.Drawing.Point(604, 36);
             this._crRefreshBtn.Name = "_crRefreshBtn";
-            this._crRefreshBtn.Size = new System.Drawing.Size(100, 24);
+            this._crRefreshBtn.Size = new System.Drawing.Size(100, 30);
             this._crRefreshBtn.TabIndex = 9;
             this._crRefreshBtn.Text = "Refresh List";
             this._crRefreshBtn.UseVisualStyleBackColor = false;
@@ -2223,9 +2223,9 @@ namespace Kingdoms.Bot.UI
             this._crRepairAllBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._crRepairAllBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._crRepairAllBtn.ForeColor = System.Drawing.Color.White;
-            this._crRepairAllBtn.Location = new System.Drawing.Point(604, 68);
+            this._crRepairAllBtn.Location = new System.Drawing.Point(604, 72);
             this._crRepairAllBtn.Name = "_crRepairAllBtn";
-            this._crRepairAllBtn.Size = new System.Drawing.Size(100, 24);
+            this._crRepairAllBtn.Size = new System.Drawing.Size(100, 30);
             this._crRepairAllBtn.TabIndex = 8;
             this._crRepairAllBtn.Text = "Repair All";
             this._crRepairAllBtn.UseVisualStyleBackColor = false;
@@ -2238,9 +2238,9 @@ namespace Kingdoms.Bot.UI
             this._crMemoriseInfraBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._crMemoriseInfraBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._crMemoriseInfraBtn.ForeColor = System.Drawing.Color.White;
-            this._crMemoriseInfraBtn.Location = new System.Drawing.Point(604, 98);
+            this._crMemoriseInfraBtn.Location = new System.Drawing.Point(604, 108);
             this._crMemoriseInfraBtn.Name = "_crMemoriseInfraBtn";
-            this._crMemoriseInfraBtn.Size = new System.Drawing.Size(115, 24);
+            this._crMemoriseInfraBtn.Size = new System.Drawing.Size(115, 30);
             this._crMemoriseInfraBtn.TabIndex = 11;
             this._crMemoriseInfraBtn.Text = "Memorise Infra";
             this._crMemoriseInfraBtn.UseVisualStyleBackColor = false;
@@ -2253,9 +2253,9 @@ namespace Kingdoms.Bot.UI
             this._crMemoriseTroopsBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._crMemoriseTroopsBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._crMemoriseTroopsBtn.ForeColor = System.Drawing.Color.White;
-            this._crMemoriseTroopsBtn.Location = new System.Drawing.Point(731, 98);
+            this._crMemoriseTroopsBtn.Location = new System.Drawing.Point(731, 108);
             this._crMemoriseTroopsBtn.Name = "_crMemoriseTroopsBtn";
-            this._crMemoriseTroopsBtn.Size = new System.Drawing.Size(115, 24);
+            this._crMemoriseTroopsBtn.Size = new System.Drawing.Size(115, 30);
             this._crMemoriseTroopsBtn.TabIndex = 12;
             this._crMemoriseTroopsBtn.Text = "Memorise Troops";
             this._crMemoriseTroopsBtn.UseVisualStyleBackColor = false;
@@ -2689,7 +2689,7 @@ namespace Kingdoms.Bot.UI
             this._trAutoHireLimitInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._trAutoHireLimitInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._trAutoHireLimitInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trAutoHireLimitInput.Location = new System.Drawing.Point(235, 70);
+            this._trAutoHireLimitInput.Location = new System.Drawing.Point(245, 70);
             this._trAutoHireLimitInput.Maximum = new decimal(new int[] {
             500,
             0,
@@ -2737,7 +2737,7 @@ namespace Kingdoms.Bot.UI
             this._trExchangeLimitInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._trExchangeLimitInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._trExchangeLimitInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trExchangeLimitInput.Location = new System.Drawing.Point(735, 40);
+            this._trExchangeLimitInput.Location = new System.Drawing.Point(880, 40);
             this._trExchangeLimitInput.Maximum = new decimal(new int[] {
             500,
             0,
@@ -2762,7 +2762,7 @@ namespace Kingdoms.Bot.UI
             this._trExchangeLimitLabel.AutoSize = true;
             this._trExchangeLimitLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trExchangeLimitLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._trExchangeLimitLabel.Location = new System.Drawing.Point(645, 42);
+            this._trExchangeLimitLabel.Location = new System.Drawing.Point(770, 42);
             this._trExchangeLimitLabel.Name = "_trExchangeLimitLabel";
             this._trExchangeLimitLabel.Size = new System.Drawing.Size(88, 15);
             this._trExchangeLimitLabel.TabIndex = 10;
@@ -2773,7 +2773,7 @@ namespace Kingdoms.Bot.UI
             this._trTradeLimitInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._trTradeLimitInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._trTradeLimitInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trTradeLimitInput.Location = new System.Drawing.Point(585, 40);
+            this._trTradeLimitInput.Location = new System.Drawing.Point(710, 40);
             this._trTradeLimitInput.Maximum = new decimal(new int[] {
             500,
             0,
@@ -2798,7 +2798,7 @@ namespace Kingdoms.Bot.UI
             this._trTradeLimitLabel.AutoSize = true;
             this._trTradeLimitLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trTradeLimitLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._trTradeLimitLabel.Location = new System.Drawing.Point(500, 42);
+            this._trTradeLimitLabel.Location = new System.Drawing.Point(610, 42);
             this._trTradeLimitLabel.Name = "_trTradeLimitLabel";
             this._trTradeLimitLabel.Size = new System.Drawing.Size(74, 15);
             this._trTradeLimitLabel.TabIndex = 8;
@@ -2809,7 +2809,7 @@ namespace Kingdoms.Bot.UI
             this._trMerchantsPerTradeInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._trMerchantsPerTradeInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._trMerchantsPerTradeInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trMerchantsPerTradeInput.Location = new System.Drawing.Point(440, 40);
+            this._trMerchantsPerTradeInput.Location = new System.Drawing.Point(545, 40);
             this._trMerchantsPerTradeInput.Minimum = new decimal(new int[] {
             1,
             0,
@@ -2829,7 +2829,7 @@ namespace Kingdoms.Bot.UI
             this._trMerchantsPerTradeLabel.AutoSize = true;
             this._trMerchantsPerTradeLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trMerchantsPerTradeLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._trMerchantsPerTradeLabel.Location = new System.Drawing.Point(345, 42);
+            this._trMerchantsPerTradeLabel.Location = new System.Drawing.Point(400, 42);
             this._trMerchantsPerTradeLabel.Name = "_trMerchantsPerTradeLabel";
             this._trMerchantsPerTradeLabel.Size = new System.Drawing.Size(122, 15);
             this._trMerchantsPerTradeLabel.TabIndex = 6;
@@ -2845,7 +2845,7 @@ namespace Kingdoms.Bot.UI
             0,
             0,
             0});
-            this._trDelayInput.Location = new System.Drawing.Point(275, 40);
+            this._trDelayInput.Location = new System.Drawing.Point(325, 40);
             this._trDelayInput.Maximum = new decimal(new int[] {
             30000,
             0,
@@ -2870,7 +2870,7 @@ namespace Kingdoms.Bot.UI
             this._trDelayLabel.AutoSize = true;
             this._trDelayLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trDelayLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._trDelayLabel.Location = new System.Drawing.Point(200, 42);
+            this._trDelayLabel.Location = new System.Drawing.Point(240, 42);
             this._trDelayLabel.Name = "_trDelayLabel";
             this._trDelayLabel.Size = new System.Drawing.Size(66, 15);
             this._trDelayLabel.TabIndex = 4;
@@ -2881,7 +2881,7 @@ namespace Kingdoms.Bot.UI
             this._trIntervalInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._trIntervalInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._trIntervalInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trIntervalInput.Location = new System.Drawing.Point(130, 40);
+            this._trIntervalInput.Location = new System.Drawing.Point(160, 40);
             this._trIntervalInput.Maximum = new decimal(new int[] {
             3600,
             0,
@@ -3007,7 +3007,7 @@ namespace Kingdoms.Bot.UI
             this._bldClearLayoutBtn.ForeColor = System.Drawing.Color.White;
             this._bldClearLayoutBtn.Location = new System.Drawing.Point(890, 6);
             this._bldClearLayoutBtn.Name = "_bldClearLayoutBtn";
-            this._bldClearLayoutBtn.Size = new System.Drawing.Size(100, 24);
+            this._bldClearLayoutBtn.Size = new System.Drawing.Size(100, 30);
             this._bldClearLayoutBtn.TabIndex = 5;
             this._bldClearLayoutBtn.Text = "Clear Layout";
             this._bldClearLayoutBtn.UseVisualStyleBackColor = false;
@@ -3022,7 +3022,7 @@ namespace Kingdoms.Bot.UI
             this._bldExportFileBtn.ForeColor = System.Drawing.Color.White;
             this._bldExportFileBtn.Location = new System.Drawing.Point(770, 6);
             this._bldExportFileBtn.Name = "_bldExportFileBtn";
-            this._bldExportFileBtn.Size = new System.Drawing.Size(110, 24);
+            this._bldExportFileBtn.Size = new System.Drawing.Size(110, 30);
             this._bldExportFileBtn.TabIndex = 4;
             this._bldExportFileBtn.Text = "Export To File";
             this._bldExportFileBtn.UseVisualStyleBackColor = false;
@@ -3037,7 +3037,7 @@ namespace Kingdoms.Bot.UI
             this._bldRefreshStateBtn.ForeColor = System.Drawing.Color.White;
             this._bldRefreshStateBtn.Location = new System.Drawing.Point(650, 6);
             this._bldRefreshStateBtn.Name = "_bldRefreshStateBtn";
-            this._bldRefreshStateBtn.Size = new System.Drawing.Size(110, 24);
+            this._bldRefreshStateBtn.Size = new System.Drawing.Size(110, 30);
             this._bldRefreshStateBtn.TabIndex = 3;
             this._bldRefreshStateBtn.Text = "Refresh State";
             this._bldRefreshStateBtn.UseVisualStyleBackColor = false;
@@ -3052,7 +3052,7 @@ namespace Kingdoms.Bot.UI
             this._bldImportFileBtn.ForeColor = System.Drawing.Color.White;
             this._bldImportFileBtn.Location = new System.Drawing.Point(520, 6);
             this._bldImportFileBtn.Name = "_bldImportFileBtn";
-            this._bldImportFileBtn.Size = new System.Drawing.Size(120, 24);
+            this._bldImportFileBtn.Size = new System.Drawing.Size(120, 30);
             this._bldImportFileBtn.TabIndex = 2;
             this._bldImportFileBtn.Text = "Import From File";
             this._bldImportFileBtn.UseVisualStyleBackColor = false;
@@ -3067,7 +3067,7 @@ namespace Kingdoms.Bot.UI
             this._bldPriorityBtn.ForeColor = System.Drawing.Color.White;
             this._bldPriorityBtn.Location = new System.Drawing.Point(1000, 6);
             this._bldPriorityBtn.Name = "_bldPriorityBtn";
-            this._bldPriorityBtn.Size = new System.Drawing.Size(110, 24);
+            this._bldPriorityBtn.Size = new System.Drawing.Size(110, 30);
             this._bldPriorityBtn.TabIndex = 6;
             this._bldPriorityBtn.Text = "Priorities";
             this._bldPriorityBtn.UseVisualStyleBackColor = false;
@@ -3124,7 +3124,7 @@ namespace Kingdoms.Bot.UI
             this._bldCopySettingsBtn.ForeColor = System.Drawing.Color.White;
             this._bldCopySettingsBtn.Location = new System.Drawing.Point(16, 70);
             this._bldCopySettingsBtn.Name = "_bldCopySettingsBtn";
-            this._bldCopySettingsBtn.Size = new System.Drawing.Size(110, 24);
+            this._bldCopySettingsBtn.Size = new System.Drawing.Size(110, 30);
             this._bldCopySettingsBtn.TabIndex = 7;
             this._bldCopySettingsBtn.Text = "Copy Settings";
             this._bldCopySettingsBtn.UseVisualStyleBackColor = false;
@@ -3331,7 +3331,7 @@ namespace Kingdoms.Bot.UI
             this._abSubmitBtn.ForeColor = System.Drawing.Color.White;
             this._abSubmitBtn.Location = new System.Drawing.Point(530, 66);
             this._abSubmitBtn.Name = "_abSubmitBtn";
-            this._abSubmitBtn.Size = new System.Drawing.Size(130, 24);
+            this._abSubmitBtn.Size = new System.Drawing.Size(130, 30);
             this._abSubmitBtn.TabIndex = 12;
             this._abSubmitBtn.Text = "Submit to Queue";
             this._abSubmitBtn.UseVisualStyleBackColor = false;
@@ -3346,7 +3346,7 @@ namespace Kingdoms.Bot.UI
             this._abDeselectAllBtn.ForeColor = System.Drawing.Color.White;
             this._abDeselectAllBtn.Location = new System.Drawing.Point(426, 66);
             this._abDeselectAllBtn.Name = "_abDeselectAllBtn";
-            this._abDeselectAllBtn.Size = new System.Drawing.Size(90, 24);
+            this._abDeselectAllBtn.Size = new System.Drawing.Size(90, 30);
             this._abDeselectAllBtn.TabIndex = 11;
             this._abDeselectAllBtn.Text = "Deselect All";
             this._abDeselectAllBtn.UseVisualStyleBackColor = false;
@@ -3361,7 +3361,7 @@ namespace Kingdoms.Bot.UI
             this._abSelectAllBtn.ForeColor = System.Drawing.Color.White;
             this._abSelectAllBtn.Location = new System.Drawing.Point(340, 66);
             this._abSelectAllBtn.Name = "_abSelectAllBtn";
-            this._abSelectAllBtn.Size = new System.Drawing.Size(80, 24);
+            this._abSelectAllBtn.Size = new System.Drawing.Size(80, 30);
             this._abSelectAllBtn.TabIndex = 10;
             this._abSelectAllBtn.Text = "Select All";
             this._abSelectAllBtn.UseVisualStyleBackColor = false;
@@ -3376,7 +3376,7 @@ namespace Kingdoms.Bot.UI
             this._abLoadArmiesBtn.ForeColor = System.Drawing.Color.White;
             this._abLoadArmiesBtn.Location = new System.Drawing.Point(180, 66);
             this._abLoadArmiesBtn.Name = "_abLoadArmiesBtn";
-            this._abLoadArmiesBtn.Size = new System.Drawing.Size(140, 24);
+            this._abLoadArmiesBtn.Size = new System.Drawing.Size(140, 30);
             this._abLoadArmiesBtn.TabIndex = 9;
             this._abLoadArmiesBtn.Text = "Load/Reload Armies";
             this._abLoadArmiesBtn.UseVisualStyleBackColor = false;
@@ -4573,7 +4573,7 @@ namespace Kingdoms.Bot.UI
             this._ppRunNowBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._ppRunNowBtn.Location = new System.Drawing.Point(431, 39);
             this._ppRunNowBtn.Name = "_ppRunNowBtn";
-            this._ppRunNowBtn.Size = new System.Drawing.Size(80, 26);
+            this._ppRunNowBtn.Size = new System.Drawing.Size(80, 30);
             this._ppRunNowBtn.TabIndex = 7;
             this._ppRunNowBtn.Text = "Run Now";
             this._ppRunNowBtn.UseVisualStyleBackColor = false;
@@ -4585,7 +4585,7 @@ namespace Kingdoms.Bot.UI
             this._ppCopySettingsBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._ppCopySettingsBtn.Location = new System.Drawing.Point(521, 39);
             this._ppCopySettingsBtn.Name = "_ppCopySettingsBtn";
-            this._ppCopySettingsBtn.Size = new System.Drawing.Size(100, 26);
+            this._ppCopySettingsBtn.Size = new System.Drawing.Size(100, 30);
             this._ppCopySettingsBtn.TabIndex = 8;
             this._ppCopySettingsBtn.Text = "Copy Settings";
             this._ppCopySettingsBtn.UseVisualStyleBackColor = false;
@@ -4597,7 +4597,7 @@ namespace Kingdoms.Bot.UI
             this._ppRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._ppRefreshBtn.Location = new System.Drawing.Point(346, 39);
             this._ppRefreshBtn.Name = "_ppRefreshBtn";
-            this._ppRefreshBtn.Size = new System.Drawing.Size(75, 26);
+            this._ppRefreshBtn.Size = new System.Drawing.Size(75, 30);
             this._ppRefreshBtn.TabIndex = 6;
             this._ppRefreshBtn.Text = "Refresh";
             this._ppRefreshBtn.UseVisualStyleBackColor = false;
@@ -4839,7 +4839,7 @@ namespace Kingdoms.Bot.UI
             this._dfStartBtn.ForeColor = System.Drawing.Color.White;
             this._dfStartBtn.Location = new System.Drawing.Point(16, 70);
             this._dfStartBtn.Name = "_dfStartBtn";
-            this._dfStartBtn.Size = new System.Drawing.Size(100, 26);
+            this._dfStartBtn.Size = new System.Drawing.Size(100, 30);
             this._dfStartBtn.TabIndex = 7;
             this._dfStartBtn.Text = "Start Spam";
             //
@@ -4853,7 +4853,7 @@ namespace Kingdoms.Bot.UI
             this._dfStopBtn.ForeColor = System.Drawing.Color.White;
             this._dfStopBtn.Location = new System.Drawing.Point(126, 70);
             this._dfStopBtn.Name = "_dfStopBtn";
-            this._dfStopBtn.Size = new System.Drawing.Size(70, 26);
+            this._dfStopBtn.Size = new System.Drawing.Size(70, 30);
             this._dfStopBtn.TabIndex = 8;
             this._dfStopBtn.Text = "Stop";
             //
@@ -5212,7 +5212,7 @@ namespace Kingdoms.Bot.UI
             this._mkRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._mkRefreshBtn.Location = new System.Drawing.Point(492, 39);
             this._mkRefreshBtn.Name = "_mkRefreshBtn";
-            this._mkRefreshBtn.Size = new System.Drawing.Size(75, 26);
+            this._mkRefreshBtn.Size = new System.Drawing.Size(75, 30);
             this._mkRefreshBtn.TabIndex = 8;
             this._mkRefreshBtn.Text = "Refresh";
             this._mkRefreshBtn.UseVisualStyleBackColor = false;
@@ -5224,7 +5224,7 @@ namespace Kingdoms.Bot.UI
             this._mkRunNowBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._mkRunNowBtn.Location = new System.Drawing.Point(578, 39);
             this._mkRunNowBtn.Name = "_mkRunNowBtn";
-            this._mkRunNowBtn.Size = new System.Drawing.Size(80, 26);
+            this._mkRunNowBtn.Size = new System.Drawing.Size(80, 30);
             this._mkRunNowBtn.TabIndex = 9;
             this._mkRunNowBtn.Text = "Run Now";
             this._mkRunNowBtn.UseVisualStyleBackColor = false;
@@ -5300,7 +5300,7 @@ namespace Kingdoms.Bot.UI
             this._mkAddRouteBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._mkAddRouteBtn.Location = new System.Drawing.Point(8, 4);
             this._mkAddRouteBtn.Name = "_mkAddRouteBtn";
-            this._mkAddRouteBtn.Size = new System.Drawing.Size(90, 26);
+            this._mkAddRouteBtn.Size = new System.Drawing.Size(90, 30);
             this._mkAddRouteBtn.TabIndex = 0;
             this._mkAddRouteBtn.Text = "Add Route";
             this._mkAddRouteBtn.UseVisualStyleBackColor = false;
@@ -5312,7 +5312,7 @@ namespace Kingdoms.Bot.UI
             this._mkEditRouteBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._mkEditRouteBtn.Location = new System.Drawing.Point(106, 4);
             this._mkEditRouteBtn.Name = "_mkEditRouteBtn";
-            this._mkEditRouteBtn.Size = new System.Drawing.Size(75, 26);
+            this._mkEditRouteBtn.Size = new System.Drawing.Size(75, 30);
             this._mkEditRouteBtn.TabIndex = 1;
             this._mkEditRouteBtn.Text = "Edit";
             this._mkEditRouteBtn.UseVisualStyleBackColor = false;
@@ -5324,7 +5324,7 @@ namespace Kingdoms.Bot.UI
             this._mkDeleteRouteBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._mkDeleteRouteBtn.Location = new System.Drawing.Point(188, 4);
             this._mkDeleteRouteBtn.Name = "_mkDeleteRouteBtn";
-            this._mkDeleteRouteBtn.Size = new System.Drawing.Size(75, 26);
+            this._mkDeleteRouteBtn.Size = new System.Drawing.Size(75, 30);
             this._mkDeleteRouteBtn.TabIndex = 2;
             this._mkDeleteRouteBtn.Text = "Delete";
             this._mkDeleteRouteBtn.UseVisualStyleBackColor = false;
@@ -5394,7 +5394,7 @@ namespace Kingdoms.Bot.UI
             this._bqCopySettingsBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._bqCopySettingsBtn.Location = new System.Drawing.Point(521, 39);
             this._bqCopySettingsBtn.Name = "_bqCopySettingsBtn";
-            this._bqCopySettingsBtn.Size = new System.Drawing.Size(100, 26);
+            this._bqCopySettingsBtn.Size = new System.Drawing.Size(100, 30);
             this._bqCopySettingsBtn.TabIndex = 8;
             this._bqCopySettingsBtn.Text = "Copy Settings";
             this._bqCopySettingsBtn.UseVisualStyleBackColor = false;
@@ -5406,7 +5406,7 @@ namespace Kingdoms.Bot.UI
             this._bqRunNowBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._bqRunNowBtn.Location = new System.Drawing.Point(431, 39);
             this._bqRunNowBtn.Name = "_bqRunNowBtn";
-            this._bqRunNowBtn.Size = new System.Drawing.Size(80, 26);
+            this._bqRunNowBtn.Size = new System.Drawing.Size(80, 30);
             this._bqRunNowBtn.TabIndex = 7;
             this._bqRunNowBtn.Text = "Run Now";
             this._bqRunNowBtn.UseVisualStyleBackColor = false;
@@ -5418,7 +5418,7 @@ namespace Kingdoms.Bot.UI
             this._bqRefreshBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._bqRefreshBtn.Location = new System.Drawing.Point(346, 39);
             this._bqRefreshBtn.Name = "_bqRefreshBtn";
-            this._bqRefreshBtn.Size = new System.Drawing.Size(75, 26);
+            this._bqRefreshBtn.Size = new System.Drawing.Size(75, 30);
             this._bqRefreshBtn.TabIndex = 6;
             this._bqRefreshBtn.Text = "Refresh";
             this._bqRefreshBtn.UseVisualStyleBackColor = false;
