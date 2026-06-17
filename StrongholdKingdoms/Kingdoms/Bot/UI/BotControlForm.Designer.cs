@@ -1200,7 +1200,7 @@ namespace Kingdoms.Bot.UI
             // 
             this._rdColActionType.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._rdColActionType.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdColActionType.Location = new System.Drawing.Point(16, 2);
+            this._rdColActionType.Location = new System.Drawing.Point(16, 10);
             this._rdColActionType.Name = "_rdColActionType";
             this._rdColActionType.Size = new System.Drawing.Size(180, 20);
             this._rdColActionType.TabIndex = 0;
@@ -1210,7 +1210,7 @@ namespace Kingdoms.Bot.UI
             // 
             this._rdColMonitor.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._rdColMonitor.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdColMonitor.Location = new System.Drawing.Point(200, 2);
+            this._rdColMonitor.Location = new System.Drawing.Point(200, 10);
             this._rdColMonitor.Name = "_rdColMonitor";
             this._rdColMonitor.Size = new System.Drawing.Size(60, 20);
             this._rdColMonitor.TabIndex = 1;
@@ -1220,41 +1220,45 @@ namespace Kingdoms.Bot.UI
             // 
             this._rdColSystemNotify.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._rdColSystemNotify.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdColSystemNotify.Location = new System.Drawing.Point(300, 2);
+            this._rdColSystemNotify.AutoSize = true;
+            this._rdColSystemNotify.Location = new System.Drawing.Point(300, 10);
             this._rdColSystemNotify.Name = "_rdColSystemNotify";
             this._rdColSystemNotify.Size = new System.Drawing.Size(60, 30);
             this._rdColSystemNotify.TabIndex = 2;
-            this._rdColSystemNotify.Text = "System\r\nNotify";
+            this._rdColSystemNotify.Text = "System Notify";
             // 
             // _rdColDiscordNotify
             // 
             this._rdColDiscordNotify.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._rdColDiscordNotify.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdColDiscordNotify.Location = new System.Drawing.Point(400, 2);
+            this._rdColDiscordNotify.AutoSize = true;
+            this._rdColDiscordNotify.Location = new System.Drawing.Point(400, 10);
             this._rdColDiscordNotify.Name = "_rdColDiscordNotify";
             this._rdColDiscordNotify.Size = new System.Drawing.Size(60, 30);
             this._rdColDiscordNotify.TabIndex = 3;
-            this._rdColDiscordNotify.Text = "Discord\r\nNotify";
+            this._rdColDiscordNotify.Text = "Discord Notify";
             //
             // _rdColSound
             //
             this._rdColSound.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._rdColSound.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdColSound.Location = new System.Drawing.Point(500, 2);
+            this._rdColSound.AutoSize = true;
+            this._rdColSound.Location = new System.Drawing.Point(500, 10);
             this._rdColSound.Name = "_rdColSound";
             this._rdColSound.Size = new System.Drawing.Size(70, 30);
             this._rdColSound.TabIndex = 6;
-            this._rdColSound.Text = "Sound\r\nNotify";
+            this._rdColSound.Text = "Sound Notify";
             //
             // _rdColAutoInterdict
             //
             this._rdColAutoInterdict.Font = new System.Drawing.Font("Segoe UI", 7F, System.Drawing.FontStyle.Bold);
             this._rdColAutoInterdict.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._rdColAutoInterdict.Location = new System.Drawing.Point(710, 2);
+            this._rdColAutoInterdict.AutoSize = true;
+            this._rdColAutoInterdict.Location = new System.Drawing.Point(710, 10);
             this._rdColAutoInterdict.Name = "_rdColAutoInterdict";
             this._rdColAutoInterdict.Size = new System.Drawing.Size(60, 30);
             this._rdColAutoInterdict.TabIndex = 4;
-            this._rdColAutoInterdict.Text = "Auto\r\nInterdict";
+            this._rdColAutoInterdict.Text = "Auto Interdict";
             // 
             // _rdSeparator
             // 
@@ -1297,7 +1301,7 @@ namespace Kingdoms.Bot.UI
             this._rdSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._rdSettingsPanel.Name = "_rdSettingsPanel";
             this._rdSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._rdSettingsPanel.Size = new System.Drawing.Size(1142, 185);
+            this._rdSettingsPanel.Size = new System.Drawing.Size(1142, 220);
             this._rdSettingsPanel.TabIndex = 0;
             // 
             // _rdMinArmySizeInput
@@ -1960,7 +1964,7 @@ namespace Kingdoms.Bot.UI
             this._rcSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._rcSettingsPanel.Name = "_rcSettingsPanel";
             this._rcSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._rcSettingsPanel.Size = new System.Drawing.Size(1142, 100);
+            this._rcSettingsPanel.Size = new System.Drawing.Size(1142, 116);
             this._rcSettingsPanel.TabIndex = 0;
             // 
             // _rcDisbandBtn
@@ -1986,7 +1990,7 @@ namespace Kingdoms.Bot.UI
             this._rcDisbandCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._rcDisbandCombo.Location = new System.Drawing.Point(498, 70);
             this._rcDisbandCombo.Name = "_rcDisbandCombo";
-            this._rcDisbandCombo.Size = new System.Drawing.Size(160, 21);
+            this._rcDisbandCombo.Size = new System.Drawing.Size(200, 21);
             this._rcDisbandCombo.TabIndex = 7;
             // 
             // _rcRefreshBtn
@@ -2182,7 +2186,7 @@ namespace Kingdoms.Bot.UI
             this._crSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._crSettingsPanel.Name = "_crSettingsPanel";
             this._crSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._crSettingsPanel.Size = new System.Drawing.Size(1142, 150);
+            this._crSettingsPanel.Size = new System.Drawing.Size(1142, 162);
             this._crSettingsPanel.TabIndex = 0;
             // 
             // _crCopySettingsBtn
@@ -2618,7 +2622,7 @@ namespace Kingdoms.Bot.UI
             this._trSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._trSettingsPanel.Name = "_trSettingsPanel";
             this._trSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._trSettingsPanel.Size = new System.Drawing.Size(1142, 100);
+            this._trSettingsPanel.Size = new System.Drawing.Size(1142, 160);
             this._trSettingsPanel.TabIndex = 0;
             //
             // _trAutoSaveRouteProgressCheck
@@ -2664,7 +2668,7 @@ namespace Kingdoms.Bot.UI
             this._trPriorityCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._trPriorityCombo.Location = new System.Drawing.Point(545, 68);
             this._trPriorityCombo.Name = "_trPriorityCombo";
-            this._trPriorityCombo.Size = new System.Drawing.Size(220, 22);
+            this._trPriorityCombo.Size = new System.Drawing.Size(300, 22);
             this._trPriorityCombo.TabIndex = 16;
             this._trPriorityCombo.Items.AddRange(new object[] {
                 "Market Priority (Sell then Buy)",

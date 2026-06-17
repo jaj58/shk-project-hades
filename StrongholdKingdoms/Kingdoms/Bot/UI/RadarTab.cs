@@ -36,7 +36,7 @@ namespace Kingdoms.Bot.UI
             nameLabel.Location = new Point(16, 5);
 
             _monitorCheck = MakeCheck(210, settings.Monitor);
-            _discordNotifyCheck = MakeCheck(280, settings.DiscordNotify);
+            _discordNotifyCheck = MakeCheck(310, settings.DiscordNotify);
 
             this.Controls.AddRange(new Control[] { nameLabel, _monitorCheck, _discordNotifyCheck });
             this.ResumeLayout(false);

@@ -81,7 +81,7 @@ namespace Kingdoms.Bot.UI
                 priorityInput.BackColor = InputBg;
                 priorityInput.ForeColor = Color.FromArgb(160, 165, 180);
                 priorityInput.BorderStyle = BorderStyle.FixedSingle;
-                priorityInput.Location = new Point(x + 58, 2);
+                priorityInput.Location = new Point(x + 66, 2);
                 priorityInput.Size = new Size(28, 20);
                 priorityInput.Maximum = 20;
                 priorityInput.Minimum = 1;

@@ -754,7 +754,7 @@ namespace Kingdoms.Bot.UI
             settingsPanel.Dock = DockStyle.Top;
             settingsPanel.BackColor = bgMed;
             settingsPanel.Padding = new Padding(16, 10, 16, 8);
-            settingsPanel.Height = 80;
+            settingsPanel.Height = 92;
 
             _grpEnabledCheck = new CheckBox();
             _grpEnabledCheck.Text = "Enable Group Radar";
@@ -767,12 +767,12 @@ namespace Kingdoms.Bot.UI
             webhookLabel.Text = "Group Webhook URL:";
             webhookLabel.Font = fSmall;
             webhookLabel.ForeColor = textSec;
-            webhookLabel.Location = new Point(16, 44);
+            webhookLabel.Location = new Point(16, 50);
             webhookLabel.AutoSize = true;
 
             _grpWebhookInput = new TextBox();
-            _grpWebhookInput.Location = new Point(150, 41);
-            _grpWebhookInput.Size = new Size(460, 23);
+            _grpWebhookInput.Location = new Point(170, 47);
+            _grpWebhookInput.Size = new Size(420, 23);
             _grpWebhookInput.BackColor = bgLight;
             _grpWebhookInput.ForeColor = textPri;
             _grpWebhookInput.BorderStyle = BorderStyle.FixedSingle;
@@ -780,8 +780,8 @@ namespace Kingdoms.Bot.UI
 
             _grpTestWebhookBtn = new Button();
             _grpTestWebhookBtn.Text = "Test";
-            _grpTestWebhookBtn.Location = new Point(618, 40);
-            _grpTestWebhookBtn.Size = new Size(60, 24);
+            _grpTestWebhookBtn.Location = new Point(600, 46);
+            _grpTestWebhookBtn.Size = new Size(70, 28);
             _grpTestWebhookBtn.BackColor = Color.FromArgb(60, 63, 80);
             _grpTestWebhookBtn.ForeColor = textPri;
             _grpTestWebhookBtn.FlatStyle = FlatStyle.Flat;
@@ -791,11 +791,11 @@ namespace Kingdoms.Bot.UI
             mentionLabel.Text = "Default Mention:";
             mentionLabel.Font = fSmall;
             mentionLabel.ForeColor = textSec;
-            mentionLabel.Location = new Point(690, 44);
+            mentionLabel.Location = new Point(690, 50);
             mentionLabel.AutoSize = true;
 
             _grpMentionTagInput = new TextBox();
-            _grpMentionTagInput.Location = new Point(800, 41);
+            _grpMentionTagInput.Location = new Point(810, 47);
             _grpMentionTagInput.Size = new Size(180, 23);
             _grpMentionTagInput.BackColor = bgLight;
             _grpMentionTagInput.ForeColor = textPri;
@@ -816,7 +816,7 @@ namespace Kingdoms.Bot.UI
             // ---- Left member panel ----
             Panel memberPanel = new Panel();
             memberPanel.Dock = DockStyle.Left;
-            memberPanel.Width = 290;
+            memberPanel.Width = 300;
             memberPanel.BackColor = Color.FromArgb(30, 32, 42);
             memberPanel.Padding = new Padding(10, 8, 10, 8);
 
@@ -828,8 +828,8 @@ namespace Kingdoms.Bot.UI
             addLabel.AutoSize = true;
 
             _grpPlayerNameInput = new TextBox();
-            _grpPlayerNameInput.Location = new Point(10, 28);
-            _grpPlayerNameInput.Size = new Size(160, 23);
+            _grpPlayerNameInput.Location = new Point(10, 30);
+            _grpPlayerNameInput.Size = new Size(190, 23);
             _grpPlayerNameInput.BackColor = bgLight;
             _grpPlayerNameInput.ForeColor = textPri;
             _grpPlayerNameInput.BorderStyle = BorderStyle.FixedSingle;
@@ -837,8 +837,8 @@ namespace Kingdoms.Bot.UI
 
             _grpAddMemberBtn = new Button();
             _grpAddMemberBtn.Text = "Add";
-            _grpAddMemberBtn.Location = new Point(175, 27);
-            _grpAddMemberBtn.Size = new Size(50, 25);
+            _grpAddMemberBtn.Location = new Point(10, 60);
+            _grpAddMemberBtn.Size = new Size(70, 28);
             _grpAddMemberBtn.BackColor = Color.FromArgb(60, 63, 80);
             _grpAddMemberBtn.ForeColor = textPri;
             _grpAddMemberBtn.FlatStyle = FlatStyle.Flat;
@@ -846,23 +846,23 @@ namespace Kingdoms.Bot.UI
 
             _grpRefreshAllBtn = new Button();
             _grpRefreshAllBtn.Text = "Refresh All";
-            _grpRefreshAllBtn.Location = new Point(230, 27);
-            _grpRefreshAllBtn.Size = new Size(50, 25);
+            _grpRefreshAllBtn.Location = new Point(88, 60);
+            _grpRefreshAllBtn.Size = new Size(100, 28);
             _grpRefreshAllBtn.BackColor = Color.FromArgb(60, 63, 80);
             _grpRefreshAllBtn.ForeColor = textPri;
             _grpRefreshAllBtn.FlatStyle = FlatStyle.Flat;
-            _grpRefreshAllBtn.Font = new Font("Segoe UI", 7.5f);
+            _grpRefreshAllBtn.Font = fSmall;
 
             Label membersLabel = new Label();
             membersLabel.Text = "Members:";
             membersLabel.Font = fSmall;
             membersLabel.ForeColor = textSec;
-            membersLabel.Location = new Point(10, 60);
+            membersLabel.Location = new Point(10, 98);
             membersLabel.AutoSize = true;
 
             _grpMemberList = new ListBox();
-            _grpMemberList.Location = new Point(10, 78);
-            _grpMemberList.Size = new Size(270, 160);
+            _grpMemberList.Location = new Point(10, 118);
+            _grpMemberList.Size = new Size(278, 130);
             _grpMemberList.BackColor = bgLight;
             _grpMemberList.ForeColor = textPri;
             _grpMemberList.BorderStyle = BorderStyle.FixedSingle;
@@ -870,8 +870,8 @@ namespace Kingdoms.Bot.UI
 
             _grpRemoveMemberBtn = new Button();
             _grpRemoveMemberBtn.Text = "Remove Selected";
-            _grpRemoveMemberBtn.Location = new Point(10, 245);
-            _grpRemoveMemberBtn.Size = new Size(130, 25);
+            _grpRemoveMemberBtn.Location = new Point(10, 256);
+            _grpRemoveMemberBtn.Size = new Size(150, 28);
             _grpRemoveMemberBtn.BackColor = Color.FromArgb(80, 40, 40);
             _grpRemoveMemberBtn.ForeColor = textPri;
             _grpRemoveMemberBtn.FlatStyle = FlatStyle.Flat;
@@ -882,19 +882,19 @@ namespace Kingdoms.Bot.UI
             _grpMemberNameLabel.Text = "No member selected";
             _grpMemberNameLabel.Font = fBold;
             _grpMemberNameLabel.ForeColor = textPri;
-            _grpMemberNameLabel.Location = new Point(10, 280);
-            _grpMemberNameLabel.Size = new Size(270, 20);
+            _grpMemberNameLabel.Location = new Point(10, 294);
+            _grpMemberNameLabel.Size = new Size(278, 20);
 
             _grpMemberTagLabel = new Label();
             _grpMemberTagLabel.Text = "Discord Tag:";
             _grpMemberTagLabel.Font = fSmall;
             _grpMemberTagLabel.ForeColor = textSec;
-            _grpMemberTagLabel.Location = new Point(10, 308);
+            _grpMemberTagLabel.Location = new Point(10, 322);
             _grpMemberTagLabel.AutoSize = true;
 
             _grpMemberTagInput = new TextBox();
-            _grpMemberTagInput.Location = new Point(10, 325);
-            _grpMemberTagInput.Size = new Size(200, 23);
+            _grpMemberTagInput.Location = new Point(10, 342);
+            _grpMemberTagInput.Size = new Size(210, 23);
             _grpMemberTagInput.BackColor = bgLight;
             _grpMemberTagInput.ForeColor = textPri;
             _grpMemberTagInput.BorderStyle = BorderStyle.FixedSingle;
@@ -904,13 +904,13 @@ namespace Kingdoms.Bot.UI
             _grpMemberVillagesLabel.Text = "Villages: none";
             _grpMemberVillagesLabel.Font = fSmall;
             _grpMemberVillagesLabel.ForeColor = textSec;
-            _grpMemberVillagesLabel.Location = new Point(10, 358);
-            _grpMemberVillagesLabel.Size = new Size(270, 35);
+            _grpMemberVillagesLabel.Location = new Point(10, 374);
+            _grpMemberVillagesLabel.Size = new Size(278, 35);
 
             _grpRefreshVillagesBtn = new Button();
             _grpRefreshVillagesBtn.Text = "Refresh Villages";
-            _grpRefreshVillagesBtn.Location = new Point(10, 398);
-            _grpRefreshVillagesBtn.Size = new Size(120, 25);
+            _grpRefreshVillagesBtn.Location = new Point(10, 414);
+            _grpRefreshVillagesBtn.Size = new Size(140, 28);
             _grpRefreshVillagesBtn.BackColor = Color.FromArgb(60, 63, 80);
             _grpRefreshVillagesBtn.ForeColor = textPri;
             _grpRefreshVillagesBtn.FlatStyle = FlatStyle.Flat;
@@ -933,22 +933,22 @@ namespace Kingdoms.Bot.UI
             colAction.Text = "Action Type";
             colAction.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
             colAction.ForeColor = textSec;
-            colAction.Location = new Point(16, 2);
+            colAction.Location = new Point(16, 6);
             colAction.Size = new Size(180, 20);
 
             Label colMonitor = new Label();
             colMonitor.Text = "Monitor";
             colMonitor.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
             colMonitor.ForeColor = textSec;
-            colMonitor.Location = new Point(200, 2);
+            colMonitor.Location = new Point(200, 6);
             colMonitor.Size = new Size(60, 20);
 
             Label colDiscord = new Label();
-            colDiscord.Text = "Discord\r\nNotify";
+            colDiscord.Text = "Discord Notify";
+            colDiscord.AutoSize = true;
             colDiscord.Font = new Font("Segoe UI", 7f, FontStyle.Bold);
             colDiscord.ForeColor = textSec;
-            colDiscord.Location = new Point(270, 2);
-            colDiscord.Size = new Size(60, 20);
+            colDiscord.Location = new Point(300, 6);
 
             _grpColHeader.Controls.AddRange(new Control[] { colAction, colMonitor, colDiscord });
 
@@ -1337,7 +1337,7 @@ namespace Kingdoms.Bot.UI
             btn.FlatStyle = FlatStyle.Flat;
             btn.FlatAppearance.BorderSize = 0;
             btn.Font = new Font("Segoe UI", 7.5f, FontStyle.Bold);
-            btn.Size = new Size(90, 22);
+            btn.Size = new Size(120, 24);
             btn.Location = new Point(8, 3);
             btn.Cursor = Cursors.Hand;
             return btn;
@@ -1382,7 +1382,7 @@ namespace Kingdoms.Bot.UI
                 priHdr.Font = new Font("Segoe UI", 6.5f, FontStyle.Bold);
                 priHdr.ForeColor = Color.FromArgb(120, 125, 140);
                 priHdr.AutoSize = true;
-                priHdr.Location = new Point(x + 56, 5);
+                priHdr.Location = new Point(x + 66, 5);
                 headerPanel.Controls.Add(priHdr);
             }
         }
@@ -2430,9 +2430,9 @@ namespace Kingdoms.Bot.UI
             topBar.Controls.Add(_trMarketDistanceLabel);
             _trMarketDistanceLabel.Location = new Point(130, 9);
             topBar.Controls.Add(_trMarketDistanceInput);
-            _trMarketDistanceInput.Location = new Point(230, 6);
+            _trMarketDistanceInput.Location = new Point(255, 6);
             topBar.Controls.Add(_trAddMarketsBtn);
-            _trAddMarketsBtn.Location = new Point(300, 5);
+            _trAddMarketsBtn.Location = new Point(335, 5);
 
             // "Should this village trade?" checkbox + market count
             _trVillageTradingCheck = new CheckBox();
@@ -2441,7 +2441,7 @@ namespace Kingdoms.Bot.UI
             _trVillageTradingCheck.Font = new Font("Segoe UI", 8.5f);
             _trVillageTradingCheck.ForeColor = Color.FromArgb(230, 230, 240);
             _trVillageTradingCheck.AutoSize = true;
-            _trVillageTradingCheck.Location = new Point(430, 9);
+            _trVillageTradingCheck.Location = new Point(465, 9);
             topBar.Controls.Add(_trVillageTradingCheck);
 
             _trMarketCountLabel = new Label();
@@ -7064,51 +7064,58 @@ namespace Kingdoms.Bot.UI
         // =====================================================================
 
         /// <summary>Positions controls left-to-right from startX using their actual
-        /// widths. Each control keeps its existing Y; only X is recalculated.</summary>
-        private void LayoutRow(int startX, int gap, params Control[] cs)
+        /// widths, vertically centered on centerY. Robust to any DPI / font width.</summary>
+        private void LayoutRow(int startX, int centerY, int gap, params Control[] cs)
         {
             int x = startX;
             foreach (Control c in cs)
             {
                 if (c == null) continue;
                 c.Left = x;
+                c.Top = centerY - c.Height / 2;
                 x = c.Right + gap;
             }
         }
 
         /// <summary>Re-flows the static settings-panel rows after the form is shown
-        /// (i.e. after DPI auto-scaling), so dense label+input rows never overlap.</summary>
+        /// (i.e. after DPI auto-scaling), so dense label+input rows never overlap and
+        /// rows have consistent vertical spacing at any Windows scaling.</summary>
         private void RelayoutSettingsRows()
         {
             const int X = 16;   // left padding
             const int G = 14;   // gap between controls
 
             // Village Sync
-            LayoutRow(X, G, _vsEnabledCheck, _vsStatusLabel, _vsLastRunLabel);
-            LayoutRow(X, G, _vsIntervalLabel, _vsIntervalInput, _vsDelayLabel, _vsDelayInput);
+            LayoutRow(X, 24, G, _vsEnabledCheck, _vsStatusLabel, _vsLastRunLabel);
+            LayoutRow(X, 60, G, _vsIntervalLabel, _vsIntervalInput, _vsDelayLabel, _vsDelayInput);
 
             // Radar
-            LayoutRow(X, G, _rdEnabledCheck, _rdStatusLabel, _rdScanIntervalLabel, _rdScanIntervalInput, _rdForceRefreshCheck);
-            LayoutRow(X, G, _rdWebhookLabel, _rdWebhookInput, _rdTestDiscordBtn);
-            LayoutRow(X, G, _rdMentionTagLabel, _rdMentionTagInput, _rdTestSoundBtn, _rdStopSoundBtn);
-            LayoutRow(X, G, _rdInterdictLabel, _rdInterdictMonkCountInput, _rdAutoRecruitMonksCheck, _rdMinArmySizeLabel, _rdMinArmySizeInput);
-            LayoutRow(X, G, _rdMinAttacksLabel, _rdMinAttacksInput, _rdMinAttacksWindowLabel, _rdMinAttacksWindowInput, _rdMinAttacksWindowUnitLabel, _rdMaxLandTimeLabel, _rdMaxLandTimeInput);
+            LayoutRow(X, 24, G, _rdEnabledCheck, _rdStatusLabel, _rdScanIntervalLabel, _rdScanIntervalInput, _rdForceRefreshCheck);
+            LayoutRow(X, 60, G, _rdWebhookLabel, _rdWebhookInput, _rdTestDiscordBtn);
+            LayoutRow(X, 96, G, _rdMentionTagLabel, _rdMentionTagInput, _rdTestSoundBtn, _rdStopSoundBtn);
+            LayoutRow(X, 132, G, _rdInterdictLabel, _rdInterdictMonkCountInput, _rdAutoRecruitMonksCheck, _rdMinArmySizeLabel, _rdMinArmySizeInput);
+            LayoutRow(X, 168, G, _rdMinAttacksLabel, _rdMinAttacksInput, _rdMinAttacksWindowLabel, _rdMinAttacksWindowInput, _rdMinAttacksWindowUnitLabel, _rdMaxLandTimeLabel, _rdMaxLandTimeInput);
+            LayoutRow(X, 198, G, _rdHintLabel);
 
             // Recruiting
-            LayoutRow(X, G, _rcEnabledCheck, _rcStatusLabel);
-            LayoutRow(X, G, _rcIntervalLabel, _rcIntervalInput, _rcDelayLabel, _rcDelayInput);
+            LayoutRow(X, 24, G, _rcEnabledCheck, _rcStatusLabel);
+            LayoutRow(X, 56, G, _rcIntervalLabel, _rcIntervalInput, _rcDelayLabel, _rcDelayInput);
+            LayoutRow(X, 92, G, _rcRefreshBtn, _rcDisbandCombo, _rcDisbandBtn);
 
             // Castle Repair
-            LayoutRow(X, G, _crEnabledCheck, _crStatusLabel);
-            LayoutRow(X, G, _crIntervalLabel, _crIntervalInput, _crDelayLabel, _crDelayInput);
+            LayoutRow(X, 24, G, _crEnabledCheck, _crStatusLabel);
+            LayoutRow(X, 56, G, _crIntervalLabel, _crIntervalInput, _crDelayLabel, _crDelayInput);
+            LayoutRow(X, 90, G, _crRepairOnAttackCheck);
+            LayoutRow(X, 124, G, _crRefreshBtn, _crRepairAllBtn, _crCopySettingsBtn, _crMemoriseInfraBtn, _crMemoriseTroopsBtn);
 
             // Trade
-            LayoutRow(X, G, _trEnabledCheck, _trStatusLabel);
-            LayoutRow(X, G, _trIntervalLabel, _trIntervalInput, _trDelayLabel, _trDelayInput,
+            LayoutRow(X, 24, G, _trEnabledCheck, _trStatusLabel);
+            LayoutRow(X, 60, G, _trIntervalLabel, _trIntervalInput, _trDelayLabel, _trDelayInput,
                 _trMerchantsPerTradeLabel, _trMerchantsPerTradeInput, _trTradeLimitLabel, _trTradeLimitInput,
                 _trExchangeLimitLabel, _trExchangeLimitInput);
-            LayoutRow(X, G, _trAutoHireCheck, _trAutoHireLimitLabel, _trAutoHireLimitInput,
-                _trIgnoreTransactionsCheck, _trPriorityLabel, _trPriorityCombo,
+            LayoutRow(X, 96, G, _trAutoHireCheck, _trAutoHireLimitLabel, _trAutoHireLimitInput,
+                _trIgnoreTransactionsCheck);
+            LayoutRow(X, 132, G, _trPriorityLabel, _trPriorityCombo,
                 _trDisableOnCardExpiryCheck, _trAutoSaveRouteProgressCheck);
         }
 
