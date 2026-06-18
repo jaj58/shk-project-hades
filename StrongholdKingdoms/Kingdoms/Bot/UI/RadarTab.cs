@@ -36,7 +36,7 @@ namespace Kingdoms.Bot.UI
             nameLabel.Location = new Point(16, 5);
 
             _monitorCheck = MakeCheck(210, settings.Monitor);
-            _discordNotifyCheck = MakeCheck(280, settings.DiscordNotify);
+            _discordNotifyCheck = MakeCheck(310, settings.DiscordNotify);
 
             this.Controls.AddRange(new Control[] { nameLabel, _monitorCheck, _discordNotifyCheck });
             this.ResumeLayout(false);
@@ -112,15 +112,15 @@ namespace Kingdoms.Bot.UI
             nameLabel.Location = new Point(16, 5);
 
             _monitorCheck = MakeCheck(210, settings.Monitor);
-            _systemNotifyCheck = MakeCheck(280, settings.SystemNotify);
-            _discordNotifyCheck = MakeCheck(350, settings.DiscordNotify);
-            _soundNotifyCheck = MakeCheck(420, settings.SoundNotify);
+            _systemNotifyCheck = MakeCheck(310, settings.SystemNotify);
+            _discordNotifyCheck = MakeCheck(410, settings.DiscordNotify);
+            _soundNotifyCheck = MakeCheck(510, settings.SoundNotify);
 
             _soundBrowseBtn = new Button();
             _soundBrowseBtn.Text = "…";
             _soundBrowseBtn.Font = LabelFont;
             _soundBrowseBtn.Size = new Size(26, 20);
-            _soundBrowseBtn.Location = new Point(445, 3);
+            _soundBrowseBtn.Location = new Point(540, 3);
             _soundBrowseBtn.FlatStyle = FlatStyle.Flat;
             _soundBrowseBtn.FlatAppearance.BorderColor = Color.FromArgb(70, 75, 95);
             _soundBrowseBtn.BackColor = Color.FromArgb(50, 52, 64);
@@ -128,12 +128,12 @@ namespace Kingdoms.Bot.UI
             _soundFileLabel = new Label();
             _soundFileLabel.Font = new Font("Segoe UI", 7.5f);
             _soundFileLabel.ForeColor = SoundUnsetColor;
-            _soundFileLabel.Location = new Point(477, 7);
+            _soundFileLabel.Location = new Point(572, 7);
             _soundFileLabel.Size = new Size(125, 15);
             _soundFileLabel.AutoEllipsis = true;
             RefreshSoundButton();
 
-            _autoInterdictCheck = MakeCheck(610, settings.AutoInterdict);
+            _autoInterdictCheck = MakeCheck(710, settings.AutoInterdict);
 
             this.Controls.AddRange(new Control[] {
                 nameLabel, _monitorCheck, _systemNotifyCheck,

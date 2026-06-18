@@ -240,14 +240,14 @@ namespace Kingdoms.Bot.UI
             _keepMinLabel = MakeLabel(route.KeepMinimum.ToString(), 510, 50, FontStyle.Regular);
             this.Controls.Add(_keepMinLabel);
 
-            _maxMerchLabel = MakeLabel(route.MaxMerchantsPerTransaction.ToString(), 566, 40, FontStyle.Regular);
+            _maxMerchLabel = MakeLabel(route.MaxMerchantsPerTransaction.ToString(), 600, 40, FontStyle.Regular);
             this.Controls.Add(_maxMerchLabel);
 
-            _sendMaxLabel = MakeLabel(route.SendMaximum.ToString(), 612, 55, FontStyle.Regular);
+            _sendMaxLabel = MakeLabel(route.SendMaximum.ToString(), 680, 55, FontStyle.Regular);
             this.Controls.Add(_sendMaxLabel);
 
             string dist = route.IsDistanceLimited ? route.DistanceLimit.ToString() : "Off";
-            _distLabel = MakeLabel(dist, 674, 50, FontStyle.Regular);
+            _distLabel = MakeLabel(dist, 770, 50, FontStyle.Regular);
             this.Controls.Add(_distLabel);
         }
 
@@ -1113,7 +1113,7 @@ namespace Kingdoms.Bot.UI
 
             // Resources section
             int resY = 190;
-            Label resLbl = MakeLabel("Resources (select amount to send for each — 0 = skip):", 14, resY);
+            Label resLbl = MakeLabel("Resources (select amount to send for each ï¿½ 0 = skip):", 14, resY);
             this.Controls.Add(resLbl);
 
             // Resource header
