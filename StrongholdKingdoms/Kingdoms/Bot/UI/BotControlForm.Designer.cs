@@ -3845,7 +3845,7 @@ namespace Kingdoms.Bot.UI
             this._abmConnPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._abmConnPanel.Location = new System.Drawing.Point(0, 0);
             this._abmConnPanel.Name = "_abmConnPanel";
-            this._abmConnPanel.Size = new System.Drawing.Size(1142, 30);
+            this._abmConnPanel.Size = new System.Drawing.Size(1142, 36);
             this._abmConnPanel.TabIndex = 1;
             //
             // _abmApiUrlBox
@@ -3960,7 +3960,7 @@ namespace Kingdoms.Bot.UI
             this._abmCtrlPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._abmCtrlPanel.Location = new System.Drawing.Point(0, 0);
             this._abmCtrlPanel.Name = "_abmCtrlPanel";
-            this._abmCtrlPanel.Size = new System.Drawing.Size(1134, 54);
+            this._abmCtrlPanel.Size = new System.Drawing.Size(1134, 106);
             this._abmCtrlPanel.TabIndex = 2;
             //
             // _abmTargetVidBox
@@ -5117,7 +5117,7 @@ namespace Kingdoms.Bot.UI
             this._mkSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._mkSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._mkSettingsPanel.Name = "_mkSettingsPanel";
-            this._mkSettingsPanel.Size = new System.Drawing.Size(1142, 68);
+            this._mkSettingsPanel.Size = new System.Drawing.Size(1142, 108);
             this._mkSettingsPanel.TabIndex = 0;
             //
             // _mkEnabledCheck
@@ -5535,7 +5535,7 @@ namespace Kingdoms.Bot.UI
             this._scSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._scSettingsPanel.Name = "_scSettingsPanel";
             this._scSettingsPanel.Padding = new System.Windows.Forms.Padding(8, 6, 8, 6);
-            this._scSettingsPanel.Size = new System.Drawing.Size(1142, 116);
+            this._scSettingsPanel.Size = new System.Drawing.Size(1142, 172);
             this._scSettingsPanel.TabIndex = 0;
             //
             // _scEnabledCheck
@@ -6352,7 +6352,7 @@ namespace Kingdoms.Bot.UI
             this._autoProdColGood.AutoSize = true;
             this._autoProdColGood.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             this._autoProdColGood.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._autoProdColGood.Location = new System.Drawing.Point(95, 4);
+            this._autoProdColGood.Location = new System.Drawing.Point(28, 4);
             this._autoProdColGood.Name = "_autoProdColGood";
             this._autoProdColGood.Size = new System.Drawing.Size(31, 13);
             this._autoProdColGood.TabIndex = 0;
@@ -6363,7 +6363,7 @@ namespace Kingdoms.Bot.UI
             this._autoProdColTier.AutoSize = true;
             this._autoProdColTier.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             this._autoProdColTier.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._autoProdColTier.Location = new System.Drawing.Point(215, 4);
+            this._autoProdColTier.Location = new System.Drawing.Point(122, 4);
             this._autoProdColTier.Name = "_autoProdColTier";
             this._autoProdColTier.Size = new System.Drawing.Size(24, 13);
             this._autoProdColTier.TabIndex = 1;
@@ -6374,7 +6374,7 @@ namespace Kingdoms.Bot.UI
             this._autoProdColTarget.AutoSize = true;
             this._autoProdColTarget.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             this._autoProdColTarget.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._autoProdColTarget.Location = new System.Drawing.Point(310, 4);
+            this._autoProdColTarget.Location = new System.Drawing.Point(220, 4);
             this._autoProdColTarget.Name = "_autoProdColTarget";
             this._autoProdColTarget.Size = new System.Drawing.Size(38, 13);
             this._autoProdColTarget.TabIndex = 2;
@@ -6385,7 +6385,7 @@ namespace Kingdoms.Bot.UI
             this._autoProdColDelay.AutoSize = true;
             this._autoProdColDelay.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             this._autoProdColDelay.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._autoProdColDelay.Location = new System.Drawing.Point(430, 4);
+            this._autoProdColDelay.Location = new System.Drawing.Point(340, 4);
             this._autoProdColDelay.Name = "_autoProdColDelay";
             this._autoProdColDelay.Size = new System.Drawing.Size(56, 13);
             this._autoProdColDelay.TabIndex = 3;
@@ -6396,7 +6396,7 @@ namespace Kingdoms.Bot.UI
             this._autoProdColProgress.AutoSize = true;
             this._autoProdColProgress.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             this._autoProdColProgress.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._autoProdColProgress.Location = new System.Drawing.Point(540, 4);
+            this._autoProdColProgress.Location = new System.Drawing.Point(528, 4);
             this._autoProdColProgress.Name = "_autoProdColProgress";
             this._autoProdColProgress.Size = new System.Drawing.Size(49, 13);
             this._autoProdColProgress.TabIndex = 4;
@@ -6535,7 +6535,7 @@ namespace Kingdoms.Bot.UI
             this._autoModuleColCards.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._autoModuleColCards.Location = new System.Drawing.Point(510, 4);
             this._autoModuleColCards.Name = "_autoModuleColCards";
-            this._autoModuleColCards.Size = new System.Drawing.Size(168, 13);
+            this._autoModuleColCards.AutoSize = true;
             this._autoModuleColCards.TabIndex = 1;
             this._autoModuleColCards.Text = "Cards to play (check all you want)";
             //
@@ -6546,7 +6546,7 @@ namespace Kingdoms.Bot.UI
             this._autoModuleColReplay.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._autoModuleColReplay.Location = new System.Drawing.Point(810, 4);
             this._autoModuleColReplay.Name = "_autoModuleColReplay";
-            this._autoModuleColReplay.Size = new System.Drawing.Size(44, 13);
+            this._autoModuleColReplay.AutoSize = true;
             this._autoModuleColReplay.TabIndex = 2;
             this._autoModuleColReplay.Text = "Re-play";
             //
@@ -6557,7 +6557,7 @@ namespace Kingdoms.Bot.UI
             this._autoModuleColAutoOff.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
             this._autoModuleColAutoOff.Location = new System.Drawing.Point(900, 4);
             this._autoModuleColAutoOff.Name = "_autoModuleColAutoOff";
-            this._autoModuleColAutoOff.Size = new System.Drawing.Size(46, 13);
+            this._autoModuleColAutoOff.AutoSize = true;
             this._autoModuleColAutoOff.TabIndex = 3;
             this._autoModuleColAutoOff.Text = "Auto-off";
             //

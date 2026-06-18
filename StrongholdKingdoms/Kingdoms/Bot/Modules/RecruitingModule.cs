@@ -352,7 +352,13 @@ namespace Kingdoms.Bot.Modules
                                         village.LocallyMade_Pikemen + village.LocallyMade_Swordsmen +
                                         village.LocallyMade_Catapults + village.LocallyMade_Captains;
 
-            int sparePeasants  = Math.Max(GetSparePeasants(village) - locallyMadeArmyTroops, 0);
+            // Spare workers feed EVERY unit type — combat troops AND Monks/Traders/Scouts each
+            // consume one worker per unit (the game's UnitsPanel2 gates all of them on
+            // m_spareWorkers). Subtract every locally-queued unit so the shared pool isn't
+            // double-spent across the per-visit revisits.
+            int locallyMadeSpecials = village.LocallyMade_Scouts + village.LocallyMadeMonks +
+                                      village.LocallyMade_Traders;
+            int sparePeasants  = Math.Max(GetSparePeasants(village) - locallyMadeArmyTroops - locallyMadeSpecials, 0);
             int spareUnitSpace = GetSpareUnitSpace(village);
             int maxArmySize    = GetCommandResearchArmyLimit();
             int totalTroops    = village.calcTotalTroops() + locallyMadeArmyTroops;
@@ -363,8 +369,11 @@ namespace Kingdoms.Bot.Modules
                      ", unitSpace=" + spareUnitSpace +
                      ", troops=" + totalTroops + "/" + maxArmySize);
 
-            // Only bail out on unit space — non-army types (Monks/Traders/Scouts) can still
-            // be recruited even when peasants are 0 or the army is full.
+            // Unit space is shared by every unit type, so if there's none free nothing can be
+            // recruited — bail the whole village. We deliberately do NOT bail when spare workers
+            // are 0 or the combat army is full: a maxed combat army doesn't block Monks/Traders/
+            // Scouts (they have their own per-type caps, not the command-research army limit), and
+            // each per-type branch below independently clamps to 0 when workers/gold/caps run out.
             if (spareUnitSpace <= 0)
             {
                 LogDebug("Village " + villageId + " has no spare unit space, skipping.");
@@ -408,8 +417,11 @@ namespace Kingdoms.Bot.Modules
                 int needed = entry.TargetCount - current;
                 if (needed <= 0) continue;
 
-                // Monks/Traders/Scouts are people/special types: no research gate, no gold
-                // cost, no spare-worker consumption, don't count toward army size limit.
+                // Monks/Traders/Scouts are special types with their OWN rules: a research
+                // prerequisite (Ordination / Merchant Guilds / Scouts), a gold cost (monk cost
+                // scales with monk count; traders/scouts flat), one spare worker per unit, and
+                // a per-type count cap (NOT the command-research army limit — calcTotalTroops
+                // is combat-only). They do still occupy village unit space by their UnitSize.
                 bool isArmyUnit = (entry.UnitKey != "Monks" &&
                                    entry.UnitKey != "Traders" &&
                                    entry.UnitKey != "Scouts");
@@ -505,45 +517,64 @@ namespace Kingdoms.Bot.Modules
                 }
                 else
                 {
-                    // Non-army types: only constrained by unit space
+                    // Special types (Monks/Traders/Scouts): research gate, gold, one worker per
+                    // unit, per-type count cap, and unit space — mirrors UnitsPanel2.updateValues.
+                    if (!IsSpecialUnitResearched(entry.UnitKey))
+                    {
+                        LogDebug("Village " + villageId + ": " + entry.UnitKey + " not yet researched, skipping.");
+                        continue;
+                    }
+
                     int unitSize   = GetUnitSize(entry.UnitKey);
-                    int maxBySpace = spareUnitSpace / unitSize;
+                    int maxBySpace = unitSize > 0 ? spareUnitSpace / unitSize : 0;
+
+                    // Per-type cap (ordination/scout research level, or markets × guild traders)
+                    int capRemaining = GetSpecialUnitCapRemaining(village, entry.UnitKey);
+
                     canRecruit = Math.Min(needed, maxBySpace);
+                    canRecruit = Math.Min(canRecruit, sparePeasants);   // one worker per unit
+                    canRecruit = Math.Min(canRecruit, capRemaining);
+
+                    // Gold cap (monk cost scales with current monk count)
+                    int unitGoldCost = GetSpecialUnitGoldCost(village, entry.UnitKey);
+                    if (unitGoldCost > 0 && currentGold < canRecruit * unitGoldCost)
+                    {
+                        canRecruit = currentGold / unitGoldCost;
+                        LogDebug("Village " + villageId + ": gold limits " + entry.UnitKey + " to " + canRecruit);
+                    }
+
                     if (canRecruit <= 0)
                     {
                         LogDebug("Village " + villageId + ": want " + needed + " " + entry.UnitKey +
-                                 " but limited by unit space (max=" + maxBySpace + ")");
+                                 " but limited to 0 (space=" + maxBySpace + ", workers=" + sparePeasants +
+                                 ", cap=" + capRemaining + ", gold=" + currentGold + ").");
                         continue;
                     }
 
                     try
                     {
+                        // Monks/Traders hold a 45s server lock per call, so a single batched call
+                        // is sent (the revisit loop can't fire a second one anyway). Scouts batch
+                        // freely via makeTroopsUpdate.
                         if (IsPeopleType(entry.UnitKey))
                         {
-                            int monkAmount = Math.Min(canRecruit, 4);
-                            village.makePeople(1000 + monkAmount);
-                            RecordRecruitment(villageId, entry.UnitKey, current + monkAmount);
-                            recruited = true;
-                            LogInfo("Village " + villageId + ": recruiting " + monkAmount + " " + entry.UnitKey +
-                                    " (have " + current + "/" + entry.TargetCount + ")");
+                            if (canRecruit == 1)
+                                village.makePeople(4);
+                            else
+                                village.makePeople(1000 + canRecruit);
                         }
                         else if (entry.UnitKey == "Traders")
                         {
-                            int traderAmount = Math.Min(canRecruit, 4);
-                            village.makeTroops(-5, traderAmount, true);
-                            RecordRecruitment(villageId, entry.UnitKey, current + traderAmount);
-                            recruited = true;
-                            LogInfo("Village " + villageId + ": recruiting " + traderAmount + " " + entry.UnitKey +
-                                    " (have " + current + "/" + entry.TargetCount + ")");
+                            village.makeTroops(-5, canRecruit, true);
                         }
-                        else
+                        else // Scouts
                         {
                             village.makeTroops(GetTroopTypeId(entry.UnitKey), canRecruit, true);
-                            RecordRecruitment(villageId, entry.UnitKey, current + canRecruit);
-                            recruited = true;
-                            LogInfo("Village " + villageId + ": recruiting " + canRecruit + " " + entry.UnitKey +
-                                    " (have " + current + "/" + entry.TargetCount + ")");
                         }
+                        RecordRecruitment(villageId, entry.UnitKey, current + canRecruit);
+                        recruited = true;
+                        LogInfo("Village " + villageId + ": recruiting " + canRecruit + " " + entry.UnitKey +
+                                " (have " + current + "/" + entry.TargetCount + ")");
                     }
                     catch (Exception ex)
                     {
@@ -996,7 +1027,76 @@ namespace Kingdoms.Bot.Modules
                 case "Swordsmen": return r.Research_Sword != 0;
                 case "Catapults": return r.Research_Catapult != 0;
                 case "Captains":  return r.Research_Captains != 0;
-                default: return true; // Scouts/Monks/Traders have no research gate
+                default: return true; // special-unit gates live in IsSpecialUnitResearched
+            }
+        }
+
+        /// <summary>
+        /// Research prerequisite for the special unit types (Monks/Traders/Scouts).
+        /// Mirrors the visibility gates in UnitsPanel2.updateValues: Ordination for monks,
+        /// Merchant Guilds for traders, Scouts for scouts.
+        /// </summary>
+        private static bool IsSpecialUnitResearched(string unitKey)
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null) return false;
+            ResearchData r = GameEngine.Instance.World.userResearchData;
+            if (r == null) return false;
+            switch (unitKey)
+            {
+                case "Monks":   return r.Research_Ordination != 0;
+                case "Traders": return r.Research_Merchant_Guilds != 0;
+                case "Scouts":  return r.Research_Scouts != 0;
+                default: return true;
+            }
+        }
+
+        /// <summary>
+        /// Remaining headroom under a special unit's per-type cap (NOT the command-research army
+        /// limit). Monks cap = ordination level, scouts cap = scout-research level, traders cap =
+        /// working markets × merchant-guild level. Counts include troops away from the village
+        /// plus locally-queued ones, matching the totals UnitsPanel2 uses.
+        /// </summary>
+        private static int GetSpecialUnitCapRemaining(VillageMap village, string unitKey)
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.World == null) return 0;
+            ResearchData r = GameEngine.Instance.World.userResearchData;
+            if (r == null) return 0;
+            switch (unitKey)
+            {
+                case "Monks":
+                {
+                    int cap = ResearchData.ordinationResearchMonkLevels[(int)r.Research_Ordination];
+                    int total = village.calcTotalMonks() + village.LocallyMadeMonks;
+                    return Math.Max(cap - total, 0);
+                }
+                case "Scouts":
+                {
+                    int cap = ResearchData.scoutResearchScoutsLevels[(int)r.Research_Scouts];
+                    int total = village.calcTotalScouts() + village.LocallyMade_Scouts;
+                    return Math.Max(cap - total, 0);
+                }
+                case "Traders":
+                {
+                    int cap = village.countWorkingMarkets() *
+                              ResearchData.numMerchantGuildsTraders[(int)r.Research_Merchant_Guilds];
+                    int total = village.calcTotalTraders() + village.LocallyMade_Traders;
+                    return Math.Max(cap - total, 0);
+                }
+                default: return int.MaxValue;
+            }
+        }
+
+        /// <summary>Per-unit gold cost for a special type. Monk cost scales with current monk count.</summary>
+        private static int GetSpecialUnitGoldCost(VillageMap village, string unitKey)
+        {
+            if (GameEngine.Instance == null || GameEngine.Instance.LocalWorldData == null) return 0;
+            WorldData wd = GameEngine.Instance.LocalWorldData;
+            switch (unitKey)
+            {
+                case "Monks":   return wd.getMonkCost(village.calcTotalMonks());
+                case "Traders": return wd.TraderGoldCost;
+                case "Scouts":  return wd.ScoutGoldCost;
+                default: return 0;
             }
         }
 

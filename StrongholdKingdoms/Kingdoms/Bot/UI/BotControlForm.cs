@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
@@ -92,6 +92,7 @@ namespace Kingdoms.Bot.UI
         private Timer _abmRefreshTimer;
         private bool _abmLastIsCoordinator = false;
         private NumericUpDown _abmAddVidInput;
+        private Label _abmApiLabel, _abmKeyLabel, _abmTargetVidLabel;
 
         // Per-tab loading guards — prevent settings writes while controls are being populated from settings
         private bool _vsLoading;
@@ -2395,7 +2396,7 @@ namespace Kingdoms.Bot.UI
             routeColHdr.Height = 22;
             routeColHdr.BackColor = Color.FromArgb(36, 38, 50);
             string[] routeCols = new string[] { "", "Name", "From", "To", "Resources", "Keep Min", "Merch", "Send Max", "Dist" };
-            int[] routeColX = new int[] { 6, 28, 164, 254, 344, 510, 566, 612, 674 };
+            int[] routeColX = new int[] { 6, 28, 164, 254, 344, 510, 600, 680, 770 };
             for (int i = 0; i < routeCols.Length; i++)
             {
                 Label cl = new Label();
@@ -3797,30 +3798,30 @@ namespace Kingdoms.Bot.UI
         private void WireUpAutoBombMultiTab()
         {
             // ── Connection panel labels (dynamic — not in designer) ────────────
-            Label apiLbl = new Label();
-            apiLbl.Text = "API URL:";
-            apiLbl.Font = new Font("Segoe UI", 7.5f);
-            apiLbl.ForeColor = TextSec;
-            apiLbl.AutoSize = true;
-            apiLbl.Location = new Point(6, 10);
-            _abmConnPanel.Controls.Add(apiLbl);
+            _abmApiLabel = new Label();
+            _abmApiLabel.Text = "API URL:";
+            _abmApiLabel.Font = new Font("Segoe UI", 7.5f);
+            _abmApiLabel.ForeColor = TextSec;
+            _abmApiLabel.AutoSize = true;
+            _abmApiLabel.Location = new Point(6, 10);
+            _abmConnPanel.Controls.Add(_abmApiLabel);
 
-            Label keyLbl = new Label();
-            keyLbl.Text = "Key:";
-            keyLbl.Font = new Font("Segoe UI", 7.5f);
-            keyLbl.ForeColor = TextSec;
-            keyLbl.AutoSize = true;
-            keyLbl.Location = new Point(328, 10);
-            _abmConnPanel.Controls.Add(keyLbl);
+            _abmKeyLabel = new Label();
+            _abmKeyLabel.Text = "Key:";
+            _abmKeyLabel.Font = new Font("Segoe UI", 7.5f);
+            _abmKeyLabel.ForeColor = TextSec;
+            _abmKeyLabel.AutoSize = true;
+            _abmKeyLabel.Location = new Point(328, 10);
+            _abmConnPanel.Controls.Add(_abmKeyLabel);
 
             // ── Coordinator panel labels ──────────────────────────────────────
-            Label tgtLbl = new Label();
-            tgtLbl.Text = "Target VID:";
-            tgtLbl.Font = new Font("Segoe UI", 7.5f);
-            tgtLbl.ForeColor = TextSec;
-            tgtLbl.AutoSize = true;
-            tgtLbl.Location = new Point(6, 11);
-            _abmCtrlPanel.Controls.Add(tgtLbl);
+            _abmTargetVidLabel = new Label();
+            _abmTargetVidLabel.Text = "Target VID:";
+            _abmTargetVidLabel.Font = new Font("Segoe UI", 7.5f);
+            _abmTargetVidLabel.ForeColor = TextSec;
+            _abmTargetVidLabel.AutoSize = true;
+            _abmTargetVidLabel.Location = new Point(6, 11);
+            _abmCtrlPanel.Controls.Add(_abmTargetVidLabel);
 
             // ── Village column headers ────────────────────────────────────────
             string[] vCols = { "", "Village", "Travel", "Card", "Cpt", "Formation", "P", "Arch", "Pike", "Sw", "Cat", "Cap", "Stack", "Type", "Mod (S/A)", "Status" };
@@ -6328,14 +6329,14 @@ namespace Kingdoms.Bot.UI
             // Target count
             Label targetLbl = new Label();
             targetLbl.Text = "Target:";
-            targetLbl.Location = new Point(213, 5);
+            targetLbl.Location = new Point(220, 5);
             targetLbl.AutoSize = true;
             targetLbl.ForeColor = TextSec;
             targetLbl.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             panel.Controls.Add(targetLbl);
 
             NumericUpDown targetInput = new NumericUpDown();
-            targetInput.Location = new Point(258, 3);
+            targetInput.Location = new Point(272, 3);
             targetInput.Size = new Size(48, 20);
             targetInput.Minimum = 1;
             targetInput.Maximum = 100;
@@ -6350,14 +6351,14 @@ namespace Kingdoms.Bot.UI
             // Delay
             Label delayLbl = new Label();
             delayLbl.Text = "Start in:";
-            delayLbl.Location = new Point(316, 5);
+            delayLbl.Location = new Point(340, 5);
             delayLbl.AutoSize = true;
             delayLbl.ForeColor = TextSec;
             delayLbl.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             panel.Controls.Add(delayLbl);
 
             NumericUpDown delayH = new NumericUpDown();
-            delayH.Location = new Point(365, 3);
+            delayH.Location = new Point(395, 3);
             delayH.Size = new Size(40, 20);
             delayH.Minimum = 0;
             delayH.Maximum = 72;
@@ -6371,14 +6372,14 @@ namespace Kingdoms.Bot.UI
 
             Label hLbl = new Label();
             hLbl.Text = "h";
-            hLbl.Location = new Point(408, 5);
+            hLbl.Location = new Point(440, 5);
             hLbl.AutoSize = true;
             hLbl.ForeColor = TextSec;
             hLbl.Font = new System.Drawing.Font("Segoe UI", 7.5F);
             panel.Controls.Add(hLbl);
 
             NumericUpDown delayM = new NumericUpDown();
-            delayM.Location = new Point(420, 3);
+            delayM.Location = new Point(460, 3);
             delayM.Size = new Size(40, 20);
             delayM.Minimum = 0;
             delayM.Maximum = 59;
@@ -6392,7 +6393,7 @@ namespace Kingdoms.Bot.UI
 
             Label mLbl = new Label();
             mLbl.Text = "m";
-            mLbl.Location = new Point(463, 5);
+            mLbl.Location = new Point(505, 5);
             mLbl.AutoSize = true;
             mLbl.ForeColor = TextSec;
             mLbl.Font = new System.Drawing.Font("Segoe UI", 7.5F);
@@ -6401,7 +6402,7 @@ namespace Kingdoms.Bot.UI
             // Progress
             Label progressLabel = new Label();
             progressLabel.Text = "0/1";
-            progressLabel.Location = new Point(480, 5);
+            progressLabel.Location = new Point(528, 5);
             progressLabel.Size = new Size(60, 16);
             progressLabel.ForeColor = TextSec;
             progressLabel.Font = new System.Drawing.Font("Segoe UI", 7.5F);
@@ -6411,8 +6412,8 @@ namespace Kingdoms.Bot.UI
             // Reset button
             Button resetBtn = new Button();
             resetBtn.Text = "Reset";
-            resetBtn.Location = new Point(550, 3);
-            resetBtn.Size = new Size(48, 20);
+            resetBtn.Location = new Point(600, 2);
+            resetBtn.Size = new Size(58, 24);
             resetBtn.FlatStyle = FlatStyle.Flat;
             resetBtn.BackColor = Color.FromArgb(45, 35, 35);
             resetBtn.ForeColor = TextSec;
@@ -7117,6 +7118,52 @@ namespace Kingdoms.Bot.UI
                 _trIgnoreTransactionsCheck);
             LayoutRow(X, 132, G, _trPriorityLabel, _trPriorityCombo,
                 _trDisableOnCardExpiryCheck, _trAutoSaveRouteProgressCheck);
+
+            // Scout
+            LayoutRow(X, 24, G, _scEnabledCheck, _scStatusLabel, _scIntervalLabel, _scIntervalInput);
+            LayoutRow(X, 58, G, _scMaxTimeLabel, _scMaxTimeInput, _scAutoHireLabel, _scAutoHireInput, _scDelayLabel, _scDelayInput, _scDisableOnCardExpiryCheck);
+            LayoutRow(X, 90, G, _scPriorityLabel, _scPriorityResourceRadio, _scPriorityRangeRadio);
+            LayoutRow(X, 120, G, _scSendOneScoutCheck, _scSendOneOnNewCheck);
+            LayoutRow(X, 150, G, _scWaitForFreeSpaceCheck);
+
+            // Popularity (bottom-docked panel)
+            LayoutRow(X, 28, G, _ppEnabledCheck, _ppStatusLabel);
+            LayoutRow(X, 62, G, _ppIntervalLabel, _ppIntervalInput, _ppDelayLabel, _ppDelayInput, _ppRefreshBtn, _ppRunNowBtn, _ppCopySettingsBtn);
+
+            // Banquet
+            LayoutRow(X, 24, G, _bqEnabledCheck, _bqStatusLabel);
+            LayoutRow(X, 58, G, _bqIntervalLabel, _bqIntervalInput, _bqDelayLabel, _bqDelayInput, _bqRefreshBtn, _bqRunNowBtn, _bqCopySettingsBtn);
+
+            // Monk
+            LayoutRow(X, 24, G, _mkEnabledCheck, _mkStatusLabel);
+            LayoutRow(X, 56, G, _mkIntervalLabel, _mkIntervalInput, _mkDelayLabel, _mkDelayInput, _mkKeepLabel, _mkMonksToKeepInput, _mkAutoRecruitLabel, _mkAutoRecruitInput);
+            LayoutRow(X, 88, G, _mkRefreshBtn, _mkRunNowBtn);
+
+            // Village Builder
+            LayoutRow(X, 24, G, _bldEnabledCheck, _bldStatusLabel);
+            LayoutRow(X, 58, G, _bldIntervalLabel, _bldIntervalInput, _bldDelayLabel, _bldDelayInput, _bldWaitForResourcesCheck, _bldCopySettingsBtn);
+            LayoutRow(X, 18, G, _bldVillageCombo, _bldVillageEnabledCheck, _bldImportFileBtn, _bldRefreshStateBtn, _bldExportFileBtn, _bldClearLayoutBtn, _bldPriorityBtn);
+
+            // Auto Bomb
+            LayoutRow(X, 24, G, _abEnabledCheck, _abStatusLabel, _abTargetLabel, _abTargetInput);
+            LayoutRow(X, 54, G, _abAutoCancelCheck, _abFakeSendCheck, _abStackDelayLabel, _abStackDelayInput);
+            LayoutRow(X, 84, G, _abLoadArmiesBtn, _abLoadVillages, _abLoadCapitals, _abSelectAllBtn, _abDeselectAllBtn, _abSubmitBtn);
+
+            // Defender
+            LayoutRow(X, 24, G, _dfEnabledCheck, _dfStatusLabel, _dfDurationLabel, _dfDurationInput);
+            LayoutRow(X, 54, G, _dfVillageLabel, _dfVillageCombo, _dfVillageRefreshBtn);
+            LayoutRow(X, 86, G, _dfStartBtn, _dfStopBtn, _dfCountdownPrefixLabel, _dfCountdownLabel);
+            LayoutRow(X, 20, G, _dfCardsTitle);
+            LayoutRow(X, 50, G, _dfKnightsLabel, _dfKnightsCombo, _dfLastStandLabel, _dfLastStandCombo);
+            LayoutRow(X, 78, G, _dfDesperateCheck);
+            LayoutRow(X, 18, G, _dfActionsTitle);
+            LayoutRow(X, 48, G, _dfAutoRepairCheck, _dfRestoreTroopsCheck, _dfRestoreInfraCheck);
+
+            // Auto Bomb Multi — connection row + coordinator control rows
+            LayoutRow(8, 16, G, _abmApiLabel, _abmApiUrlBox, _abmKeyLabel, _abmSessionKeyBox, _abmConnectBtn, _abmDisconnectBtn, _abmConnStatusLabel);
+            LayoutRow(8, 20, G, _abmTargetVidLabel, _abmTargetVidBox, _abmDelayModeCombo, _abmStackDelayInput, _abmFakeSendCheck, _abmAutoInterdictCheck);
+            LayoutRow(8, 52, G, _abmPushConfigBtn, _abmPrepareBtn, _abmLaunchBtn, _abmCancelBtn, _abmForceRecallBtn, _abmResetBtn, _abmTakeCoordBtn, _abmCoordStatusLabel);
+            LayoutRow(8, 84, G, _abmPreRefreshCheck, _abmIncludeVassalsCheck, _abmPlayCardsCheck, _abmAutoCancelCardCheck, _abmSendPartialCheck, _abmSelectAllBtn, _abmDeselectAllBtn);
         }
 
         protected override void OnShown(EventArgs e)
