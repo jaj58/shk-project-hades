@@ -145,6 +145,13 @@ namespace Kingdoms.Bot.Modules
                     LogWarning("Village not loaded: " + fromId);
                     continue;
                 }
+                if (GameEngine.Instance.World.isCapital(fromId))
+                {
+                    // Capitals (parish/county/province/country) can't send monks — skip rather
+                    // than spend every cycle retrying a send the server will always reject.
+                    LogWarning("Village " + fromId + " is a capital and cannot send monks, skipping.");
+                    continue;
+                }
                 if (GameEngine.Instance.World.isVillageExcommunicated(fromId))
                 {
                     LogInfo("Village " + fromId + " is excommunicated, skipping.");
@@ -221,7 +228,11 @@ namespace Kingdoms.Bot.Modules
                         processedTargets.Add(targetId);
                     }
 
-                    Thread.Sleep(500);
+                    // Pace sends using the same delay the user configures for between-route
+                    // spacing — with a single route this is the only pacing control they have,
+                    // so it should govern every send, not just route-to-route transitions.
+                    if (settings.DelayBetweenRoutesMs > 0)
+                        Thread.Sleep(settings.DelayBetweenRoutesMs);
                 }
             }
         }
