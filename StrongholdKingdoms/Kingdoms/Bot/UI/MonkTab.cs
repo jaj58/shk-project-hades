@@ -460,7 +460,9 @@ namespace Kingdoms.Bot.UI
             _influenceNegRadio.Checked = !_route.InfluencePositive;
             _influenceUserIdInput.Value = Clamp(_influenceUserIdInput, _route.InfluenceTargetUserId);
 
-            // Populate from-villages from own villages
+            // Populate from-villages from own villages — capitals (parish/county/province/
+            // country) can't send monks, so they're excluded, matching the pattern used by
+            // the other from-village lists (Recruit, Popularity, Interdict) elsewhere in the bot.
             try
             {
                 List<WorldMap.UserVillageData> uvds = GameEngine.Instance.World.getUserVillageList();
@@ -468,6 +470,9 @@ namespace Kingdoms.Bot.UI
                 {
                     foreach (WorldMap.UserVillageData uvd in uvds)
                     {
+                        if (GameEngine.Instance.World.isCapital(uvd.villageID))
+                            continue;
+
                         string name = GameEngine.Instance.World.getVillageName(uvd.villageID);
                         string display = "[" + uvd.villageID + "] " + name;
                         int idx = _fromList.Items.Add(new VillageItem(uvd.villageID, display));
@@ -640,14 +645,9 @@ namespace Kingdoms.Bot.UI
 
             if (ids.Count == 0)
             {
-                try
-                {
-                    List<WorldMap.UserVillageData> uvds = GameEngine.Instance.World.getUserVillageList();
-                    if (uvds != null)
-                        foreach (WorldMap.UserVillageData uvd in uvds)
-                            ids.Add(uvd.villageID);
-                }
-                catch { }
+                // Fall back to every item already in the list — it's already capital-filtered.
+                foreach (object item in _fromList.Items)
+                    ids.Add(((VillageItem)item).VillageId);
             }
             return ids;
         }
