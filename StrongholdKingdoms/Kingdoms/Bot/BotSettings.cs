@@ -206,6 +206,11 @@ namespace Kingdoms.Bot
         public bool Enabled = true;
         public int CycleIntervalSeconds = 60;
         public int DelayBetweenVillagesMs = 3000;
+        // When enabled, disband units whose live count exceeds the per-village target down to it
+        // (target 0 => disband all of that type). Special = Traders/Scouts/Monks; Troops = the
+        // combat types. Both default OFF — disbanding is destructive, so it's strictly opt-in.
+        public bool AutoDisbandSpecial = false;
+        public bool AutoDisbandTroops = false;
         public List<int> ExcludedVillageIds = new List<int>();
         public List<VillageRecruitSettings> Villages = new List<VillageRecruitSettings>();
         public VassalRecruitingSettings VassalRecruiting = new VassalRecruitingSettings();

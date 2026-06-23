@@ -1964,7 +1964,7 @@ namespace Kingdoms.Bot.UI
             this._rcSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._rcSettingsPanel.Name = "_rcSettingsPanel";
             this._rcSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._rcSettingsPanel.Size = new System.Drawing.Size(1142, 116);
+            this._rcSettingsPanel.Size = new System.Drawing.Size(1142, 144);
             this._rcSettingsPanel.TabIndex = 0;
             // 
             // _rcDisbandBtn

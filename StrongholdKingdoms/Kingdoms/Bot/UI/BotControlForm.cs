@@ -1297,6 +1297,23 @@ namespace Kingdoms.Bot.UI
             _rcIntervalInput.ValueChanged += delegate { RcPushToSettings(); };
             _rcDelayInput.ValueChanged += delegate { RcPushToSettings(); };
 
+            // Auto-disband toggles (created here, not in the Designer). Both default OFF and
+            // disband over-target units down to the per-village targets (target 0 => disband all).
+            _rcAutoDisbandSpecialCheck = RcMakeOptionCheck(
+                "Auto-disband excess Traders/Scouts/Monks",
+                "When the live count of a special unit exceeds its target for a village, disband the\r\n" +
+                "surplus back down to the target (a target of 0 disbands them all). Only idle units at\r\n" +
+                "home are disbanded — traders out trading, scouts on missions and monks deployed are left.");
+            _rcAutoDisbandTroopsCheck = RcMakeOptionCheck(
+                "Auto-disband excess troops",
+                "When the live count of a combat troop type exceeds its target for a village, disband the\r\n" +
+                "surplus back down to the target (a target of 0 disbands them all). Only barracks troops\r\n" +
+                "at home are disbanded — field armies and castle garrison are left untouched.");
+            _rcAutoDisbandSpecialCheck.CheckedChanged += delegate { RcPushToSettings(); };
+            _rcAutoDisbandTroopsCheck.CheckedChanged += delegate { RcPushToSettings(); };
+            _rcEnabledCheck.Parent.Controls.Add(_rcAutoDisbandSpecialCheck);
+            _rcEnabledCheck.Parent.Controls.Add(_rcAutoDisbandTroopsCheck);
+
 
             // Villages tab: add toolbar above column header
             RcBuildColumnHeaders(_rcColHeaderVillages, RecruitingModule.AllUnitKeys);
@@ -1342,6 +1359,26 @@ namespace Kingdoms.Bot.UI
             btn.Location = new Point(8, 3);
             btn.Cursor = Cursors.Hand;
             return btn;
+        }
+
+        private CheckBox _rcAutoDisbandSpecialCheck;
+        private CheckBox _rcAutoDisbandTroopsCheck;
+        private static readonly ToolTip _rcToolTip = new ToolTip();
+
+        /// <summary>Creates a secondary (non-bold) settings checkbox styled like the rest of the
+        /// recruiting panel, with a hover tooltip describing the behaviour.</summary>
+        private CheckBox RcMakeOptionCheck(string text, string tooltip)
+        {
+            CheckBox cb = new CheckBox();
+            cb.Text = text;
+            cb.AutoSize = true;
+            cb.Checked = false;
+            cb.FlatStyle = FlatStyle.Flat;
+            cb.Font = new Font("Segoe UI", 9f);
+            cb.ForeColor = Color.FromArgb(230, 230, 240);
+            if (!string.IsNullOrEmpty(tooltip))
+                _rcToolTip.SetToolTip(cb, tooltip);
+            return cb;
         }
 
         private void RcCopySettingsClick(CopyRecruitSettingsForm.CopyMode mode)
@@ -1398,6 +1435,10 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _rcEnabledCheck.Checked;
             s.CycleIntervalSeconds = (int)_rcIntervalInput.Value;
             s.DelayBetweenVillagesMs = (int)_rcDelayInput.Value;
+            if (_rcAutoDisbandSpecialCheck != null)
+                s.AutoDisbandSpecial = _rcAutoDisbandSpecialCheck.Checked;
+            if (_rcAutoDisbandTroopsCheck != null)
+                s.AutoDisbandTroops = _rcAutoDisbandTroopsCheck.Checked;
 
             foreach (IBotModule m in BotEngine.Instance.Modules)
             {
@@ -1419,6 +1460,10 @@ namespace Kingdoms.Bot.UI
                     Math.Min(_rcIntervalInput.Maximum, s.CycleIntervalSeconds));
                 _rcDelayInput.Value = Math.Max(_rcDelayInput.Minimum,
                     Math.Min(_rcDelayInput.Maximum, s.DelayBetweenVillagesMs));
+                if (_rcAutoDisbandSpecialCheck != null)
+                    _rcAutoDisbandSpecialCheck.Checked = s.AutoDisbandSpecial;
+                if (_rcAutoDisbandTroopsCheck != null)
+                    _rcAutoDisbandTroopsCheck.Checked = s.AutoDisbandTroops;
 
                 RcBuildVillageList();
             }
@@ -1434,6 +1479,10 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _rcEnabledCheck.Checked;
             s.CycleIntervalSeconds = (int)_rcIntervalInput.Value;
             s.DelayBetweenVillagesMs = (int)_rcDelayInput.Value;
+            if (_rcAutoDisbandSpecialCheck != null)
+                s.AutoDisbandSpecial = _rcAutoDisbandSpecialCheck.Checked;
+            if (_rcAutoDisbandTroopsCheck != null)
+                s.AutoDisbandTroops = _rcAutoDisbandTroopsCheck.Checked;
 
             foreach (RecruitVillagePanel panel in _rcVillagePanels)
                 panel.WriteToSettings(s);
@@ -7102,6 +7151,7 @@ namespace Kingdoms.Bot.UI
             LayoutRow(X, 24, G, _rcEnabledCheck, _rcStatusLabel);
             LayoutRow(X, 56, G, _rcIntervalLabel, _rcIntervalInput, _rcDelayLabel, _rcDelayInput);
             LayoutRow(X, 92, G, _rcRefreshBtn, _rcDisbandCombo, _rcDisbandBtn);
+            LayoutRow(X, 124, G, _rcAutoDisbandSpecialCheck, _rcAutoDisbandTroopsCheck);
 
             // Castle Repair
             LayoutRow(X, 24, G, _crEnabledCheck, _crStatusLabel);
