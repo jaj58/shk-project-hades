@@ -46,6 +46,10 @@ namespace Kingdoms.Bot.Modules
         // only touched on the tick thread.
         private readonly Dictionary<int, HashSet<int>> _sellBlockedThisCycle =
             new Dictionary<int, HashSet<int>>();
+        // Villages whose market trading is blocked for the rest of this cycle
+        // because the server reported "not enough traders" (our local merchant
+        // count was stale). Cleared per village in BeginVillage; tick-thread only.
+        private readonly HashSet<int> _marketBlockedThisCycle = new HashSet<int>();
         // Safety valve: bounds how many dispatches one category of one village can
         // make per cycle, so a pathological config can't stall the whole queue.
         private const int MaxDispatchesPerCategory = 20;
@@ -253,6 +257,7 @@ namespace Kingdoms.Bot.Modules
             _remainingCategories.Clear();
             _dispatchCounts.Clear();
             _sellBlockedThisCycle.Remove(villageId);
+            _marketBlockedThisCycle.Remove(villageId);
             _blockedSince = DateTime.MinValue;
 
             VillageMap map = GameEngine.Instance.getVillage(villageId);
@@ -904,11 +909,24 @@ namespace Kingdoms.Bot.Modules
                 LogError(GetVillageName(pending.VillageId) + " " + label + " " + pending.Amount + " " +
                     resourceName + " REJECTED by server: " + (result.Error ?? "unknown error"));
 
+                // "Not enough Traders" means our local merchant count was stale (e.g.
+                // the Recruit module just disbanded traders). EVERY market trade from
+                // this village will fail this cycle until it resyncs — block the whole
+                // village's market trading, leave the (innocent) markets cached, and
+                // force a re-download so next cycle has the real merchant count.
+                if (IsTraderShortageError(result.Error) &&
+                    (pending.Kind == PendingKind.MarketBuy || pending.Kind == PendingKind.MarketSell))
+                {
+                    BlockMarketsThisCycle(pending.VillageId);
+                    LogDebug(GetVillageName(pending.VillageId) +
+                        ": server reports not enough traders — skipping market trades for the rest of this cycle.");
+                    RequestStaleVillageRedownload(pending.VillageId);
+                }
                 // "Not enough resources to send" on a sell is seller-side: our local
                 // resource count was stale/overstated, the target market is innocent.
                 // Block this resource for the rest of the cycle so we don't re-offer
                 // the same doomed sell against every other market in turn.
-                if (pending.Kind == PendingKind.MarketSell && IsResourceShortageError(result.Error))
+                else if (pending.Kind == PendingKind.MarketSell && IsResourceShortageError(result.Error))
                 {
                     BlockSellThisCycle(pending.VillageId, pending.ResourceId);
                     LogDebug(GetVillageName(pending.VillageId) + ": not enough " + resourceName +
@@ -982,6 +1000,12 @@ namespace Kingdoms.Bot.Modules
         private TradeActionResult TryMarketTrade(VillageMap map, int villageId, string villageName,
             VillageMarketTradeInfo villageInfo, TradeSettings settings)
         {
+            // The server already rejected a trade here this cycle for lack of
+            // traders — our merchant count is stale, so every market trade would
+            // fail. Skip markets until the next cycle re-syncs the village.
+            if (IsMarketBlockedThisCycle(villageId))
+                return TradeActionResult.NoWork;
+
             int tradersAtHome = map.m_numTradersAtHome;
             int movingTraders = CountMovingMerchants(villageId, true);
 
@@ -1685,6 +1709,24 @@ namespace Kingdoms.Bot.Modules
         {
             return error != null &&
                    error.ToLowerInvariant().IndexOf("enough resource") >= 0;
+        }
+
+        // Server says the village hasn't got the merchants the trade needs — our
+        // local `m_numTradersAtHome` was stale (e.g. Recruit just disbanded some).
+        private static bool IsTraderShortageError(string error)
+        {
+            return error != null &&
+                   error.ToLowerInvariant().IndexOf("enough trader") >= 0;
+        }
+
+        private void BlockMarketsThisCycle(int villageId)
+        {
+            _marketBlockedThisCycle.Add(villageId);
+        }
+
+        private bool IsMarketBlockedThisCycle(int villageId)
+        {
+            return _marketBlockedThisCycle.Contains(villageId);
         }
 
         // A resource-shortage rejection proves this village's local resource count

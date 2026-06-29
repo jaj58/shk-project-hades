@@ -652,6 +652,11 @@ namespace Kingdoms.Bot.Modules
                     _lastDisband[villageId] = DateTime.Now;
                     LogInfo("Village " + villageId + ": auto-disbanding " + toDisband + " " + entry.UnitKey +
                             " (have " + current + ", target " + entry.TargetCount + ")");
+                    // The game's disband callback refreshes the *currently selected* village,
+                    // which in a multi-village bot is rarely this one — so this village's local
+                    // counts (e.g. traders) would stay stale and trip up Trade and our own next
+                    // pass. Force a re-download of THIS village instead.
+                    RequestVillageRedownload(villageId);
                     return true; // one disband per visit; the lock throttle gates the next
                 }
                 catch (Exception ex)
@@ -661,6 +666,24 @@ namespace Kingdoms.Bot.Modules
             }
 
             return false;
+        }
+
+        // After a disband mutates this village's troop/people counts, ask Village Sync
+        // to force a full re-download of it so every module reads the new numbers.
+        // Gated by the same AutoRefreshOnStaleError switch as the Trade-side trigger.
+        private void RequestVillageRedownload(int villageId)
+        {
+            try
+            {
+                if (Engine == null || Engine.Settings == null ||
+                    !Engine.Settings.VillageSync.AutoRefreshOnStaleError)
+                    return;
+
+                VillageSyncModule vsm = Engine.GetModule<VillageSyncModule>();
+                if (vsm != null)
+                    vsm.RequestForceRedownload(villageId);
+            }
+            catch { }
         }
 
         /// <summary>
