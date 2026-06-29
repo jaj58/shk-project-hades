@@ -37,6 +37,7 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.RecruitingModule());
             RegisterModule(new Modules.CastleRepairModule());
             RegisterModule(new Modules.TradeModule());
+            RegisterModule(new Modules.TradeDisbandModule());
             RegisterModule(new Modules.CardExpiryModule());
             RegisterModule(new Modules.VillageBuilderModule());
             RegisterModule(new Modules.AutoBombModule());
@@ -96,6 +97,8 @@ namespace Kingdoms.Bot
                     module.Enabled = _settings.CastleRepair.Enabled;
                 else if (module is Modules.TradeModule)
                     module.Enabled = _settings.Trade.Enabled;
+                else if (module is Modules.TradeDisbandModule)
+                    module.Enabled = true; // Always enabled — gated internally by TradeModule.DisbandPending
                 else if (module is Modules.CardExpiryModule)
                     module.Enabled = true; // Always enabled — monitors cards for other modules
                 else if (module is Modules.FreeCardCollectorModule)

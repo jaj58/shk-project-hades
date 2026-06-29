@@ -429,6 +429,8 @@ namespace Kingdoms.Bot
         public TradePriority Priority = TradePriority.MarketSellFirst;
         public bool DisableOnTradeCardExpiry = false;
         public bool TradeCardsWereActive = false;
+        public int DisableAfterMinutes = 0;          // 0 = feature off; auto-disable module this many minutes after it was enabled
+        public bool DisbandTradersOnDisable = false; // when auto-disabled, wait for traders to return home then disband them all
         public bool AutoSavePlayerRouteProgress = true;
         public List<VillageMarketTradeInfo> VillageMarketSettings = new List<VillageMarketTradeInfo>();
         public List<TradeRouteSettings> Routes = new List<TradeRouteSettings>();

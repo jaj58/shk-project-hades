@@ -14,6 +14,28 @@ namespace Kingdoms.Bot.Modules
         private DateTime _lastVillageAction = DateTime.MinValue;
         private readonly Random _random = new Random();
 
+        // Auto-disable timer: stamped on the first tick after the module is enabled,
+        // reset on disable. Drives the optional "auto-disable after X minutes" feature.
+        private DateTime _enabledSince = DateTime.MinValue;
+        // Set by the manual Trade-enabled checkbox path so a manual disable does NOT
+        // trigger the auto-disband. Cleared (consumed) on the next OnDisable.
+        private bool _suppressDisbandOnNextDisable;
+
+        // Runtime disband state, read/cleared by the always-on TradeDisbandModule.
+        // Not persisted — purely an in-session signal that an automatic disable
+        // requested the deployed traders be returned home and disbanded.
+        public bool DisbandPending { get; set; }
+        public DateTime DisbandStartedAt { get; set; }
+
+        /// <summary>
+        /// Marks (pending=true) or clears (pending=false) the next Enabled true->false
+        /// transition as a manual disable so the auto-disband is skipped. Called only
+        /// from the UI Trade Enabled checkbox's Click handler (user interaction only —
+        /// programmatic state syncs use the CheckedChanged event and must NOT suppress).
+        /// The flag is consumed (cleared) on the next OnDisable.
+        /// </summary>
+        public void SetManualDisablePending(bool pending) { _suppressDisbandOnNextDisable = pending; }
+
         // Cached stock exchange data. Written from RPC callback threads and read
         // on the tick thread, so every access goes through _cacheLock.
         private readonly object _cacheLock = new object();
@@ -180,10 +202,44 @@ namespace Kingdoms.Bot.Modules
             VillageMap.BotSendMarketResourcesResult = null;
         }
 
+        protected override void OnDisable()
+        {
+            // Reset the auto-disable timer so a later re-enable starts a fresh window.
+            _enabledSince = DateTime.MinValue;
+
+            // Consume the manual-disable flag: a manual untick suppresses the disband,
+            // any other disable route (card expiry, the X-minute timer, the Auto
+            // scheduler) leaves it false and so disbands when the option is on.
+            bool suppress = _suppressDisbandOnNextDisable;
+            _suppressDisbandOnNextDisable = false;
+
+            TradeSettings s = Settings;
+            if (s != null && s.DisbandTradersOnDisable && !suppress)
+            {
+                DisbandPending = true;
+                DisbandStartedAt = DateTime.Now;
+                LogInfo("Trade disabled — will disband traders once they return home.");
+            }
+        }
+
         protected override void OnTick()
         {
             TradeSettings settings = Settings;
             if (settings == null) return;
+
+            // Auto-disable-after-X-minutes timer. _enabledSince is stamped the first
+            // tick after the module becomes enabled (and reset in OnDisable), so the
+            // window is measured from when trading actually started.
+            if (_enabledSince == DateTime.MinValue)
+                _enabledSince = DateTime.Now;
+            if (settings.DisableAfterMinutes > 0 &&
+                (DateTime.Now - _enabledSince).TotalMinutes >= settings.DisableAfterMinutes)
+            {
+                LogInfo("Auto-disabling trade after " + settings.DisableAfterMinutes + " minute(s).");
+                Enabled = false;          // triggers OnDisable (which may queue the disband)
+                settings.Enabled = false; // keep settings in sync with the runtime state
+                return;
+            }
 
             // Apply confirmed/failed trade results on the tick thread first so
             // player-route progress and merchant counts are current before we

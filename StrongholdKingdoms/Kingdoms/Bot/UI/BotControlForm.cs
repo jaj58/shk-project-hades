@@ -2396,6 +2396,16 @@ namespace Kingdoms.Bot.UI
             TrBuildStatsTab();
 
             _trEnabledCheck.CheckedChanged += delegate { TrWriteToSettings(); };
+            // Click fires only on genuine user interaction (not the programmatic
+            // .Checked syncs in TrUpdateStatusDisplay), so it's the right place to flag
+            // a *manual* disable. A manual untick suppresses the auto-disband; re-ticking
+            // clears the flag. Card-expiry / timer / scheduler disables never go through
+            // Click, so they still disband when the option is on.
+            _trEnabledCheck.Click += delegate
+            {
+                TradeModule m = GetTradeModule();
+                if (m != null) m.SetManualDisablePending(!_trEnabledCheck.Checked);
+            };
             // Persist the per-village "Should this village trade?" toggle immediately,
             // otherwise the change is lost unless the user switches village or saves.
             _trVillageTradingCheck.CheckedChanged += delegate { if (!_trLoading) TrSaveCurrentVillage(); };
@@ -3054,6 +3064,9 @@ namespace Kingdoms.Bot.UI
                 Math.Min(_trAutoHireLimitInput.Maximum, s.AutoHireMerchantsLimit));
             _trIgnoreTransactionsCheck.Checked = s.IgnoreCurrentTransactions;
             _trDisableOnCardExpiryCheck.Checked = s.DisableOnTradeCardExpiry;
+            _trDisableAfterInput.Value = Math.Max(_trDisableAfterInput.Minimum,
+                Math.Min(_trDisableAfterInput.Maximum, s.DisableAfterMinutes));
+            _trDisbandOnDisableCheck.Checked = s.DisbandTradersOnDisable;
             _trAutoSaveRouteProgressCheck.Checked = s.AutoSavePlayerRouteProgress;
 
             TrRefreshMarkets();
@@ -3082,6 +3095,8 @@ namespace Kingdoms.Bot.UI
             if (_trPriorityCombo.SelectedIndex >= 0)
                 s.Priority = (TradePriority)_trPriorityCombo.SelectedIndex;
             s.DisableOnTradeCardExpiry = _trDisableOnCardExpiryCheck.Checked;
+            s.DisableAfterMinutes = (int)_trDisableAfterInput.Value;
+            s.DisbandTradersOnDisable = _trDisbandOnDisableCheck.Checked;
             s.AutoSavePlayerRouteProgress = _trAutoSaveRouteProgressCheck.Checked;
 
             // Save currently displayed village's resource grid

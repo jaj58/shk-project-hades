@@ -202,6 +202,10 @@ namespace Kingdoms.Bot.UI
             this._trStatsTab = new System.Windows.Forms.TabPage();
             this._trSettingsPanel = new System.Windows.Forms.Panel();
             this._trDisableOnCardExpiryCheck = new System.Windows.Forms.CheckBox();
+            this._trDisableAfterLabel = new System.Windows.Forms.Label();
+            this._trDisableAfterInput = new System.Windows.Forms.NumericUpDown();
+            this._trDisableAfterMinLabel = new System.Windows.Forms.Label();
+            this._trDisbandOnDisableCheck = new System.Windows.Forms.CheckBox();
             this._trAutoSaveRouteProgressCheck = new System.Windows.Forms.CheckBox();
             this._trPriorityCombo = new System.Windows.Forms.ComboBox();
             this._trPriorityLabel = new System.Windows.Forms.Label();
@@ -545,6 +549,7 @@ namespace Kingdoms.Bot.UI
             this._trPlayerRoutesTab.SuspendLayout();
             this._trSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._trAutoHireLimitInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._trDisableAfterInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._trExchangeLimitInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._trTradeLimitInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._trMerchantsPerTradeInput)).BeginInit();
@@ -2673,6 +2678,10 @@ namespace Kingdoms.Bot.UI
             //
             this._trSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
             this._trSettingsPanel.Controls.Add(this._trAutoSaveRouteProgressCheck);
+            this._trSettingsPanel.Controls.Add(this._trDisableAfterLabel);
+            this._trSettingsPanel.Controls.Add(this._trDisableAfterInput);
+            this._trSettingsPanel.Controls.Add(this._trDisableAfterMinLabel);
+            this._trSettingsPanel.Controls.Add(this._trDisbandOnDisableCheck);
             this._trSettingsPanel.Controls.Add(this._trDisableOnCardExpiryCheck);
             this._trSettingsPanel.Controls.Add(this._trPriorityCombo);
             this._trSettingsPanel.Controls.Add(this._trPriorityLabel);
@@ -2723,6 +2732,53 @@ namespace Kingdoms.Bot.UI
             this._trDisableOnCardExpiryCheck.Size = new System.Drawing.Size(139, 19);
             this._trDisableOnCardExpiryCheck.TabIndex = 17;
             this._trDisableOnCardExpiryCheck.Text = "Disable on card expiry";
+            //
+            // _trDisableAfterLabel
+            //
+            this._trDisableAfterLabel.AutoSize = true;
+            this._trDisableAfterLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trDisableAfterLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._trDisableAfterLabel.Location = new System.Drawing.Point(16, 102);
+            this._trDisableAfterLabel.Name = "_trDisableAfterLabel";
+            this._trDisableAfterLabel.TabIndex = 19;
+            this._trDisableAfterLabel.Text = "Auto-disable after:";
+            //
+            // _trDisableAfterInput
+            //
+            this._trDisableAfterInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._trDisableAfterInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._trDisableAfterInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._trDisableAfterInput.Location = new System.Drawing.Point(130, 100);
+            this._trDisableAfterInput.Maximum = new decimal(new int[] {
+            1440,
+            0,
+            0,
+            0});
+            this._trDisableAfterInput.Name = "_trDisableAfterInput";
+            this._trDisableAfterInput.Size = new System.Drawing.Size(55, 23);
+            this._trDisableAfterInput.TabIndex = 20;
+            //
+            // _trDisableAfterMinLabel
+            //
+            this._trDisableAfterMinLabel.AutoSize = true;
+            this._trDisableAfterMinLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trDisableAfterMinLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._trDisableAfterMinLabel.Location = new System.Drawing.Point(189, 102);
+            this._trDisableAfterMinLabel.Name = "_trDisableAfterMinLabel";
+            this._trDisableAfterMinLabel.TabIndex = 21;
+            this._trDisableAfterMinLabel.Text = "min (0 = off)";
+            //
+            // _trDisbandOnDisableCheck
+            //
+            this._trDisbandOnDisableCheck.AutoSize = true;
+            this._trDisbandOnDisableCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._trDisbandOnDisableCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trDisbandOnDisableCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._trDisbandOnDisableCheck.Location = new System.Drawing.Point(310, 100);
+            this._trDisbandOnDisableCheck.Name = "_trDisbandOnDisableCheck";
+            this._trDisbandOnDisableCheck.Size = new System.Drawing.Size(200, 19);
+            this._trDisbandOnDisableCheck.TabIndex = 22;
+            this._trDisbandOnDisableCheck.Text = "Disband traders when disabled";
             //
             // _trPriorityLabel
             //
@@ -6274,6 +6330,7 @@ namespace Kingdoms.Bot.UI
             this._trSettingsPanel.ResumeLayout(false);
             this._trSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._trAutoHireLimitInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._trDisableAfterInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._trExchangeLimitInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._trTradeLimitInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._trMerchantsPerTradeInput)).EndInit();
@@ -7009,6 +7066,10 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Label _trPriorityLabel;
         private System.Windows.Forms.TabPage _trStatsTab;
         private System.Windows.Forms.CheckBox _trDisableOnCardExpiryCheck;
+        private System.Windows.Forms.Label _trDisableAfterLabel;
+        private System.Windows.Forms.NumericUpDown _trDisableAfterInput;
+        private System.Windows.Forms.Label _trDisableAfterMinLabel;
+        private System.Windows.Forms.CheckBox _trDisbandOnDisableCheck;
         private System.Windows.Forms.CheckBox _trAutoSaveRouteProgressCheck;
         private System.Windows.Forms.Panel _trMarketVillageListPanel;
         private System.Windows.Forms.Button _trMarketRefreshBtn;
