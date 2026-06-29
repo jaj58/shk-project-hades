@@ -1532,6 +1532,23 @@ namespace Kingdoms.Bot.Modules
 
                     int carryLevel = GetBaseCarryLevel(resourceId);
 
+                    // Honour "Min merchants/trade" here too, so the route doesn't dribble
+                    // out tiny loads (e.g. 1 venison) whenever the village is barely above
+                    // KeepMinimum. The one allowed exception is the final delivery: if what
+                    // we can send now is the whole remaining amount, send it even if small.
+                    // Capped by the route's own per-transaction max so a low max can't stall.
+                    int minMerchants = Math.Min(settings.MerchantsPerTrade, route.MaxMerchantsPerTransaction);
+                    if (minMerchants < 1) minMerchants = 1;
+                    double minLoad = (double)minMerchants * carryLevel;
+                    if (canSend < minLoad && canSend < resEntry.Remaining)
+                    {
+                        LogDebug(senderName + " [Player Route '" + route.Name + "']: only " +
+                            (int)canSend + " " + TradeModuleConstants.GetResourceName(resourceId) +
+                            " over KeepMinimum (< " + (int)minLoad + " min load) and route still needs " +
+                            resEntry.Remaining + " — waiting for a fuller load.");
+                        continue;
+                    }
+
                     // Allow a final partial load (amount below carry level) so the
                     // route can actually finish instead of stalling on the remainder.
                     int numMerchants = (int)Math.Ceiling(canSend / (double)carryLevel);

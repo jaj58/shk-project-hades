@@ -115,6 +115,7 @@
     <Compile Include="Kingdoms\Bot\Modules\RecruitingModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\ScoutModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\TradeModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\TradeDisbandModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\VillageBuilderModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\VillageSyncModule.cs" />
     <Compile Include="Kingdoms\Bot\UI\AdvancedLoginForm.cs">
