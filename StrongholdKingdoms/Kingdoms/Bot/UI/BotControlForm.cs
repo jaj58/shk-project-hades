@@ -281,6 +281,9 @@ namespace Kingdoms.Bot.UI
             _vsEnabledCheck.CheckedChanged += delegate { VsPushToSettings(); };
             _vsIntervalInput.ValueChanged += delegate { VsPushToSettings(); };
             _vsDelayInput.ValueChanged += delegate { VsPushToSettings(); };
+            _vsAutoRefreshStaleCheck.CheckedChanged += delegate { VsPushToSettings(); };
+            _vsForceRedownloadInput.ValueChanged += delegate { VsPushToSettings(); };
+            _vsRedownloadAllBtn.Click += delegate { VsForceRedownloadAll(); };
 
             _vsRefreshTimer = new Timer();
             _vsRefreshTimer.Interval = 2000;
@@ -298,12 +301,22 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _vsEnabledCheck.Checked;
             s.IntervalSeconds = (int)_vsIntervalInput.Value;
             s.DelayBetweenVillagesMs = (int)_vsDelayInput.Value;
+            s.AutoRefreshOnStaleError = _vsAutoRefreshStaleCheck.Checked;
+            s.ForceRedownloadIntervalMinutes = (int)_vsForceRedownloadInput.Value;
 
             foreach (IBotModule module in BotEngine.Instance.Modules)
             {
                 if (module is VillageSyncModule)
                     module.Enabled = s.Enabled;
             }
+        }
+
+        private void VsForceRedownloadAll()
+        {
+            VillageSyncModule syncModule = BotEngine.Instance != null
+                ? BotEngine.Instance.GetModule<VillageSyncModule>() : null;
+            if (syncModule != null)
+                syncModule.RequestForceRedownloadAll();
         }
 
         private void VsLoadFromSettings()
@@ -319,6 +332,9 @@ namespace Kingdoms.Bot.UI
                     Math.Min(_vsIntervalInput.Maximum, s.IntervalSeconds));
                 _vsDelayInput.Value = Math.Max(_vsDelayInput.Minimum,
                     Math.Min(_vsDelayInput.Maximum, s.DelayBetweenVillagesMs));
+                _vsAutoRefreshStaleCheck.Checked = s.AutoRefreshOnStaleError;
+                _vsForceRedownloadInput.Value = Math.Max(_vsForceRedownloadInput.Minimum,
+                    Math.Min(_vsForceRedownloadInput.Maximum, s.ForceRedownloadIntervalMinutes));
 
                 VsPopulateVillageList();
             }
@@ -334,6 +350,8 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _vsEnabledCheck.Checked;
             s.IntervalSeconds = (int)_vsIntervalInput.Value;
             s.DelayBetweenVillagesMs = (int)_vsDelayInput.Value;
+            s.AutoRefreshOnStaleError = _vsAutoRefreshStaleCheck.Checked;
+            s.ForceRedownloadIntervalMinutes = (int)_vsForceRedownloadInput.Value;
 
             foreach (VillageRow row in _vsVillageRows)
             {

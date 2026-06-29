@@ -86,6 +86,10 @@ namespace Kingdoms.Bot.UI
             this._vsDeselectAllBtn = new System.Windows.Forms.Button();
             this._vsSelectVillagesBtn = new System.Windows.Forms.Button();
             this._vsSelectCapitalsBtn = new System.Windows.Forms.Button();
+            this._vsRedownloadAllBtn = new System.Windows.Forms.Button();
+            this._vsAutoRefreshStaleCheck = new System.Windows.Forms.CheckBox();
+            this._vsForceRedownloadLabel = new System.Windows.Forms.Label();
+            this._vsForceRedownloadInput = new System.Windows.Forms.NumericUpDown();
             this._vsDelayInput = new System.Windows.Forms.NumericUpDown();
             this._vsDelayLabel = new System.Windows.Forms.Label();
             this._vsIntervalInput = new System.Windows.Forms.NumericUpDown();
@@ -508,6 +512,7 @@ namespace Kingdoms.Bot.UI
             this._vsButtonBar.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._vsDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._vsIntervalInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._vsForceRedownloadInput)).BeginInit();
             this._radarPage.SuspendLayout();
             this._rdColHeader.SuspendLayout();
             this._rdSettingsPanel.SuspendLayout();
@@ -925,6 +930,9 @@ namespace Kingdoms.Bot.UI
             // 
             this._vsSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
             this._vsSettingsPanel.Controls.Add(this._vsButtonBar);
+            this._vsSettingsPanel.Controls.Add(this._vsAutoRefreshStaleCheck);
+            this._vsSettingsPanel.Controls.Add(this._vsForceRedownloadLabel);
+            this._vsSettingsPanel.Controls.Add(this._vsForceRedownloadInput);
             this._vsSettingsPanel.Controls.Add(this._vsDelayInput);
             this._vsSettingsPanel.Controls.Add(this._vsDelayLabel);
             this._vsSettingsPanel.Controls.Add(this._vsIntervalInput);
@@ -936,7 +944,7 @@ namespace Kingdoms.Bot.UI
             this._vsSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._vsSettingsPanel.Name = "_vsSettingsPanel";
             this._vsSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 12);
-            this._vsSettingsPanel.Size = new System.Drawing.Size(1142, 126);
+            this._vsSettingsPanel.Size = new System.Drawing.Size(1142, 172);
             this._vsSettingsPanel.TabIndex = 0;
             // 
             // _vsButtonBar
@@ -946,9 +954,10 @@ namespace Kingdoms.Bot.UI
             this._vsButtonBar.Controls.Add(this._vsDeselectAllBtn);
             this._vsButtonBar.Controls.Add(this._vsSelectVillagesBtn);
             this._vsButtonBar.Controls.Add(this._vsSelectCapitalsBtn);
-            this._vsButtonBar.Location = new System.Drawing.Point(16, 78);
+            this._vsButtonBar.Controls.Add(this._vsRedownloadAllBtn);
+            this._vsButtonBar.Location = new System.Drawing.Point(16, 122);
             this._vsButtonBar.Name = "_vsButtonBar";
-            this._vsButtonBar.Size = new System.Drawing.Size(700, 38);
+            this._vsButtonBar.Size = new System.Drawing.Size(770, 38);
             this._vsButtonBar.TabIndex = 7;
             // 
             // _vsRefreshBtn
@@ -1025,7 +1034,72 @@ namespace Kingdoms.Bot.UI
             this._vsSelectCapitalsBtn.TabIndex = 4;
             this._vsSelectCapitalsBtn.Text = "Capitals Only";
             this._vsSelectCapitalsBtn.UseVisualStyleBackColor = false;
-            // 
+            //
+            // _vsRedownloadAllBtn
+            //
+            this._vsRedownloadAllBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(180)))), ((int)(((byte)(110)))), ((int)(((byte)(50)))));
+            this._vsRedownloadAllBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._vsRedownloadAllBtn.FlatAppearance.BorderSize = 0;
+            this._vsRedownloadAllBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._vsRedownloadAllBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._vsRedownloadAllBtn.ForeColor = System.Drawing.Color.White;
+            this._vsRedownloadAllBtn.Location = new System.Drawing.Point(600, 0);
+            this._vsRedownloadAllBtn.Name = "_vsRedownloadAllBtn";
+            this._vsRedownloadAllBtn.Size = new System.Drawing.Size(160, 34);
+            this._vsRedownloadAllBtn.TabIndex = 5;
+            this._vsRedownloadAllBtn.Text = "Re-download All Now";
+            this._vsRedownloadAllBtn.UseVisualStyleBackColor = false;
+            //
+            // _vsAutoRefreshStaleCheck
+            //
+            this._vsAutoRefreshStaleCheck.AutoSize = true;
+            this._vsAutoRefreshStaleCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._vsAutoRefreshStaleCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._vsAutoRefreshStaleCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._vsAutoRefreshStaleCheck.Location = new System.Drawing.Point(32, 84);
+            this._vsAutoRefreshStaleCheck.Name = "_vsAutoRefreshStaleCheck";
+            this._vsAutoRefreshStaleCheck.Size = new System.Drawing.Size(260, 19);
+            this._vsAutoRefreshStaleCheck.TabIndex = 8;
+            this._vsAutoRefreshStaleCheck.Text = "Auto-refresh village on stale-data error";
+            this._vsAutoRefreshStaleCheck.UseVisualStyleBackColor = true;
+            //
+            // _vsForceRedownloadLabel
+            //
+            this._vsForceRedownloadLabel.AutoSize = true;
+            this._vsForceRedownloadLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._vsForceRedownloadLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._vsForceRedownloadLabel.Location = new System.Drawing.Point(360, 85);
+            this._vsForceRedownloadLabel.Name = "_vsForceRedownloadLabel";
+            this._vsForceRedownloadLabel.Size = new System.Drawing.Size(244, 15);
+            this._vsForceRedownloadLabel.TabIndex = 9;
+            this._vsForceRedownloadLabel.Text = "Force full re-download every (min, 0 = off):";
+            //
+            // _vsForceRedownloadInput
+            //
+            this._vsForceRedownloadInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._vsForceRedownloadInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._vsForceRedownloadInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._vsForceRedownloadInput.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            this._vsForceRedownloadInput.Location = new System.Drawing.Point(620, 82);
+            this._vsForceRedownloadInput.Maximum = new decimal(new int[] {
+            60,
+            0,
+            0,
+            0});
+            this._vsForceRedownloadInput.Minimum = new decimal(new int[] {
+            0,
+            0,
+            0,
+            0});
+            this._vsForceRedownloadInput.Name = "_vsForceRedownloadInput";
+            this._vsForceRedownloadInput.Size = new System.Drawing.Size(60, 23);
+            this._vsForceRedownloadInput.TabIndex = 10;
+            this._vsForceRedownloadInput.Value = new decimal(new int[] {
+            10,
+            0,
+            0,
+            0});
+            //
             // _vsDelayInput
             // 
             this._vsDelayInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
@@ -6160,6 +6234,7 @@ namespace Kingdoms.Bot.UI
             this._vsButtonBar.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this._vsDelayInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._vsIntervalInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._vsForceRedownloadInput)).EndInit();
             this._radarPage.ResumeLayout(false);
             this._rdColHeader.ResumeLayout(false);
             this._rdSettingsPanel.ResumeLayout(false);
@@ -6684,8 +6759,12 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _vsIntervalInput;
         private System.Windows.Forms.Label _vsDelayLabel;
         private System.Windows.Forms.NumericUpDown _vsDelayInput;
+        private System.Windows.Forms.CheckBox _vsAutoRefreshStaleCheck;
+        private System.Windows.Forms.Label _vsForceRedownloadLabel;
+        private System.Windows.Forms.NumericUpDown _vsForceRedownloadInput;
         private System.Windows.Forms.Panel _vsButtonBar;
         private System.Windows.Forms.Button _vsRefreshBtn;
+        private System.Windows.Forms.Button _vsRedownloadAllBtn;
         private System.Windows.Forms.Button _vsSelectAllBtn;
         private System.Windows.Forms.Button _vsDeselectAllBtn;
         private System.Windows.Forms.Button _vsSelectVillagesBtn;

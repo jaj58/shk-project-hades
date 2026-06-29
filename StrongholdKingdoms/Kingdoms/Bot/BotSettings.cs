@@ -113,6 +113,13 @@ namespace Kingdoms.Bot
         public bool Enabled = true;
         public int IntervalSeconds = 120;
         public int DelayBetweenVillagesMs = 3000;
+        // When the Trade module hits a "not enough resources" rejection, the
+        // village's local resource count was stale — force a full re-download of
+        // just that village so the next cycle works from authoritative data.
+        public bool AutoRefreshOnStaleError = true;
+        // Periodically force a full (authoritative) re-download of every enabled
+        // village, on top of the lightweight background sync. 0 = disabled.
+        public int ForceRedownloadIntervalMinutes = 10;
         public List<int> ExcludedVillageIds = new List<int>();
 
         public bool IsVillageEnabled(int villageId)

@@ -13,6 +13,24 @@ namespace Kingdoms.Bot.Modules
         private DateTime _lastCycleEnd = DateTime.MinValue;
         private bool _cycleComplete = true;
 
+        // Priority queue of villages to FORCE a full (authoritative) re-download
+        // of — drained one-per-throttle ahead of the normal lightweight sync.
+        // Fed by stale-data errors (Trade), the periodic timer and the manual
+        // button. May be enqueued from other module threads, hence the lock.
+        private readonly List<int> _forceRedownloadQueue = new List<int>();
+        private readonly object _queueLock = new object();
+        private DateTime _lastForceRedownloadCycle = DateTime.MinValue;
+
+        private int ForceRedownloadIntervalMinutes
+        {
+            get
+            {
+                if (Engine != null && Engine.Settings != null)
+                    return Engine.Settings.VillageSync.ForceRedownloadIntervalMinutes;
+                return 0;
+            }
+        }
+
         public override string ModuleName
         {
             get { return "Village Sync"; }
@@ -100,6 +118,16 @@ namespace Kingdoms.Bot.Modules
             if (_activeVillageIds.Count == 0)
                 return;
 
+            // The periodic full re-download just feeds the priority queue; the
+            // queue itself is what actually does the (throttled) downloads.
+            EnqueuePeriodicForceRedownloadIfDue();
+
+            // Force re-downloads take priority over the lightweight background
+            // cycle. Process at most one per throttle so we never fire two heavy
+            // village downloads back to back.
+            if (ProcessForceRedownloadQueue())
+                return;
+
             if (_cycleComplete)
             {
                 if ((DateTime.Now - _lastCycleEnd).TotalSeconds < CycleIntervalSeconds)
@@ -173,6 +201,92 @@ namespace Kingdoms.Bot.Modules
             }
         }
 
+        /// <summary>
+        /// Queue a single village for an authoritative full re-download. Safe to
+        /// call from any module thread; the download itself runs on this module's
+        /// tick. Deduplicated, so repeated calls for the same village coalesce.
+        /// </summary>
+        public void RequestForceRedownload(int villageId)
+        {
+            lock (_queueLock)
+            {
+                if (!_forceRedownloadQueue.Contains(villageId))
+                    _forceRedownloadQueue.Add(villageId);
+            }
+        }
+
+        /// <summary>
+        /// Queue every enabled village for a full re-download (manual button /
+        /// periodic timer).
+        /// </summary>
+        public void RequestForceRedownloadAll()
+        {
+            lock (_queueLock)
+            {
+                foreach (int id in _activeVillageIds)
+                {
+                    if (!_forceRedownloadQueue.Contains(id))
+                        _forceRedownloadQueue.Add(id);
+                }
+            }
+            LogInfo("Queued full re-download of " + _activeVillageIds.Count + " village(s).");
+        }
+
+        public int PendingForceRedownloadCount
+        {
+            get { lock (_queueLock) { return _forceRedownloadQueue.Count; } }
+        }
+
+        private void EnqueuePeriodicForceRedownloadIfDue()
+        {
+            int intervalMin = ForceRedownloadIntervalMinutes;
+            if (intervalMin <= 0)
+                return;
+
+            // Seed the timer on first run so we don't fire immediately at startup.
+            if (_lastForceRedownloadCycle == DateTime.MinValue)
+            {
+                _lastForceRedownloadCycle = DateTime.Now;
+                return;
+            }
+
+            if ((DateTime.Now - _lastForceRedownloadCycle).TotalMinutes < intervalMin)
+                return;
+
+            _lastForceRedownloadCycle = DateTime.Now;
+            LogInfo("Periodic full re-download due (every " + intervalMin + " min).");
+            RequestForceRedownloadAll();
+        }
+
+        private bool ProcessForceRedownloadQueue()
+        {
+            int villageId;
+            lock (_queueLock)
+            {
+                if (_forceRedownloadQueue.Count == 0)
+                    return false;
+
+                if ((DateTime.Now - _lastVillageSync).TotalMilliseconds < DelayBetweenVillagesMs)
+                    return true; // work pending but throttled — hold the queue's priority
+
+                villageId = _forceRedownloadQueue[0];
+                _forceRedownloadQueue.RemoveAt(0);
+            }
+
+            _lastVillageSync = DateTime.Now;
+            try
+            {
+                string villageName = GameEngine.Instance.World.getVillageName(villageId);
+                LogInfo("Full re-download [" + villageId + "] " + villageName + " (queued).");
+                ForceRefresh(villageId);
+            }
+            catch (Exception ex)
+            {
+                LogError("Force re-download of village " + villageId + " failed: " + ex.Message);
+            }
+            return true;
+        }
+
         private void BackGroundRefresh(VillageMap village)
         {
             LogInfo("Background refreshing village [" + village.VillageID + "] ");
@@ -223,6 +337,7 @@ namespace Kingdoms.Bot.Modules
             _activeVillageIds.Clear();
             _currentIndex = 0;
             _cycleComplete = true;
+            lock (_queueLock) { _forceRedownloadQueue.Clear(); }
         }
     }
 }

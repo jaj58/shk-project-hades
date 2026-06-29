@@ -913,6 +913,7 @@ namespace Kingdoms.Bot.Modules
                     BlockSellThisCycle(pending.VillageId, pending.ResourceId);
                     LogDebug(GetVillageName(pending.VillageId) + ": not enough " + resourceName +
                         " to sell — skipping it for the rest of this cycle.");
+                    RequestStaleVillageRedownload(pending.VillageId);
                 }
                 // Otherwise our cached view of that market was evidently wrong — drop
                 // it so the next attempt re-fetches prices instead of repeating the
@@ -1684,6 +1685,29 @@ namespace Kingdoms.Bot.Modules
         {
             return error != null &&
                    error.ToLowerInvariant().IndexOf("enough resource") >= 0;
+        }
+
+        // A resource-shortage rejection proves this village's local resource count
+        // was stale. If enabled, ask Village Sync to force a full re-download of it
+        // so the next cycle works from authoritative data. The request is
+        // deduplicated on the sync side, so calling it per rejection is fine.
+        private void RequestStaleVillageRedownload(int villageId)
+        {
+            try
+            {
+                if (Engine == null || Engine.Settings == null ||
+                    !Engine.Settings.VillageSync.AutoRefreshOnStaleError)
+                    return;
+
+                VillageSyncModule vsm = Engine.GetModule<VillageSyncModule>();
+                if (vsm != null)
+                {
+                    vsm.RequestForceRedownload(villageId);
+                    LogDebug(GetVillageName(villageId) +
+                        ": queued full re-download (stale resource data).");
+                }
+            }
+            catch { }
         }
 
         // Tick-thread only. Records / queries resources this village can't supply
