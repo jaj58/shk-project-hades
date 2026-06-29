@@ -38,6 +38,14 @@ namespace Kingdoms.Bot.Modules
         private readonly Dictionary<TradeCategory, int> _dispatchCounts =
             new Dictionary<TradeCategory, int>();
         private DateTime _blockedSince = DateTime.MinValue;
+        // Resources the server rejected with "not enough resources to send" this
+        // cycle, keyed by village. A sell shortage is seller-side (our local
+        // resource count was stale/overstated), not a market problem, so we stop
+        // re-offering that resource instead of rotating it through every market
+        // until the dispatch cap is hit. Cleared per village in BeginVillage;
+        // only touched on the tick thread.
+        private readonly Dictionary<int, HashSet<int>> _sellBlockedThisCycle =
+            new Dictionary<int, HashSet<int>>();
         // Safety valve: bounds how many dispatches one category of one village can
         // make per cycle, so a pathological config can't stall the whole queue.
         private const int MaxDispatchesPerCategory = 20;
@@ -244,6 +252,7 @@ namespace Kingdoms.Bot.Modules
             _activeVillageId = villageId;
             _remainingCategories.Clear();
             _dispatchCounts.Clear();
+            _sellBlockedThisCycle.Remove(villageId);
             _blockedSince = DateTime.MinValue;
 
             VillageMap map = GameEngine.Instance.getVillage(villageId);
@@ -895,11 +904,23 @@ namespace Kingdoms.Bot.Modules
                 LogError(GetVillageName(pending.VillageId) + " " + label + " " + pending.Amount + " " +
                     resourceName + " REJECTED by server: " + (result.Error ?? "unknown error"));
 
-                // Our cached view of that market was evidently wrong — drop it so
-                // the next attempt re-fetches prices instead of repeating the
+                // "Not enough resources to send" on a sell is seller-side: our local
+                // resource count was stale/overstated, the target market is innocent.
+                // Block this resource for the rest of the cycle so we don't re-offer
+                // the same doomed sell against every other market in turn.
+                if (pending.Kind == PendingKind.MarketSell && IsResourceShortageError(result.Error))
+                {
+                    BlockSellThisCycle(pending.VillageId, pending.ResourceId);
+                    LogDebug(GetVillageName(pending.VillageId) + ": not enough " + resourceName +
+                        " to sell — skipping it for the rest of this cycle.");
+                }
+                // Otherwise our cached view of that market was evidently wrong — drop
+                // it so the next attempt re-fetches prices instead of repeating the
                 // same rejected trade.
-                if (pending.Kind == PendingKind.MarketBuy || pending.Kind == PendingKind.MarketSell)
+                else if (pending.Kind == PendingKind.MarketBuy || pending.Kind == PendingKind.MarketSell)
+                {
                     InvalidateMarketCache(pending.TargetId);
+                }
                 return;
             }
 
@@ -1035,6 +1056,9 @@ namespace Kingdoms.Bot.Modules
                 if (movingTraders >= settings.MerchantsTradeLimit) break;
 
                 int resourceId = (int)tradeType.ResourceId;
+                // The server already told us this village can't actually supply this
+                // resource this cycle — don't rotate it through the rest of the markets.
+                if (IsSellBlockedThisCycle(villageId, resourceId)) continue;
                 int currentAmount = (int)map.getResourceLevel(resourceId) +
                     GetPurchasedAmount(villageId, resourceId, settings.IgnoreCurrentTransactions);
                 int carryLevel = GetCarryLevel(resourceId);
@@ -1651,6 +1675,35 @@ namespace Kingdoms.Bot.Modules
             {
                 _stockExchangeCache.Remove(marketId);
             }
+        }
+
+        // Whether a server rejection means the seller didn't have the resource it
+        // tried to send (as opposed to a market/price problem). Matched on the
+        // localized error text since the numeric code lives in CommonTypes.
+        private static bool IsResourceShortageError(string error)
+        {
+            return error != null &&
+                   error.ToLowerInvariant().IndexOf("enough resource") >= 0;
+        }
+
+        // Tick-thread only. Records / queries resources this village can't supply
+        // this cycle; the set is reset per village in BeginVillage.
+        private void BlockSellThisCycle(int villageId, int resourceId)
+        {
+            HashSet<int> blocked;
+            if (!_sellBlockedThisCycle.TryGetValue(villageId, out blocked))
+            {
+                blocked = new HashSet<int>();
+                _sellBlockedThisCycle[villageId] = blocked;
+            }
+            blocked.Add(resourceId);
+        }
+
+        private bool IsSellBlockedThisCycle(int villageId, int resourceId)
+        {
+            HashSet<int> blocked;
+            return _sellBlockedThisCycle.TryGetValue(villageId, out blocked) &&
+                   blocked.Contains(resourceId);
         }
 
         private bool AreWeaponsAllowed()
