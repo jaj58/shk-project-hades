@@ -23,8 +23,6 @@ namespace Kingdoms
     private CustomSelfDrawPanel.CSDButton tradeButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton attackButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton botAttackButton = new CustomSelfDrawPanel.CSDButton();
-    private CustomSelfDrawPanel.CSDButton absButton = new CustomSelfDrawPanel.CSDButton();
-    private CustomSelfDrawPanel.CSDButton excomButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton scoutButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton reinforceButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton monkButton = new CustomSelfDrawPanel.CSDButton();
@@ -128,33 +126,18 @@ namespace Kingdoms
       this.monkButton.CustomTooltipID = 2414;
       this.monkButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.btnSendMonks_Click), "ParishCapitalVillagePanel2_sendmonks");
       this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.monkButton);
-      // Bot buttons sit at y=88, clear of the standard row's two possible positions
-      // (y=49/142 in updateSize()) and to the left of castleButton at (82, 112).
-      this.botAttackButton = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
-      this.botAttackButton.Position = new Point(10, 88);
-      this.botAttackButton.CustomTooltipID = 11111131;
-      this.botAttackButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAttackerClick), "ParishCapitalVillagePanel2_bot_attacker");
-      if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowAttackButton == true)
-        this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.botAttackButton);
-      this.absButton.ImageNorm = (Image) GFXLibrary.monk_screen_button_array_75x75[19];
-      this.absButton.ImageOver = (Image) GFXLibrary.monk_screen_button_array_75x75[26];
-      this.absButton.Size = new Size(40, 40);
-      this.absButton.Position = new Point(60, 88);
-      this.absButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAbsClick), "ParishCapitalVillagePanel2_bot_abs");
-      if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowMonksButton == true)
-        this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.absButton);
-      this.excomButton.ImageNorm = (Image) GFXLibrary.monk_screen_button_array_75x75[20];
-      this.excomButton.ImageOver = (Image) GFXLibrary.monk_screen_button_array_75x75[27];
-      this.excomButton.Size = new Size(40, 40);
-      this.excomButton.Position = new Point(150, 5);
-      this.excomButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotExcomClick), "ParishCapitalVillagePanel2_bot_excom");
-      if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowMonksButton == true)
-        this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.excomButton);
       this.castleButton = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.LAST_REPORT);
       this.castleButton.Position = new Point(82, 112);
       this.castleButton.CustomTooltipID = 2445;
       this.castleButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.castleClick), "ParishCapitalVillagePanel2_view_castle");
       this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.castleButton);
+      // Bot attack button sits immediately to the left of the report button.
+      this.botAttackButton = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
+      this.botAttackButton.Position = new Point(50, 112);
+      this.botAttackButton.CustomTooltipID = 11111131;
+      this.botAttackButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAttackerClick), "ParishCapitalVillagePanel2_bot_attacker");
+      if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowAttackButton == true)
+        this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.botAttackButton);
       if (GameEngine.Instance.World.MapEditing)
       {
         this.mapEdit.ImageNorm = (Image) GFXLibrary.faction_pen;
@@ -226,6 +209,7 @@ namespace Kingdoms
       this.reinforceButton.Position = new Point(115, 142 + num1 + num3);
       this.monkButton.Position = new Point(150, 142 + num1 + num3);
       this.castleButton.Position = new Point(82, 112 + num1 + num2);
+      this.botAttackButton.Position = new Point(50, 112 + num1 + num2);
       this.mapEdit.Position = new Point(168, 112 + num1 + num2);
       this.backGround.invalidate();
     }
@@ -439,26 +423,6 @@ namespace Kingdoms
         module.AttackNow(ownVillage, target);
       else
         module.AddPrey(new AttackerPrey { OwnVillageId = ownVillage, TargetId = target });
-    }
-
-    private void BotAbsClick()
-    {
-      if (this.m_selectedVillage < 0)
-        return;
-      AttackerSettings s = BotEngine.Instance?.Settings?.Attacker;
-      if (s == null)
-        return;
-      RemoteServices.Instance.SendPeople(InterfaceMgr.Instance.OwnSelectedVillage, this.m_selectedVillage, 4, s.AbsMonkCount, 6, -1);
-    }
-
-    private void BotExcomClick()
-    {
-      if (this.m_selectedVillage < 0)
-        return;
-      AttackerSettings s = BotEngine.Instance?.Settings?.Attacker;
-      if (s == null)
-        return;
-      RemoteServices.Instance.SendPeople(InterfaceMgr.Instance.OwnSelectedVillage, this.m_selectedVillage, 4, s.ExcomMonkCount, 7, -1);
     }
 
     private void btnSendTroops_Click()
