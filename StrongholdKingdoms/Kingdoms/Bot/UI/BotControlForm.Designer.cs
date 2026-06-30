@@ -2705,7 +2705,7 @@ namespace Kingdoms.Bot.UI
             this._trSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._trSettingsPanel.Name = "_trSettingsPanel";
             this._trSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._trSettingsPanel.Size = new System.Drawing.Size(1142, 160);
+            this._trSettingsPanel.Size = new System.Drawing.Size(1142, 195);
             this._trSettingsPanel.TabIndex = 0;
             //
             // _trAutoSaveRouteProgressCheck
@@ -2716,7 +2716,7 @@ namespace Kingdoms.Bot.UI
             this._trAutoSaveRouteProgressCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._trAutoSaveRouteProgressCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trAutoSaveRouteProgressCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trAutoSaveRouteProgressCheck.Location = new System.Drawing.Point(928, 70);
+            this._trAutoSaveRouteProgressCheck.Location = new System.Drawing.Point(570, 100);
             this._trAutoSaveRouteProgressCheck.Name = "_trAutoSaveRouteProgressCheck";
             this._trAutoSaveRouteProgressCheck.TabIndex = 18;
             this._trAutoSaveRouteProgressCheck.Text = "Auto-save route progress";
@@ -2727,7 +2727,7 @@ namespace Kingdoms.Bot.UI
             this._trDisableOnCardExpiryCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._trDisableOnCardExpiryCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trDisableOnCardExpiryCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trDisableOnCardExpiryCheck.Location = new System.Drawing.Point(775, 70);
+            this._trDisableOnCardExpiryCheck.Location = new System.Drawing.Point(390, 100);
             this._trDisableOnCardExpiryCheck.Name = "_trDisableOnCardExpiryCheck";
             this._trDisableOnCardExpiryCheck.Size = new System.Drawing.Size(139, 19);
             this._trDisableOnCardExpiryCheck.TabIndex = 17;
@@ -2738,7 +2738,7 @@ namespace Kingdoms.Bot.UI
             this._trDisableAfterLabel.AutoSize = true;
             this._trDisableAfterLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trDisableAfterLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._trDisableAfterLabel.Location = new System.Drawing.Point(16, 102);
+            this._trDisableAfterLabel.Location = new System.Drawing.Point(16, 132);
             this._trDisableAfterLabel.Name = "_trDisableAfterLabel";
             this._trDisableAfterLabel.TabIndex = 19;
             this._trDisableAfterLabel.Text = "Auto-disable after:";
@@ -2748,7 +2748,7 @@ namespace Kingdoms.Bot.UI
             this._trDisableAfterInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._trDisableAfterInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._trDisableAfterInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trDisableAfterInput.Location = new System.Drawing.Point(130, 100);
+            this._trDisableAfterInput.Location = new System.Drawing.Point(130, 130);
             this._trDisableAfterInput.Maximum = new decimal(new int[] {
             1440,
             0,
@@ -2763,7 +2763,7 @@ namespace Kingdoms.Bot.UI
             this._trDisableAfterMinLabel.AutoSize = true;
             this._trDisableAfterMinLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trDisableAfterMinLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
-            this._trDisableAfterMinLabel.Location = new System.Drawing.Point(189, 102);
+            this._trDisableAfterMinLabel.Location = new System.Drawing.Point(189, 132);
             this._trDisableAfterMinLabel.Name = "_trDisableAfterMinLabel";
             this._trDisableAfterMinLabel.TabIndex = 21;
             this._trDisableAfterMinLabel.Text = "min (0 = off)";
@@ -2774,7 +2774,7 @@ namespace Kingdoms.Bot.UI
             this._trDisbandOnDisableCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._trDisbandOnDisableCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trDisbandOnDisableCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trDisbandOnDisableCheck.Location = new System.Drawing.Point(310, 100);
+            this._trDisbandOnDisableCheck.Location = new System.Drawing.Point(310, 130);
             this._trDisbandOnDisableCheck.Name = "_trDisbandOnDisableCheck";
             this._trDisbandOnDisableCheck.Size = new System.Drawing.Size(200, 19);
             this._trDisbandOnDisableCheck.TabIndex = 22;
@@ -2785,7 +2785,7 @@ namespace Kingdoms.Bot.UI
             this._trPriorityLabel.AutoSize = true;
             this._trPriorityLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trPriorityLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(200)))), ((int)(((byte)(210)))));
-            this._trPriorityLabel.Location = new System.Drawing.Point(490, 72);
+            this._trPriorityLabel.Location = new System.Drawing.Point(16, 102);
             this._trPriorityLabel.Name = "_trPriorityLabel";
             this._trPriorityLabel.Text = "Priority:";
             //
@@ -2796,7 +2796,7 @@ namespace Kingdoms.Bot.UI
             this._trPriorityCombo.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this._trPriorityCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
             this._trPriorityCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trPriorityCombo.Location = new System.Drawing.Point(545, 68);
+            this._trPriorityCombo.Location = new System.Drawing.Point(70, 98);
             this._trPriorityCombo.Name = "_trPriorityCombo";
             this._trPriorityCombo.Size = new System.Drawing.Size(300, 22);
             this._trPriorityCombo.TabIndex = 16;
