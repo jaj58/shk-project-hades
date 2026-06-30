@@ -1482,10 +1482,17 @@ namespace Kingdoms.Bot.UI
                 "When the live count of a combat troop type exceeds its target for a village, disband the\r\n" +
                 "surplus back down to the target (a target of 0 disbands them all). Only barracks troops\r\n" +
                 "at home are disbanded — field armies and castle garrison are left untouched.");
+            _rcAutoDisbandIgnoreCaptainsCheck = RcMakeOptionCheck(
+                "Ignore Captains",
+                "Protects Captains from 'Auto-disband excess troops'. Captains are expensive and\r\n" +
+                "usually left at target 0 in the grid (which would disband them all), so leave this\r\n" +
+                "ticked unless you deliberately want Captains auto-disbanded down to their target.");
             _rcAutoDisbandSpecialCheck.CheckedChanged += delegate { RcPushToSettings(); };
             _rcAutoDisbandTroopsCheck.CheckedChanged += delegate { RcPushToSettings(); };
+            _rcAutoDisbandIgnoreCaptainsCheck.CheckedChanged += delegate { RcPushToSettings(); };
             _rcEnabledCheck.Parent.Controls.Add(_rcAutoDisbandSpecialCheck);
             _rcEnabledCheck.Parent.Controls.Add(_rcAutoDisbandTroopsCheck);
+            _rcEnabledCheck.Parent.Controls.Add(_rcAutoDisbandIgnoreCaptainsCheck);
 
 
             // Villages tab: add toolbar above column header
@@ -1536,6 +1543,7 @@ namespace Kingdoms.Bot.UI
 
         private CheckBox _rcAutoDisbandSpecialCheck;
         private CheckBox _rcAutoDisbandTroopsCheck;
+        private CheckBox _rcAutoDisbandIgnoreCaptainsCheck;
         private static readonly ToolTip _rcToolTip = new ToolTip();
 
         // Radar: "use ignore options for Discord notifications" — applies the min army
@@ -1616,6 +1624,8 @@ namespace Kingdoms.Bot.UI
                 s.AutoDisbandSpecial = _rcAutoDisbandSpecialCheck.Checked;
             if (_rcAutoDisbandTroopsCheck != null)
                 s.AutoDisbandTroops = _rcAutoDisbandTroopsCheck.Checked;
+            if (_rcAutoDisbandIgnoreCaptainsCheck != null)
+                s.AutoDisbandIgnoreCaptains = _rcAutoDisbandIgnoreCaptainsCheck.Checked;
 
             foreach (IBotModule m in BotEngine.Instance.Modules)
             {
@@ -1641,6 +1651,8 @@ namespace Kingdoms.Bot.UI
                     _rcAutoDisbandSpecialCheck.Checked = s.AutoDisbandSpecial;
                 if (_rcAutoDisbandTroopsCheck != null)
                     _rcAutoDisbandTroopsCheck.Checked = s.AutoDisbandTroops;
+                if (_rcAutoDisbandIgnoreCaptainsCheck != null)
+                    _rcAutoDisbandIgnoreCaptainsCheck.Checked = s.AutoDisbandIgnoreCaptains;
 
                 RcBuildVillageList();
             }
@@ -1660,6 +1672,8 @@ namespace Kingdoms.Bot.UI
                 s.AutoDisbandSpecial = _rcAutoDisbandSpecialCheck.Checked;
             if (_rcAutoDisbandTroopsCheck != null)
                 s.AutoDisbandTroops = _rcAutoDisbandTroopsCheck.Checked;
+            if (_rcAutoDisbandIgnoreCaptainsCheck != null)
+                s.AutoDisbandIgnoreCaptains = _rcAutoDisbandIgnoreCaptainsCheck.Checked;
 
             foreach (RecruitVillagePanel panel in _rcVillagePanels)
                 panel.WriteToSettings(s);
@@ -7344,7 +7358,7 @@ namespace Kingdoms.Bot.UI
             LayoutRow(X, 24, G, _rcEnabledCheck, _rcStatusLabel);
             LayoutRow(X, 56, G, _rcIntervalLabel, _rcIntervalInput, _rcDelayLabel, _rcDelayInput);
             LayoutRow(X, 92, G, _rcRefreshBtn, _rcDisbandCombo, _rcDisbandBtn);
-            LayoutRow(X, 124, G, _rcAutoDisbandSpecialCheck, _rcAutoDisbandTroopsCheck);
+            LayoutRow(X, 124, G, _rcAutoDisbandSpecialCheck, _rcAutoDisbandTroopsCheck, _rcAutoDisbandIgnoreCaptainsCheck);
 
             // Castle Repair
             LayoutRow(X, 24, G, _crEnabledCheck, _crStatusLabel);
