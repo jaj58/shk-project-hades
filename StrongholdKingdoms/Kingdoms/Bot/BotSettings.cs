@@ -32,6 +32,7 @@ namespace Kingdoms.Bot
         public BanquetSettings Banquet = new BanquetSettings();
         public DefenderSettings Defender = new DefenderSettings();
         public MonkSettings Monk = new MonkSettings();
+        public AttackerSettings Attacker = new AttackerSettings();
         public TimingToolSettings TimingTool = new TimingToolSettings();
 
         // XmlSerializer generates and compiles a dynamic serialization assembly the first time
@@ -1345,5 +1346,42 @@ namespace Kingdoms.Bot
         // before sending. Capped by ordination research level at runtime.
         public int AutoRecruitMonks = 0;
         public List<MonkRouteSettings> Routes = new List<MonkRouteSettings>();
+    }
+
+    [Serializable]
+    public class AttackerSettings
+    {
+        public bool Enabled = false;
+        public int CycleIntervalSeconds = 30;
+
+        // World-map button visibility
+        public bool ShowAttackButton = false;
+        public bool ShowMonksButton = false;
+        public bool ForceMode = false; // true = immediate attack; false = queue
+
+        // Monk send quantities
+        public int AbsMonkCount = 1;
+        public int ExcomMonkCount = 1;
+
+        // Per-target-type formation profiles.
+        // Attack type integers: 2=Pillage, 3=Ransack, 11=Vandalise, 12=GoldRaid
+        public string DistrictFormationName = "";
+        public int DistrictAttackType = 11;
+        public int DistrictPillagePercent = 0;
+
+        public string AiFormationName = "";
+        public int AiAttackType = 11;
+        public int AiPillagePercent = 0;
+
+        public string EnemyFormationName = "";
+        public int EnemyAttackType = 11;
+        public int EnemyPillagePercent = 0;
+
+        // Time window restriction
+        public bool UseTimeWindow = false;
+        public int WindowStartHour = 0;
+        public int WindowStartMinute = 0;
+        public int WindowEndHour = 23;
+        public int WindowEndMinute = 59;
     }
 }

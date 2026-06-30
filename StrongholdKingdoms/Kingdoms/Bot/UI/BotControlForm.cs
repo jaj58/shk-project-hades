@@ -154,6 +154,40 @@ namespace Kingdoms.Bot.UI
         // Vassals tab runtime state
         private List<VassalVillagePanel> _vaVassalPanels = new List<VassalVillagePanel>();
 
+        // Attacker tab runtime state (controls created programmatically)
+        private bool _atLoading;
+        private Timer _atRefreshTimer;
+        private CheckBox _atEnabledCheck;
+        private Label _atStatusLabel;
+        private NumericUpDown _atIntervalInput;
+        private Button _atRunNowBtn;
+        private Button _atClearPreysBtn;
+        private Label _atQueueCountLabel;
+        private CheckBox _atShowAttackCheck;
+        private CheckBox _atForceModeCheck;
+        private CheckBox _atShowMonksCheck;
+        private NumericUpDown _atAbsCountInput;
+        private NumericUpDown _atExcomCountInput;
+        private CheckBox _atUseTimeWindowCheck;
+        private NumericUpDown _atWinStartHourInput;
+        private NumericUpDown _atWinStartMinInput;
+        private NumericUpDown _atWinEndHourInput;
+        private NumericUpDown _atWinEndMinInput;
+        private ComboBox _atDistrictFormationCombo;
+        private ComboBox _atDistrictAttackTypeCombo;
+        private TrackBar _atDistrictPillageTrack;
+        private Label _atDistrictPillageLabel;
+        private ComboBox _atAiFormationCombo;
+        private ComboBox _atAiAttackTypeCombo;
+        private TrackBar _atAiPillageTrack;
+        private Label _atAiPillageLabel;
+        private ComboBox _atEnemyFormationCombo;
+        private ComboBox _atEnemyAttackTypeCombo;
+        private TrackBar _atEnemyPillageTrack;
+        private Label _atEnemyPillageLabel;
+        private Button _atRefreshFormationsBtn;
+        private Panel _atPreyListPanel;
+
         public static void ShowInstance()
         {
             if (_instance == null || _instance.IsDisposed)
@@ -233,6 +267,7 @@ namespace Kingdoms.Bot.UI
                 WireUpDefenderTab();
                 WireUpMonkTab();
                 WireUpTimingTab();
+                WireUpAttackerTab();
 
                 // Let background interdict threads marshal village-load requests
                 // (which touch InterfaceMgr/game view state) onto the UI thread.
@@ -269,6 +304,7 @@ namespace Kingdoms.Bot.UI
                 ScLoadFromSettings();
                 DfLoadFromSettings();
                 TtLoadFromSettings();
+                AtLoadFromSettings();
             }
         }
 
@@ -2439,6 +2475,11 @@ namespace Kingdoms.Bot.UI
                 MkWriteToSettings();
                 tabName = "Monk";
             }
+            else if (_tabControl.SelectedTab == _attackerPage)
+            {
+                AtWriteToSettings();
+                tabName = "Attacker";
+            }
 
             BotEngine.Instance.ApplySettings();
             BotEngine.Instance.SaveSettings();
@@ -2527,6 +2568,11 @@ namespace Kingdoms.Bot.UI
             {
                 MkLoadFromSettings();
                 tabName = "Monk";
+            }
+            else if (_tabControl.SelectedTab == _attackerPage)
+            {
+                AtLoadFromSettings();
+                tabName = "Attacker";
             }
 
             RefreshStatus();
@@ -8335,6 +8381,594 @@ namespace Kingdoms.Bot.UI
             private readonly string _label;
             public MkIdVillageItem(int id, string label) { VillageId = id; _label = label; }
             public override string ToString() { return _label; }
+        }
+
+        // =====================================================================
+        // Attacker tab runtime (controls created programmatically, same pattern
+        // as the Group Radar sub-tab — see BuildGroupTabContent).
+        // =====================================================================
+
+        private static readonly string[] AtDistrictAttackTypeNames = { "Vandalise", "Gold Raid" };
+        private static readonly int[] AtDistrictAttackTypeValues = { 11, 12 };
+        private static readonly string[] AtAiAttackTypeNames = { "Vandalise", "Pillage" };
+        private static readonly int[] AtAiAttackTypeValues = { 11, 2 };
+        private static readonly string[] AtEnemyAttackTypeNames = { "Vandalise", "Pillage", "Ransack" };
+        private static readonly int[] AtEnemyAttackTypeValues = { 11, 2, 3 };
+
+        private void WireUpAttackerTab()
+        {
+            BuildAttackerTabContent();
+
+            _atEnabledCheck.CheckedChanged += delegate { AtWriteToSettings(); };
+            _atIntervalInput.ValueChanged += delegate { AtWriteToSettings(); };
+            _atShowAttackCheck.CheckedChanged += delegate { AtWriteToSettings(); };
+            _atForceModeCheck.CheckedChanged += delegate { AtWriteToSettings(); };
+            _atShowMonksCheck.CheckedChanged += delegate { AtWriteToSettings(); };
+            _atAbsCountInput.ValueChanged += delegate { AtWriteToSettings(); };
+            _atExcomCountInput.ValueChanged += delegate { AtWriteToSettings(); };
+            _atUseTimeWindowCheck.CheckedChanged += delegate { AtWriteToSettings(); };
+            _atWinStartHourInput.ValueChanged += delegate { AtWriteToSettings(); };
+            _atWinStartMinInput.ValueChanged += delegate { AtWriteToSettings(); };
+            _atWinEndHourInput.ValueChanged += delegate { AtWriteToSettings(); };
+            _atWinEndMinInput.ValueChanged += delegate { AtWriteToSettings(); };
+
+            _atDistrictFormationCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
+            _atDistrictAttackTypeCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
+            _atDistrictPillageTrack.ValueChanged += delegate
+            {
+                _atDistrictPillageLabel.Text = _atDistrictPillageTrack.Value + "%";
+                AtWriteToSettings();
+            };
+
+            _atAiFormationCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
+            _atAiAttackTypeCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
+            _atAiPillageTrack.ValueChanged += delegate
+            {
+                _atAiPillageLabel.Text = _atAiPillageTrack.Value + "%";
+                AtWriteToSettings();
+            };
+
+            _atEnemyFormationCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
+            _atEnemyAttackTypeCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
+            _atEnemyPillageTrack.ValueChanged += delegate
+            {
+                _atEnemyPillageLabel.Text = _atEnemyPillageTrack.Value + "%";
+                AtWriteToSettings();
+            };
+
+            _atRunNowBtn.Click += delegate { AtRunNow(); };
+            _atClearPreysBtn.Click += delegate { AtClearPreys(); };
+            _atRefreshFormationsBtn.Click += delegate { AtRefreshFormations(); };
+
+            _atRefreshTimer = new Timer();
+            _atRefreshTimer.Interval = 2000;
+            _atRefreshTimer.Tick += delegate
+            {
+                try { AtUpdateStatus(); AtRebuildPreyList(); }
+                catch { /* swallow — timer must not propagate exceptions */ }
+            };
+            _atRefreshTimer.Start();
+
+            AtRefreshFormations();
+        }
+
+        private void BuildAttackerTabContent()
+        {
+            Color bgMed = Color.FromArgb(40, 42, 54);
+            Color bgLight = Color.FromArgb(50, 52, 64);
+            Font fNorm = new Font("Segoe UI", 9f);
+            Font fSmall = new Font("Segoe UI", 8.5f);
+            Font fBold = new Font("Segoe UI", 9f, FontStyle.Bold);
+
+            // ---- Control panel ----
+            Panel controlPanel = new Panel();
+            controlPanel.Dock = DockStyle.Top;
+            controlPanel.BackColor = bgMed;
+            controlPanel.Height = 42;
+
+            _atEnabledCheck = new CheckBox();
+            _atEnabledCheck.Text = "Module Enabled";
+            _atEnabledCheck.Font = fBold;
+            _atEnabledCheck.ForeColor = TextPri;
+            _atEnabledCheck.Location = new Point(16, 12);
+            _atEnabledCheck.AutoSize = true;
+
+            _atStatusLabel = new Label();
+            _atStatusLabel.Text = "DISABLED";
+            _atStatusLabel.Font = fBold;
+            _atStatusLabel.ForeColor = ErrorCol;
+            _atStatusLabel.Location = new Point(150, 13);
+            _atStatusLabel.AutoSize = true;
+
+            Label intervalLabel = new Label();
+            intervalLabel.Text = "Interval (s):";
+            intervalLabel.Font = fSmall;
+            intervalLabel.ForeColor = TextSec;
+            intervalLabel.Location = new Point(240, 14);
+            intervalLabel.AutoSize = true;
+
+            _atIntervalInput = new NumericUpDown();
+            _atIntervalInput.Minimum = 5;
+            _atIntervalInput.Maximum = 300;
+            _atIntervalInput.Value = 30;
+            _atIntervalInput.Location = new Point(320, 11);
+            _atIntervalInput.Size = new Size(55, 22);
+            _atIntervalInput.BackColor = bgLight;
+            _atIntervalInput.ForeColor = TextPri;
+            _atIntervalInput.BorderStyle = BorderStyle.FixedSingle;
+            _atIntervalInput.Font = fSmall;
+
+            _atRunNowBtn = new Button();
+            _atRunNowBtn.Text = "Run Now";
+            _atRunNowBtn.Location = new Point(400, 8);
+            _atRunNowBtn.Size = new Size(90, 26);
+            _atRunNowBtn.BackColor = Color.FromArgb(60, 63, 80);
+            _atRunNowBtn.ForeColor = TextPri;
+            _atRunNowBtn.FlatStyle = FlatStyle.Flat;
+            _atRunNowBtn.Font = fSmall;
+
+            _atClearPreysBtn = new Button();
+            _atClearPreysBtn.Text = "Clear Queue";
+            _atClearPreysBtn.Location = new Point(500, 8);
+            _atClearPreysBtn.Size = new Size(100, 26);
+            _atClearPreysBtn.BackColor = Color.FromArgb(60, 63, 80);
+            _atClearPreysBtn.ForeColor = TextPri;
+            _atClearPreysBtn.FlatStyle = FlatStyle.Flat;
+            _atClearPreysBtn.Font = fSmall;
+
+            _atQueueCountLabel = new Label();
+            _atQueueCountLabel.Text = "Queue: 0";
+            _atQueueCountLabel.Font = fSmall;
+            _atQueueCountLabel.ForeColor = TextSec;
+            _atQueueCountLabel.Location = new Point(620, 14);
+            _atQueueCountLabel.AutoSize = true;
+
+            controlPanel.Controls.Add(_atEnabledCheck);
+            controlPanel.Controls.Add(_atStatusLabel);
+            controlPanel.Controls.Add(intervalLabel);
+            controlPanel.Controls.Add(_atIntervalInput);
+            controlPanel.Controls.Add(_atRunNowBtn);
+            controlPanel.Controls.Add(_atClearPreysBtn);
+            controlPanel.Controls.Add(_atQueueCountLabel);
+
+            // ---- World map buttons panel ----
+            Panel mapPanel = new Panel();
+            mapPanel.Dock = DockStyle.Top;
+            mapPanel.BackColor = bgMed;
+            mapPanel.Height = 72;
+            mapPanel.Padding = new Padding(0, 6, 0, 0);
+
+            _atShowAttackCheck = new CheckBox();
+            _atShowAttackCheck.Text = "Show Attack Button on Map";
+            _atShowAttackCheck.Font = fSmall;
+            _atShowAttackCheck.ForeColor = TextPri;
+            _atShowAttackCheck.Location = new Point(16, 10);
+            _atShowAttackCheck.AutoSize = true;
+
+            _atForceModeCheck = new CheckBox();
+            _atForceModeCheck.Text = "Force Mode (immediate attack)";
+            _atForceModeCheck.Font = fSmall;
+            _atForceModeCheck.ForeColor = TextPri;
+            _atForceModeCheck.Location = new Point(260, 10);
+            _atForceModeCheck.AutoSize = true;
+
+            _atShowMonksCheck = new CheckBox();
+            _atShowMonksCheck.Text = "Show Monk Buttons on Map";
+            _atShowMonksCheck.Font = fSmall;
+            _atShowMonksCheck.ForeColor = TextPri;
+            _atShowMonksCheck.Location = new Point(540, 10);
+            _atShowMonksCheck.AutoSize = true;
+
+            Label absLabel = new Label();
+            absLabel.Text = "Absolution monks:";
+            absLabel.Font = fSmall;
+            absLabel.ForeColor = TextSec;
+            absLabel.Location = new Point(16, 44);
+            absLabel.AutoSize = true;
+
+            _atAbsCountInput = new NumericUpDown();
+            _atAbsCountInput.Minimum = 1;
+            _atAbsCountInput.Maximum = 99;
+            _atAbsCountInput.Value = 1;
+            _atAbsCountInput.Location = new Point(150, 41);
+            _atAbsCountInput.Size = new Size(55, 22);
+            _atAbsCountInput.BackColor = bgLight;
+            _atAbsCountInput.ForeColor = TextPri;
+            _atAbsCountInput.BorderStyle = BorderStyle.FixedSingle;
+            _atAbsCountInput.Font = fSmall;
+
+            Label excomLabel = new Label();
+            excomLabel.Text = "Excommunication monks:";
+            excomLabel.Font = fSmall;
+            excomLabel.ForeColor = TextSec;
+            excomLabel.Location = new Point(260, 44);
+            excomLabel.AutoSize = true;
+
+            _atExcomCountInput = new NumericUpDown();
+            _atExcomCountInput.Minimum = 1;
+            _atExcomCountInput.Maximum = 99;
+            _atExcomCountInput.Value = 1;
+            _atExcomCountInput.Location = new Point(430, 41);
+            _atExcomCountInput.Size = new Size(55, 22);
+            _atExcomCountInput.BackColor = bgLight;
+            _atExcomCountInput.ForeColor = TextPri;
+            _atExcomCountInput.BorderStyle = BorderStyle.FixedSingle;
+            _atExcomCountInput.Font = fSmall;
+
+            mapPanel.Controls.Add(_atShowAttackCheck);
+            mapPanel.Controls.Add(_atForceModeCheck);
+            mapPanel.Controls.Add(_atShowMonksCheck);
+            mapPanel.Controls.Add(absLabel);
+            mapPanel.Controls.Add(_atAbsCountInput);
+            mapPanel.Controls.Add(excomLabel);
+            mapPanel.Controls.Add(_atExcomCountInput);
+
+            // ---- Time window panel ----
+            Panel windowPanel = new Panel();
+            windowPanel.Dock = DockStyle.Top;
+            windowPanel.BackColor = bgMed;
+            windowPanel.Height = 42;
+
+            _atUseTimeWindowCheck = new CheckBox();
+            _atUseTimeWindowCheck.Text = "Restrict to time window";
+            _atUseTimeWindowCheck.Font = fSmall;
+            _atUseTimeWindowCheck.ForeColor = TextPri;
+            _atUseTimeWindowCheck.Location = new Point(16, 12);
+            _atUseTimeWindowCheck.AutoSize = true;
+
+            Label startLabel = new Label();
+            startLabel.Text = "Start:";
+            startLabel.Font = fSmall;
+            startLabel.ForeColor = TextSec;
+            startLabel.Location = new Point(230, 14);
+            startLabel.AutoSize = true;
+
+            _atWinStartHourInput = AtMakeHourMinuteInput(270, 23);
+            Label startColon = AtMakeColonLabel(318);
+            _atWinStartMinInput = AtMakeHourMinuteInput(332, 59);
+
+            Label endLabel = new Label();
+            endLabel.Text = "End:";
+            endLabel.Font = fSmall;
+            endLabel.ForeColor = TextSec;
+            endLabel.Location = new Point(400, 14);
+            endLabel.AutoSize = true;
+
+            _atWinEndHourInput = AtMakeHourMinuteInput(438, 23);
+            Label endColon = AtMakeColonLabel(486);
+            _atWinEndMinInput = AtMakeHourMinuteInput(500, 59);
+
+            windowPanel.Controls.Add(_atUseTimeWindowCheck);
+            windowPanel.Controls.Add(startLabel);
+            windowPanel.Controls.Add(_atWinStartHourInput);
+            windowPanel.Controls.Add(startColon);
+            windowPanel.Controls.Add(_atWinStartMinInput);
+            windowPanel.Controls.Add(endLabel);
+            windowPanel.Controls.Add(_atWinEndHourInput);
+            windowPanel.Controls.Add(endColon);
+            windowPanel.Controls.Add(_atWinEndMinInput);
+
+            // ---- Formation profiles panel ----
+            Panel profilesPanel = new Panel();
+            profilesPanel.Dock = DockStyle.Top;
+            profilesPanel.BackColor = bgMed;
+            profilesPanel.Height = 168;
+
+            Label profilesTitle = new Label();
+            profilesTitle.Text = "Attack Profiles";
+            profilesTitle.Font = fBold;
+            profilesTitle.ForeColor = TextPri;
+            profilesTitle.Location = new Point(16, 8);
+            profilesTitle.AutoSize = true;
+
+            _atRefreshFormationsBtn = new Button();
+            _atRefreshFormationsBtn.Text = "Refresh Formations";
+            _atRefreshFormationsBtn.Location = new Point(900, 4);
+            _atRefreshFormationsBtn.Size = new Size(160, 26);
+            _atRefreshFormationsBtn.BackColor = Color.FromArgb(60, 63, 80);
+            _atRefreshFormationsBtn.ForeColor = TextPri;
+            _atRefreshFormationsBtn.FlatStyle = FlatStyle.Flat;
+            _atRefreshFormationsBtn.Font = fSmall;
+
+            profilesPanel.Controls.Add(profilesTitle);
+            profilesPanel.Controls.Add(_atRefreshFormationsBtn);
+
+            AtBuildProfileRow(profilesPanel, 40, "District / Capital",
+                out _atDistrictFormationCombo, out _atDistrictAttackTypeCombo,
+                out _atDistrictPillageTrack, out _atDistrictPillageLabel, AtDistrictAttackTypeNames);
+
+            AtBuildProfileRow(profilesPanel, 84, "AI / Special",
+                out _atAiFormationCombo, out _atAiAttackTypeCombo,
+                out _atAiPillageTrack, out _atAiPillageLabel, AtAiAttackTypeNames);
+
+            AtBuildProfileRow(profilesPanel, 128, "Player Enemy",
+                out _atEnemyFormationCombo, out _atEnemyAttackTypeCombo,
+                out _atEnemyPillageTrack, out _atEnemyPillageLabel, AtEnemyAttackTypeNames);
+
+            // ---- Prey queue panel (fills remaining space) ----
+            Panel queueHeader = new Panel();
+            queueHeader.Dock = DockStyle.Top;
+            queueHeader.BackColor = bgMed;
+            queueHeader.Height = 26;
+
+            Label queueHeaderLabel = new Label();
+            queueHeaderLabel.Text = "Queued Attacks (Own Village -> Target)";
+            queueHeaderLabel.Font = fSmall;
+            queueHeaderLabel.ForeColor = TextSec;
+            queueHeaderLabel.Location = new Point(16, 5);
+            queueHeaderLabel.AutoSize = true;
+            queueHeader.Controls.Add(queueHeaderLabel);
+
+            _atPreyListPanel = new Panel();
+            _atPreyListPanel.Dock = DockStyle.Fill;
+            _atPreyListPanel.BackColor = Color.FromArgb(30, 31, 40);
+            _atPreyListPanel.AutoScroll = true;
+
+            // Add order matters: Fill first so the Top-docked panels stack above it correctly.
+            _attackerPage.Controls.Add(_atPreyListPanel);
+            _attackerPage.Controls.Add(queueHeader);
+            _attackerPage.Controls.Add(profilesPanel);
+            _attackerPage.Controls.Add(windowPanel);
+            _attackerPage.Controls.Add(mapPanel);
+            _attackerPage.Controls.Add(controlPanel);
+        }
+
+        private NumericUpDown AtMakeHourMinuteInput(int x, int max)
+        {
+            NumericUpDown input = new NumericUpDown();
+            input.Minimum = 0;
+            input.Maximum = max;
+            input.Location = new Point(x, 11);
+            input.Size = new Size(45, 22);
+            input.BackColor = Color.FromArgb(50, 52, 64);
+            input.ForeColor = TextPri;
+            input.BorderStyle = BorderStyle.FixedSingle;
+            input.Font = new Font("Segoe UI", 8.5f);
+            return input;
+        }
+
+        private Label AtMakeColonLabel(int x)
+        {
+            Label l = new Label();
+            l.Text = ":";
+            l.Font = new Font("Segoe UI", 8.5f);
+            l.ForeColor = TextSec;
+            l.Location = new Point(x, 14);
+            l.AutoSize = true;
+            return l;
+        }
+
+        private void AtBuildProfileRow(Panel parent, int y, string title,
+            out ComboBox formationCombo, out ComboBox attackTypeCombo,
+            out TrackBar pillageTrack, out Label pillageLabel, string[] attackTypeNames)
+        {
+            Font fSmall = new Font("Segoe UI", 8.5f);
+
+            Label titleLabel = new Label();
+            titleLabel.Text = title;
+            titleLabel.Font = fSmall;
+            titleLabel.ForeColor = TextSec;
+            titleLabel.Location = new Point(16, y + 4);
+            titleLabel.Size = new Size(130, 18);
+
+            formationCombo = new ComboBox();
+            formationCombo.Location = new Point(150, y);
+            formationCombo.Size = new Size(220, 22);
+            formationCombo.DropDownStyle = ComboBoxStyle.DropDownList;
+            formationCombo.BackColor = Color.FromArgb(50, 52, 64);
+            formationCombo.ForeColor = TextPri;
+            formationCombo.Font = fSmall;
+
+            attackTypeCombo = new ComboBox();
+            attackTypeCombo.Location = new Point(380, y);
+            attackTypeCombo.Size = new Size(130, 22);
+            attackTypeCombo.DropDownStyle = ComboBoxStyle.DropDownList;
+            attackTypeCombo.BackColor = Color.FromArgb(50, 52, 64);
+            attackTypeCombo.ForeColor = TextPri;
+            attackTypeCombo.Font = fSmall;
+            foreach (string name in attackTypeNames)
+                attackTypeCombo.Items.Add(name);
+            attackTypeCombo.SelectedIndex = 0;
+
+            pillageTrack = new TrackBar();
+            pillageTrack.Location = new Point(520, y - 4);
+            pillageTrack.Size = new Size(150, 30);
+            pillageTrack.Minimum = 0;
+            pillageTrack.Maximum = 90;
+            pillageTrack.TickStyle = TickStyle.None;
+
+            Label localPillageLabel = new Label();
+            localPillageLabel.Text = "0%";
+            localPillageLabel.Font = fSmall;
+            localPillageLabel.ForeColor = TextSec;
+            localPillageLabel.Location = new Point(680, y + 4);
+            localPillageLabel.AutoSize = true;
+            pillageLabel = localPillageLabel;
+
+            parent.Controls.Add(titleLabel);
+            parent.Controls.Add(formationCombo);
+            parent.Controls.Add(attackTypeCombo);
+            parent.Controls.Add(pillageTrack);
+            parent.Controls.Add(pillageLabel);
+        }
+
+        private void AtRefreshFormations()
+        {
+            List<string> names = Modules.AutoBombModule.GetFormationNames();
+            AtRepopulateFormationCombo(_atDistrictFormationCombo, names);
+            AtRepopulateFormationCombo(_atAiFormationCombo, names);
+            AtRepopulateFormationCombo(_atEnemyFormationCombo, names);
+        }
+
+        private void AtRepopulateFormationCombo(ComboBox combo, List<string> names)
+        {
+            string current = combo.SelectedItem as string;
+            combo.Items.Clear();
+            foreach (string name in names)
+                combo.Items.Add(name);
+            if (current != null && combo.Items.Contains(current))
+                combo.SelectedItem = current;
+            else if (combo.Items.Count > 0)
+                combo.SelectedIndex = 0;
+        }
+
+        private void AtRunNow()
+        {
+            Modules.AttackerModule mod = BotEngine.Instance?.GetModule<Modules.AttackerModule>();
+            if (mod != null) mod.RunNow();
+        }
+
+        private void AtClearPreys()
+        {
+            Modules.AttackerModule mod = BotEngine.Instance?.GetModule<Modules.AttackerModule>();
+            if (mod != null) mod.ClearPreys();
+        }
+
+        private void AtUpdateStatus()
+        {
+            if (_atStatusLabel == null) return;
+            bool enabled = _atEnabledCheck != null && _atEnabledCheck.Checked;
+            _atStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
+            _atStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+
+            Modules.AttackerModule mod = BotEngine.Instance?.GetModule<Modules.AttackerModule>();
+            int count = mod != null ? mod.PreyQueueCount : 0;
+            _atQueueCountLabel.Text = "Queue: " + count;
+        }
+
+        private void AtRebuildPreyList()
+        {
+            if (_atPreyListPanel == null) return;
+            Modules.AttackerModule mod = BotEngine.Instance?.GetModule<Modules.AttackerModule>();
+            List<Modules.AttackerPrey> preys = mod != null ? mod.GetPreyList() : new List<Modules.AttackerPrey>();
+
+            _atPreyListPanel.Controls.Clear();
+            int y = 4;
+            foreach (Modules.AttackerPrey p in preys)
+            {
+                Label row = new Label();
+                row.Text = "[" + p.OwnVillageId + "] -> [" + p.TargetId + "]";
+                row.Font = new Font("Segoe UI", 8.5f);
+                row.ForeColor = TextPri;
+                row.Location = new Point(16, y);
+                row.AutoSize = true;
+                _atPreyListPanel.Controls.Add(row);
+                y += 20;
+            }
+        }
+
+        private void AtLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            if (_atEnabledCheck == null) return;
+
+            _atLoading = true;
+            try
+            {
+                AttackerSettings s = BotEngine.Instance.Settings.Attacker;
+
+                _atEnabledCheck.Checked = s.Enabled;
+                _atIntervalInput.Value = Math.Max(_atIntervalInput.Minimum,
+                    Math.Min(_atIntervalInput.Maximum, s.CycleIntervalSeconds));
+
+                _atShowAttackCheck.Checked = s.ShowAttackButton;
+                _atForceModeCheck.Checked = s.ForceMode;
+                _atShowMonksCheck.Checked = s.ShowMonksButton;
+                _atAbsCountInput.Value = Math.Max(_atAbsCountInput.Minimum,
+                    Math.Min(_atAbsCountInput.Maximum, s.AbsMonkCount));
+                _atExcomCountInput.Value = Math.Max(_atExcomCountInput.Minimum,
+                    Math.Min(_atExcomCountInput.Maximum, s.ExcomMonkCount));
+
+                _atUseTimeWindowCheck.Checked = s.UseTimeWindow;
+                _atWinStartHourInput.Value = s.WindowStartHour;
+                _atWinStartMinInput.Value = s.WindowStartMinute;
+                _atWinEndHourInput.Value = s.WindowEndHour;
+                _atWinEndMinInput.Value = s.WindowEndMinute;
+
+                AtSelectFormation(_atDistrictFormationCombo, s.DistrictFormationName);
+                _atDistrictAttackTypeCombo.SelectedIndex = AtAttackTypeToIndex(AtDistrictAttackTypeValues, s.DistrictAttackType);
+                _atDistrictPillageTrack.Value = Math.Max(_atDistrictPillageTrack.Minimum,
+                    Math.Min(_atDistrictPillageTrack.Maximum, s.DistrictPillagePercent));
+                _atDistrictPillageLabel.Text = _atDistrictPillageTrack.Value + "%";
+
+                AtSelectFormation(_atAiFormationCombo, s.AiFormationName);
+                _atAiAttackTypeCombo.SelectedIndex = AtAttackTypeToIndex(AtAiAttackTypeValues, s.AiAttackType);
+                _atAiPillageTrack.Value = Math.Max(_atAiPillageTrack.Minimum,
+                    Math.Min(_atAiPillageTrack.Maximum, s.AiPillagePercent));
+                _atAiPillageLabel.Text = _atAiPillageTrack.Value + "%";
+
+                AtSelectFormation(_atEnemyFormationCombo, s.EnemyFormationName);
+                _atEnemyAttackTypeCombo.SelectedIndex = AtAttackTypeToIndex(AtEnemyAttackTypeValues, s.EnemyAttackType);
+                _atEnemyPillageTrack.Value = Math.Max(_atEnemyPillageTrack.Minimum,
+                    Math.Min(_atEnemyPillageTrack.Maximum, s.EnemyPillagePercent));
+                _atEnemyPillageLabel.Text = _atEnemyPillageTrack.Value + "%";
+            }
+            finally
+            {
+                _atLoading = false;
+            }
+        }
+
+        private void AtWriteToSettings()
+        {
+            if (_atLoading) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            AttackerSettings s = BotEngine.Instance.Settings.Attacker;
+
+            s.Enabled = _atEnabledCheck.Checked;
+            s.CycleIntervalSeconds = (int)_atIntervalInput.Value;
+
+            s.ShowAttackButton = _atShowAttackCheck.Checked;
+            s.ForceMode = _atForceModeCheck.Checked;
+            s.ShowMonksButton = _atShowMonksCheck.Checked;
+            s.AbsMonkCount = (int)_atAbsCountInput.Value;
+            s.ExcomMonkCount = (int)_atExcomCountInput.Value;
+
+            s.UseTimeWindow = _atUseTimeWindowCheck.Checked;
+            s.WindowStartHour = (int)_atWinStartHourInput.Value;
+            s.WindowStartMinute = (int)_atWinStartMinInput.Value;
+            s.WindowEndHour = (int)_atWinEndHourInput.Value;
+            s.WindowEndMinute = (int)_atWinEndMinInput.Value;
+
+            s.DistrictFormationName = _atDistrictFormationCombo.SelectedItem as string ?? "";
+            s.DistrictAttackType = AtIndexToAttackType(AtDistrictAttackTypeValues, _atDistrictAttackTypeCombo.SelectedIndex);
+            s.DistrictPillagePercent = _atDistrictPillageTrack.Value;
+
+            s.AiFormationName = _atAiFormationCombo.SelectedItem as string ?? "";
+            s.AiAttackType = AtIndexToAttackType(AtAiAttackTypeValues, _atAiAttackTypeCombo.SelectedIndex);
+            s.AiPillagePercent = _atAiPillageTrack.Value;
+
+            s.EnemyFormationName = _atEnemyFormationCombo.SelectedItem as string ?? "";
+            s.EnemyAttackType = AtIndexToAttackType(AtEnemyAttackTypeValues, _atEnemyAttackTypeCombo.SelectedIndex);
+            s.EnemyPillagePercent = _atEnemyPillageTrack.Value;
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                if (m is Modules.AttackerModule)
+                    m.Enabled = s.Enabled;
+            }
+        }
+
+        private static void AtSelectFormation(ComboBox combo, string name)
+        {
+            if (string.IsNullOrEmpty(name)) { combo.SelectedIndex = combo.Items.Count > 0 ? 0 : -1; return; }
+            if (combo.Items.Contains(name))
+                combo.SelectedItem = name;
+            else if (combo.Items.Count > 0)
+                combo.SelectedIndex = 0;
+        }
+
+        private static int AtAttackTypeToIndex(int[] values, int attackType)
+        {
+            for (int i = 0; i < values.Length; i++)
+                if (values[i] == attackType) return i;
+            return 0;
+        }
+
+        private static int AtIndexToAttackType(int[] values, int index)
+        {
+            if (index < 0 || index >= values.Length) return values[0];
+            return values[index];
         }
     }
 }

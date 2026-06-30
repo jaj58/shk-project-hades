@@ -100,6 +100,7 @@
     <Compile Include="Kingdoms\Bot\InterdictRunner.cs" />
     <Compile Include="Kingdoms\Bot\RadarSoundPlayer.cs" />
     <Compile Include="Kingdoms\Bot\IBotModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\AttackerModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombMultiModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoCardModule.cs" />
