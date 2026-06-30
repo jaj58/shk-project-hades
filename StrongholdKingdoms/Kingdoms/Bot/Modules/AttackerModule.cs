@@ -12,6 +12,14 @@ namespace Kingdoms.Bot.Modules
         public double Distance;
     }
 
+    public class MonkPrey
+    {
+        public int OwnVillageId;
+        public int TargetId;
+        public int Command; // 6 = Absolution, 7 = Excommunication
+        public int Count;
+    }
+
     public class AttackerModule : BotModuleBase
     {
         private const int ATTACK_PILLAGE = 2;
@@ -21,6 +29,9 @@ namespace Kingdoms.Bot.Modules
 
         private readonly object _preyLock = new object();
         private readonly Queue<AttackerPrey> _preyQueue = new Queue<AttackerPrey>();
+
+        private readonly object _monkLock = new object();
+        private readonly Queue<MonkPrey> _monkQueue = new Queue<MonkPrey>();
 
         private volatile bool _attacking;
         private Thread _attackThread;
@@ -38,6 +49,11 @@ namespace Kingdoms.Bot.Modules
         public int PreyQueueCount
         {
             get { lock (_preyLock) return _preyQueue.Count; }
+        }
+
+        public int MonkQueueCount
+        {
+            get { lock (_monkLock) return _monkQueue.Count; }
         }
 
         public bool IsAttacking
@@ -78,7 +94,19 @@ namespace Kingdoms.Bot.Modules
         protected override void OnTick()
         {
             AttackerSettings s = Settings;
-            if (s == null || !s.Enabled || _attacking)
+            if (s == null || !s.Enabled)
+                return;
+
+            MonkPrey monkPrey = null;
+            lock (_monkLock)
+            {
+                if (_monkQueue.Count > 0)
+                    monkPrey = _monkQueue.Dequeue();
+            }
+            if (monkPrey != null)
+                SendMonkPrey(monkPrey);
+
+            if (_attacking)
                 return;
 
             AttackerPrey prey = null;
@@ -136,6 +164,51 @@ namespace Kingdoms.Bot.Modules
         {
             if (Enabled)
                 OnTick();
+        }
+
+        public List<MonkPrey> GetMonkList()
+        {
+            lock (_monkLock)
+                return new List<MonkPrey>(_monkQueue);
+        }
+
+        public void AddMonkPrey(MonkPrey monk)
+        {
+            if (monk == null) return;
+            lock (_monkLock)
+                _monkQueue.Enqueue(monk);
+            LogInfo("Monk action queued: " + monk.OwnVillageId + " -> " + monk.TargetId +
+                " (cmd " + monk.Command + ", queue=" + MonkQueueCount + ")");
+        }
+
+        public void ClearMonkPreys()
+        {
+            lock (_monkLock)
+                _monkQueue.Clear();
+            LogInfo("Monk queue cleared.");
+        }
+
+        /// <summary>
+        /// Sends monks immediately, bypassing the queue.
+        /// Used by the world-map absolution/excommunication buttons when Force Mode is enabled.
+        /// </summary>
+        public void SendMonkNow(int ownVillageId, int targetId, int command, int count)
+        {
+            SendMonkPrey(new MonkPrey { OwnVillageId = ownVillageId, TargetId = targetId, Command = command, Count = count });
+        }
+
+        private void SendMonkPrey(MonkPrey monk)
+        {
+            try
+            {
+                RemoteServices.Instance.SendPeople(monk.OwnVillageId, monk.TargetId, 4, monk.Count, monk.Command, -1);
+                LogInfo("Monks sent: " + monk.OwnVillageId + " -> " + monk.TargetId +
+                    " (cmd " + monk.Command + ", count " + monk.Count + ")");
+            }
+            catch (Exception ex)
+            {
+                LogError("Monk send error: " + ex.Message);
+            }
         }
 
         /// <summary>

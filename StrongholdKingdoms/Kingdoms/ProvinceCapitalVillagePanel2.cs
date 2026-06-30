@@ -297,20 +297,36 @@ namespace Kingdoms
     {
       if (this.m_selectedVillage < 0)
         return;
-      AttackerSettings s = BotEngine.Instance?.Settings?.Attacker;
+      AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
+      if (module == null || !module.Enabled)
+        return;
+      AttackerSettings s = module.Settings;
       if (s == null)
         return;
-      RemoteServices.Instance.SendPeople(InterfaceMgr.Instance.OwnSelectedVillage, this.m_selectedVillage, 4, s.AbsMonkCount, 6, -1);
+      int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
+      int target = this.m_selectedVillage;
+      if (s.ForceMode)
+        module.SendMonkNow(ownVillage, target, 6, s.AbsMonkCount);
+      else
+        module.AddMonkPrey(new MonkPrey { OwnVillageId = ownVillage, TargetId = target, Command = 6, Count = s.AbsMonkCount });
     }
 
     private void BotExcomClick()
     {
       if (this.m_selectedVillage < 0)
         return;
-      AttackerSettings s = BotEngine.Instance?.Settings?.Attacker;
+      AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
+      if (module == null || !module.Enabled)
+        return;
+      AttackerSettings s = module.Settings;
       if (s == null)
         return;
-      RemoteServices.Instance.SendPeople(InterfaceMgr.Instance.OwnSelectedVillage, this.m_selectedVillage, 4, s.ExcomMonkCount, 7, -1);
+      int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
+      int target = this.m_selectedVillage;
+      if (s.ForceMode)
+        module.SendMonkNow(ownVillage, target, 7, s.ExcomMonkCount);
+      else
+        module.AddMonkPrey(new MonkPrey { OwnVillageId = ownVillage, TargetId = target, Command = 7, Count = s.ExcomMonkCount });
     }
 
     private void btnSendTroops_Click()

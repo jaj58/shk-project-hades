@@ -8754,7 +8754,11 @@ namespace Kingdoms.Bot.UI
         private void AtClearPreys()
         {
             Modules.AttackerModule mod = BotEngine.Instance?.GetModule<Modules.AttackerModule>();
-            if (mod != null) mod.ClearPreys();
+            if (mod != null)
+            {
+                mod.ClearPreys();
+                mod.ClearMonkPreys();
+            }
         }
 
         private void AtUpdateStatus()
@@ -8765,8 +8769,9 @@ namespace Kingdoms.Bot.UI
             _atStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
 
             Modules.AttackerModule mod = BotEngine.Instance?.GetModule<Modules.AttackerModule>();
-            int count = mod != null ? mod.PreyQueueCount : 0;
-            _atQueueCountLabel.Text = "Queue: " + count;
+            int attackCount = mod != null ? mod.PreyQueueCount : 0;
+            int monkCount = mod != null ? mod.MonkQueueCount : 0;
+            _atQueueCountLabel.Text = "Queue: " + attackCount + " attacks, " + monkCount + " monks";
         }
 
         private void AtRebuildPreyList()
@@ -8774,13 +8779,26 @@ namespace Kingdoms.Bot.UI
             if (_atPreyListPanel == null) return;
             Modules.AttackerModule mod = BotEngine.Instance?.GetModule<Modules.AttackerModule>();
             List<Modules.AttackerPrey> preys = mod != null ? mod.GetPreyList() : new List<Modules.AttackerPrey>();
+            List<Modules.MonkPrey> monks = mod != null ? mod.GetMonkList() : new List<Modules.MonkPrey>();
 
             _atPreyListPanel.Controls.Clear();
             int y = 4;
             foreach (Modules.AttackerPrey p in preys)
             {
                 Label row = new Label();
-                row.Text = "[" + p.OwnVillageId + "] -> [" + p.TargetId + "]";
+                row.Text = "[Attack] [" + p.OwnVillageId + "] -> [" + p.TargetId + "]";
+                row.Font = new Font("Segoe UI", 8.5f);
+                row.ForeColor = TextPri;
+                row.Location = new Point(16, y);
+                row.AutoSize = true;
+                _atPreyListPanel.Controls.Add(row);
+                y += 20;
+            }
+            foreach (Modules.MonkPrey m in monks)
+            {
+                Label row = new Label();
+                string cmdName = m.Command == 6 ? "Absolution" : m.Command == 7 ? "Excommunication" : "Monk";
+                row.Text = "[" + cmdName + "] [" + m.OwnVillageId + "] -> [" + m.TargetId + "] x" + m.Count;
                 row.Font = new Font("Segoe UI", 8.5f);
                 row.ForeColor = TextPri;
                 row.Location = new Point(16, y);
