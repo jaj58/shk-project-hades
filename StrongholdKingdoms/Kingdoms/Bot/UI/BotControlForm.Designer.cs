@@ -384,6 +384,7 @@ namespace Kingdoms.Bot.UI
             this._dfRestoreTroopsCheck = new System.Windows.Forms.CheckBox();
             this._dfRestoreInfraCheck = new System.Windows.Forms.CheckBox();
             this._mkPage = new System.Windows.Forms.TabPage();
+            this._attackerPage = new System.Windows.Forms.TabPage();
             this._mkSubTabs = new System.Windows.Forms.TabControl();
             this._mkRoutesTab = new System.Windows.Forms.TabPage();
             this._mkInterdictTab = new System.Windows.Forms.TabPage();
@@ -807,6 +808,7 @@ namespace Kingdoms.Bot.UI
             this._tabControl.Controls.Add(this._bqPage);
             this._tabControl.Controls.Add(this._defenderPage);
             this._tabControl.Controls.Add(this._mkPage);
+            this._tabControl.Controls.Add(this._attackerPage);
             this._tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this._tabControl.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._tabControl.Location = new System.Drawing.Point(0, 0);
@@ -5194,6 +5196,17 @@ namespace Kingdoms.Bot.UI
             this._mkPage.TabIndex = 14;
             this._mkPage.Text = "Monks";
             //
+            // _attackerPage
+            //
+            // Content is built programmatically at runtime (see BuildAttackerTabContent
+            // in BotControlForm.cs), following the same pattern as the Group Radar sub-tab.
+            this._attackerPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._attackerPage.Location = new System.Drawing.Point(4, 24);
+            this._attackerPage.Name = "_attackerPage";
+            this._attackerPage.Size = new System.Drawing.Size(1142, 497);
+            this._attackerPage.TabIndex = 15;
+            this._attackerPage.Text = "Attacker";
+            //
             // _mkSubTabs
             //
             this._mkSubTabs.Controls.Add(this._mkRoutesTab);
@@ -7226,6 +7239,8 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _dfAutoRepairCheck;
         private System.Windows.Forms.CheckBox _dfRestoreTroopsCheck;
         private System.Windows.Forms.CheckBox _dfRestoreInfraCheck;
+        // Attacker tab page (content built programmatically — see BotControlForm.cs)
+        private System.Windows.Forms.TabPage _attackerPage;
         // Monk tab controls
         private System.Windows.Forms.TabPage _mkPage;
         private System.Windows.Forms.TabControl _mkSubTabs;
