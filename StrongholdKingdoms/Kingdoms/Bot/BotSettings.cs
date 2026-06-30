@@ -235,6 +235,10 @@ namespace Kingdoms.Bot
         // combat types. Both default OFF — disbanding is destructive, so it's strictly opt-in.
         public bool AutoDisbandSpecial = false;
         public bool AutoDisbandTroops = false;
+        // Protect Captains from AutoDisbandTroops. Captains are expensive and rarely given a
+        // target in the recruit grid (so they'd default to 0 = disband all), so this guards them
+        // by default. Only relevant when AutoDisbandTroops is on.
+        public bool AutoDisbandIgnoreCaptains = true;
         public List<int> ExcludedVillageIds = new List<int>();
         public List<VillageRecruitSettings> Villages = new List<VillageRecruitSettings>();
         public VassalRecruitingSettings VassalRecruiting = new VassalRecruitingSettings();

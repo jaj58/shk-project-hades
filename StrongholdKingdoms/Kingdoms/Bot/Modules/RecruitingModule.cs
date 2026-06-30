@@ -632,6 +632,9 @@ namespace Kingdoms.Bot.Modules
                 bool scopeEnabled = isSpecial ? settings.AutoDisbandSpecial : settings.AutoDisbandTroops;
                 if (!scopeEnabled) continue;
 
+                // Captains are costly and usually left at target 0 (= disband all), so guard them.
+                if (entry.UnitKey == "Captains" && settings.AutoDisbandIgnoreCaptains) continue;
+
                 int current = GetCurrentCount(village, entry.UnitKey);
                 int excess  = current - entry.TargetCount;   // target 0 => disband all of this type
                 if (excess <= 0) continue;
