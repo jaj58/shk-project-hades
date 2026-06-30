@@ -1368,14 +1368,14 @@ namespace Kingdoms.Bot
         public int ExcomMonkCount = 1;
 
         // Per-target-type formation profiles.
-        // Attack type integers: 2=Pillage, 3=Ransack, 11=Vandalise, 12=GoldRaid
+        // Attack type integers: 1=Capture, 2=Pillage, 3=Ransack, 9=Raze, 11=Vandalise, 12=GoldRaid
         public string DistrictFormationName = "";
         public int DistrictAttackType = 11;
-        public int DistrictPillagePercent = 0;
+        public int DistrictPillagePercent = 25; // only used when DistrictAttackType == GoldRaid; valid range 1-50
 
         public string AiFormationName = "";
-        public int AiAttackType = 11;
-        public int AiPillagePercent = 0;
+        public int AiAttackType = 11; // forced to Vandalise — AI/Special targets only support Vandalise
+        public int AiPillagePercent = 0; // unused — kept for settings compatibility
 
         public string EnemyFormationName = "";
         public int EnemyAttackType = 11;

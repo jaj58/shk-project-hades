@@ -413,13 +413,17 @@ namespace Kingdoms.Bot.Modules
                 // Gold raid is only valid when the attacker is also a capital.
                 if (attackType == ATTACK_GOLD_RAID && !world.isCapital(ret.parentAttackingVillage))
                     attackType = ATTACK_VANDALISE;
-                pillagePercent = 0;
+                // Gold raid is the only district attack type with a percent option, capped 1-50%.
+                pillagePercent = attackType == ATTACK_GOLD_RAID
+                    ? Math.Max(1, Math.Min(50, s.DistrictPillagePercent))
+                    : 0;
             }
             else if (world.isSpecial(targetId) || world.isSpecialAIPlayer(targetId))
             {
+                // AI/Special targets only support Vandalise.
                 formationName = s.AiFormationName;
-                attackType = s.AiAttackType;
-                pillagePercent = attackType == ATTACK_PILLAGE ? s.AiPillagePercent : 0;
+                attackType = ATTACK_VANDALISE;
+                pillagePercent = 0;
             }
             else
             {

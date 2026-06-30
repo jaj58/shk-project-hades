@@ -8399,10 +8399,11 @@ namespace Kingdoms.Bot.UI
 
         private static readonly string[] AtDistrictAttackTypeNames = { "Vandalise", "Gold Raid" };
         private static readonly int[] AtDistrictAttackTypeValues = { 11, 12 };
-        private static readonly string[] AtAiAttackTypeNames = { "Vandalise", "Pillage" };
-        private static readonly int[] AtAiAttackTypeValues = { 11, 2 };
-        private static readonly string[] AtEnemyAttackTypeNames = { "Vandalise", "Pillage", "Ransack" };
-        private static readonly int[] AtEnemyAttackTypeValues = { 11, 2, 3 };
+        private const int AtDistrictGoldRaidIndex = 1;
+        private static readonly string[] AtAiAttackTypeNames = { "Vandalise" };
+        private static readonly int[] AtAiAttackTypeValues = { 11 };
+        private static readonly string[] AtEnemyAttackTypeNames = { "Vandalise", "Pillage", "Ransack", "Raze", "Capture" };
+        private static readonly int[] AtEnemyAttackTypeValues = { 11, 2, 3, 9, 1 };
 
         private void WireUpAttackerTab()
         {
@@ -8417,7 +8418,11 @@ namespace Kingdoms.Bot.UI
             _atExcomCountInput.ValueChanged += delegate { AtWriteToSettings(); };
 
             _atDistrictFormationCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
-            _atDistrictAttackTypeCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
+            _atDistrictAttackTypeCombo.SelectedIndexChanged += delegate
+            {
+                AtUpdateDistrictPillageTrackState();
+                AtWriteToSettings();
+            };
             _atDistrictPillageTrack.ValueChanged += delegate
             {
                 _atDistrictPillageLabel.Text = _atDistrictPillageTrack.Value + "%";
@@ -8426,11 +8431,8 @@ namespace Kingdoms.Bot.UI
 
             _atAiFormationCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
             _atAiAttackTypeCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
-            _atAiPillageTrack.ValueChanged += delegate
-            {
-                _atAiPillageLabel.Text = _atAiPillageTrack.Value + "%";
-                AtWriteToSettings();
-            };
+            _atAiPillageTrack.Visible = false;
+            _atAiPillageLabel.Visible = false;
 
             _atEnemyFormationCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
             _atEnemyAttackTypeCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
@@ -8635,6 +8637,9 @@ namespace Kingdoms.Bot.UI
             AtBuildProfileRow(profilesPanel, 40, "District / Capital",
                 out _atDistrictFormationCombo, out _atDistrictAttackTypeCombo,
                 out _atDistrictPillageTrack, out _atDistrictPillageLabel, AtDistrictAttackTypeNames);
+            // Gold raid is the only district attack type with a percent option, capped 1-50%.
+            _atDistrictPillageTrack.Minimum = 1;
+            _atDistrictPillageTrack.Maximum = 50;
 
             AtBuildProfileRow(profilesPanel, 84, "AI / Special",
                 out _atAiFormationCombo, out _atAiAttackTypeCombo,
@@ -8723,6 +8728,13 @@ namespace Kingdoms.Bot.UI
             parent.Controls.Add(attackTypeCombo);
             parent.Controls.Add(pillageTrack);
             parent.Controls.Add(pillageLabel);
+        }
+
+        private void AtUpdateDistrictPillageTrackState()
+        {
+            bool isGoldRaid = _atDistrictAttackTypeCombo.SelectedIndex == AtDistrictGoldRaidIndex;
+            _atDistrictPillageTrack.Enabled = isGoldRaid;
+            _atDistrictPillageLabel.Enabled = isGoldRaid;
         }
 
         private void AtRefreshFormations()
@@ -8835,12 +8847,10 @@ namespace Kingdoms.Bot.UI
                 _atDistrictPillageTrack.Value = Math.Max(_atDistrictPillageTrack.Minimum,
                     Math.Min(_atDistrictPillageTrack.Maximum, s.DistrictPillagePercent));
                 _atDistrictPillageLabel.Text = _atDistrictPillageTrack.Value + "%";
+                AtUpdateDistrictPillageTrackState();
 
                 AtSelectFormation(_atAiFormationCombo, s.AiFormationName);
                 _atAiAttackTypeCombo.SelectedIndex = AtAttackTypeToIndex(AtAiAttackTypeValues, s.AiAttackType);
-                _atAiPillageTrack.Value = Math.Max(_atAiPillageTrack.Minimum,
-                    Math.Min(_atAiPillageTrack.Maximum, s.AiPillagePercent));
-                _atAiPillageLabel.Text = _atAiPillageTrack.Value + "%";
 
                 AtSelectFormation(_atEnemyFormationCombo, s.EnemyFormationName);
                 _atEnemyAttackTypeCombo.SelectedIndex = AtAttackTypeToIndex(AtEnemyAttackTypeValues, s.EnemyAttackType);
