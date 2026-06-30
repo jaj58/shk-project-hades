@@ -150,6 +150,11 @@ namespace Kingdoms.Bot
         public int MinAttacksForInterdict = 0;
         public int MinAttacksWindowSeconds = 20;
         public int MaxLandTimeHours = 0;
+        // When true, the min-army-size and max-land-time thresholds above also filter
+        // Discord notifications (an event below the size threshold or landing beyond the
+        // max land time is not sent to Discord). Min-attacks is interdict-only and never
+        // affects notifications.
+        public bool UseIgnoreOptionsForDiscord = false;
         public bool ForceRefreshArmies = true;
         public List<RadarActionSettings> Actions = new List<RadarActionSettings>();
 
@@ -193,6 +198,18 @@ namespace Kingdoms.Bot
         public bool Enabled = false;
         public string DiscordWebhookUrl = "";
         public string DiscordMentionTag = "";   // group-level fallback mention
+        // Auto-refresh each member's village list (the "Refresh All" action) without
+        // having to click the button. RefreshOnStart re-resolves once when the radar
+        // module starts (i.e. on map load); AutoRefreshIntervalMinutes re-resolves
+        // periodically thereafter (0 = periodic disabled, start-refresh only).
+        public bool RefreshOnStart = true;
+        public int AutoRefreshIntervalMinutes = 60;
+        // Discord-notification ignore options for group radar (notify-only, no interdict).
+        // When UseIgnoreOptionsForDiscord is true, an incoming army below MinArmySize, or
+        // landing beyond MaxLandTimeHours, is not sent to the group webhook. (0 = off.)
+        public bool UseIgnoreOptionsForDiscord = false;
+        public int MinArmySize = 0;
+        public int MaxLandTimeHours = 0;
         public List<GroupRadarMember> Members = new List<GroupRadarMember>();
         public List<RadarActionSettings> Actions = new List<RadarActionSettings>();
 

@@ -125,6 +125,18 @@ namespace Kingdoms.Bot.Modules
         // Group member player village lookup
         private System.Threading.ManualResetEvent _groupLookupEvent = new System.Threading.ManualResetEvent(false);
         private GetOtherUserVillageIDList_ReturnType _groupLookupResult;
+        // Serializes player-village lookups so the periodic auto-refresh (background
+        // thread) and the manual "Refresh All" button can't clobber each other's
+        // _groupLookupEvent/_groupLookupResult.
+        private readonly object _groupLookupLock = new object();
+
+        // Group member auto-refresh scheduling
+        private DateTime _lastGroupRefresh = DateTime.MinValue;
+        private volatile bool _groupRefreshInProgress = false;
+        // Per-member lookup retries within a single refresh pass before giving up
+        // (the next periodic refresh will try the member again).
+        private const int GroupRefreshMaxAttempts = 3;
+        private const int GroupRefreshRetryDelayMs = 2000;
 
         private class PendingPersonNotification
         {
@@ -186,6 +198,7 @@ namespace Kingdoms.Bot.Modules
             _trackedPeople.Clear();
             _personMissingTicks.Clear();
             _firstScan = true;
+            _lastGroupRefresh = DateTime.MinValue;
         }
 
         protected override void OnTick()
@@ -198,6 +211,9 @@ namespace Kingdoms.Bot.Modules
                 : null;
 
             if (settings == null) return;
+
+            // Auto-refresh group members' village lists (on start + periodically).
+            MaybeAutoRefreshGroupMembers(settings);
 
             // Keep our GetArmyData wrapper in place each tick. retrieveArmies() (called
             // on reconnect) resets the callback to WorldMap.getArmyData — re-setting here
@@ -541,7 +557,11 @@ namespace Kingdoms.Bot.Modules
                 if (actionSettings.SystemNotify)
                     ShowSystemNotification(actionLabel, message);
 
-                if (actionSettings.DiscordNotify && !string.IsNullOrEmpty(pending.Settings.DiscordWebhookUrl))
+                if (actionSettings.DiscordNotify && !string.IsNullOrEmpty(pending.Settings.DiscordWebhookUrl) &&
+                    DiscordAllowedByIgnoreOptions(pending,
+                        pending.Settings.UseIgnoreOptionsForDiscord,
+                        pending.Settings.MinArmySizeForInterdict,
+                        pending.Settings.MaxLandTimeHours, "Radar"))
                     DiscordNotifier.SendAsync(pending.Settings.DiscordWebhookUrl,
                         "\u26A0 " + actionLabel + " Incoming!", message, 16736352,
                         string.IsNullOrEmpty(pending.Settings.DiscordMentionTag) ? null : pending.Settings.DiscordMentionTag);
@@ -635,7 +655,11 @@ namespace Kingdoms.Bot.Modules
 
                 LogWarning("[Group] " + message.Replace("\n", " | "));
 
-                if (actionSettings.DiscordNotify && !string.IsNullOrEmpty(groupSettings.DiscordWebhookUrl))
+                if (actionSettings.DiscordNotify && !string.IsNullOrEmpty(groupSettings.DiscordWebhookUrl) &&
+                    DiscordAllowedByIgnoreOptions(pending,
+                        groupSettings.UseIgnoreOptionsForDiscord,
+                        groupSettings.MinArmySize,
+                        groupSettings.MaxLandTimeHours, "Group"))
                 {
                     string mention = !string.IsNullOrEmpty(member.DiscordTag)
                         ? member.DiscordTag
@@ -969,6 +993,44 @@ namespace Kingdoms.Bot.Modules
         }
 
         // =================================================================
+        // Discord notification ignore options
+        // =================================================================
+
+        // Decides whether a Discord notification for this incoming army is allowed
+        // under the "use ignore options" filter (min army size + max land time). When
+        // the filter is off, everything is allowed. Applies to both the user-village
+        // path and the group path (min-attacks is interdict-only, never checked here).
+        private bool DiscordAllowedByIgnoreOptions(PendingArmyLookup pending, bool useIgnore,
+            int minArmySize, int maxLandTimeHours, string tag)
+        {
+            if (!useIgnore) return true;
+
+            int totalArmySize = pending.NumPeasants + pending.NumArchers +
+                pending.NumPikemen + pending.NumSwordsmen +
+                pending.NumCatapults + pending.NumCaptains;
+
+            if (totalArmySize < minArmySize)
+            {
+                LogDebug("[" + tag + "] Discord notify skipped for army " + pending.ArmyID +
+                    ": size " + totalArmySize + " below min army size " + minArmySize + ".");
+                return false;
+            }
+
+            if (maxLandTimeHours > 0 && pending.Army != null)
+            {
+                DateTime cutoff = VillageMap.getCurrentServerTime().AddHours(maxLandTimeHours);
+                if (pending.Army.serverEndTime > cutoff)
+                {
+                    LogDebug("[" + tag + "] Discord notify skipped for army " + pending.ArmyID +
+                        ": lands beyond max land time of " + maxLandTimeHours + "h.");
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // =================================================================
         // Auto-interdict filter helpers
         // =================================================================
 
@@ -1238,34 +1300,141 @@ namespace Kingdoms.Bot.Modules
             List<int> result = new List<int>();
             if (string.IsNullOrEmpty(playerName)) return result;
 
-            _groupLookupResult = null;
-            _groupLookupEvent.Reset();
-
-            RemoteServices.Instance.set_GetOtherUserVillageIDList_UserCallBack(
-                new RemoteServices.GetOtherUserVillageIDList_UserCallBack(GroupPlayerLookupCallback));
-            RemoteServices.Instance.GetOtherUserVillageIDList(playerName);
-
-            if (!_groupLookupEvent.WaitOne(15000))
+            // Serialize lookups — the shared event/result fields can't be reused
+            // concurrently by the auto-refresh thread and the manual button.
+            lock (_groupLookupLock)
             {
-                LogWarning("[Group] Player lookup timed out for '" + playerName + "'.");
-                return result;
-            }
+                _groupLookupResult = null;
+                _groupLookupEvent.Reset();
 
-            GetOtherUserVillageIDList_ReturnType data = _groupLookupResult;
-            if (data == null || !data.Success)
-            {
-                LogWarning("[Group] Player lookup failed for '" + playerName + "'.");
-                return result;
-            }
+                RemoteServices.Instance.set_GetOtherUserVillageIDList_UserCallBack(
+                    new RemoteServices.GetOtherUserVillageIDList_UserCallBack(GroupPlayerLookupCallback));
+                RemoteServices.Instance.GetOtherUserVillageIDList(playerName);
 
-            if (data.userVillageList != null)
-            {
-                foreach (int vid in data.userVillageList)
-                    result.Add(vid);
+                if (!_groupLookupEvent.WaitOne(15000))
+                {
+                    LogWarning("[Group] Player lookup timed out for '" + playerName + "'.");
+                    return result;
+                }
+
+                GetOtherUserVillageIDList_ReturnType data = _groupLookupResult;
+                if (data == null || !data.Success)
+                {
+                    LogWarning("[Group] Player lookup failed for '" + playerName + "'.");
+                    return result;
+                }
+
+                if (data.userVillageList != null)
+                {
+                    foreach (int vid in data.userVillageList)
+                        result.Add(vid);
+                }
             }
 
             LogInfo("[Group] Found " + result.Count + " villages for '" + playerName + "'.");
             return result;
+        }
+
+        // =================================================================
+        // Group member auto-refresh
+        // =================================================================
+
+        // Decides whether a refresh is due (on start, then every N minutes) and
+        // kicks one off on a background thread. Runs on the radar tick thread, so it
+        // must never block — the actual server lookups happen off-thread.
+        private void MaybeAutoRefreshGroupMembers(RadarSettings settings)
+        {
+            GroupRadarSettings g = settings.GroupRadar;
+            if (g == null || !g.Enabled) return;
+            if (g.Members == null || g.Members.Count == 0) return;
+            if (_groupRefreshInProgress) return;
+
+            bool needRefresh;
+            if (_lastGroupRefresh == DateTime.MinValue)
+            {
+                // First tick since the module started ("map load").
+                needRefresh = g.RefreshOnStart;
+                // Establish the timer baseline now so the periodic interval is
+                // measured from start even when the start-refresh is disabled.
+                _lastGroupRefresh = DateTime.Now;
+            }
+            else
+            {
+                needRefresh = g.AutoRefreshIntervalMinutes > 0 &&
+                    (DateTime.Now - _lastGroupRefresh).TotalMinutes >= g.AutoRefreshIntervalMinutes;
+            }
+
+            if (!needRefresh) return;
+
+            _lastGroupRefresh = DateTime.Now;
+            StartGroupRefresh(g);
+        }
+
+        private void StartGroupRefresh(GroupRadarSettings g)
+        {
+            _groupRefreshInProgress = true;
+            List<GroupRadarMember> members = new List<GroupRadarMember>(g.Members);
+
+            Thread t = new Thread(delegate ()
+            {
+                int updated = 0;
+                int failed = 0;
+                try
+                {
+                    foreach (GroupRadarMember m in members)
+                    {
+                        if (m == null || string.IsNullOrEmpty(m.PlayerName)) continue;
+
+                        // Retry a failed lookup up to GroupRefreshMaxAttempts times before
+                        // giving up — the next periodic refresh will try again. A short
+                        // delay between attempts gives a flaky server a moment to recover.
+                        List<int> villages = null;
+                        for (int attempt = 1; attempt <= GroupRefreshMaxAttempts; attempt++)
+                        {
+                            villages = ResolvePlayerVillages(m.PlayerName);
+                            if (villages != null && villages.Count > 0) break;
+                            if (attempt < GroupRefreshMaxAttempts)
+                            {
+                                LogWarning("[Group] Lookup for '" + m.PlayerName + "' failed (attempt " +
+                                           attempt + "/" + GroupRefreshMaxAttempts + "); retrying.");
+                                Thread.Sleep(GroupRefreshRetryDelayMs);
+                            }
+                        }
+
+                        // Only overwrite when the lookup actually returned villages — a
+                        // failed/timed-out lookup must not blind the radar to a member.
+                        if (villages != null && villages.Count > 0)
+                        {
+                            m.VillageIds = villages;
+                            updated++;
+                        }
+                        else
+                        {
+                            failed++;
+                            LogWarning("[Group] Giving up on '" + m.PlayerName + "' after " +
+                                       GroupRefreshMaxAttempts + " attempts; keeping existing villages.");
+                        }
+                    }
+
+                    try { if (Engine != null && Engine.Settings != null) Engine.Settings.Save(); }
+                    catch (Exception ex) { LogWarning("[Group] Auto-refresh save failed: " + ex.Message); }
+
+                    LogInfo("[Group] Auto-refreshed villages for " + updated + "/" +
+                            members.Count + " members" +
+                            (failed > 0 ? " (" + failed + " failed)" : "") + ".");
+                }
+                catch (Exception ex)
+                {
+                    LogError("[Group] Auto-refresh failed: " + ex.Message);
+                }
+                finally
+                {
+                    _groupRefreshInProgress = false;
+                }
+            });
+            t.IsBackground = true;
+            t.Name = "Radar Group Refresh";
+            t.Start();
         }
 
         private void GroupPlayerLookupCallback(GetOtherUserVillageIDList_ReturnType returnData)

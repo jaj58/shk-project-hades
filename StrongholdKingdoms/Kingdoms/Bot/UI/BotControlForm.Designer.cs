@@ -1380,7 +1380,7 @@ namespace Kingdoms.Bot.UI
             this._rdSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._rdSettingsPanel.Name = "_rdSettingsPanel";
             this._rdSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._rdSettingsPanel.Size = new System.Drawing.Size(1142, 220);
+            this._rdSettingsPanel.Size = new System.Drawing.Size(1142, 250);
             this._rdSettingsPanel.TabIndex = 0;
             // 
             // _rdMinArmySizeInput
@@ -1412,7 +1412,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinArmySizeLabel.Name = "_rdMinArmySizeLabel";
             this._rdMinArmySizeLabel.Size = new System.Drawing.Size(115, 15);
             this._rdMinArmySizeLabel.TabIndex = 20;
-            this._rdMinArmySizeLabel.Text = "Min army size for ID:";
+            this._rdMinArmySizeLabel.Text = "Min army size:";
             // 
             // _rdMinAttacksInput
             // 

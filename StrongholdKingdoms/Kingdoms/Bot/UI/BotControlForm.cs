@@ -39,6 +39,12 @@ namespace Kingdoms.Bot.UI
         private TextBox _grpWebhookInput;
         private TextBox _grpMentionTagInput;
         private Button _grpTestWebhookBtn;
+        private CheckBox _grpRefreshOnStartCheck;
+        private CheckBox _grpAutoRefreshCheck;
+        private NumericUpDown _grpAutoRefreshIntervalInput;
+        private CheckBox _grpUseIgnoreForDiscordCheck;
+        private NumericUpDown _grpMinArmySizeInput;
+        private NumericUpDown _grpMaxLandTimeInput;
         private TextBox _grpPlayerNameInput;
         private Button _grpAddMemberBtn;
         private Button _grpRefreshAllBtn;
@@ -561,6 +567,17 @@ namespace Kingdoms.Bot.UI
             _rdMaxLandTimeInput.ValueChanged += delegate { RdPushToSettings(); };
             _rdForceRefreshCheck.CheckedChanged += delegate { RdPushToSettings(); };
 
+            // "Use ignore options for Discord notifications" — not in the Designer; created
+            // here and dropped into the settings panel (laid out by RelayoutSettingsRows).
+            _rdUseIgnoreForDiscordCheck = new CheckBox();
+            _rdUseIgnoreForDiscordCheck.Text = "Use ignore options for Discord notifications (min army size + max land time)";
+            _rdUseIgnoreForDiscordCheck.AutoSize = true;
+            _rdUseIgnoreForDiscordCheck.FlatStyle = FlatStyle.Flat;
+            _rdUseIgnoreForDiscordCheck.Font = new Font("Segoe UI", 8.5f);
+            _rdUseIgnoreForDiscordCheck.ForeColor = Color.FromArgb(160, 165, 180);
+            _rdUseIgnoreForDiscordCheck.CheckedChanged += delegate { RdPushToSettings(); };
+            _rdSettingsPanel.Controls.Add(_rdUseIgnoreForDiscordCheck);
+
             _rdRefreshTimer = new Timer();
             _rdRefreshTimer.Interval = 2000;
             _rdRefreshTimer.Tick += delegate { try { RdUpdateStatusDisplay(); } catch { } };
@@ -586,6 +603,8 @@ namespace Kingdoms.Bot.UI
             s.MinAttacksForInterdict = (int)_rdMinAttacksInput.Value;
             s.MinAttacksWindowSeconds = (int)_rdMinAttacksWindowInput.Value;
             s.MaxLandTimeHours = (int)_rdMaxLandTimeInput.Value;
+            if (_rdUseIgnoreForDiscordCheck != null)
+                s.UseIgnoreOptionsForDiscord = _rdUseIgnoreForDiscordCheck.Checked;
             s.ForceRefreshArmies = _rdForceRefreshCheck.Checked;
 
             foreach (IBotModule m in BotEngine.Instance.Modules)
@@ -620,6 +639,8 @@ namespace Kingdoms.Bot.UI
                     Math.Min(_rdMinAttacksWindowInput.Maximum, s.MinAttacksWindowSeconds));
                 _rdMaxLandTimeInput.Value = Math.Max(_rdMaxLandTimeInput.Minimum,
                     Math.Min(_rdMaxLandTimeInput.Maximum, s.MaxLandTimeHours));
+                if (_rdUseIgnoreForDiscordCheck != null)
+                    _rdUseIgnoreForDiscordCheck.Checked = s.UseIgnoreOptionsForDiscord;
                 _rdForceRefreshCheck.Checked = s.ForceRefreshArmies;
 
                 foreach (ActionRow row in _rdActionRows)
@@ -650,6 +671,8 @@ namespace Kingdoms.Bot.UI
             s.MinAttacksForInterdict = (int)_rdMinAttacksInput.Value;
             s.MinAttacksWindowSeconds = (int)_rdMinAttacksWindowInput.Value;
             s.MaxLandTimeHours = (int)_rdMaxLandTimeInput.Value;
+            if (_rdUseIgnoreForDiscordCheck != null)
+                s.UseIgnoreOptionsForDiscord = _rdUseIgnoreForDiscordCheck.Checked;
             s.ForceRefreshArmies = _rdForceRefreshCheck.Checked;
 
             foreach (ActionRow row in _rdActionRows)
@@ -773,7 +796,7 @@ namespace Kingdoms.Bot.UI
             settingsPanel.Dock = DockStyle.Top;
             settingsPanel.BackColor = bgMed;
             settingsPanel.Padding = new Padding(16, 10, 16, 8);
-            settingsPanel.Height = 92;
+            settingsPanel.Height = 122;
 
             _grpEnabledCheck = new CheckBox();
             _grpEnabledCheck.Text = "Enable Group Radar";
@@ -821,9 +844,92 @@ namespace Kingdoms.Bot.UI
             _grpMentionTagInput.BorderStyle = BorderStyle.FixedSingle;
             _grpMentionTagInput.Font = fNorm;
 
+            _grpRefreshOnStartCheck = new CheckBox();
+            _grpRefreshOnStartCheck.Text = "Refresh members on map load";
+            _grpRefreshOnStartCheck.Font = fSmall;
+            _grpRefreshOnStartCheck.ForeColor = textPri;
+            _grpRefreshOnStartCheck.Location = new Point(220, 13);
+            _grpRefreshOnStartCheck.AutoSize = true;
+
+            _grpAutoRefreshCheck = new CheckBox();
+            _grpAutoRefreshCheck.Text = "Auto-refresh every";
+            _grpAutoRefreshCheck.Font = fSmall;
+            _grpAutoRefreshCheck.ForeColor = textPri;
+            _grpAutoRefreshCheck.Location = new Point(440, 13);
+            _grpAutoRefreshCheck.AutoSize = true;
+
+            _grpAutoRefreshIntervalInput = new NumericUpDown();
+            _grpAutoRefreshIntervalInput.Minimum = 1;
+            _grpAutoRefreshIntervalInput.Maximum = 10080;   // up to one week
+            _grpAutoRefreshIntervalInput.Value = 60;
+            _grpAutoRefreshIntervalInput.BackColor = bgLight;
+            _grpAutoRefreshIntervalInput.ForeColor = textPri;
+            _grpAutoRefreshIntervalInput.Font = fSmall;
+            _grpAutoRefreshIntervalInput.BorderStyle = BorderStyle.FixedSingle;
+            _grpAutoRefreshIntervalInput.Location = new Point(560, 11);
+            _grpAutoRefreshIntervalInput.Size = new Size(64, 22);
+            _grpAutoRefreshIntervalInput.ThousandsSeparator = false;
+
+            Label autoRefreshMinLabel = new Label();
+            autoRefreshMinLabel.Text = "min";
+            autoRefreshMinLabel.Font = fSmall;
+            autoRefreshMinLabel.ForeColor = textSec;
+            autoRefreshMinLabel.Location = new Point(628, 14);
+            autoRefreshMinLabel.AutoSize = true;
+
+            // ---- Row 3: Discord-notification ignore options ----
+            _grpUseIgnoreForDiscordCheck = new CheckBox();
+            _grpUseIgnoreForDiscordCheck.Text = "Use ignore options for Discord notifications";
+            _grpUseIgnoreForDiscordCheck.Font = fSmall;
+            _grpUseIgnoreForDiscordCheck.ForeColor = textPri;
+            _grpUseIgnoreForDiscordCheck.Location = new Point(16, 84);
+            _grpUseIgnoreForDiscordCheck.AutoSize = true;
+
+            Label grpMinArmyLabel = new Label();
+            grpMinArmyLabel.Text = "Min army size:";
+            grpMinArmyLabel.Font = fSmall;
+            grpMinArmyLabel.ForeColor = textSec;
+            grpMinArmyLabel.Location = new Point(290, 86);
+            grpMinArmyLabel.AutoSize = true;
+
+            _grpMinArmySizeInput = new NumericUpDown();
+            _grpMinArmySizeInput.Minimum = 0;
+            _grpMinArmySizeInput.Maximum = 1000000;
+            _grpMinArmySizeInput.Value = 0;
+            _grpMinArmySizeInput.BackColor = bgLight;
+            _grpMinArmySizeInput.ForeColor = textPri;
+            _grpMinArmySizeInput.Font = fSmall;
+            _grpMinArmySizeInput.BorderStyle = BorderStyle.FixedSingle;
+            _grpMinArmySizeInput.Location = new Point(380, 84);
+            _grpMinArmySizeInput.Size = new Size(70, 22);
+            _grpMinArmySizeInput.ThousandsSeparator = false;
+
+            Label grpMaxLandLabel = new Label();
+            grpMaxLandLabel.Text = "Max land time (hrs, 0=off):";
+            grpMaxLandLabel.Font = fSmall;
+            grpMaxLandLabel.ForeColor = textSec;
+            grpMaxLandLabel.Location = new Point(470, 86);
+            grpMaxLandLabel.AutoSize = true;
+
+            _grpMaxLandTimeInput = new NumericUpDown();
+            _grpMaxLandTimeInput.Minimum = 0;
+            _grpMaxLandTimeInput.Maximum = 1000;
+            _grpMaxLandTimeInput.Value = 0;
+            _grpMaxLandTimeInput.BackColor = bgLight;
+            _grpMaxLandTimeInput.ForeColor = textPri;
+            _grpMaxLandTimeInput.Font = fSmall;
+            _grpMaxLandTimeInput.BorderStyle = BorderStyle.FixedSingle;
+            _grpMaxLandTimeInput.Location = new Point(630, 84);
+            _grpMaxLandTimeInput.Size = new Size(60, 22);
+            _grpMaxLandTimeInput.ThousandsSeparator = false;
+
             settingsPanel.Controls.AddRange(new Control[] {
                 _grpEnabledCheck, webhookLabel, _grpWebhookInput,
-                _grpTestWebhookBtn, mentionLabel, _grpMentionTagInput
+                _grpTestWebhookBtn, mentionLabel, _grpMentionTagInput,
+                _grpRefreshOnStartCheck, _grpAutoRefreshCheck,
+                _grpAutoRefreshIntervalInput, autoRefreshMinLabel,
+                _grpUseIgnoreForDiscordCheck, grpMinArmyLabel, _grpMinArmySizeInput,
+                grpMaxLandLabel, _grpMaxLandTimeInput
             });
 
             // ---- Separator ----
@@ -998,6 +1104,23 @@ namespace Kingdoms.Bot.UI
             _grpEnabledCheck.CheckedChanged += delegate { GrpPushToSettings(); };
             _grpWebhookInput.TextChanged += delegate { GrpPushToSettings(); };
             _grpMentionTagInput.TextChanged += delegate { GrpPushToSettings(); };
+            _grpRefreshOnStartCheck.CheckedChanged += delegate { GrpPushToSettings(); GrpSaveToSettings(); };
+            _grpAutoRefreshCheck.CheckedChanged += delegate
+            {
+                _grpAutoRefreshIntervalInput.Enabled = _grpAutoRefreshCheck.Checked;
+                GrpPushToSettings();
+                GrpSaveToSettings();
+            };
+            _grpAutoRefreshIntervalInput.ValueChanged += delegate { GrpPushToSettings(); GrpSaveToSettings(); };
+            _grpUseIgnoreForDiscordCheck.CheckedChanged += delegate
+            {
+                _grpMinArmySizeInput.Enabled = _grpUseIgnoreForDiscordCheck.Checked;
+                _grpMaxLandTimeInput.Enabled = _grpUseIgnoreForDiscordCheck.Checked;
+                GrpPushToSettings();
+                GrpSaveToSettings();
+            };
+            _grpMinArmySizeInput.ValueChanged += delegate { GrpPushToSettings(); GrpSaveToSettings(); };
+            _grpMaxLandTimeInput.ValueChanged += delegate { GrpPushToSettings(); GrpSaveToSettings(); };
 
             _grpTestWebhookBtn.Click += delegate
             {
@@ -1038,6 +1161,24 @@ namespace Kingdoms.Bot.UI
                 _grpEnabledCheck.Checked = s.Enabled;
                 _grpWebhookInput.Text = s.DiscordWebhookUrl ?? "";
                 _grpMentionTagInput.Text = s.DiscordMentionTag ?? "";
+
+                _grpRefreshOnStartCheck.Checked = s.RefreshOnStart;
+                bool autoOn = s.AutoRefreshIntervalMinutes > 0;
+                _grpAutoRefreshCheck.Checked = autoOn;
+                int interval = autoOn ? s.AutoRefreshIntervalMinutes : 60;
+                if (interval < _grpAutoRefreshIntervalInput.Minimum) interval = (int)_grpAutoRefreshIntervalInput.Minimum;
+                if (interval > _grpAutoRefreshIntervalInput.Maximum) interval = (int)_grpAutoRefreshIntervalInput.Maximum;
+                _grpAutoRefreshIntervalInput.Value = interval;
+                _grpAutoRefreshIntervalInput.Enabled = autoOn;
+
+                _grpUseIgnoreForDiscordCheck.Checked = s.UseIgnoreOptionsForDiscord;
+                _grpMinArmySizeInput.Value = Math.Max(_grpMinArmySizeInput.Minimum,
+                    Math.Min(_grpMinArmySizeInput.Maximum, s.MinArmySize));
+                _grpMaxLandTimeInput.Value = Math.Max(_grpMaxLandTimeInput.Minimum,
+                    Math.Min(_grpMaxLandTimeInput.Maximum, s.MaxLandTimeHours));
+                _grpMinArmySizeInput.Enabled = s.UseIgnoreOptionsForDiscord;
+                _grpMaxLandTimeInput.Enabled = s.UseIgnoreOptionsForDiscord;
+
                 GrpPopulateMemberList();
             }
             finally
@@ -1115,6 +1256,13 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _grpEnabledCheck.Checked;
             s.DiscordWebhookUrl = _grpWebhookInput.Text.Trim();
             s.DiscordMentionTag = _grpMentionTagInput.Text.Trim();
+            s.RefreshOnStart = _grpRefreshOnStartCheck.Checked;
+            s.AutoRefreshIntervalMinutes = _grpAutoRefreshCheck.Checked
+                ? (int)_grpAutoRefreshIntervalInput.Value
+                : 0;
+            s.UseIgnoreOptionsForDiscord = _grpUseIgnoreForDiscordCheck.Checked;
+            s.MinArmySize = (int)_grpMinArmySizeInput.Value;
+            s.MaxLandTimeHours = (int)_grpMaxLandTimeInput.Value;
         }
 
         private void GrpWriteToSettings()
@@ -1124,6 +1272,13 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _grpEnabledCheck.Checked;
             s.DiscordWebhookUrl = _grpWebhookInput.Text.Trim();
             s.DiscordMentionTag = _grpMentionTagInput.Text.Trim();
+            s.RefreshOnStart = _grpRefreshOnStartCheck.Checked;
+            s.AutoRefreshIntervalMinutes = _grpAutoRefreshCheck.Checked
+                ? (int)_grpAutoRefreshIntervalInput.Value
+                : 0;
+            s.UseIgnoreOptionsForDiscord = _grpUseIgnoreForDiscordCheck.Checked;
+            s.MinArmySize = (int)_grpMinArmySizeInput.Value;
+            s.MaxLandTimeHours = (int)_grpMaxLandTimeInput.Value;
             foreach (GroupActionRow row in _grpActionRows)
                 row.WriteToSettings();
         }
@@ -1382,6 +1537,10 @@ namespace Kingdoms.Bot.UI
         private CheckBox _rcAutoDisbandSpecialCheck;
         private CheckBox _rcAutoDisbandTroopsCheck;
         private static readonly ToolTip _rcToolTip = new ToolTip();
+
+        // Radar: "use ignore options for Discord notifications" — applies the min army
+        // size + max land time thresholds to Discord sends (created programmatically).
+        private CheckBox _rdUseIgnoreForDiscordCheck;
 
         /// <summary>Creates a secondary (non-bold) settings checkbox styled like the rest of the
         /// recruiting panel, with a hover tooltip describing the behaviour.</summary>
@@ -7178,7 +7337,8 @@ namespace Kingdoms.Bot.UI
             LayoutRow(X, 96, G, _rdMentionTagLabel, _rdMentionTagInput, _rdTestSoundBtn, _rdStopSoundBtn);
             LayoutRow(X, 132, G, _rdInterdictLabel, _rdInterdictMonkCountInput, _rdAutoRecruitMonksCheck, _rdMinArmySizeLabel, _rdMinArmySizeInput);
             LayoutRow(X, 168, G, _rdMinAttacksLabel, _rdMinAttacksInput, _rdMinAttacksWindowLabel, _rdMinAttacksWindowInput, _rdMinAttacksWindowUnitLabel, _rdMaxLandTimeLabel, _rdMaxLandTimeInput);
-            LayoutRow(X, 198, G, _rdHintLabel);
+            LayoutRow(X, 198, G, _rdUseIgnoreForDiscordCheck);
+            LayoutRow(X, 226, G, _rdHintLabel);
 
             // Recruiting
             LayoutRow(X, 24, G, _rcEnabledCheck, _rcStatusLabel);
