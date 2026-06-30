@@ -14,6 +14,28 @@ namespace Kingdoms.Bot.Modules
         private DateTime _lastVillageAction = DateTime.MinValue;
         private readonly Random _random = new Random();
 
+        // Auto-disable timer: stamped on the first tick after the module is enabled,
+        // reset on disable. Drives the optional "auto-disable after X minutes" feature.
+        private DateTime _enabledSince = DateTime.MinValue;
+        // Set by the manual Trade-enabled checkbox path so a manual disable does NOT
+        // trigger the auto-disband. Cleared (consumed) on the next OnDisable.
+        private bool _suppressDisbandOnNextDisable;
+
+        // Runtime disband state, read/cleared by the always-on TradeDisbandModule.
+        // Not persisted — purely an in-session signal that an automatic disable
+        // requested the deployed traders be returned home and disbanded.
+        public bool DisbandPending { get; set; }
+        public DateTime DisbandStartedAt { get; set; }
+
+        /// <summary>
+        /// Marks (pending=true) or clears (pending=false) the next Enabled true->false
+        /// transition as a manual disable so the auto-disband is skipped. Called only
+        /// from the UI Trade Enabled checkbox's Click handler (user interaction only —
+        /// programmatic state syncs use the CheckedChanged event and must NOT suppress).
+        /// The flag is consumed (cleared) on the next OnDisable.
+        /// </summary>
+        public void SetManualDisablePending(bool pending) { _suppressDisbandOnNextDisable = pending; }
+
         // Cached stock exchange data. Written from RPC callback threads and read
         // on the tick thread, so every access goes through _cacheLock.
         private readonly object _cacheLock = new object();
@@ -38,6 +60,18 @@ namespace Kingdoms.Bot.Modules
         private readonly Dictionary<TradeCategory, int> _dispatchCounts =
             new Dictionary<TradeCategory, int>();
         private DateTime _blockedSince = DateTime.MinValue;
+        // Resources the server rejected with "not enough resources to send" this
+        // cycle, keyed by village. A sell shortage is seller-side (our local
+        // resource count was stale/overstated), not a market problem, so we stop
+        // re-offering that resource instead of rotating it through every market
+        // until the dispatch cap is hit. Cleared per village in BeginVillage;
+        // only touched on the tick thread.
+        private readonly Dictionary<int, HashSet<int>> _sellBlockedThisCycle =
+            new Dictionary<int, HashSet<int>>();
+        // Villages whose market trading is blocked for the rest of this cycle
+        // because the server reported "not enough traders" (our local merchant
+        // count was stale). Cleared per village in BeginVillage; tick-thread only.
+        private readonly HashSet<int> _marketBlockedThisCycle = new HashSet<int>();
         // Safety valve: bounds how many dispatches one category of one village can
         // make per cycle, so a pathological config can't stall the whole queue.
         private const int MaxDispatchesPerCategory = 20;
@@ -168,10 +202,44 @@ namespace Kingdoms.Bot.Modules
             VillageMap.BotSendMarketResourcesResult = null;
         }
 
+        protected override void OnDisable()
+        {
+            // Reset the auto-disable timer so a later re-enable starts a fresh window.
+            _enabledSince = DateTime.MinValue;
+
+            // Consume the manual-disable flag: a manual untick suppresses the disband,
+            // any other disable route (card expiry, the X-minute timer, the Auto
+            // scheduler) leaves it false and so disbands when the option is on.
+            bool suppress = _suppressDisbandOnNextDisable;
+            _suppressDisbandOnNextDisable = false;
+
+            TradeSettings s = Settings;
+            if (s != null && s.DisbandTradersOnDisable && !suppress)
+            {
+                DisbandPending = true;
+                DisbandStartedAt = DateTime.Now;
+                LogInfo("Trade disabled — will disband traders once they return home.");
+            }
+        }
+
         protected override void OnTick()
         {
             TradeSettings settings = Settings;
             if (settings == null) return;
+
+            // Auto-disable-after-X-minutes timer. _enabledSince is stamped the first
+            // tick after the module becomes enabled (and reset in OnDisable), so the
+            // window is measured from when trading actually started.
+            if (_enabledSince == DateTime.MinValue)
+                _enabledSince = DateTime.Now;
+            if (settings.DisableAfterMinutes > 0 &&
+                (DateTime.Now - _enabledSince).TotalMinutes >= settings.DisableAfterMinutes)
+            {
+                LogInfo("Auto-disabling trade after " + settings.DisableAfterMinutes + " minute(s).");
+                Enabled = false;          // triggers OnDisable (which may queue the disband)
+                settings.Enabled = false; // keep settings in sync with the runtime state
+                return;
+            }
 
             // Apply confirmed/failed trade results on the tick thread first so
             // player-route progress and merchant counts are current before we
@@ -244,6 +312,8 @@ namespace Kingdoms.Bot.Modules
             _activeVillageId = villageId;
             _remainingCategories.Clear();
             _dispatchCounts.Clear();
+            _sellBlockedThisCycle.Remove(villageId);
+            _marketBlockedThisCycle.Remove(villageId);
             _blockedSince = DateTime.MinValue;
 
             VillageMap map = GameEngine.Instance.getVillage(villageId);
@@ -895,11 +965,37 @@ namespace Kingdoms.Bot.Modules
                 LogError(GetVillageName(pending.VillageId) + " " + label + " " + pending.Amount + " " +
                     resourceName + " REJECTED by server: " + (result.Error ?? "unknown error"));
 
-                // Our cached view of that market was evidently wrong — drop it so
-                // the next attempt re-fetches prices instead of repeating the
+                // "Not enough Traders" means our local merchant count was stale (e.g.
+                // the Recruit module just disbanded traders). EVERY market trade from
+                // this village will fail this cycle until it resyncs — block the whole
+                // village's market trading, leave the (innocent) markets cached, and
+                // force a re-download so next cycle has the real merchant count.
+                if (IsTraderShortageError(result.Error) &&
+                    (pending.Kind == PendingKind.MarketBuy || pending.Kind == PendingKind.MarketSell))
+                {
+                    BlockMarketsThisCycle(pending.VillageId);
+                    LogDebug(GetVillageName(pending.VillageId) +
+                        ": server reports not enough traders — skipping market trades for the rest of this cycle.");
+                    RequestStaleVillageRedownload(pending.VillageId);
+                }
+                // "Not enough resources to send" on a sell is seller-side: our local
+                // resource count was stale/overstated, the target market is innocent.
+                // Block this resource for the rest of the cycle so we don't re-offer
+                // the same doomed sell against every other market in turn.
+                else if (pending.Kind == PendingKind.MarketSell && IsResourceShortageError(result.Error))
+                {
+                    BlockSellThisCycle(pending.VillageId, pending.ResourceId);
+                    LogDebug(GetVillageName(pending.VillageId) + ": not enough " + resourceName +
+                        " to sell — skipping it for the rest of this cycle.");
+                    RequestStaleVillageRedownload(pending.VillageId);
+                }
+                // Otherwise our cached view of that market was evidently wrong — drop
+                // it so the next attempt re-fetches prices instead of repeating the
                 // same rejected trade.
-                if (pending.Kind == PendingKind.MarketBuy || pending.Kind == PendingKind.MarketSell)
+                else if (pending.Kind == PendingKind.MarketBuy || pending.Kind == PendingKind.MarketSell)
+                {
                     InvalidateMarketCache(pending.TargetId);
+                }
                 return;
             }
 
@@ -960,6 +1056,12 @@ namespace Kingdoms.Bot.Modules
         private TradeActionResult TryMarketTrade(VillageMap map, int villageId, string villageName,
             VillageMarketTradeInfo villageInfo, TradeSettings settings)
         {
+            // The server already rejected a trade here this cycle for lack of
+            // traders — our merchant count is stale, so every market trade would
+            // fail. Skip markets until the next cycle re-syncs the village.
+            if (IsMarketBlockedThisCycle(villageId))
+                return TradeActionResult.NoWork;
+
             int tradersAtHome = map.m_numTradersAtHome;
             int movingTraders = CountMovingMerchants(villageId, true);
 
@@ -1035,6 +1137,9 @@ namespace Kingdoms.Bot.Modules
                 if (movingTraders >= settings.MerchantsTradeLimit) break;
 
                 int resourceId = (int)tradeType.ResourceId;
+                // The server already told us this village can't actually supply this
+                // resource this cycle — don't rotate it through the rest of the markets.
+                if (IsSellBlockedThisCycle(villageId, resourceId)) continue;
                 int currentAmount = (int)map.getResourceLevel(resourceId) +
                     GetPurchasedAmount(villageId, resourceId, settings.IgnoreCurrentTransactions);
                 int carryLevel = GetCarryLevel(resourceId);
@@ -1427,6 +1532,23 @@ namespace Kingdoms.Bot.Modules
 
                     int carryLevel = GetBaseCarryLevel(resourceId);
 
+                    // Honour "Min merchants/trade" here too, so the route doesn't dribble
+                    // out tiny loads (e.g. 1 venison) whenever the village is barely above
+                    // KeepMinimum. The one allowed exception is the final delivery: if what
+                    // we can send now is the whole remaining amount, send it even if small.
+                    // Capped by the route's own per-transaction max so a low max can't stall.
+                    int minMerchants = Math.Min(settings.MerchantsPerTrade, route.MaxMerchantsPerTransaction);
+                    if (minMerchants < 1) minMerchants = 1;
+                    double minLoad = (double)minMerchants * carryLevel;
+                    if (canSend < minLoad && canSend < resEntry.Remaining)
+                    {
+                        LogDebug(senderName + " [Player Route '" + route.Name + "']: only " +
+                            (int)canSend + " " + TradeModuleConstants.GetResourceName(resourceId) +
+                            " over KeepMinimum (< " + (int)minLoad + " min load) and route still needs " +
+                            resEntry.Remaining + " — waiting for a fuller load.");
+                        continue;
+                    }
+
                     // Allow a final partial load (amount below carry level) so the
                     // route can actually finish instead of stalling on the remainder.
                     int numMerchants = (int)Math.Ceiling(canSend / (double)carryLevel);
@@ -1651,6 +1773,76 @@ namespace Kingdoms.Bot.Modules
             {
                 _stockExchangeCache.Remove(marketId);
             }
+        }
+
+        // Whether a server rejection means the seller didn't have the resource it
+        // tried to send (as opposed to a market/price problem). Matched on the
+        // localized error text since the numeric code lives in CommonTypes.
+        private static bool IsResourceShortageError(string error)
+        {
+            return error != null &&
+                   error.ToLowerInvariant().IndexOf("enough resource") >= 0;
+        }
+
+        // Server says the village hasn't got the merchants the trade needs — our
+        // local `m_numTradersAtHome` was stale (e.g. Recruit just disbanded some).
+        private static bool IsTraderShortageError(string error)
+        {
+            return error != null &&
+                   error.ToLowerInvariant().IndexOf("enough trader") >= 0;
+        }
+
+        private void BlockMarketsThisCycle(int villageId)
+        {
+            _marketBlockedThisCycle.Add(villageId);
+        }
+
+        private bool IsMarketBlockedThisCycle(int villageId)
+        {
+            return _marketBlockedThisCycle.Contains(villageId);
+        }
+
+        // A resource-shortage rejection proves this village's local resource count
+        // was stale. If enabled, ask Village Sync to force a full re-download of it
+        // so the next cycle works from authoritative data. The request is
+        // deduplicated on the sync side, so calling it per rejection is fine.
+        private void RequestStaleVillageRedownload(int villageId)
+        {
+            try
+            {
+                if (Engine == null || Engine.Settings == null ||
+                    !Engine.Settings.VillageSync.AutoRefreshOnStaleError)
+                    return;
+
+                VillageSyncModule vsm = Engine.GetModule<VillageSyncModule>();
+                if (vsm != null)
+                {
+                    vsm.RequestForceRedownload(villageId);
+                    LogDebug(GetVillageName(villageId) +
+                        ": queued full re-download (stale resource data).");
+                }
+            }
+            catch { }
+        }
+
+        // Tick-thread only. Records / queries resources this village can't supply
+        // this cycle; the set is reset per village in BeginVillage.
+        private void BlockSellThisCycle(int villageId, int resourceId)
+        {
+            HashSet<int> blocked;
+            if (!_sellBlockedThisCycle.TryGetValue(villageId, out blocked))
+            {
+                blocked = new HashSet<int>();
+                _sellBlockedThisCycle[villageId] = blocked;
+            }
+            blocked.Add(resourceId);
+        }
+
+        private bool IsSellBlockedThisCycle(int villageId, int resourceId)
+        {
+            HashSet<int> blocked;
+            return _sellBlockedThisCycle.TryGetValue(villageId, out blocked) &&
+                   blocked.Contains(resourceId);
         }
 
         private bool AreWeaponsAllowed()

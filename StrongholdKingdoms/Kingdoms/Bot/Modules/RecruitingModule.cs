@@ -109,9 +109,16 @@ namespace Kingdoms.Bot.Modules
                     return village.CalcTotalTroopsArray()[4] + village.LocallyMade_Catapults;
                 case "Captains":
                     return village.CalcTotalTroopsArray()[5] + village.LocallyMade_Captains;
-                case "Scouts": return village.m_numScouts + village.LocallyMade_Scouts;
-                case "Monks": return village.calcTotalMonksAtHome() + village.LocallyMadeMonks;
-                case "Traders": return village.calcTotalTradersAtHome() + village.LocallyMade_Traders;
+                // Special types must count TOTAL owned (home + deployed), not just at-home, or
+                // the recruit module fights the modules that deploy them: the Trade module sends
+                // traders out to markets (numFreeTraders drops to 0 while numTraders stays full),
+                // the Scout module sends scouts on missions, the Monk module sends monks out. With
+                // an at-home count the deficit looks unfilled and we over-recruit up to the cap.
+                // These now mirror the totals used by GetSpecialUnitCapRemaining and the combat
+                // types above (which already include deployed armies).
+                case "Scouts": return village.calcTotalScouts() + village.LocallyMade_Scouts;
+                case "Monks": return village.calcTotalMonks() + village.LocallyMadeMonks;
+                case "Traders": return village.calcTotalTraders() + village.LocallyMade_Traders;
                 default: return 0;
             }
         }
@@ -169,6 +176,14 @@ namespace Kingdoms.Bot.Modules
         // visit). Capped so a village that can always recruit a trickle (e.g. gold regen)
         // can't starve the rest of the queue.
         private int _villageRevisits;
+
+        // Per-village throttle for auto-disband. disbandTroops/disbandPeople each hold a single
+        // 45 s server-side lock (shared across all types), and those lock flags are private, so
+        // we mirror the window here: at most one disband attempt per village per
+        // DisbandThrottleSeconds. Without this, the per-visit revisit loop would fire repeated
+        // calls that silently no-op against the lock while logging phantom "disbanding" lines.
+        private readonly Dictionary<int, DateTime> _lastDisband = new Dictionary<int, DateTime>();
+        private const int DisbandThrottleSeconds = 45;
 
         // Expected-count floor for troops we've queued, persisted across cycle boundaries.
         // The server confirms a makeTroops within seconds (m_numX then already includes the
@@ -246,6 +261,7 @@ namespace Kingdoms.Bot.Modules
             _villageRevisits = 0;
             _villageQueue.Clear();
             _recentlyRecruited.Clear();
+            _lastDisband.Clear();
         }
 
         protected override void OnTick()
@@ -344,6 +360,12 @@ namespace Kingdoms.Bot.Modules
             VillageRecruitSettings villageSetting = settings.GetVillageSettings(villageId);
             if (villageSetting == null) return false;
 
+            // Auto-disband runs before recruiting and independently of spare unit space — an
+            // over-recruited village is usually full, so this must not sit behind the space gate.
+            bool didDisband = false;
+            if (settings.AutoDisbandSpecial || settings.AutoDisbandTroops)
+                didDisband = TryAutoDisband(villageId, settings, village, villageSetting);
+
             // Sum of locally queued army troops (not yet server-confirmed).
             // These consume spare workers and army slots immediately on queue, so subtract
             // them from both limits now — the old code handled this by decrementing local
@@ -377,7 +399,7 @@ namespace Kingdoms.Bot.Modules
             if (spareUnitSpace <= 0)
             {
                 LogDebug("Village " + villageId + " has no spare unit space, skipping.");
-                return false;
+                return didDisband;
             }
 
             int currentGold = (int)GameEngine.Instance.World.getCurrentGold();
@@ -585,7 +607,109 @@ namespace Kingdoms.Bot.Modules
                 break; // one type per visit; OnTick revisits this village until nothing recruits
             }
 
-            return recruited;
+            return recruited || didDisband;
+        }
+
+        /// <summary>
+        /// Disbands at most one unit type whose total owned count exceeds its target, down toward
+        /// that target (target 0 => disband all). Only the at-home/idle pool is touched — deployed
+        /// traders/scouts/monks and field/castle armies can't be disbanded. Throttled per village
+        /// to the disband lock window. Returns true if a disband was issued this visit.
+        /// </summary>
+        private bool TryAutoDisband(int villageId, RecruitingSettings settings, VillageMap village,
+                                    VillageRecruitSettings villageSetting)
+        {
+            DateTime last;
+            if (_lastDisband.TryGetValue(villageId, out last) &&
+                (DateTime.Now - last).TotalSeconds < DisbandThrottleSeconds)
+                return false;
+
+            foreach (UnitRecruitEntry entry in villageSetting.Units)
+            {
+                bool isSpecial = entry.UnitKey == "Monks" ||
+                                 entry.UnitKey == "Traders" ||
+                                 entry.UnitKey == "Scouts";
+                bool scopeEnabled = isSpecial ? settings.AutoDisbandSpecial : settings.AutoDisbandTroops;
+                if (!scopeEnabled) continue;
+
+                // Captains are costly and usually left at target 0 (= disband all), so guard them.
+                if (entry.UnitKey == "Captains" && settings.AutoDisbandIgnoreCaptains) continue;
+
+                int current = GetCurrentCount(village, entry.UnitKey);
+                int excess  = current - entry.TargetCount;   // target 0 => disband all of this type
+                if (excess <= 0) continue;
+
+                // Cap by what's actually disbandable right now (at-home/idle); deployed units
+                // (traders in markets, scouts on missions, field/castle armies) can't be disbanded.
+                int disbandable = GetDisbandableAtHome(village, entry.UnitKey);
+                int toDisband   = Math.Min(excess, disbandable);
+                if (toDisband <= 0) continue;
+
+                try
+                {
+                    if (IsDisbandPeople(entry.UnitKey))
+                        village.disbandPeople(GetDisbandTypeId(entry.UnitKey), toDisband);
+                    else
+                        village.disbandTroops(GetDisbandTypeId(entry.UnitKey), toDisband);
+
+                    _lastDisband[villageId] = DateTime.Now;
+                    LogInfo("Village " + villageId + ": auto-disbanding " + toDisband + " " + entry.UnitKey +
+                            " (have " + current + ", target " + entry.TargetCount + ")");
+                    // The game's disband callback refreshes the *currently selected* village,
+                    // which in a multi-village bot is rarely this one — so this village's local
+                    // counts (e.g. traders) would stay stale and trip up Trade and our own next
+                    // pass. Force a re-download of THIS village instead.
+                    RequestVillageRedownload(villageId);
+                    return true; // one disband per visit; the lock throttle gates the next
+                }
+                catch (Exception ex)
+                {
+                    LogError("Village " + villageId + ": failed to disband " + entry.UnitKey + ": " + ex.Message);
+                }
+            }
+
+            return false;
+        }
+
+        // After a disband mutates this village's troop/people counts, ask Village Sync
+        // to force a full re-download of it so every module reads the new numbers.
+        // Gated by the same AutoRefreshOnStaleError switch as the Trade-side trigger.
+        private void RequestVillageRedownload(int villageId)
+        {
+            try
+            {
+                if (Engine == null || Engine.Settings == null ||
+                    !Engine.Settings.VillageSync.AutoRefreshOnStaleError)
+                    return;
+
+                VillageSyncModule vsm = Engine.GetModule<VillageSyncModule>();
+                if (vsm != null)
+                    vsm.RequestForceRedownload(villageId);
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Count of a unit type that can actually be disbanded right now: the at-home/idle pool.
+        /// Excludes traders out in markets, scouts on missions, monks deployed, and field/castle
+        /// armies — none of which can be disbanded from the barracks.
+        /// </summary>
+        private static int GetDisbandableAtHome(VillageMap village, string unitKey)
+        {
+            if (village == null) return 0;
+            switch (unitKey)
+            {
+                case "Peasants":  return village.m_numPeasants;
+                case "Archers":   return village.m_numArchers;
+                case "Pikemen":   return village.m_numPikemen;
+                case "Swordsmen": return village.m_numSwordsmen;
+                case "Catapults": return village.m_numCatapults;
+                case "Captains":  return village.m_numCaptains;
+                case "Scouts":    return village.m_numScouts;
+                case "Monks":     return village.calcTotalMonksAtHome();
+                case "Traders":   return village.numFreeTraders();
+                default: return 0;
+            }
         }
 
         /// <summary>
@@ -1162,6 +1286,7 @@ namespace Kingdoms.Bot.Modules
             _currentVillageIndex = 0;
             _villageRevisits = 0;
             _recentlyRecruited.Clear();
+            _lastDisband.Clear();
             _vassalQueue.Clear();
             _currentVassalIndex = 0;
             _vassalState = VassalState.Idle;

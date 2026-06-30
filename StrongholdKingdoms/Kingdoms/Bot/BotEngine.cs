@@ -37,6 +37,7 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.RecruitingModule());
             RegisterModule(new Modules.CastleRepairModule());
             RegisterModule(new Modules.TradeModule());
+            RegisterModule(new Modules.TradeDisbandModule());
             RegisterModule(new Modules.CardExpiryModule());
             RegisterModule(new Modules.VillageBuilderModule());
             RegisterModule(new Modules.AutoBombModule());
@@ -49,6 +50,7 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.BanquetModule());
             RegisterModule(new Modules.DefenderModule());
             RegisterModule(new Modules.MonkModule());
+            RegisterModule(new Modules.AttackerModule());
 
             foreach (IBotModule module in _modules)
             {
@@ -96,6 +98,8 @@ namespace Kingdoms.Bot
                     module.Enabled = _settings.CastleRepair.Enabled;
                 else if (module is Modules.TradeModule)
                     module.Enabled = _settings.Trade.Enabled;
+                else if (module is Modules.TradeDisbandModule)
+                    module.Enabled = true; // Always enabled — gated internally by TradeModule.DisbandPending
                 else if (module is Modules.CardExpiryModule)
                     module.Enabled = true; // Always enabled — monitors cards for other modules
                 else if (module is Modules.FreeCardCollectorModule)
@@ -116,6 +120,8 @@ namespace Kingdoms.Bot
                     module.Enabled = _settings.Banquet.Enabled;
                 else if (module is Modules.MonkModule)
                     module.Enabled = _settings.Monk.Enabled;
+                else if (module is Modules.AttackerModule)
+                    module.Enabled = _settings.Attacker.Enabled;
             }
         }
 
@@ -150,6 +156,8 @@ namespace Kingdoms.Bot
                     _settings.Banquet.Enabled = module.Enabled;
                 else if (module is Modules.MonkModule)
                     _settings.Monk.Enabled = module.Enabled;
+                else if (module is Modules.AttackerModule)
+                    _settings.Attacker.Enabled = module.Enabled;
             }
 
             _settings.Save();

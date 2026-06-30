@@ -32,6 +32,7 @@ namespace Kingdoms.Bot
         public BanquetSettings Banquet = new BanquetSettings();
         public DefenderSettings Defender = new DefenderSettings();
         public MonkSettings Monk = new MonkSettings();
+        public AttackerSettings Attacker = new AttackerSettings();
         public TimingToolSettings TimingTool = new TimingToolSettings();
 
         // XmlSerializer generates and compiles a dynamic serialization assembly the first time
@@ -113,6 +114,13 @@ namespace Kingdoms.Bot
         public bool Enabled = true;
         public int IntervalSeconds = 120;
         public int DelayBetweenVillagesMs = 3000;
+        // When the Trade module hits a "not enough resources" rejection, the
+        // village's local resource count was stale — force a full re-download of
+        // just that village so the next cycle works from authoritative data.
+        public bool AutoRefreshOnStaleError = true;
+        // Periodically force a full (authoritative) re-download of every enabled
+        // village, on top of the lightweight background sync. 0 = disabled.
+        public int ForceRedownloadIntervalMinutes = 10;
         public List<int> ExcludedVillageIds = new List<int>();
 
         public bool IsVillageEnabled(int villageId)
@@ -143,6 +151,11 @@ namespace Kingdoms.Bot
         public int MinAttacksForInterdict = 0;
         public int MinAttacksWindowSeconds = 20;
         public int MaxLandTimeHours = 0;
+        // When true, the min-army-size and max-land-time thresholds above also filter
+        // Discord notifications (an event below the size threshold or landing beyond the
+        // max land time is not sent to Discord). Min-attacks is interdict-only and never
+        // affects notifications.
+        public bool UseIgnoreOptionsForDiscord = false;
         public bool ForceRefreshArmies = true;
         public List<RadarActionSettings> Actions = new List<RadarActionSettings>();
 
@@ -186,6 +199,18 @@ namespace Kingdoms.Bot
         public bool Enabled = false;
         public string DiscordWebhookUrl = "";
         public string DiscordMentionTag = "";   // group-level fallback mention
+        // Auto-refresh each member's village list (the "Refresh All" action) without
+        // having to click the button. RefreshOnStart re-resolves once when the radar
+        // module starts (i.e. on map load); AutoRefreshIntervalMinutes re-resolves
+        // periodically thereafter (0 = periodic disabled, start-refresh only).
+        public bool RefreshOnStart = true;
+        public int AutoRefreshIntervalMinutes = 60;
+        // Discord-notification ignore options for group radar (notify-only, no interdict).
+        // When UseIgnoreOptionsForDiscord is true, an incoming army below MinArmySize, or
+        // landing beyond MaxLandTimeHours, is not sent to the group webhook. (0 = off.)
+        public bool UseIgnoreOptionsForDiscord = false;
+        public int MinArmySize = 0;
+        public int MaxLandTimeHours = 0;
         public List<GroupRadarMember> Members = new List<GroupRadarMember>();
         public List<RadarActionSettings> Actions = new List<RadarActionSettings>();
 
@@ -206,6 +231,15 @@ namespace Kingdoms.Bot
         public bool Enabled = true;
         public int CycleIntervalSeconds = 60;
         public int DelayBetweenVillagesMs = 3000;
+        // When enabled, disband units whose live count exceeds the per-village target down to it
+        // (target 0 => disband all of that type). Special = Traders/Scouts/Monks; Troops = the
+        // combat types. Both default OFF — disbanding is destructive, so it's strictly opt-in.
+        public bool AutoDisbandSpecial = false;
+        public bool AutoDisbandTroops = false;
+        // Protect Captains from AutoDisbandTroops. Captains are expensive and rarely given a
+        // target in the recruit grid (so they'd default to 0 = disband all), so this guards them
+        // by default. Only relevant when AutoDisbandTroops is on.
+        public bool AutoDisbandIgnoreCaptains = true;
         public List<int> ExcludedVillageIds = new List<int>();
         public List<VillageRecruitSettings> Villages = new List<VillageRecruitSettings>();
         public VassalRecruitingSettings VassalRecruiting = new VassalRecruitingSettings();
@@ -417,6 +451,8 @@ namespace Kingdoms.Bot
         public TradePriority Priority = TradePriority.MarketSellFirst;
         public bool DisableOnTradeCardExpiry = false;
         public bool TradeCardsWereActive = false;
+        public int DisableAfterMinutes = 0;          // 0 = feature off; auto-disable module this many minutes after it was enabled
+        public bool DisbandTradersOnDisable = false; // when auto-disabled, wait for traders to return home then disband them all
         public bool AutoSavePlayerRouteProgress = true;
         public List<VillageMarketTradeInfo> VillageMarketSettings = new List<VillageMarketTradeInfo>();
         public List<TradeRouteSettings> Routes = new List<TradeRouteSettings>();
@@ -1314,5 +1350,35 @@ namespace Kingdoms.Bot
         // before sending. Capped by ordination research level at runtime.
         public int AutoRecruitMonks = 0;
         public List<MonkRouteSettings> Routes = new List<MonkRouteSettings>();
+    }
+
+    [Serializable]
+    public class AttackerSettings
+    {
+        public bool Enabled = false;
+        public int CycleIntervalSeconds = 30;
+
+        // World-map button visibility
+        public bool ShowAttackButton = false;
+        public bool ShowMonksButton = false;
+        public bool ForceMode = false; // true = immediate attack; false = queue
+
+        // Monk send quantities
+        public int AbsMonkCount = 1;
+        public int ExcomMonkCount = 1;
+
+        // Per-target-type formation profiles.
+        // Attack type integers: 1=Capture, 2=Pillage, 3=Ransack, 9=Raze, 11=Vandalise, 12=GoldRaid
+        public string DistrictFormationName = "";
+        public int DistrictAttackType = 11;
+        public int DistrictPillagePercent = 25; // only used when DistrictAttackType == GoldRaid; valid range 1-50
+
+        public string AiFormationName = "";
+        public int AiAttackType = 11; // forced to Vandalise — AI/Special targets only support Vandalise
+        public int AiPillagePercent = 0; // unused — kept for settings compatibility
+
+        public string EnemyFormationName = "";
+        public int EnemyAttackType = 11;
+        public int EnemyPillagePercent = 0;
     }
 }

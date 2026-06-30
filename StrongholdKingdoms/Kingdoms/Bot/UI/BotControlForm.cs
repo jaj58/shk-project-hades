@@ -39,6 +39,12 @@ namespace Kingdoms.Bot.UI
         private TextBox _grpWebhookInput;
         private TextBox _grpMentionTagInput;
         private Button _grpTestWebhookBtn;
+        private CheckBox _grpRefreshOnStartCheck;
+        private CheckBox _grpAutoRefreshCheck;
+        private NumericUpDown _grpAutoRefreshIntervalInput;
+        private CheckBox _grpUseIgnoreForDiscordCheck;
+        private NumericUpDown _grpMinArmySizeInput;
+        private NumericUpDown _grpMaxLandTimeInput;
         private TextBox _grpPlayerNameInput;
         private Button _grpAddMemberBtn;
         private Button _grpRefreshAllBtn;
@@ -148,6 +154,35 @@ namespace Kingdoms.Bot.UI
         // Vassals tab runtime state
         private List<VassalVillagePanel> _vaVassalPanels = new List<VassalVillagePanel>();
 
+        // Attacker tab runtime state (controls created programmatically)
+        private bool _atLoading;
+        private Timer _atRefreshTimer;
+        private CheckBox _atEnabledCheck;
+        private Label _atStatusLabel;
+        private NumericUpDown _atIntervalInput;
+        private Button _atRunNowBtn;
+        private Button _atClearPreysBtn;
+        private Label _atQueueCountLabel;
+        private CheckBox _atShowAttackCheck;
+        private CheckBox _atForceModeCheck;
+        private CheckBox _atShowMonksCheck;
+        private NumericUpDown _atAbsCountInput;
+        private NumericUpDown _atExcomCountInput;
+        private ComboBox _atDistrictFormationCombo;
+        private ComboBox _atDistrictAttackTypeCombo;
+        private TrackBar _atDistrictPillageTrack;
+        private Label _atDistrictPillageLabel;
+        private ComboBox _atAiFormationCombo;
+        private ComboBox _atAiAttackTypeCombo;
+        private TrackBar _atAiPillageTrack;
+        private Label _atAiPillageLabel;
+        private ComboBox _atEnemyFormationCombo;
+        private ComboBox _atEnemyAttackTypeCombo;
+        private TrackBar _atEnemyPillageTrack;
+        private Label _atEnemyPillageLabel;
+        private Button _atRefreshFormationsBtn;
+        private Panel _atPreyListPanel;
+
         public static void ShowInstance()
         {
             if (_instance == null || _instance.IsDisposed)
@@ -227,6 +262,7 @@ namespace Kingdoms.Bot.UI
                 WireUpDefenderTab();
                 WireUpMonkTab();
                 WireUpTimingTab();
+                WireUpAttackerTab();
 
                 // Let background interdict threads marshal village-load requests
                 // (which touch InterfaceMgr/game view state) onto the UI thread.
@@ -263,6 +299,7 @@ namespace Kingdoms.Bot.UI
                 ScLoadFromSettings();
                 DfLoadFromSettings();
                 TtLoadFromSettings();
+                AtLoadFromSettings();
             }
         }
 
@@ -281,6 +318,9 @@ namespace Kingdoms.Bot.UI
             _vsEnabledCheck.CheckedChanged += delegate { VsPushToSettings(); };
             _vsIntervalInput.ValueChanged += delegate { VsPushToSettings(); };
             _vsDelayInput.ValueChanged += delegate { VsPushToSettings(); };
+            _vsAutoRefreshStaleCheck.CheckedChanged += delegate { VsPushToSettings(); };
+            _vsForceRedownloadInput.ValueChanged += delegate { VsPushToSettings(); };
+            _vsRedownloadAllBtn.Click += delegate { VsForceRedownloadAll(); };
 
             _vsRefreshTimer = new Timer();
             _vsRefreshTimer.Interval = 2000;
@@ -298,12 +338,22 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _vsEnabledCheck.Checked;
             s.IntervalSeconds = (int)_vsIntervalInput.Value;
             s.DelayBetweenVillagesMs = (int)_vsDelayInput.Value;
+            s.AutoRefreshOnStaleError = _vsAutoRefreshStaleCheck.Checked;
+            s.ForceRedownloadIntervalMinutes = (int)_vsForceRedownloadInput.Value;
 
             foreach (IBotModule module in BotEngine.Instance.Modules)
             {
                 if (module is VillageSyncModule)
                     module.Enabled = s.Enabled;
             }
+        }
+
+        private void VsForceRedownloadAll()
+        {
+            VillageSyncModule syncModule = BotEngine.Instance != null
+                ? BotEngine.Instance.GetModule<VillageSyncModule>() : null;
+            if (syncModule != null)
+                syncModule.RequestForceRedownloadAll();
         }
 
         private void VsLoadFromSettings()
@@ -319,6 +369,9 @@ namespace Kingdoms.Bot.UI
                     Math.Min(_vsIntervalInput.Maximum, s.IntervalSeconds));
                 _vsDelayInput.Value = Math.Max(_vsDelayInput.Minimum,
                     Math.Min(_vsDelayInput.Maximum, s.DelayBetweenVillagesMs));
+                _vsAutoRefreshStaleCheck.Checked = s.AutoRefreshOnStaleError;
+                _vsForceRedownloadInput.Value = Math.Max(_vsForceRedownloadInput.Minimum,
+                    Math.Min(_vsForceRedownloadInput.Maximum, s.ForceRedownloadIntervalMinutes));
 
                 VsPopulateVillageList();
             }
@@ -334,6 +387,8 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _vsEnabledCheck.Checked;
             s.IntervalSeconds = (int)_vsIntervalInput.Value;
             s.DelayBetweenVillagesMs = (int)_vsDelayInput.Value;
+            s.AutoRefreshOnStaleError = _vsAutoRefreshStaleCheck.Checked;
+            s.ForceRedownloadIntervalMinutes = (int)_vsForceRedownloadInput.Value;
 
             foreach (VillageRow row in _vsVillageRows)
             {
@@ -543,6 +598,17 @@ namespace Kingdoms.Bot.UI
             _rdMaxLandTimeInput.ValueChanged += delegate { RdPushToSettings(); };
             _rdForceRefreshCheck.CheckedChanged += delegate { RdPushToSettings(); };
 
+            // "Use ignore options for Discord notifications" — not in the Designer; created
+            // here and dropped into the settings panel (laid out by RelayoutSettingsRows).
+            _rdUseIgnoreForDiscordCheck = new CheckBox();
+            _rdUseIgnoreForDiscordCheck.Text = "Use ignore options for Discord notifications (min army size + max land time)";
+            _rdUseIgnoreForDiscordCheck.AutoSize = true;
+            _rdUseIgnoreForDiscordCheck.FlatStyle = FlatStyle.Flat;
+            _rdUseIgnoreForDiscordCheck.Font = new Font("Segoe UI", 8.5f);
+            _rdUseIgnoreForDiscordCheck.ForeColor = Color.FromArgb(160, 165, 180);
+            _rdUseIgnoreForDiscordCheck.CheckedChanged += delegate { RdPushToSettings(); };
+            _rdSettingsPanel.Controls.Add(_rdUseIgnoreForDiscordCheck);
+
             _rdRefreshTimer = new Timer();
             _rdRefreshTimer.Interval = 2000;
             _rdRefreshTimer.Tick += delegate { try { RdUpdateStatusDisplay(); } catch { } };
@@ -568,6 +634,8 @@ namespace Kingdoms.Bot.UI
             s.MinAttacksForInterdict = (int)_rdMinAttacksInput.Value;
             s.MinAttacksWindowSeconds = (int)_rdMinAttacksWindowInput.Value;
             s.MaxLandTimeHours = (int)_rdMaxLandTimeInput.Value;
+            if (_rdUseIgnoreForDiscordCheck != null)
+                s.UseIgnoreOptionsForDiscord = _rdUseIgnoreForDiscordCheck.Checked;
             s.ForceRefreshArmies = _rdForceRefreshCheck.Checked;
 
             foreach (IBotModule m in BotEngine.Instance.Modules)
@@ -602,6 +670,8 @@ namespace Kingdoms.Bot.UI
                     Math.Min(_rdMinAttacksWindowInput.Maximum, s.MinAttacksWindowSeconds));
                 _rdMaxLandTimeInput.Value = Math.Max(_rdMaxLandTimeInput.Minimum,
                     Math.Min(_rdMaxLandTimeInput.Maximum, s.MaxLandTimeHours));
+                if (_rdUseIgnoreForDiscordCheck != null)
+                    _rdUseIgnoreForDiscordCheck.Checked = s.UseIgnoreOptionsForDiscord;
                 _rdForceRefreshCheck.Checked = s.ForceRefreshArmies;
 
                 foreach (ActionRow row in _rdActionRows)
@@ -632,6 +702,8 @@ namespace Kingdoms.Bot.UI
             s.MinAttacksForInterdict = (int)_rdMinAttacksInput.Value;
             s.MinAttacksWindowSeconds = (int)_rdMinAttacksWindowInput.Value;
             s.MaxLandTimeHours = (int)_rdMaxLandTimeInput.Value;
+            if (_rdUseIgnoreForDiscordCheck != null)
+                s.UseIgnoreOptionsForDiscord = _rdUseIgnoreForDiscordCheck.Checked;
             s.ForceRefreshArmies = _rdForceRefreshCheck.Checked;
 
             foreach (ActionRow row in _rdActionRows)
@@ -755,7 +827,7 @@ namespace Kingdoms.Bot.UI
             settingsPanel.Dock = DockStyle.Top;
             settingsPanel.BackColor = bgMed;
             settingsPanel.Padding = new Padding(16, 10, 16, 8);
-            settingsPanel.Height = 92;
+            settingsPanel.Height = 122;
 
             _grpEnabledCheck = new CheckBox();
             _grpEnabledCheck.Text = "Enable Group Radar";
@@ -803,9 +875,92 @@ namespace Kingdoms.Bot.UI
             _grpMentionTagInput.BorderStyle = BorderStyle.FixedSingle;
             _grpMentionTagInput.Font = fNorm;
 
+            _grpRefreshOnStartCheck = new CheckBox();
+            _grpRefreshOnStartCheck.Text = "Refresh members on map load";
+            _grpRefreshOnStartCheck.Font = fSmall;
+            _grpRefreshOnStartCheck.ForeColor = textPri;
+            _grpRefreshOnStartCheck.Location = new Point(220, 13);
+            _grpRefreshOnStartCheck.AutoSize = true;
+
+            _grpAutoRefreshCheck = new CheckBox();
+            _grpAutoRefreshCheck.Text = "Auto-refresh every";
+            _grpAutoRefreshCheck.Font = fSmall;
+            _grpAutoRefreshCheck.ForeColor = textPri;
+            _grpAutoRefreshCheck.Location = new Point(440, 13);
+            _grpAutoRefreshCheck.AutoSize = true;
+
+            _grpAutoRefreshIntervalInput = new NumericUpDown();
+            _grpAutoRefreshIntervalInput.Minimum = 1;
+            _grpAutoRefreshIntervalInput.Maximum = 10080;   // up to one week
+            _grpAutoRefreshIntervalInput.Value = 60;
+            _grpAutoRefreshIntervalInput.BackColor = bgLight;
+            _grpAutoRefreshIntervalInput.ForeColor = textPri;
+            _grpAutoRefreshIntervalInput.Font = fSmall;
+            _grpAutoRefreshIntervalInput.BorderStyle = BorderStyle.FixedSingle;
+            _grpAutoRefreshIntervalInput.Location = new Point(560, 11);
+            _grpAutoRefreshIntervalInput.Size = new Size(64, 22);
+            _grpAutoRefreshIntervalInput.ThousandsSeparator = false;
+
+            Label autoRefreshMinLabel = new Label();
+            autoRefreshMinLabel.Text = "min";
+            autoRefreshMinLabel.Font = fSmall;
+            autoRefreshMinLabel.ForeColor = textSec;
+            autoRefreshMinLabel.Location = new Point(628, 14);
+            autoRefreshMinLabel.AutoSize = true;
+
+            // ---- Row 3: Discord-notification ignore options ----
+            _grpUseIgnoreForDiscordCheck = new CheckBox();
+            _grpUseIgnoreForDiscordCheck.Text = "Use ignore options for Discord notifications";
+            _grpUseIgnoreForDiscordCheck.Font = fSmall;
+            _grpUseIgnoreForDiscordCheck.ForeColor = textPri;
+            _grpUseIgnoreForDiscordCheck.Location = new Point(16, 84);
+            _grpUseIgnoreForDiscordCheck.AutoSize = true;
+
+            Label grpMinArmyLabel = new Label();
+            grpMinArmyLabel.Text = "Min army size:";
+            grpMinArmyLabel.Font = fSmall;
+            grpMinArmyLabel.ForeColor = textSec;
+            grpMinArmyLabel.Location = new Point(290, 86);
+            grpMinArmyLabel.AutoSize = true;
+
+            _grpMinArmySizeInput = new NumericUpDown();
+            _grpMinArmySizeInput.Minimum = 0;
+            _grpMinArmySizeInput.Maximum = 1000000;
+            _grpMinArmySizeInput.Value = 0;
+            _grpMinArmySizeInput.BackColor = bgLight;
+            _grpMinArmySizeInput.ForeColor = textPri;
+            _grpMinArmySizeInput.Font = fSmall;
+            _grpMinArmySizeInput.BorderStyle = BorderStyle.FixedSingle;
+            _grpMinArmySizeInput.Location = new Point(380, 84);
+            _grpMinArmySizeInput.Size = new Size(70, 22);
+            _grpMinArmySizeInput.ThousandsSeparator = false;
+
+            Label grpMaxLandLabel = new Label();
+            grpMaxLandLabel.Text = "Max land time (hrs, 0=off):";
+            grpMaxLandLabel.Font = fSmall;
+            grpMaxLandLabel.ForeColor = textSec;
+            grpMaxLandLabel.Location = new Point(470, 86);
+            grpMaxLandLabel.AutoSize = true;
+
+            _grpMaxLandTimeInput = new NumericUpDown();
+            _grpMaxLandTimeInput.Minimum = 0;
+            _grpMaxLandTimeInput.Maximum = 1000;
+            _grpMaxLandTimeInput.Value = 0;
+            _grpMaxLandTimeInput.BackColor = bgLight;
+            _grpMaxLandTimeInput.ForeColor = textPri;
+            _grpMaxLandTimeInput.Font = fSmall;
+            _grpMaxLandTimeInput.BorderStyle = BorderStyle.FixedSingle;
+            _grpMaxLandTimeInput.Location = new Point(630, 84);
+            _grpMaxLandTimeInput.Size = new Size(60, 22);
+            _grpMaxLandTimeInput.ThousandsSeparator = false;
+
             settingsPanel.Controls.AddRange(new Control[] {
                 _grpEnabledCheck, webhookLabel, _grpWebhookInput,
-                _grpTestWebhookBtn, mentionLabel, _grpMentionTagInput
+                _grpTestWebhookBtn, mentionLabel, _grpMentionTagInput,
+                _grpRefreshOnStartCheck, _grpAutoRefreshCheck,
+                _grpAutoRefreshIntervalInput, autoRefreshMinLabel,
+                _grpUseIgnoreForDiscordCheck, grpMinArmyLabel, _grpMinArmySizeInput,
+                grpMaxLandLabel, _grpMaxLandTimeInput
             });
 
             // ---- Separator ----
@@ -980,6 +1135,23 @@ namespace Kingdoms.Bot.UI
             _grpEnabledCheck.CheckedChanged += delegate { GrpPushToSettings(); };
             _grpWebhookInput.TextChanged += delegate { GrpPushToSettings(); };
             _grpMentionTagInput.TextChanged += delegate { GrpPushToSettings(); };
+            _grpRefreshOnStartCheck.CheckedChanged += delegate { GrpPushToSettings(); GrpSaveToSettings(); };
+            _grpAutoRefreshCheck.CheckedChanged += delegate
+            {
+                _grpAutoRefreshIntervalInput.Enabled = _grpAutoRefreshCheck.Checked;
+                GrpPushToSettings();
+                GrpSaveToSettings();
+            };
+            _grpAutoRefreshIntervalInput.ValueChanged += delegate { GrpPushToSettings(); GrpSaveToSettings(); };
+            _grpUseIgnoreForDiscordCheck.CheckedChanged += delegate
+            {
+                _grpMinArmySizeInput.Enabled = _grpUseIgnoreForDiscordCheck.Checked;
+                _grpMaxLandTimeInput.Enabled = _grpUseIgnoreForDiscordCheck.Checked;
+                GrpPushToSettings();
+                GrpSaveToSettings();
+            };
+            _grpMinArmySizeInput.ValueChanged += delegate { GrpPushToSettings(); GrpSaveToSettings(); };
+            _grpMaxLandTimeInput.ValueChanged += delegate { GrpPushToSettings(); GrpSaveToSettings(); };
 
             _grpTestWebhookBtn.Click += delegate
             {
@@ -1020,6 +1192,24 @@ namespace Kingdoms.Bot.UI
                 _grpEnabledCheck.Checked = s.Enabled;
                 _grpWebhookInput.Text = s.DiscordWebhookUrl ?? "";
                 _grpMentionTagInput.Text = s.DiscordMentionTag ?? "";
+
+                _grpRefreshOnStartCheck.Checked = s.RefreshOnStart;
+                bool autoOn = s.AutoRefreshIntervalMinutes > 0;
+                _grpAutoRefreshCheck.Checked = autoOn;
+                int interval = autoOn ? s.AutoRefreshIntervalMinutes : 60;
+                if (interval < _grpAutoRefreshIntervalInput.Minimum) interval = (int)_grpAutoRefreshIntervalInput.Minimum;
+                if (interval > _grpAutoRefreshIntervalInput.Maximum) interval = (int)_grpAutoRefreshIntervalInput.Maximum;
+                _grpAutoRefreshIntervalInput.Value = interval;
+                _grpAutoRefreshIntervalInput.Enabled = autoOn;
+
+                _grpUseIgnoreForDiscordCheck.Checked = s.UseIgnoreOptionsForDiscord;
+                _grpMinArmySizeInput.Value = Math.Max(_grpMinArmySizeInput.Minimum,
+                    Math.Min(_grpMinArmySizeInput.Maximum, s.MinArmySize));
+                _grpMaxLandTimeInput.Value = Math.Max(_grpMaxLandTimeInput.Minimum,
+                    Math.Min(_grpMaxLandTimeInput.Maximum, s.MaxLandTimeHours));
+                _grpMinArmySizeInput.Enabled = s.UseIgnoreOptionsForDiscord;
+                _grpMaxLandTimeInput.Enabled = s.UseIgnoreOptionsForDiscord;
+
                 GrpPopulateMemberList();
             }
             finally
@@ -1097,6 +1287,13 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _grpEnabledCheck.Checked;
             s.DiscordWebhookUrl = _grpWebhookInput.Text.Trim();
             s.DiscordMentionTag = _grpMentionTagInput.Text.Trim();
+            s.RefreshOnStart = _grpRefreshOnStartCheck.Checked;
+            s.AutoRefreshIntervalMinutes = _grpAutoRefreshCheck.Checked
+                ? (int)_grpAutoRefreshIntervalInput.Value
+                : 0;
+            s.UseIgnoreOptionsForDiscord = _grpUseIgnoreForDiscordCheck.Checked;
+            s.MinArmySize = (int)_grpMinArmySizeInput.Value;
+            s.MaxLandTimeHours = (int)_grpMaxLandTimeInput.Value;
         }
 
         private void GrpWriteToSettings()
@@ -1106,6 +1303,13 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _grpEnabledCheck.Checked;
             s.DiscordWebhookUrl = _grpWebhookInput.Text.Trim();
             s.DiscordMentionTag = _grpMentionTagInput.Text.Trim();
+            s.RefreshOnStart = _grpRefreshOnStartCheck.Checked;
+            s.AutoRefreshIntervalMinutes = _grpAutoRefreshCheck.Checked
+                ? (int)_grpAutoRefreshIntervalInput.Value
+                : 0;
+            s.UseIgnoreOptionsForDiscord = _grpUseIgnoreForDiscordCheck.Checked;
+            s.MinArmySize = (int)_grpMinArmySizeInput.Value;
+            s.MaxLandTimeHours = (int)_grpMaxLandTimeInput.Value;
             foreach (GroupActionRow row in _grpActionRows)
                 row.WriteToSettings();
         }
@@ -1297,6 +1501,30 @@ namespace Kingdoms.Bot.UI
             _rcIntervalInput.ValueChanged += delegate { RcPushToSettings(); };
             _rcDelayInput.ValueChanged += delegate { RcPushToSettings(); };
 
+            // Auto-disband toggles (created here, not in the Designer). Both default OFF and
+            // disband over-target units down to the per-village targets (target 0 => disband all).
+            _rcAutoDisbandSpecialCheck = RcMakeOptionCheck(
+                "Auto-disband excess Traders/Scouts/Monks",
+                "When the live count of a special unit exceeds its target for a village, disband the\r\n" +
+                "surplus back down to the target (a target of 0 disbands them all). Only idle units at\r\n" +
+                "home are disbanded — traders out trading, scouts on missions and monks deployed are left.");
+            _rcAutoDisbandTroopsCheck = RcMakeOptionCheck(
+                "Auto-disband excess troops",
+                "When the live count of a combat troop type exceeds its target for a village, disband the\r\n" +
+                "surplus back down to the target (a target of 0 disbands them all). Only barracks troops\r\n" +
+                "at home are disbanded — field armies and castle garrison are left untouched.");
+            _rcAutoDisbandIgnoreCaptainsCheck = RcMakeOptionCheck(
+                "Ignore Captains",
+                "Protects Captains from 'Auto-disband excess troops'. Captains are expensive and\r\n" +
+                "usually left at target 0 in the grid (which would disband them all), so leave this\r\n" +
+                "ticked unless you deliberately want Captains auto-disbanded down to their target.");
+            _rcAutoDisbandSpecialCheck.CheckedChanged += delegate { RcPushToSettings(); };
+            _rcAutoDisbandTroopsCheck.CheckedChanged += delegate { RcPushToSettings(); };
+            _rcAutoDisbandIgnoreCaptainsCheck.CheckedChanged += delegate { RcPushToSettings(); };
+            _rcEnabledCheck.Parent.Controls.Add(_rcAutoDisbandSpecialCheck);
+            _rcEnabledCheck.Parent.Controls.Add(_rcAutoDisbandTroopsCheck);
+            _rcEnabledCheck.Parent.Controls.Add(_rcAutoDisbandIgnoreCaptainsCheck);
+
 
             // Villages tab: add toolbar above column header
             RcBuildColumnHeaders(_rcColHeaderVillages, RecruitingModule.AllUnitKeys);
@@ -1342,6 +1570,31 @@ namespace Kingdoms.Bot.UI
             btn.Location = new Point(8, 3);
             btn.Cursor = Cursors.Hand;
             return btn;
+        }
+
+        private CheckBox _rcAutoDisbandSpecialCheck;
+        private CheckBox _rcAutoDisbandTroopsCheck;
+        private CheckBox _rcAutoDisbandIgnoreCaptainsCheck;
+        private static readonly ToolTip _rcToolTip = new ToolTip();
+
+        // Radar: "use ignore options for Discord notifications" — applies the min army
+        // size + max land time thresholds to Discord sends (created programmatically).
+        private CheckBox _rdUseIgnoreForDiscordCheck;
+
+        /// <summary>Creates a secondary (non-bold) settings checkbox styled like the rest of the
+        /// recruiting panel, with a hover tooltip describing the behaviour.</summary>
+        private CheckBox RcMakeOptionCheck(string text, string tooltip)
+        {
+            CheckBox cb = new CheckBox();
+            cb.Text = text;
+            cb.AutoSize = true;
+            cb.Checked = false;
+            cb.FlatStyle = FlatStyle.Flat;
+            cb.Font = new Font("Segoe UI", 9f);
+            cb.ForeColor = Color.FromArgb(230, 230, 240);
+            if (!string.IsNullOrEmpty(tooltip))
+                _rcToolTip.SetToolTip(cb, tooltip);
+            return cb;
         }
 
         private void RcCopySettingsClick(CopyRecruitSettingsForm.CopyMode mode)
@@ -1398,6 +1651,12 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _rcEnabledCheck.Checked;
             s.CycleIntervalSeconds = (int)_rcIntervalInput.Value;
             s.DelayBetweenVillagesMs = (int)_rcDelayInput.Value;
+            if (_rcAutoDisbandSpecialCheck != null)
+                s.AutoDisbandSpecial = _rcAutoDisbandSpecialCheck.Checked;
+            if (_rcAutoDisbandTroopsCheck != null)
+                s.AutoDisbandTroops = _rcAutoDisbandTroopsCheck.Checked;
+            if (_rcAutoDisbandIgnoreCaptainsCheck != null)
+                s.AutoDisbandIgnoreCaptains = _rcAutoDisbandIgnoreCaptainsCheck.Checked;
 
             foreach (IBotModule m in BotEngine.Instance.Modules)
             {
@@ -1419,6 +1678,12 @@ namespace Kingdoms.Bot.UI
                     Math.Min(_rcIntervalInput.Maximum, s.CycleIntervalSeconds));
                 _rcDelayInput.Value = Math.Max(_rcDelayInput.Minimum,
                     Math.Min(_rcDelayInput.Maximum, s.DelayBetweenVillagesMs));
+                if (_rcAutoDisbandSpecialCheck != null)
+                    _rcAutoDisbandSpecialCheck.Checked = s.AutoDisbandSpecial;
+                if (_rcAutoDisbandTroopsCheck != null)
+                    _rcAutoDisbandTroopsCheck.Checked = s.AutoDisbandTroops;
+                if (_rcAutoDisbandIgnoreCaptainsCheck != null)
+                    _rcAutoDisbandIgnoreCaptainsCheck.Checked = s.AutoDisbandIgnoreCaptains;
 
                 RcBuildVillageList();
             }
@@ -1434,6 +1699,12 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _rcEnabledCheck.Checked;
             s.CycleIntervalSeconds = (int)_rcIntervalInput.Value;
             s.DelayBetweenVillagesMs = (int)_rcDelayInput.Value;
+            if (_rcAutoDisbandSpecialCheck != null)
+                s.AutoDisbandSpecial = _rcAutoDisbandSpecialCheck.Checked;
+            if (_rcAutoDisbandTroopsCheck != null)
+                s.AutoDisbandTroops = _rcAutoDisbandTroopsCheck.Checked;
+            if (_rcAutoDisbandIgnoreCaptainsCheck != null)
+                s.AutoDisbandIgnoreCaptains = _rcAutoDisbandIgnoreCaptainsCheck.Checked;
 
             foreach (RecruitVillagePanel panel in _rcVillagePanels)
                 panel.WriteToSettings(s);
@@ -2213,6 +2484,11 @@ namespace Kingdoms.Bot.UI
                 MkWriteToSettings();
                 tabName = "Monk";
             }
+            else if (_tabControl.SelectedTab == _attackerPage)
+            {
+                AtWriteToSettings();
+                tabName = "Attacker";
+            }
 
             BotEngine.Instance.ApplySettings();
             BotEngine.Instance.SaveSettings();
@@ -2302,6 +2578,11 @@ namespace Kingdoms.Bot.UI
                 MkLoadFromSettings();
                 tabName = "Monk";
             }
+            else if (_tabControl.SelectedTab == _attackerPage)
+            {
+                AtLoadFromSettings();
+                tabName = "Attacker";
+            }
 
             RefreshStatus();
             BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings reloaded from disk.");
@@ -2329,6 +2610,16 @@ namespace Kingdoms.Bot.UI
             TrBuildStatsTab();
 
             _trEnabledCheck.CheckedChanged += delegate { TrWriteToSettings(); };
+            // Click fires only on genuine user interaction (not the programmatic
+            // .Checked syncs in TrUpdateStatusDisplay), so it's the right place to flag
+            // a *manual* disable. A manual untick suppresses the auto-disband; re-ticking
+            // clears the flag. Card-expiry / timer / scheduler disables never go through
+            // Click, so they still disband when the option is on.
+            _trEnabledCheck.Click += delegate
+            {
+                TradeModule m = GetTradeModule();
+                if (m != null) m.SetManualDisablePending(!_trEnabledCheck.Checked);
+            };
             // Persist the per-village "Should this village trade?" toggle immediately,
             // otherwise the change is lost unless the user switches village or saves.
             _trVillageTradingCheck.CheckedChanged += delegate { if (!_trLoading) TrSaveCurrentVillage(); };
@@ -2987,6 +3278,9 @@ namespace Kingdoms.Bot.UI
                 Math.Min(_trAutoHireLimitInput.Maximum, s.AutoHireMerchantsLimit));
             _trIgnoreTransactionsCheck.Checked = s.IgnoreCurrentTransactions;
             _trDisableOnCardExpiryCheck.Checked = s.DisableOnTradeCardExpiry;
+            _trDisableAfterInput.Value = Math.Max(_trDisableAfterInput.Minimum,
+                Math.Min(_trDisableAfterInput.Maximum, s.DisableAfterMinutes));
+            _trDisbandOnDisableCheck.Checked = s.DisbandTradersOnDisable;
             _trAutoSaveRouteProgressCheck.Checked = s.AutoSavePlayerRouteProgress;
 
             TrRefreshMarkets();
@@ -3015,6 +3309,8 @@ namespace Kingdoms.Bot.UI
             if (_trPriorityCombo.SelectedIndex >= 0)
                 s.Priority = (TradePriority)_trPriorityCombo.SelectedIndex;
             s.DisableOnTradeCardExpiry = _trDisableOnCardExpiryCheck.Checked;
+            s.DisableAfterMinutes = (int)_trDisableAfterInput.Value;
+            s.DisbandTradersOnDisable = _trDisbandOnDisableCheck.Checked;
             s.AutoSavePlayerRouteProgress = _trAutoSaveRouteProgressCheck.Checked;
 
             // Save currently displayed village's resource grid
@@ -7096,12 +7392,14 @@ namespace Kingdoms.Bot.UI
             LayoutRow(X, 96, G, _rdMentionTagLabel, _rdMentionTagInput, _rdTestSoundBtn, _rdStopSoundBtn);
             LayoutRow(X, 132, G, _rdInterdictLabel, _rdInterdictMonkCountInput, _rdAutoRecruitMonksCheck, _rdMinArmySizeLabel, _rdMinArmySizeInput);
             LayoutRow(X, 168, G, _rdMinAttacksLabel, _rdMinAttacksInput, _rdMinAttacksWindowLabel, _rdMinAttacksWindowInput, _rdMinAttacksWindowUnitLabel, _rdMaxLandTimeLabel, _rdMaxLandTimeInput);
-            LayoutRow(X, 198, G, _rdHintLabel);
+            LayoutRow(X, 198, G, _rdUseIgnoreForDiscordCheck);
+            LayoutRow(X, 226, G, _rdHintLabel);
 
             // Recruiting
             LayoutRow(X, 24, G, _rcEnabledCheck, _rcStatusLabel);
             LayoutRow(X, 56, G, _rcIntervalLabel, _rcIntervalInput, _rcDelayLabel, _rcDelayInput);
             LayoutRow(X, 92, G, _rcRefreshBtn, _rcDisbandCombo, _rcDisbandBtn);
+            LayoutRow(X, 124, G, _rcAutoDisbandSpecialCheck, _rcAutoDisbandTroopsCheck, _rcAutoDisbandIgnoreCaptainsCheck);
 
             // Castle Repair
             LayoutRow(X, 24, G, _crEnabledCheck, _crStatusLabel);
@@ -7118,6 +7416,8 @@ namespace Kingdoms.Bot.UI
                 _trIgnoreTransactionsCheck);
             LayoutRow(X, 132, G, _trPriorityLabel, _trPriorityCombo,
                 _trDisableOnCardExpiryCheck, _trAutoSaveRouteProgressCheck);
+            LayoutRow(X, 168, G, _trDisableAfterLabel, _trDisableAfterInput,
+                _trDisableAfterMinLabel, _trDisbandOnDisableCheck);
 
             // Scout
             LayoutRow(X, 24, G, _scEnabledCheck, _scStatusLabel, _scIntervalLabel, _scIntervalInput);
@@ -8090,6 +8390,534 @@ namespace Kingdoms.Bot.UI
             private readonly string _label;
             public MkIdVillageItem(int id, string label) { VillageId = id; _label = label; }
             public override string ToString() { return _label; }
+        }
+
+        // =====================================================================
+        // Attacker tab runtime (controls created programmatically, same pattern
+        // as the Group Radar sub-tab — see BuildGroupTabContent).
+        // =====================================================================
+
+        private static readonly string[] AtDistrictAttackTypeNames = { "Vandalise", "Gold Raid" };
+        private static readonly int[] AtDistrictAttackTypeValues = { 11, 12 };
+        private const int AtDistrictGoldRaidIndex = 1;
+        private static readonly string[] AtAiAttackTypeNames = { "Vandalise" };
+        private static readonly int[] AtAiAttackTypeValues = { 11 };
+        private static readonly string[] AtEnemyAttackTypeNames = { "Vandalise", "Pillage", "Ransack", "Raze", "Capture" };
+        private static readonly int[] AtEnemyAttackTypeValues = { 11, 2, 3, 9, 1 };
+
+        private void WireUpAttackerTab()
+        {
+            BuildAttackerTabContent();
+
+            _atEnabledCheck.CheckedChanged += delegate { AtWriteToSettings(); };
+            _atIntervalInput.ValueChanged += delegate { AtWriteToSettings(); };
+            _atShowAttackCheck.CheckedChanged += delegate { AtWriteToSettings(); };
+            _atForceModeCheck.CheckedChanged += delegate { AtWriteToSettings(); };
+            _atShowMonksCheck.CheckedChanged += delegate { AtWriteToSettings(); };
+            _atAbsCountInput.ValueChanged += delegate { AtWriteToSettings(); };
+            _atExcomCountInput.ValueChanged += delegate { AtWriteToSettings(); };
+
+            _atDistrictFormationCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
+            _atDistrictAttackTypeCombo.SelectedIndexChanged += delegate
+            {
+                AtUpdateDistrictPillageTrackState();
+                AtWriteToSettings();
+            };
+            _atDistrictPillageTrack.ValueChanged += delegate
+            {
+                _atDistrictPillageLabel.Text = _atDistrictPillageTrack.Value + "%";
+                AtWriteToSettings();
+            };
+
+            _atAiFormationCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
+            _atAiAttackTypeCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
+            _atAiPillageTrack.Visible = false;
+            _atAiPillageLabel.Visible = false;
+
+            _atEnemyFormationCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
+            _atEnemyAttackTypeCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
+            _atEnemyPillageTrack.ValueChanged += delegate
+            {
+                _atEnemyPillageLabel.Text = _atEnemyPillageTrack.Value + "%";
+                AtWriteToSettings();
+            };
+
+            _atRunNowBtn.Click += delegate { AtRunNow(); };
+            _atClearPreysBtn.Click += delegate { AtClearPreys(); };
+            _atRefreshFormationsBtn.Click += delegate { AtRefreshFormations(); };
+
+            _atRefreshTimer = new Timer();
+            _atRefreshTimer.Interval = 2000;
+            _atRefreshTimer.Tick += delegate
+            {
+                try { AtUpdateStatus(); AtRebuildPreyList(); }
+                catch { /* swallow — timer must not propagate exceptions */ }
+            };
+            _atRefreshTimer.Start();
+
+            AtRefreshFormations();
+        }
+
+        private void BuildAttackerTabContent()
+        {
+            Color bgMed = Color.FromArgb(40, 42, 54);
+            Color bgLight = Color.FromArgb(50, 52, 64);
+            Font fNorm = new Font("Segoe UI", 9f);
+            Font fSmall = new Font("Segoe UI", 8.5f);
+            Font fBold = new Font("Segoe UI", 9f, FontStyle.Bold);
+
+            // ---- Control panel ----
+            Panel controlPanel = new Panel();
+            controlPanel.Dock = DockStyle.Top;
+            controlPanel.BackColor = bgMed;
+            controlPanel.Height = 42;
+
+            _atEnabledCheck = new CheckBox();
+            _atEnabledCheck.Text = "Module Enabled";
+            _atEnabledCheck.Font = fBold;
+            _atEnabledCheck.ForeColor = TextPri;
+            _atEnabledCheck.Location = new Point(16, 12);
+            _atEnabledCheck.AutoSize = true;
+
+            _atStatusLabel = new Label();
+            _atStatusLabel.Text = "DISABLED";
+            _atStatusLabel.Font = fBold;
+            _atStatusLabel.ForeColor = ErrorCol;
+            _atStatusLabel.Location = new Point(150, 13);
+            _atStatusLabel.AutoSize = true;
+
+            Label intervalLabel = new Label();
+            intervalLabel.Text = "Interval (s):";
+            intervalLabel.Font = fSmall;
+            intervalLabel.ForeColor = TextSec;
+            intervalLabel.Location = new Point(240, 14);
+            intervalLabel.AutoSize = true;
+
+            _atIntervalInput = new NumericUpDown();
+            _atIntervalInput.Minimum = 5;
+            _atIntervalInput.Maximum = 300;
+            _atIntervalInput.Value = 30;
+            _atIntervalInput.Location = new Point(320, 11);
+            _atIntervalInput.Size = new Size(55, 22);
+            _atIntervalInput.BackColor = bgLight;
+            _atIntervalInput.ForeColor = TextPri;
+            _atIntervalInput.BorderStyle = BorderStyle.FixedSingle;
+            _atIntervalInput.Font = fSmall;
+
+            _atRunNowBtn = new Button();
+            _atRunNowBtn.Text = "Run Now";
+            _atRunNowBtn.Location = new Point(400, 8);
+            _atRunNowBtn.Size = new Size(90, 26);
+            _atRunNowBtn.BackColor = Color.FromArgb(60, 63, 80);
+            _atRunNowBtn.ForeColor = TextPri;
+            _atRunNowBtn.FlatStyle = FlatStyle.Flat;
+            _atRunNowBtn.Font = fSmall;
+
+            _atClearPreysBtn = new Button();
+            _atClearPreysBtn.Text = "Clear Queue";
+            _atClearPreysBtn.Location = new Point(500, 8);
+            _atClearPreysBtn.Size = new Size(100, 26);
+            _atClearPreysBtn.BackColor = Color.FromArgb(60, 63, 80);
+            _atClearPreysBtn.ForeColor = TextPri;
+            _atClearPreysBtn.FlatStyle = FlatStyle.Flat;
+            _atClearPreysBtn.Font = fSmall;
+
+            _atQueueCountLabel = new Label();
+            _atQueueCountLabel.Text = "Queue: 0";
+            _atQueueCountLabel.Font = fSmall;
+            _atQueueCountLabel.ForeColor = TextSec;
+            _atQueueCountLabel.Location = new Point(620, 14);
+            _atQueueCountLabel.AutoSize = true;
+
+            controlPanel.Controls.Add(_atEnabledCheck);
+            controlPanel.Controls.Add(_atStatusLabel);
+            controlPanel.Controls.Add(intervalLabel);
+            controlPanel.Controls.Add(_atIntervalInput);
+            controlPanel.Controls.Add(_atRunNowBtn);
+            controlPanel.Controls.Add(_atClearPreysBtn);
+            controlPanel.Controls.Add(_atQueueCountLabel);
+
+            // ---- World map buttons panel ----
+            Panel mapPanel = new Panel();
+            mapPanel.Dock = DockStyle.Top;
+            mapPanel.BackColor = bgMed;
+            mapPanel.Height = 72;
+            mapPanel.Padding = new Padding(0, 6, 0, 0);
+
+            _atShowAttackCheck = new CheckBox();
+            _atShowAttackCheck.Text = "Show Attack Button on Map";
+            _atShowAttackCheck.Font = fSmall;
+            _atShowAttackCheck.ForeColor = TextPri;
+            _atShowAttackCheck.Location = new Point(16, 10);
+            _atShowAttackCheck.AutoSize = true;
+
+            _atForceModeCheck = new CheckBox();
+            _atForceModeCheck.Text = "Force Mode (immediate attack)";
+            _atForceModeCheck.Font = fSmall;
+            _atForceModeCheck.ForeColor = TextPri;
+            _atForceModeCheck.Location = new Point(260, 10);
+            _atForceModeCheck.AutoSize = true;
+
+            _atShowMonksCheck = new CheckBox();
+            _atShowMonksCheck.Text = "Show Monk Buttons on Map";
+            _atShowMonksCheck.Font = fSmall;
+            _atShowMonksCheck.ForeColor = TextPri;
+            _atShowMonksCheck.Location = new Point(540, 10);
+            _atShowMonksCheck.AutoSize = true;
+
+            Label absLabel = new Label();
+            absLabel.Text = "Absolution monks:";
+            absLabel.Font = fSmall;
+            absLabel.ForeColor = TextSec;
+            absLabel.Location = new Point(16, 44);
+            absLabel.AutoSize = true;
+
+            _atAbsCountInput = new NumericUpDown();
+            _atAbsCountInput.Minimum = 1;
+            _atAbsCountInput.Maximum = 99;
+            _atAbsCountInput.Value = 1;
+            _atAbsCountInput.Location = new Point(150, 41);
+            _atAbsCountInput.Size = new Size(55, 22);
+            _atAbsCountInput.BackColor = bgLight;
+            _atAbsCountInput.ForeColor = TextPri;
+            _atAbsCountInput.BorderStyle = BorderStyle.FixedSingle;
+            _atAbsCountInput.Font = fSmall;
+
+            Label excomLabel = new Label();
+            excomLabel.Text = "Excommunication monks:";
+            excomLabel.Font = fSmall;
+            excomLabel.ForeColor = TextSec;
+            excomLabel.Location = new Point(260, 44);
+            excomLabel.AutoSize = true;
+
+            _atExcomCountInput = new NumericUpDown();
+            _atExcomCountInput.Minimum = 1;
+            _atExcomCountInput.Maximum = 99;
+            _atExcomCountInput.Value = 1;
+            _atExcomCountInput.Location = new Point(430, 41);
+            _atExcomCountInput.Size = new Size(55, 22);
+            _atExcomCountInput.BackColor = bgLight;
+            _atExcomCountInput.ForeColor = TextPri;
+            _atExcomCountInput.BorderStyle = BorderStyle.FixedSingle;
+            _atExcomCountInput.Font = fSmall;
+
+            mapPanel.Controls.Add(_atShowAttackCheck);
+            mapPanel.Controls.Add(_atForceModeCheck);
+            mapPanel.Controls.Add(_atShowMonksCheck);
+            mapPanel.Controls.Add(absLabel);
+            mapPanel.Controls.Add(_atAbsCountInput);
+            mapPanel.Controls.Add(excomLabel);
+            mapPanel.Controls.Add(_atExcomCountInput);
+
+            // ---- Formation profiles panel ----
+            Panel profilesPanel = new Panel();
+            profilesPanel.Dock = DockStyle.Top;
+            profilesPanel.BackColor = bgMed;
+            profilesPanel.Height = 168;
+
+            Label profilesTitle = new Label();
+            profilesTitle.Text = "Attack Profiles";
+            profilesTitle.Font = fBold;
+            profilesTitle.ForeColor = TextPri;
+            profilesTitle.Location = new Point(16, 8);
+            profilesTitle.AutoSize = true;
+
+            _atRefreshFormationsBtn = new Button();
+            _atRefreshFormationsBtn.Text = "Refresh Formations";
+            _atRefreshFormationsBtn.Location = new Point(900, 4);
+            _atRefreshFormationsBtn.Size = new Size(160, 26);
+            _atRefreshFormationsBtn.BackColor = Color.FromArgb(60, 63, 80);
+            _atRefreshFormationsBtn.ForeColor = TextPri;
+            _atRefreshFormationsBtn.FlatStyle = FlatStyle.Flat;
+            _atRefreshFormationsBtn.Font = fSmall;
+
+            profilesPanel.Controls.Add(profilesTitle);
+            profilesPanel.Controls.Add(_atRefreshFormationsBtn);
+
+            AtBuildProfileRow(profilesPanel, 40, "District / Capital",
+                out _atDistrictFormationCombo, out _atDistrictAttackTypeCombo,
+                out _atDistrictPillageTrack, out _atDistrictPillageLabel, AtDistrictAttackTypeNames);
+            // Gold raid is the only district attack type with a percent option, capped 1-50%.
+            _atDistrictPillageTrack.Minimum = 1;
+            _atDistrictPillageTrack.Maximum = 50;
+
+            AtBuildProfileRow(profilesPanel, 84, "AI / Special",
+                out _atAiFormationCombo, out _atAiAttackTypeCombo,
+                out _atAiPillageTrack, out _atAiPillageLabel, AtAiAttackTypeNames);
+
+            AtBuildProfileRow(profilesPanel, 128, "Player Enemy",
+                out _atEnemyFormationCombo, out _atEnemyAttackTypeCombo,
+                out _atEnemyPillageTrack, out _atEnemyPillageLabel, AtEnemyAttackTypeNames);
+
+            // ---- Prey queue panel (fills remaining space) ----
+            Panel queueHeader = new Panel();
+            queueHeader.Dock = DockStyle.Top;
+            queueHeader.BackColor = bgMed;
+            queueHeader.Height = 26;
+
+            Label queueHeaderLabel = new Label();
+            queueHeaderLabel.Text = "Queued Attacks (Own Village -> Target)";
+            queueHeaderLabel.Font = fSmall;
+            queueHeaderLabel.ForeColor = TextSec;
+            queueHeaderLabel.Location = new Point(16, 5);
+            queueHeaderLabel.AutoSize = true;
+            queueHeader.Controls.Add(queueHeaderLabel);
+
+            _atPreyListPanel = new Panel();
+            _atPreyListPanel.Dock = DockStyle.Fill;
+            _atPreyListPanel.BackColor = Color.FromArgb(30, 31, 40);
+            _atPreyListPanel.AutoScroll = true;
+
+            // Add order matters: Fill first so the Top-docked panels stack above it correctly.
+            _attackerPage.Controls.Add(_atPreyListPanel);
+            _attackerPage.Controls.Add(queueHeader);
+            _attackerPage.Controls.Add(profilesPanel);
+            _attackerPage.Controls.Add(mapPanel);
+            _attackerPage.Controls.Add(controlPanel);
+        }
+
+        private void AtBuildProfileRow(Panel parent, int y, string title,
+            out ComboBox formationCombo, out ComboBox attackTypeCombo,
+            out TrackBar pillageTrack, out Label pillageLabel, string[] attackTypeNames)
+        {
+            Font fSmall = new Font("Segoe UI", 8.5f);
+
+            Label titleLabel = new Label();
+            titleLabel.Text = title;
+            titleLabel.Font = fSmall;
+            titleLabel.ForeColor = TextSec;
+            titleLabel.Location = new Point(16, y + 4);
+            titleLabel.Size = new Size(130, 18);
+
+            formationCombo = new ComboBox();
+            formationCombo.Location = new Point(150, y);
+            formationCombo.Size = new Size(220, 22);
+            formationCombo.DropDownStyle = ComboBoxStyle.DropDownList;
+            formationCombo.BackColor = Color.FromArgb(50, 52, 64);
+            formationCombo.ForeColor = TextPri;
+            formationCombo.Font = fSmall;
+
+            attackTypeCombo = new ComboBox();
+            attackTypeCombo.Location = new Point(380, y);
+            attackTypeCombo.Size = new Size(130, 22);
+            attackTypeCombo.DropDownStyle = ComboBoxStyle.DropDownList;
+            attackTypeCombo.BackColor = Color.FromArgb(50, 52, 64);
+            attackTypeCombo.ForeColor = TextPri;
+            attackTypeCombo.Font = fSmall;
+            foreach (string name in attackTypeNames)
+                attackTypeCombo.Items.Add(name);
+            attackTypeCombo.SelectedIndex = 0;
+
+            pillageTrack = new TrackBar();
+            pillageTrack.Location = new Point(520, y - 4);
+            pillageTrack.Size = new Size(150, 30);
+            pillageTrack.Minimum = 0;
+            pillageTrack.Maximum = 90;
+            pillageTrack.TickStyle = TickStyle.None;
+
+            Label localPillageLabel = new Label();
+            localPillageLabel.Text = "0%";
+            localPillageLabel.Font = fSmall;
+            localPillageLabel.ForeColor = TextSec;
+            localPillageLabel.Location = new Point(680, y + 4);
+            localPillageLabel.AutoSize = true;
+            pillageLabel = localPillageLabel;
+
+            parent.Controls.Add(titleLabel);
+            parent.Controls.Add(formationCombo);
+            parent.Controls.Add(attackTypeCombo);
+            parent.Controls.Add(pillageTrack);
+            parent.Controls.Add(pillageLabel);
+        }
+
+        private void AtUpdateDistrictPillageTrackState()
+        {
+            bool isGoldRaid = _atDistrictAttackTypeCombo.SelectedIndex == AtDistrictGoldRaidIndex;
+            _atDistrictPillageTrack.Enabled = isGoldRaid;
+            _atDistrictPillageLabel.Enabled = isGoldRaid;
+        }
+
+        private void AtRefreshFormations()
+        {
+            List<string> names = Modules.AutoBombModule.GetFormationNames();
+            AtRepopulateFormationCombo(_atDistrictFormationCombo, names);
+            AtRepopulateFormationCombo(_atAiFormationCombo, names);
+            AtRepopulateFormationCombo(_atEnemyFormationCombo, names);
+        }
+
+        private void AtRepopulateFormationCombo(ComboBox combo, List<string> names)
+        {
+            string current = combo.SelectedItem as string;
+            combo.Items.Clear();
+            foreach (string name in names)
+                combo.Items.Add(name);
+            if (current != null && combo.Items.Contains(current))
+                combo.SelectedItem = current;
+            else if (combo.Items.Count > 0)
+                combo.SelectedIndex = 0;
+        }
+
+        private void AtRunNow()
+        {
+            Modules.AttackerModule mod = BotEngine.Instance?.GetModule<Modules.AttackerModule>();
+            if (mod != null) mod.RunNow();
+        }
+
+        private void AtClearPreys()
+        {
+            Modules.AttackerModule mod = BotEngine.Instance?.GetModule<Modules.AttackerModule>();
+            if (mod != null)
+            {
+                mod.ClearPreys();
+                mod.ClearMonkPreys();
+            }
+        }
+
+        private void AtUpdateStatus()
+        {
+            if (_atStatusLabel == null) return;
+            bool enabled = _atEnabledCheck != null && _atEnabledCheck.Checked;
+            _atStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
+            _atStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+
+            Modules.AttackerModule mod = BotEngine.Instance?.GetModule<Modules.AttackerModule>();
+            int attackCount = mod != null ? mod.PreyQueueCount : 0;
+            int monkCount = mod != null ? mod.MonkQueueCount : 0;
+            _atQueueCountLabel.Text = "Queue: " + attackCount + " attacks, " + monkCount + " monks";
+        }
+
+        private void AtRebuildPreyList()
+        {
+            if (_atPreyListPanel == null) return;
+            Modules.AttackerModule mod = BotEngine.Instance?.GetModule<Modules.AttackerModule>();
+            List<Modules.AttackerPrey> preys = mod != null ? mod.GetPreyList() : new List<Modules.AttackerPrey>();
+            List<Modules.MonkPrey> monks = mod != null ? mod.GetMonkList() : new List<Modules.MonkPrey>();
+
+            _atPreyListPanel.Controls.Clear();
+            int y = 4;
+            foreach (Modules.AttackerPrey p in preys)
+            {
+                Label row = new Label();
+                row.Text = "[Attack] [" + p.OwnVillageId + "] -> [" + p.TargetId + "]";
+                row.Font = new Font("Segoe UI", 8.5f);
+                row.ForeColor = TextPri;
+                row.Location = new Point(16, y);
+                row.AutoSize = true;
+                _atPreyListPanel.Controls.Add(row);
+                y += 20;
+            }
+            foreach (Modules.MonkPrey m in monks)
+            {
+                Label row = new Label();
+                string cmdName = m.Command == 6 ? "Absolution" : m.Command == 7 ? "Excommunication" : "Monk";
+                row.Text = "[" + cmdName + "] [" + m.OwnVillageId + "] -> [" + m.TargetId + "] x" + m.Count;
+                row.Font = new Font("Segoe UI", 8.5f);
+                row.ForeColor = TextPri;
+                row.Location = new Point(16, y);
+                row.AutoSize = true;
+                _atPreyListPanel.Controls.Add(row);
+                y += 20;
+            }
+        }
+
+        private void AtLoadFromSettings()
+        {
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            if (_atEnabledCheck == null) return;
+
+            _atLoading = true;
+            try
+            {
+                AttackerSettings s = BotEngine.Instance.Settings.Attacker;
+
+                _atEnabledCheck.Checked = s.Enabled;
+                _atIntervalInput.Value = Math.Max(_atIntervalInput.Minimum,
+                    Math.Min(_atIntervalInput.Maximum, s.CycleIntervalSeconds));
+
+                _atShowAttackCheck.Checked = s.ShowAttackButton;
+                _atForceModeCheck.Checked = s.ForceMode;
+                _atShowMonksCheck.Checked = s.ShowMonksButton;
+                _atAbsCountInput.Value = Math.Max(_atAbsCountInput.Minimum,
+                    Math.Min(_atAbsCountInput.Maximum, s.AbsMonkCount));
+                _atExcomCountInput.Value = Math.Max(_atExcomCountInput.Minimum,
+                    Math.Min(_atExcomCountInput.Maximum, s.ExcomMonkCount));
+
+                AtSelectFormation(_atDistrictFormationCombo, s.DistrictFormationName);
+                _atDistrictAttackTypeCombo.SelectedIndex = AtAttackTypeToIndex(AtDistrictAttackTypeValues, s.DistrictAttackType);
+                _atDistrictPillageTrack.Value = Math.Max(_atDistrictPillageTrack.Minimum,
+                    Math.Min(_atDistrictPillageTrack.Maximum, s.DistrictPillagePercent));
+                _atDistrictPillageLabel.Text = _atDistrictPillageTrack.Value + "%";
+                AtUpdateDistrictPillageTrackState();
+
+                AtSelectFormation(_atAiFormationCombo, s.AiFormationName);
+                _atAiAttackTypeCombo.SelectedIndex = AtAttackTypeToIndex(AtAiAttackTypeValues, s.AiAttackType);
+
+                AtSelectFormation(_atEnemyFormationCombo, s.EnemyFormationName);
+                _atEnemyAttackTypeCombo.SelectedIndex = AtAttackTypeToIndex(AtEnemyAttackTypeValues, s.EnemyAttackType);
+                _atEnemyPillageTrack.Value = Math.Max(_atEnemyPillageTrack.Minimum,
+                    Math.Min(_atEnemyPillageTrack.Maximum, s.EnemyPillagePercent));
+                _atEnemyPillageLabel.Text = _atEnemyPillageTrack.Value + "%";
+            }
+            finally
+            {
+                _atLoading = false;
+            }
+        }
+
+        private void AtWriteToSettings()
+        {
+            if (_atLoading) return;
+            if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
+            AttackerSettings s = BotEngine.Instance.Settings.Attacker;
+
+            s.Enabled = _atEnabledCheck.Checked;
+            s.CycleIntervalSeconds = (int)_atIntervalInput.Value;
+
+            s.ShowAttackButton = _atShowAttackCheck.Checked;
+            s.ForceMode = _atForceModeCheck.Checked;
+            s.ShowMonksButton = _atShowMonksCheck.Checked;
+            s.AbsMonkCount = (int)_atAbsCountInput.Value;
+            s.ExcomMonkCount = (int)_atExcomCountInput.Value;
+
+            s.DistrictFormationName = _atDistrictFormationCombo.SelectedItem as string ?? "";
+            s.DistrictAttackType = AtIndexToAttackType(AtDistrictAttackTypeValues, _atDistrictAttackTypeCombo.SelectedIndex);
+            s.DistrictPillagePercent = _atDistrictPillageTrack.Value;
+
+            s.AiFormationName = _atAiFormationCombo.SelectedItem as string ?? "";
+            s.AiAttackType = AtIndexToAttackType(AtAiAttackTypeValues, _atAiAttackTypeCombo.SelectedIndex);
+            s.AiPillagePercent = _atAiPillageTrack.Value;
+
+            s.EnemyFormationName = _atEnemyFormationCombo.SelectedItem as string ?? "";
+            s.EnemyAttackType = AtIndexToAttackType(AtEnemyAttackTypeValues, _atEnemyAttackTypeCombo.SelectedIndex);
+            s.EnemyPillagePercent = _atEnemyPillageTrack.Value;
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                if (m is Modules.AttackerModule)
+                    m.Enabled = s.Enabled;
+            }
+        }
+
+        private static void AtSelectFormation(ComboBox combo, string name)
+        {
+            if (string.IsNullOrEmpty(name)) { combo.SelectedIndex = combo.Items.Count > 0 ? 0 : -1; return; }
+            if (combo.Items.Contains(name))
+                combo.SelectedItem = name;
+            else if (combo.Items.Count > 0)
+                combo.SelectedIndex = 0;
+        }
+
+        private static int AtAttackTypeToIndex(int[] values, int attackType)
+        {
+            for (int i = 0; i < values.Length; i++)
+                if (values[i] == attackType) return i;
+            return 0;
+        }
+
+        private static int AtIndexToAttackType(int[] values, int index)
+        {
+            if (index < 0 || index >= values.Length) return values[0];
+            return values[index];
         }
     }
 }

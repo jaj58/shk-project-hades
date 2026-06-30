@@ -100,6 +100,7 @@
     <Compile Include="Kingdoms\Bot\InterdictRunner.cs" />
     <Compile Include="Kingdoms\Bot\RadarSoundPlayer.cs" />
     <Compile Include="Kingdoms\Bot\IBotModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\AttackerModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombMultiModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoCardModule.cs" />
@@ -115,6 +116,7 @@
     <Compile Include="Kingdoms\Bot\Modules\RecruitingModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\ScoutModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\TradeModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\TradeDisbandModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\VillageBuilderModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\VillageSyncModule.cs" />
     <Compile Include="Kingdoms\Bot\UI\AdvancedLoginForm.cs">

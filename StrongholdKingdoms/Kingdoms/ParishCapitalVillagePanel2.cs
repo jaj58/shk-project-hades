@@ -9,6 +9,8 @@ using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
+using Kingdoms.Bot;
+using Kingdoms.Bot.Modules;
 
 //#nullable disable
 namespace Kingdoms
@@ -20,6 +22,7 @@ namespace Kingdoms
     private CustomSelfDrawPanel.MRHP_Background backGround = new CustomSelfDrawPanel.MRHP_Background();
     private CustomSelfDrawPanel.CSDButton tradeButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton attackButton = new CustomSelfDrawPanel.CSDButton();
+    private CustomSelfDrawPanel.CSDButton botAttackButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton scoutButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton reinforceButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton monkButton = new CustomSelfDrawPanel.CSDButton();
@@ -128,6 +131,13 @@ namespace Kingdoms
       this.castleButton.CustomTooltipID = 2445;
       this.castleButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.castleClick), "ParishCapitalVillagePanel2_view_castle");
       this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.castleButton);
+      // Bot attack button sits immediately to the left of the report button.
+      this.botAttackButton = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
+      this.botAttackButton.Position = new Point(50, 112);
+      this.botAttackButton.CustomTooltipID = 11111131;
+      this.botAttackButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAttackerClick), "ParishCapitalVillagePanel2_bot_attacker");
+      if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowAttackButton == true)
+        this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.botAttackButton);
       if (GameEngine.Instance.World.MapEditing)
       {
         this.mapEdit.ImageNorm = (Image) GFXLibrary.faction_pen;
@@ -199,6 +209,7 @@ namespace Kingdoms
       this.reinforceButton.Position = new Point(115, 142 + num1 + num3);
       this.monkButton.Position = new Point(150, 142 + num1 + num3);
       this.castleButton.Position = new Point(82, 112 + num1 + num2);
+      this.botAttackButton.Position = new Point(50, 112 + num1 + num2);
       this.mapEdit.Position = new Point(168, 112 + num1 + num2);
       this.backGround.invalidate();
     }
@@ -397,6 +408,21 @@ namespace Kingdoms
     private void btnAttack_Click()
     {
       GameEngine.Instance.preAttackSetup(InterfaceMgr.Instance.OwnSelectedVillage, InterfaceMgr.Instance.OwnSelectedVillage, this.m_selectedVillage);
+    }
+
+    private void BotAttackerClick()
+    {
+      if (this.m_selectedVillage < 0)
+        return;
+      AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
+      if (module == null || !module.Enabled)
+        return;
+      int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
+      int target = this.m_selectedVillage;
+      if (module.Settings.ForceMode)
+        module.AttackNow(ownVillage, target);
+      else
+        module.AddPrey(new AttackerPrey { OwnVillageId = ownVillage, TargetId = target });
     }
 
     private void btnSendTroops_Click()

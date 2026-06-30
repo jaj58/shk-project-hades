@@ -86,6 +86,10 @@ namespace Kingdoms.Bot.UI
             this._vsDeselectAllBtn = new System.Windows.Forms.Button();
             this._vsSelectVillagesBtn = new System.Windows.Forms.Button();
             this._vsSelectCapitalsBtn = new System.Windows.Forms.Button();
+            this._vsRedownloadAllBtn = new System.Windows.Forms.Button();
+            this._vsAutoRefreshStaleCheck = new System.Windows.Forms.CheckBox();
+            this._vsForceRedownloadLabel = new System.Windows.Forms.Label();
+            this._vsForceRedownloadInput = new System.Windows.Forms.NumericUpDown();
             this._vsDelayInput = new System.Windows.Forms.NumericUpDown();
             this._vsDelayLabel = new System.Windows.Forms.Label();
             this._vsIntervalInput = new System.Windows.Forms.NumericUpDown();
@@ -198,6 +202,10 @@ namespace Kingdoms.Bot.UI
             this._trStatsTab = new System.Windows.Forms.TabPage();
             this._trSettingsPanel = new System.Windows.Forms.Panel();
             this._trDisableOnCardExpiryCheck = new System.Windows.Forms.CheckBox();
+            this._trDisableAfterLabel = new System.Windows.Forms.Label();
+            this._trDisableAfterInput = new System.Windows.Forms.NumericUpDown();
+            this._trDisableAfterMinLabel = new System.Windows.Forms.Label();
+            this._trDisbandOnDisableCheck = new System.Windows.Forms.CheckBox();
             this._trAutoSaveRouteProgressCheck = new System.Windows.Forms.CheckBox();
             this._trPriorityCombo = new System.Windows.Forms.ComboBox();
             this._trPriorityLabel = new System.Windows.Forms.Label();
@@ -376,6 +384,7 @@ namespace Kingdoms.Bot.UI
             this._dfRestoreTroopsCheck = new System.Windows.Forms.CheckBox();
             this._dfRestoreInfraCheck = new System.Windows.Forms.CheckBox();
             this._mkPage = new System.Windows.Forms.TabPage();
+            this._attackerPage = new System.Windows.Forms.TabPage();
             this._mkSubTabs = new System.Windows.Forms.TabControl();
             this._mkRoutesTab = new System.Windows.Forms.TabPage();
             this._mkInterdictTab = new System.Windows.Forms.TabPage();
@@ -508,6 +517,7 @@ namespace Kingdoms.Bot.UI
             this._vsButtonBar.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._vsDelayInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._vsIntervalInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._vsForceRedownloadInput)).BeginInit();
             this._radarPage.SuspendLayout();
             this._rdColHeader.SuspendLayout();
             this._rdSettingsPanel.SuspendLayout();
@@ -540,6 +550,7 @@ namespace Kingdoms.Bot.UI
             this._trPlayerRoutesTab.SuspendLayout();
             this._trSettingsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._trAutoHireLimitInput)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this._trDisableAfterInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._trExchangeLimitInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._trTradeLimitInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._trMerchantsPerTradeInput)).BeginInit();
@@ -797,6 +808,7 @@ namespace Kingdoms.Bot.UI
             this._tabControl.Controls.Add(this._bqPage);
             this._tabControl.Controls.Add(this._defenderPage);
             this._tabControl.Controls.Add(this._mkPage);
+            this._tabControl.Controls.Add(this._attackerPage);
             this._tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this._tabControl.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._tabControl.Location = new System.Drawing.Point(0, 0);
@@ -925,6 +937,9 @@ namespace Kingdoms.Bot.UI
             // 
             this._vsSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
             this._vsSettingsPanel.Controls.Add(this._vsButtonBar);
+            this._vsSettingsPanel.Controls.Add(this._vsAutoRefreshStaleCheck);
+            this._vsSettingsPanel.Controls.Add(this._vsForceRedownloadLabel);
+            this._vsSettingsPanel.Controls.Add(this._vsForceRedownloadInput);
             this._vsSettingsPanel.Controls.Add(this._vsDelayInput);
             this._vsSettingsPanel.Controls.Add(this._vsDelayLabel);
             this._vsSettingsPanel.Controls.Add(this._vsIntervalInput);
@@ -936,7 +951,7 @@ namespace Kingdoms.Bot.UI
             this._vsSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._vsSettingsPanel.Name = "_vsSettingsPanel";
             this._vsSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 12);
-            this._vsSettingsPanel.Size = new System.Drawing.Size(1142, 126);
+            this._vsSettingsPanel.Size = new System.Drawing.Size(1142, 172);
             this._vsSettingsPanel.TabIndex = 0;
             // 
             // _vsButtonBar
@@ -946,9 +961,10 @@ namespace Kingdoms.Bot.UI
             this._vsButtonBar.Controls.Add(this._vsDeselectAllBtn);
             this._vsButtonBar.Controls.Add(this._vsSelectVillagesBtn);
             this._vsButtonBar.Controls.Add(this._vsSelectCapitalsBtn);
-            this._vsButtonBar.Location = new System.Drawing.Point(16, 78);
+            this._vsButtonBar.Controls.Add(this._vsRedownloadAllBtn);
+            this._vsButtonBar.Location = new System.Drawing.Point(16, 122);
             this._vsButtonBar.Name = "_vsButtonBar";
-            this._vsButtonBar.Size = new System.Drawing.Size(700, 38);
+            this._vsButtonBar.Size = new System.Drawing.Size(770, 38);
             this._vsButtonBar.TabIndex = 7;
             // 
             // _vsRefreshBtn
@@ -1025,7 +1041,72 @@ namespace Kingdoms.Bot.UI
             this._vsSelectCapitalsBtn.TabIndex = 4;
             this._vsSelectCapitalsBtn.Text = "Capitals Only";
             this._vsSelectCapitalsBtn.UseVisualStyleBackColor = false;
-            // 
+            //
+            // _vsRedownloadAllBtn
+            //
+            this._vsRedownloadAllBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(180)))), ((int)(((byte)(110)))), ((int)(((byte)(50)))));
+            this._vsRedownloadAllBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._vsRedownloadAllBtn.FlatAppearance.BorderSize = 0;
+            this._vsRedownloadAllBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._vsRedownloadAllBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._vsRedownloadAllBtn.ForeColor = System.Drawing.Color.White;
+            this._vsRedownloadAllBtn.Location = new System.Drawing.Point(600, 0);
+            this._vsRedownloadAllBtn.Name = "_vsRedownloadAllBtn";
+            this._vsRedownloadAllBtn.Size = new System.Drawing.Size(160, 34);
+            this._vsRedownloadAllBtn.TabIndex = 5;
+            this._vsRedownloadAllBtn.Text = "Re-download All Now";
+            this._vsRedownloadAllBtn.UseVisualStyleBackColor = false;
+            //
+            // _vsAutoRefreshStaleCheck
+            //
+            this._vsAutoRefreshStaleCheck.AutoSize = true;
+            this._vsAutoRefreshStaleCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._vsAutoRefreshStaleCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._vsAutoRefreshStaleCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._vsAutoRefreshStaleCheck.Location = new System.Drawing.Point(32, 84);
+            this._vsAutoRefreshStaleCheck.Name = "_vsAutoRefreshStaleCheck";
+            this._vsAutoRefreshStaleCheck.Size = new System.Drawing.Size(260, 19);
+            this._vsAutoRefreshStaleCheck.TabIndex = 8;
+            this._vsAutoRefreshStaleCheck.Text = "Auto-refresh village on stale-data error";
+            this._vsAutoRefreshStaleCheck.UseVisualStyleBackColor = true;
+            //
+            // _vsForceRedownloadLabel
+            //
+            this._vsForceRedownloadLabel.AutoSize = true;
+            this._vsForceRedownloadLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._vsForceRedownloadLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._vsForceRedownloadLabel.Location = new System.Drawing.Point(360, 85);
+            this._vsForceRedownloadLabel.Name = "_vsForceRedownloadLabel";
+            this._vsForceRedownloadLabel.Size = new System.Drawing.Size(244, 15);
+            this._vsForceRedownloadLabel.TabIndex = 9;
+            this._vsForceRedownloadLabel.Text = "Force full re-download every (min, 0 = off):";
+            //
+            // _vsForceRedownloadInput
+            //
+            this._vsForceRedownloadInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._vsForceRedownloadInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._vsForceRedownloadInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._vsForceRedownloadInput.Font = new System.Drawing.Font("Segoe UI", 8.25F);
+            this._vsForceRedownloadInput.Location = new System.Drawing.Point(620, 82);
+            this._vsForceRedownloadInput.Maximum = new decimal(new int[] {
+            60,
+            0,
+            0,
+            0});
+            this._vsForceRedownloadInput.Minimum = new decimal(new int[] {
+            0,
+            0,
+            0,
+            0});
+            this._vsForceRedownloadInput.Name = "_vsForceRedownloadInput";
+            this._vsForceRedownloadInput.Size = new System.Drawing.Size(60, 23);
+            this._vsForceRedownloadInput.TabIndex = 10;
+            this._vsForceRedownloadInput.Value = new decimal(new int[] {
+            10,
+            0,
+            0,
+            0});
+            //
             // _vsDelayInput
             // 
             this._vsDelayInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
@@ -1301,7 +1382,7 @@ namespace Kingdoms.Bot.UI
             this._rdSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._rdSettingsPanel.Name = "_rdSettingsPanel";
             this._rdSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._rdSettingsPanel.Size = new System.Drawing.Size(1142, 220);
+            this._rdSettingsPanel.Size = new System.Drawing.Size(1142, 250);
             this._rdSettingsPanel.TabIndex = 0;
             // 
             // _rdMinArmySizeInput
@@ -1333,7 +1414,7 @@ namespace Kingdoms.Bot.UI
             this._rdMinArmySizeLabel.Name = "_rdMinArmySizeLabel";
             this._rdMinArmySizeLabel.Size = new System.Drawing.Size(115, 15);
             this._rdMinArmySizeLabel.TabIndex = 20;
-            this._rdMinArmySizeLabel.Text = "Min army size for ID:";
+            this._rdMinArmySizeLabel.Text = "Min army size:";
             // 
             // _rdMinAttacksInput
             // 
@@ -1964,7 +2045,7 @@ namespace Kingdoms.Bot.UI
             this._rcSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._rcSettingsPanel.Name = "_rcSettingsPanel";
             this._rcSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._rcSettingsPanel.Size = new System.Drawing.Size(1142, 116);
+            this._rcSettingsPanel.Size = new System.Drawing.Size(1142, 144);
             this._rcSettingsPanel.TabIndex = 0;
             // 
             // _rcDisbandBtn
@@ -2599,6 +2680,10 @@ namespace Kingdoms.Bot.UI
             //
             this._trSettingsPanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(42)))), ((int)(((byte)(54)))));
             this._trSettingsPanel.Controls.Add(this._trAutoSaveRouteProgressCheck);
+            this._trSettingsPanel.Controls.Add(this._trDisableAfterLabel);
+            this._trSettingsPanel.Controls.Add(this._trDisableAfterInput);
+            this._trSettingsPanel.Controls.Add(this._trDisableAfterMinLabel);
+            this._trSettingsPanel.Controls.Add(this._trDisbandOnDisableCheck);
             this._trSettingsPanel.Controls.Add(this._trDisableOnCardExpiryCheck);
             this._trSettingsPanel.Controls.Add(this._trPriorityCombo);
             this._trSettingsPanel.Controls.Add(this._trPriorityLabel);
@@ -2622,7 +2707,7 @@ namespace Kingdoms.Bot.UI
             this._trSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._trSettingsPanel.Name = "_trSettingsPanel";
             this._trSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._trSettingsPanel.Size = new System.Drawing.Size(1142, 160);
+            this._trSettingsPanel.Size = new System.Drawing.Size(1142, 195);
             this._trSettingsPanel.TabIndex = 0;
             //
             // _trAutoSaveRouteProgressCheck
@@ -2649,6 +2734,53 @@ namespace Kingdoms.Bot.UI
             this._trDisableOnCardExpiryCheck.Size = new System.Drawing.Size(139, 19);
             this._trDisableOnCardExpiryCheck.TabIndex = 17;
             this._trDisableOnCardExpiryCheck.Text = "Disable on card expiry";
+            //
+            // _trDisableAfterLabel
+            //
+            this._trDisableAfterLabel.AutoSize = true;
+            this._trDisableAfterLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trDisableAfterLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._trDisableAfterLabel.Location = new System.Drawing.Point(16, 132);
+            this._trDisableAfterLabel.Name = "_trDisableAfterLabel";
+            this._trDisableAfterLabel.TabIndex = 19;
+            this._trDisableAfterLabel.Text = "Auto-disable after:";
+            //
+            // _trDisableAfterInput
+            //
+            this._trDisableAfterInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._trDisableAfterInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this._trDisableAfterInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._trDisableAfterInput.Location = new System.Drawing.Point(130, 130);
+            this._trDisableAfterInput.Maximum = new decimal(new int[] {
+            1440,
+            0,
+            0,
+            0});
+            this._trDisableAfterInput.Name = "_trDisableAfterInput";
+            this._trDisableAfterInput.Size = new System.Drawing.Size(55, 23);
+            this._trDisableAfterInput.TabIndex = 20;
+            //
+            // _trDisableAfterMinLabel
+            //
+            this._trDisableAfterMinLabel.AutoSize = true;
+            this._trDisableAfterMinLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trDisableAfterMinLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._trDisableAfterMinLabel.Location = new System.Drawing.Point(189, 132);
+            this._trDisableAfterMinLabel.Name = "_trDisableAfterMinLabel";
+            this._trDisableAfterMinLabel.TabIndex = 21;
+            this._trDisableAfterMinLabel.Text = "min (0 = off)";
+            //
+            // _trDisbandOnDisableCheck
+            //
+            this._trDisbandOnDisableCheck.AutoSize = true;
+            this._trDisbandOnDisableCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._trDisbandOnDisableCheck.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trDisbandOnDisableCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._trDisbandOnDisableCheck.Location = new System.Drawing.Point(310, 130);
+            this._trDisbandOnDisableCheck.Name = "_trDisbandOnDisableCheck";
+            this._trDisbandOnDisableCheck.Size = new System.Drawing.Size(200, 19);
+            this._trDisbandOnDisableCheck.TabIndex = 22;
+            this._trDisbandOnDisableCheck.Text = "Disband traders when disabled";
             //
             // _trPriorityLabel
             //
@@ -5064,6 +5196,17 @@ namespace Kingdoms.Bot.UI
             this._mkPage.TabIndex = 14;
             this._mkPage.Text = "Monks";
             //
+            // _attackerPage
+            //
+            // Content is built programmatically at runtime (see BuildAttackerTabContent
+            // in BotControlForm.cs), following the same pattern as the Group Radar sub-tab.
+            this._attackerPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(32)))));
+            this._attackerPage.Location = new System.Drawing.Point(4, 24);
+            this._attackerPage.Name = "_attackerPage";
+            this._attackerPage.Size = new System.Drawing.Size(1142, 497);
+            this._attackerPage.TabIndex = 15;
+            this._attackerPage.Text = "Attacker";
+            //
             // _mkSubTabs
             //
             this._mkSubTabs.Controls.Add(this._mkRoutesTab);
@@ -6160,6 +6303,7 @@ namespace Kingdoms.Bot.UI
             this._vsButtonBar.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this._vsDelayInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._vsIntervalInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._vsForceRedownloadInput)).EndInit();
             this._radarPage.ResumeLayout(false);
             this._rdColHeader.ResumeLayout(false);
             this._rdSettingsPanel.ResumeLayout(false);
@@ -6199,6 +6343,7 @@ namespace Kingdoms.Bot.UI
             this._trSettingsPanel.ResumeLayout(false);
             this._trSettingsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this._trAutoHireLimitInput)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this._trDisableAfterInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._trExchangeLimitInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._trTradeLimitInput)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this._trMerchantsPerTradeInput)).EndInit();
@@ -6684,8 +6829,12 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _vsIntervalInput;
         private System.Windows.Forms.Label _vsDelayLabel;
         private System.Windows.Forms.NumericUpDown _vsDelayInput;
+        private System.Windows.Forms.CheckBox _vsAutoRefreshStaleCheck;
+        private System.Windows.Forms.Label _vsForceRedownloadLabel;
+        private System.Windows.Forms.NumericUpDown _vsForceRedownloadInput;
         private System.Windows.Forms.Panel _vsButtonBar;
         private System.Windows.Forms.Button _vsRefreshBtn;
+        private System.Windows.Forms.Button _vsRedownloadAllBtn;
         private System.Windows.Forms.Button _vsSelectAllBtn;
         private System.Windows.Forms.Button _vsDeselectAllBtn;
         private System.Windows.Forms.Button _vsSelectVillagesBtn;
@@ -6930,6 +7079,10 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Label _trPriorityLabel;
         private System.Windows.Forms.TabPage _trStatsTab;
         private System.Windows.Forms.CheckBox _trDisableOnCardExpiryCheck;
+        private System.Windows.Forms.Label _trDisableAfterLabel;
+        private System.Windows.Forms.NumericUpDown _trDisableAfterInput;
+        private System.Windows.Forms.Label _trDisableAfterMinLabel;
+        private System.Windows.Forms.CheckBox _trDisbandOnDisableCheck;
         private System.Windows.Forms.CheckBox _trAutoSaveRouteProgressCheck;
         private System.Windows.Forms.Panel _trMarketVillageListPanel;
         private System.Windows.Forms.Button _trMarketRefreshBtn;
@@ -7086,6 +7239,8 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _dfAutoRepairCheck;
         private System.Windows.Forms.CheckBox _dfRestoreTroopsCheck;
         private System.Windows.Forms.CheckBox _dfRestoreInfraCheck;
+        // Attacker tab page (content built programmatically — see BotControlForm.cs)
+        private System.Windows.Forms.TabPage _attackerPage;
         // Monk tab controls
         private System.Windows.Forms.TabPage _mkPage;
         private System.Windows.Forms.TabControl _mkSubTabs;

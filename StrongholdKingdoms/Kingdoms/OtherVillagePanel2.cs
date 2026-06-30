@@ -9,6 +9,8 @@ using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
+using Kingdoms.Bot;
+using Kingdoms.Bot.Modules;
 
 //#nullable disable
 namespace Kingdoms
@@ -20,6 +22,9 @@ namespace Kingdoms
     private CustomSelfDrawPanel.MRHP_Background backGround = new CustomSelfDrawPanel.MRHP_Background();
     private CustomSelfDrawPanel.CSDButton tradeButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton attackButton = new CustomSelfDrawPanel.CSDButton();
+    private CustomSelfDrawPanel.CSDButton botAttackButton = new CustomSelfDrawPanel.CSDButton();
+    private CustomSelfDrawPanel.CSDButton absButton = new CustomSelfDrawPanel.CSDButton();
+    private CustomSelfDrawPanel.CSDButton excomButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton scoutButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton reinforceButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton monkButton = new CustomSelfDrawPanel.CSDButton();
@@ -127,6 +132,28 @@ namespace Kingdoms
       this.castleButton.CustomTooltipID = 2445;
       this.castleButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.castleClick), "OtherVillagePanel2_view_castle");
       this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.castleButton);
+      // Bot attack button sits immediately to the left of the report button.
+      this.botAttackButton = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
+      this.botAttackButton.Position = new Point(32, 112);
+      this.botAttackButton.CustomTooltipID = 11111131;
+      this.botAttackButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAttackerClick), "OtherVillagePanel2_bot_attacker");
+      if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowAttackButton == true)
+        this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.botAttackButton);
+      // Monk buttons sit side by side in the top-right corner.
+      this.excomButton.ImageNorm = (Image) GFXLibrary.monk_screen_button_array_75x75[20];
+      this.excomButton.ImageOver = (Image) GFXLibrary.monk_screen_button_array_75x75[27];
+      this.excomButton.Size = new Size(40, 40);
+      this.excomButton.Position = new Point(108, 17);
+      this.excomButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotExcomClick), "OtherVillagePanel2_bot_excom");
+      if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowMonksButton == true)
+        this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.excomButton);
+      this.absButton.ImageNorm = (Image) GFXLibrary.monk_screen_button_array_75x75[19];
+      this.absButton.ImageOver = (Image) GFXLibrary.monk_screen_button_array_75x75[26];
+      this.absButton.Size = new Size(40, 40);
+      this.absButton.Position = new Point(150, 17);
+      this.absButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAbsClick), "OtherVillagePanel2_bot_abs");
+      if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowMonksButton == true)
+        this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.absButton);
       if (RemoteServices.Instance.Admin || RemoteServices.Instance.Moderator)
       {
         this.renameButton.ImageNorm = (Image) GFXLibrary.faction_pen;
@@ -188,6 +215,7 @@ namespace Kingdoms
       this.monkButton.Position = new Point(150, 142 + num1);
       this.vassalButton.Position = new Point(96, 112 + num1 + num2);
       this.castleButton.Position = new Point(64, 112 + num1 + num2);
+      this.botAttackButton.Position = new Point(32, 112 + num1 + num2);
       this.renameButton.Position = new Point(149, 112 + num1 + num2);
       this.backGround.invalidate();
     }
@@ -387,6 +415,57 @@ namespace Kingdoms
       if (this.m_selectedVillage < 0)
         return;
       InterfaceMgr.Instance.openSendMonkWindow(this.m_selectedVillage);
+    }
+
+    private void BotAttackerClick()
+    {
+      if (this.m_selectedVillage < 0)
+        return;
+      AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
+      if (module == null || !module.Enabled)
+        return;
+      int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
+      int target = this.m_selectedVillage;
+      if (module.Settings.ForceMode)
+        module.AttackNow(ownVillage, target);
+      else
+        module.AddPrey(new AttackerPrey { OwnVillageId = ownVillage, TargetId = target });
+    }
+
+    private void BotAbsClick()
+    {
+      if (this.m_selectedVillage < 0)
+        return;
+      AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
+      if (module == null || !module.Enabled)
+        return;
+      AttackerSettings s = module.Settings;
+      if (s == null)
+        return;
+      int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
+      int target = this.m_selectedVillage;
+      if (s.ForceMode)
+        module.SendMonkNow(ownVillage, target, 6, s.AbsMonkCount);
+      else
+        module.AddMonkPrey(new MonkPrey { OwnVillageId = ownVillage, TargetId = target, Command = 6, Count = s.AbsMonkCount });
+    }
+
+    private void BotExcomClick()
+    {
+      if (this.m_selectedVillage < 0)
+        return;
+      AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
+      if (module == null || !module.Enabled)
+        return;
+      AttackerSettings s = module.Settings;
+      if (s == null)
+        return;
+      int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
+      int target = this.m_selectedVillage;
+      if (s.ForceMode)
+        module.SendMonkNow(ownVillage, target, 7, s.ExcomMonkCount);
+      else
+        module.AddMonkPrey(new MonkPrey { OwnVillageId = ownVillage, TargetId = target, Command = 7, Count = s.ExcomMonkCount });
     }
 
     private void resetNameClick()

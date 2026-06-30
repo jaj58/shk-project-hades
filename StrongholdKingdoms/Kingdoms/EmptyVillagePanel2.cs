@@ -10,6 +10,8 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Globalization;
 using System.Windows.Forms;
+using Kingdoms.Bot;
+using Kingdoms.Bot.Modules;
 
 //#nullable disable
 namespace Kingdoms
@@ -18,6 +20,7 @@ namespace Kingdoms
   {
     private CustomSelfDrawPanel.MRHP_Background backGround_AI = new CustomSelfDrawPanel.MRHP_Background();
     private CustomSelfDrawPanel.CSDButton attackButton_AI = new CustomSelfDrawPanel.CSDButton();
+    private CustomSelfDrawPanel.CSDButton botAttackButton_AI = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton scoutButton_AI = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton castleButton_AI = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDLabel treasureCastleTimeoutLabel = new CustomSelfDrawPanel.CSDLabel();
@@ -91,6 +94,12 @@ namespace Kingdoms
       this.attackButton_AI.CustomTooltipID = 2411;
       this.attackButton_AI.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.btnAttack_Click), "EmptyVillagePanel2_attack");
       csdImage1.addControl((CustomSelfDrawPanel.CSDControl) this.attackButton_AI);
+      this.botAttackButton_AI = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
+      this.botAttackButton_AI.Position = new Point(29, 79 + num);
+      this.botAttackButton_AI.CustomTooltipID = 11111131;
+      this.botAttackButton_AI.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAttackerClick), "EmptyVillagePanel2_bot_attacker");
+      if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowAttackButton == true)
+        csdImage1.addControl((CustomSelfDrawPanel.CSDControl) this.botAttackButton_AI);
       this.scoutButton_AI = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.SCOUT);
       this.scoutButton_AI.Position = new Point(99, 79 + num);
       this.scoutButton_AI.CustomTooltipID = 2412;
@@ -272,6 +281,7 @@ namespace Kingdoms
         if (!this.treasureCastleTimeoutLabel.Visible || GameEngine.Instance.World.isCapital(InterfaceMgr.Instance.OwnSelectedVillage))
           return;
         this.attackButton_AI.Enabled = true;
+        this.botAttackButton_AI.Enabled = true;
       }
     }
 
@@ -311,6 +321,7 @@ namespace Kingdoms
       this.m_selectedVillage = selectedVillage;
       this.buyVillageButton.Enabled = true;
       this.attackButton_AI.Enabled = true;
+      this.botAttackButton_AI.Enabled = true;
       this.scoutButton_AI.Enabled = true;
       this.scoutButton_Resources.Enabled = true;
       this.treasureCastleTimeoutLabel.Visible = false;
@@ -382,16 +393,23 @@ namespace Kingdoms
           if (SpecialVillageTypes.IS_TREASURE_CASTLE(special))
           {
             if (GameEngine.Instance.World.isCapital(InterfaceMgr.Instance.OwnSelectedVillage))
+            {
               this.attackButton_AI.Enabled = false;
+              this.botAttackButton_AI.Enabled = false;
+            }
             if (flag2)
             {
               this.updateTreasureCastleTimeout();
               this.treasureCastleTimeoutLabel.Visible = true;
               this.attackButton_AI.Enabled = false;
+              this.botAttackButton_AI.Enabled = false;
             }
           }
           else if (SpecialVillageTypes.IS_ROYAL_TOWER(special) && GameEngine.Instance.World.isCapital(InterfaceMgr.Instance.OwnSelectedVillage))
+          {
             this.attackButton_AI.Enabled = false;
+            this.botAttackButton_AI.Enabled = false;
+          }
           if (GameEngine.Instance.World.isHeretic())
           {
             switch (special)
@@ -401,6 +419,7 @@ namespace Kingdoms
               case 11:
               case 13:
                 this.attackButton_AI.Enabled = false;
+                this.botAttackButton_AI.Enabled = false;
                 this.scoutButton_AI.Enabled = false;
                 flag5 = false;
                 break;
@@ -499,6 +518,7 @@ namespace Kingdoms
     {
       this.buyVillageButton.Enabled = false;
       this.attackButton_AI.Enabled = false;
+      this.botAttackButton_AI.Enabled = false;
       this.scoutButton_AI.Enabled = false;
       this.scoutButton_Resources.Enabled = false;
     }
@@ -560,6 +580,21 @@ namespace Kingdoms
       if (InterfaceMgr.Instance.SelectedVillage < 0)
         return;
       InterfaceMgr.Instance.openScoutPopupWindow(InterfaceMgr.Instance.SelectedVillage, true);
+    }
+
+    private void BotAttackerClick()
+    {
+      if (InterfaceMgr.Instance.SelectedVillage < 0)
+        return;
+      AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
+      if (module == null || !module.Enabled)
+        return;
+      int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
+      int target = InterfaceMgr.Instance.SelectedVillage;
+      if (module.Settings.ForceMode)
+        module.AttackNow(ownVillage, target);
+      else
+        module.AddPrey(new AttackerPrey { OwnVillageId = ownVillage, TargetId = target });
     }
 
     private void castleClick()
