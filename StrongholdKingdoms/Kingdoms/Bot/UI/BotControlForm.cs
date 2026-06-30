@@ -7201,6 +7201,8 @@ namespace Kingdoms.Bot.UI
                 _trIgnoreTransactionsCheck);
             LayoutRow(X, 132, G, _trPriorityLabel, _trPriorityCombo,
                 _trDisableOnCardExpiryCheck, _trAutoSaveRouteProgressCheck);
+            LayoutRow(X, 168, G, _trDisableAfterLabel, _trDisableAfterInput,
+                _trDisableAfterMinLabel, _trDisbandOnDisableCheck);
 
             // Scout
             LayoutRow(X, 24, G, _scEnabledCheck, _scStatusLabel, _scIntervalLabel, _scIntervalInput);
