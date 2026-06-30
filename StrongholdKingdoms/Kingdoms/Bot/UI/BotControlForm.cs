@@ -168,11 +168,6 @@ namespace Kingdoms.Bot.UI
         private CheckBox _atShowMonksCheck;
         private NumericUpDown _atAbsCountInput;
         private NumericUpDown _atExcomCountInput;
-        private CheckBox _atUseTimeWindowCheck;
-        private NumericUpDown _atWinStartHourInput;
-        private NumericUpDown _atWinStartMinInput;
-        private NumericUpDown _atWinEndHourInput;
-        private NumericUpDown _atWinEndMinInput;
         private ComboBox _atDistrictFormationCombo;
         private ComboBox _atDistrictAttackTypeCombo;
         private TrackBar _atDistrictPillageTrack;
@@ -8420,11 +8415,6 @@ namespace Kingdoms.Bot.UI
             _atShowMonksCheck.CheckedChanged += delegate { AtWriteToSettings(); };
             _atAbsCountInput.ValueChanged += delegate { AtWriteToSettings(); };
             _atExcomCountInput.ValueChanged += delegate { AtWriteToSettings(); };
-            _atUseTimeWindowCheck.CheckedChanged += delegate { AtWriteToSettings(); };
-            _atWinStartHourInput.ValueChanged += delegate { AtWriteToSettings(); };
-            _atWinStartMinInput.ValueChanged += delegate { AtWriteToSettings(); };
-            _atWinEndHourInput.ValueChanged += delegate { AtWriteToSettings(); };
-            _atWinEndMinInput.ValueChanged += delegate { AtWriteToSettings(); };
 
             _atDistrictFormationCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
             _atDistrictAttackTypeCombo.SelectedIndexChanged += delegate { AtWriteToSettings(); };
@@ -8617,51 +8607,6 @@ namespace Kingdoms.Bot.UI
             mapPanel.Controls.Add(excomLabel);
             mapPanel.Controls.Add(_atExcomCountInput);
 
-            // ---- Time window panel ----
-            Panel windowPanel = new Panel();
-            windowPanel.Dock = DockStyle.Top;
-            windowPanel.BackColor = bgMed;
-            windowPanel.Height = 42;
-
-            _atUseTimeWindowCheck = new CheckBox();
-            _atUseTimeWindowCheck.Text = "Restrict to time window";
-            _atUseTimeWindowCheck.Font = fSmall;
-            _atUseTimeWindowCheck.ForeColor = TextPri;
-            _atUseTimeWindowCheck.Location = new Point(16, 12);
-            _atUseTimeWindowCheck.AutoSize = true;
-
-            Label startLabel = new Label();
-            startLabel.Text = "Start:";
-            startLabel.Font = fSmall;
-            startLabel.ForeColor = TextSec;
-            startLabel.Location = new Point(230, 14);
-            startLabel.AutoSize = true;
-
-            _atWinStartHourInput = AtMakeHourMinuteInput(270, 23);
-            Label startColon = AtMakeColonLabel(318);
-            _atWinStartMinInput = AtMakeHourMinuteInput(332, 59);
-
-            Label endLabel = new Label();
-            endLabel.Text = "End:";
-            endLabel.Font = fSmall;
-            endLabel.ForeColor = TextSec;
-            endLabel.Location = new Point(400, 14);
-            endLabel.AutoSize = true;
-
-            _atWinEndHourInput = AtMakeHourMinuteInput(438, 23);
-            Label endColon = AtMakeColonLabel(486);
-            _atWinEndMinInput = AtMakeHourMinuteInput(500, 59);
-
-            windowPanel.Controls.Add(_atUseTimeWindowCheck);
-            windowPanel.Controls.Add(startLabel);
-            windowPanel.Controls.Add(_atWinStartHourInput);
-            windowPanel.Controls.Add(startColon);
-            windowPanel.Controls.Add(_atWinStartMinInput);
-            windowPanel.Controls.Add(endLabel);
-            windowPanel.Controls.Add(_atWinEndHourInput);
-            windowPanel.Controls.Add(endColon);
-            windowPanel.Controls.Add(_atWinEndMinInput);
-
             // ---- Formation profiles panel ----
             Panel profilesPanel = new Panel();
             profilesPanel.Dock = DockStyle.Top;
@@ -8722,34 +8667,8 @@ namespace Kingdoms.Bot.UI
             _attackerPage.Controls.Add(_atPreyListPanel);
             _attackerPage.Controls.Add(queueHeader);
             _attackerPage.Controls.Add(profilesPanel);
-            _attackerPage.Controls.Add(windowPanel);
             _attackerPage.Controls.Add(mapPanel);
             _attackerPage.Controls.Add(controlPanel);
-        }
-
-        private NumericUpDown AtMakeHourMinuteInput(int x, int max)
-        {
-            NumericUpDown input = new NumericUpDown();
-            input.Minimum = 0;
-            input.Maximum = max;
-            input.Location = new Point(x, 11);
-            input.Size = new Size(45, 22);
-            input.BackColor = Color.FromArgb(50, 52, 64);
-            input.ForeColor = TextPri;
-            input.BorderStyle = BorderStyle.FixedSingle;
-            input.Font = new Font("Segoe UI", 8.5f);
-            return input;
-        }
-
-        private Label AtMakeColonLabel(int x)
-        {
-            Label l = new Label();
-            l.Text = ":";
-            l.Font = new Font("Segoe UI", 8.5f);
-            l.ForeColor = TextSec;
-            l.Location = new Point(x, 14);
-            l.AutoSize = true;
-            return l;
         }
 
         private void AtBuildProfileRow(Panel parent, int y, string title,
@@ -8893,12 +8812,6 @@ namespace Kingdoms.Bot.UI
                 _atExcomCountInput.Value = Math.Max(_atExcomCountInput.Minimum,
                     Math.Min(_atExcomCountInput.Maximum, s.ExcomMonkCount));
 
-                _atUseTimeWindowCheck.Checked = s.UseTimeWindow;
-                _atWinStartHourInput.Value = s.WindowStartHour;
-                _atWinStartMinInput.Value = s.WindowStartMinute;
-                _atWinEndHourInput.Value = s.WindowEndHour;
-                _atWinEndMinInput.Value = s.WindowEndMinute;
-
                 AtSelectFormation(_atDistrictFormationCombo, s.DistrictFormationName);
                 _atDistrictAttackTypeCombo.SelectedIndex = AtAttackTypeToIndex(AtDistrictAttackTypeValues, s.DistrictAttackType);
                 _atDistrictPillageTrack.Value = Math.Max(_atDistrictPillageTrack.Minimum,
@@ -8937,12 +8850,6 @@ namespace Kingdoms.Bot.UI
             s.ShowMonksButton = _atShowMonksCheck.Checked;
             s.AbsMonkCount = (int)_atAbsCountInput.Value;
             s.ExcomMonkCount = (int)_atExcomCountInput.Value;
-
-            s.UseTimeWindow = _atUseTimeWindowCheck.Checked;
-            s.WindowStartHour = (int)_atWinStartHourInput.Value;
-            s.WindowStartMinute = (int)_atWinStartMinInput.Value;
-            s.WindowEndHour = (int)_atWinEndHourInput.Value;
-            s.WindowEndMinute = (int)_atWinEndMinInput.Value;
 
             s.DistrictFormationName = _atDistrictFormationCombo.SelectedItem as string ?? "";
             s.DistrictAttackType = AtIndexToAttackType(AtDistrictAttackTypeValues, _atDistrictAttackTypeCombo.SelectedIndex);

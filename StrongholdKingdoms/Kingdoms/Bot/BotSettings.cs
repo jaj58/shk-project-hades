@@ -1380,12 +1380,5 @@ namespace Kingdoms.Bot
         public string EnemyFormationName = "";
         public int EnemyAttackType = 11;
         public int EnemyPillagePercent = 0;
-
-        // Time window restriction
-        public bool UseTimeWindow = false;
-        public int WindowStartHour = 0;
-        public int WindowStartMinute = 0;
-        public int WindowEndHour = 23;
-        public int WindowEndMinute = 59;
     }
 }

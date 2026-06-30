@@ -81,12 +81,6 @@ namespace Kingdoms.Bot.Modules
             if (s == null || !s.Enabled || _attacking)
                 return;
 
-            if (s.UseTimeWindow && !IsWithinTimeWindow(s))
-            {
-                LogDebug("Outside configured time window — skipping.");
-                return;
-            }
-
             AttackerPrey prey = null;
             lock (_preyLock)
             {
@@ -394,15 +388,6 @@ namespace Kingdoms.Bot.Modules
 
             LogWarning("Formation not found in cloud or local: '" + formationName + "'.");
             return false;
-        }
-
-        private bool IsWithinTimeWindow(AttackerSettings s)
-        {
-            DateTime now = VillageMap.getCurrentServerTime();
-            int cur = now.Hour * 60 + now.Minute;
-            int start = s.WindowStartHour * 60 + s.WindowStartMinute;
-            int end = s.WindowEndHour * 60 + s.WindowEndMinute;
-            return cur >= start && cur <= end;
         }
     }
 }
