@@ -517,7 +517,7 @@ namespace Kingdoms
             Xpcom.Initialize(Application.StartupPath + "\\geckofx\\xulrunner33");
             bool flag5 = Program.testMutex();
           ////  if (!createdNew || flag5)
-            {
+            //{
            //   int num4 = (int) MessageBox.Show(SK.Text("ProgramMain_Already_Running", "Already running") + "...", "Stronghold Kingdoms");
           //  }
             if (true)
