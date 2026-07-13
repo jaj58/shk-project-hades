@@ -516,11 +516,11 @@ namespace Kingdoms
             loadingPanel1.TopMost = false;
             Xpcom.Initialize(Application.StartupPath + "\\geckofx\\xulrunner33");
             bool flag5 = Program.testMutex();
-            if (!createdNew || flag5)
+          ////  if (!createdNew || flag5)
             {
-              int num4 = (int) MessageBox.Show(SK.Text("ProgramMain_Already_Running", "Already running") + "...", "Stronghold Kingdoms");
-            }
-            else
+           //   int num4 = (int) MessageBox.Show(SK.Text("ProgramMain_Already_Running", "Already running") + "...", "Stronghold Kingdoms");
+          //  }
+            if (true)
             {
               bool flag6 = true;
               Program.TimerCaps caps = new Program.TimerCaps();
