@@ -37,6 +37,10 @@ namespace Kingdoms.Bot.Modules
             RestoreTroops,
             CommitTroops,
             WaitCommitTroops,
+            IncrementalInfraPlace,
+            IncrementalInfraWait,
+            IncrementalTroopsPlace,
+            IncrementalTroopsWait,
             Done
         }
 
@@ -44,6 +48,14 @@ namespace Kingdoms.Bot.Modules
         private int _activeVillageId;
         private VillageCastleRepairSettings _activeSettings;
         private DateTime _stepStarted = DateTime.MinValue;
+
+        // Incremental placement fallback — when a batch commit is rejected by the
+        // server, the parsed layout is replayed element-by-element so the buildable
+        // pieces still get placed. These hold the layout being replayed.
+        private List<CampCastleElement> _incrInfraList;
+        private List<CampCastleElementLL> _incrTroopList;
+        private int _incrementalIndex;
+        private int _incrementalPlaced;
         private const int StepTimeoutMs = 15000;
         private const int ShortDelayMs = 1000;
         private const int LongDelayMs = 2000;
@@ -128,6 +140,10 @@ namespace Kingdoms.Bot.Modules
             if (_step != RepairStep.Idle)
             {
                 RunRepairStateMachine();
+                // Clear popup suppression the moment the machine reaches Idle — this
+                // catches every exit path (Done, per-step abort, exception, timeout).
+                if (_step == RepairStep.Idle)
+                    EndPopupSuppression();
                 return;
             }
 
@@ -333,6 +349,9 @@ namespace Kingdoms.Bot.Modules
 
         public void MemoriseAllInfrastructure()
         {
+            // Unconditional entry log — a click must always produce a log line so a
+            // silent failure is impossible to miss.
+            LogInfo("Memorise infra requested.");
             if (_step != RepairStep.Idle || _memoriseStep != MemoriseStep.Idle)
             {
                 LogWarning("Cannot memorise: a repair or memorise operation is already in progress.");
@@ -343,6 +362,7 @@ namespace Kingdoms.Bot.Modules
 
         public void MemoriseAllTroops()
         {
+            LogInfo("Memorise troops requested.");
             if (_step != RepairStep.Idle || _memoriseStep != MemoriseStep.Idle)
             {
                 LogWarning("Cannot memorise: a repair or memorise operation is already in progress.");
@@ -353,29 +373,66 @@ namespace Kingdoms.Bot.Modules
 
         private void StartMemoriseAll(MemoriseType type)
         {
-            if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
+            try
+            {
+                if (GameEngine.Instance == null || GameEngine.Instance.World == null)
+                {
+                    LogWarning("Cannot memorise: game world not ready.");
+                    return;
+                }
 
-            List<WorldMap.UserVillageData> villages = GameEngine.Instance.World.getUserVillageList();
-            if (villages == null || villages.Count == 0) return;
+                List<WorldMap.UserVillageData> villages = GameEngine.Instance.World.getUserVillageList();
+                if (villages == null || villages.Count == 0)
+                {
+                    LogWarning("Cannot memorise: no villages found.");
+                    return;
+                }
 
-            _memoriseQueue.Clear();
-            foreach (WorldMap.UserVillageData uvd in villages)
-                _memoriseQueue.Add(uvd.villageID);
+                _memoriseQueue.Clear();
+                foreach (WorldMap.UserVillageData uvd in villages)
+                    _memoriseQueue.Add(uvd.villageID);
 
-            _memoriseType = type;
-            _memoriseIndex = 0;
-            _memorisedCount = 0;
-            _memoriseVillageId = _memoriseQueue[0];
-            _memoriseStep = MemoriseStep.SwitchVillage;
-            _memoriseStepStarted = DateTime.Now;
+                _memoriseType = type;
+                _memoriseIndex = 0;
+                _memorisedCount = 0;
+                _memoriseVillageId = _memoriseQueue[0];
+                _memoriseStep = MemoriseStep.SwitchVillage;
+                _memoriseStepStarted = DateTime.Now;
 
-            string typeName = type == MemoriseType.Infrastructure ? "infrastructure" : "troop";
-            LogInfo("Memorising " + typeName + " layouts for " + _memoriseQueue.Count + " village(s)...");
+                string typeName = type == MemoriseType.Infrastructure ? "infrastructure" : "troop";
+                LogInfo("Memorising " + typeName + " layouts for " + _memoriseQueue.Count + " village(s)...");
+            }
+            catch (Exception ex)
+            {
+                LogError("Memorise start failed: " + ex.Message);
+            }
         }
 
         // =================================================================
         // Repair state machine — the core repair sequence
         // =================================================================
+
+        // =================================================================
+        // Popup suppression — reuse the game's MyMessageBox.Suppress flag so the
+        // blocking modal dialogs the server/UI fire during a repair don't freeze
+        // the game. The suppressed text is logged instead of shown.
+        // =================================================================
+
+        private void BeginPopupSuppression()
+        {
+            MyMessageBox.Suppress = true;
+            MyMessageBox.SuppressedHandler = delegate(string msg, string title)
+            {
+                LogWarning("Suppressed game popup ["
+                    + (string.IsNullOrEmpty(title) ? "?" : title) + "]: " + msg);
+            };
+        }
+
+        private void EndPopupSuppression()
+        {
+            MyMessageBox.Suppress = false;
+            MyMessageBox.SuppressedHandler = null;
+        }
 
         private void BeginRepairVillage(int villageId, VillageCastleRepairSettings vs, bool attackTriggered)
         {
@@ -383,6 +440,15 @@ namespace Kingdoms.Bot.Modules
             _activeSettings = vs;
             _step = RepairStep.SwitchVillage;
             _stepStarted = DateTime.Now;
+            _incrInfraList = null;
+            _incrTroopList = null;
+
+            // Suppress the game's blocking modal popups (e.g. "research skill not
+            // available", "cannot place there", "Castle Placement Error") for the
+            // duration of this repair — they otherwise freeze the whole game. The
+            // text is redirected to the bot log instead. Cleared in OnTick when the
+            // state machine returns to Idle (and in OnShutdown as a safety net).
+            BeginPopupSuppression();
 
             string infraDesc = vs.RepairInfrastructure
                 ? "infra=" + (string.IsNullOrEmpty(vs.InfrastructurePresetName) || vs.InfrastructurePresetName == "Local"
@@ -453,7 +519,7 @@ namespace Kingdoms.Bot.Modules
                         StepDoCommit(RepairStep.WaitCommitInfra);
                         break;
                     case RepairStep.WaitCommitInfra:
-                        StepWaitForCommit(RepairStep.WaitAfterInfra);
+                        StepWaitCommitInfra();
                         break;
                     case RepairStep.WaitAfterInfra:
                         StepWaitDelay(RepairStep.RestoreTroops, ShortDelayMs);
@@ -465,7 +531,19 @@ namespace Kingdoms.Bot.Modules
                         StepDoCommit(RepairStep.WaitCommitTroops);
                         break;
                     case RepairStep.WaitCommitTroops:
-                        StepWaitForCommit(RepairStep.Done);
+                        StepWaitCommitTroops();
+                        break;
+                    case RepairStep.IncrementalInfraPlace:
+                        StepIncrementalInfraPlace();
+                        break;
+                    case RepairStep.IncrementalInfraWait:
+                        StepIncrementalInfraWait();
+                        break;
+                    case RepairStep.IncrementalTroopsPlace:
+                        StepIncrementalTroopsPlace();
+                        break;
+                    case RepairStep.IncrementalTroopsWait:
+                        StepIncrementalTroopsWait();
                         break;
                     case RepairStep.Done:
                         LogInfo("Repair complete for village " + _activeVillageId);
@@ -554,7 +632,7 @@ namespace Kingdoms.Bot.Modules
             if (string.IsNullOrEmpty(presetName) || presetName == "Local")
             {
                 LogInfo("Village " + _activeVillageId + ": restoring infrastructure from local layout.");
-                GameEngine.Instance.Castle.restoreInfrastructure();
+                _incrInfraList = GameEngine.Instance.Castle.parseInfrastructureSaveList();
             }
             else
             {
@@ -562,7 +640,7 @@ namespace Kingdoms.Bot.Modules
                 if (preset != null)
                 {
                     LogInfo("Village " + _activeVillageId + ": restoring infrastructure from preset '" + presetName + "'.");
-                    GameEngine.Instance.Castle.restoreInfrastructurePreset(preset);
+                    _incrInfraList = GameEngine.Instance.Castle.parseInfrastructurePresetList(preset);
                 }
                 else
                 {
@@ -573,6 +651,16 @@ namespace Kingdoms.Bot.Modules
                 }
             }
 
+            if (_incrInfraList == null || _incrInfraList.Count == 0)
+            {
+                LogWarning("Village " + _activeVillageId + ": no saved infrastructure layout, skipping.");
+                _step = RepairStep.RestoreTroops;
+                _stepStarted = DateTime.Now;
+                return;
+            }
+
+            // Fast path: place the whole layout locally and commit as one batch.
+            GameEngine.Instance.Castle.placeInfrastructure(_incrInfraList);
             _step = RepairStep.CommitInfra;
             _stepStarted = DateTime.Now;
         }
@@ -598,7 +686,7 @@ namespace Kingdoms.Bot.Modules
             if (string.IsNullOrEmpty(presetName) || presetName == "Local")
             {
                 LogInfo("Village " + _activeVillageId + ": restoring troops from local layout.");
-                GameEngine.Instance.Castle.restoreTroops();
+                _incrTroopList = GameEngine.Instance.Castle.parseTroopsSaveList();
             }
             else
             {
@@ -606,7 +694,7 @@ namespace Kingdoms.Bot.Modules
                 if (preset != null)
                 {
                     LogInfo("Village " + _activeVillageId + ": restoring troops from preset '" + presetName + "'.");
-                    GameEngine.Instance.Castle.restoreTroopsPreset(preset);
+                    _incrTroopList = GameEngine.Instance.Castle.parseTroopsPresetList(preset);
                 }
                 else
                 {
@@ -617,6 +705,16 @@ namespace Kingdoms.Bot.Modules
                 }
             }
 
+            if (_incrTroopList == null || _incrTroopList.Count == 0)
+            {
+                LogWarning("Village " + _activeVillageId + ": no saved troop layout, skipping.");
+                _step = RepairStep.Done;
+                _stepStarted = DateTime.Now;
+                return;
+            }
+
+            // Fast path: place the whole layout locally and commit as one batch.
+            GameEngine.Instance.Castle.placeTroops(_incrTroopList);
             _step = RepairStep.CommitTroops;
             _stepStarted = DateTime.Now;
         }
@@ -643,6 +741,170 @@ namespace Kingdoms.Bot.Modules
 
             LogDebug("Commit complete for village " + _activeVillageId);
             _step = nextStep;
+            _stepStarted = DateTime.Now;
+        }
+
+        // =================================================================
+        // Incremental placement fallback — when the server rejects the whole
+        // infrastructure/troop batch (e.g. a cloud preset contains an unresearched
+        // or unaffordable piece), replay the layout element-by-element so every
+        // buildable piece still lands. Only runs on the batch-reject path.
+        // =================================================================
+
+        private void StepWaitCommitInfra()
+        {
+            if (InterfaceMgr.Instance.WaitingForCallback)
+                return;
+
+            if (GameEngine.Instance.Castle != null
+                && !GameEngine.Instance.Castle.LastListCommitSuccess
+                && _incrInfraList != null && _incrInfraList.Count > 0)
+            {
+                LogWarning("Village " + _activeVillageId + ": infrastructure batch rejected ("
+                    + GameEngine.Instance.Castle.LastListCommitError + ") — placing individually.");
+                GameEngine.Instance.Castle.removeUncommittedElements();
+                _incrementalIndex = 0;
+                _incrementalPlaced = 0;
+                _step = RepairStep.IncrementalInfraPlace;
+                _stepStarted = DateTime.Now;
+                return;
+            }
+
+            _step = RepairStep.WaitAfterInfra;
+            _stepStarted = DateTime.Now;
+        }
+
+        private void StepIncrementalInfraPlace()
+        {
+            if (GameEngine.Instance.Castle == null)
+            {
+                LogWarning("Village " + _activeVillageId + ": castle not loaded during incremental infra, aborting.");
+                _step = RepairStep.Idle;
+                return;
+            }
+
+            if (_incrInfraList == null || _incrementalIndex >= _incrInfraList.Count)
+            {
+                LogInfo("Village " + _activeVillageId + ": placed " + _incrementalPlaced + "/"
+                    + (_incrInfraList == null ? 0 : _incrInfraList.Count) + " infrastructure element(s) individually.");
+                _step = RepairStep.WaitAfterInfra;
+                _stepStarted = DateTime.Now;
+                return;
+            }
+
+            CampCastleElement e = _incrInfraList[_incrementalIndex];
+            if (GameEngine.Instance.Castle.placeSingleInfrastructure(e))
+            {
+                GameEngine.Instance.Castle.commitCastle();
+                _step = RepairStep.IncrementalInfraWait;
+                _stepStarted = DateTime.Now;
+            }
+            else
+            {
+                // Couldn't place locally (blocked tile / cap) — skip and move on.
+                _incrementalIndex++;
+                _stepStarted = DateTime.Now;
+            }
+        }
+
+        private void StepIncrementalInfraWait()
+        {
+            if (InterfaceMgr.Instance.WaitingForCallback)
+                return;
+
+            if (GameEngine.Instance.Castle != null && GameEngine.Instance.Castle.LastListCommitSuccess)
+            {
+                _incrementalPlaced++;
+            }
+            else if (GameEngine.Instance.Castle != null)
+            {
+                CampCastleElement e = _incrInfraList[_incrementalIndex];
+                LogWarning("Village " + _activeVillageId + ": infra element type " + (int) e.elementType
+                    + " at " + (int) e.xPos + "," + (int) e.yPos + " rejected ("
+                    + GameEngine.Instance.Castle.LastListCommitError + ").");
+                GameEngine.Instance.Castle.removeUncommittedElements();
+            }
+
+            _incrementalIndex++;
+            _step = RepairStep.IncrementalInfraPlace;
+            _stepStarted = DateTime.Now;
+        }
+
+        private void StepWaitCommitTroops()
+        {
+            if (InterfaceMgr.Instance.WaitingForCallback)
+                return;
+
+            if (GameEngine.Instance.Castle != null
+                && !GameEngine.Instance.Castle.LastListCommitSuccess
+                && _incrTroopList != null && _incrTroopList.Count > 0)
+            {
+                LogWarning("Village " + _activeVillageId + ": troop batch rejected ("
+                    + GameEngine.Instance.Castle.LastListCommitError + ") — placing individually.");
+                GameEngine.Instance.Castle.removeUncommittedElements();
+                _incrementalIndex = 0;
+                _incrementalPlaced = 0;
+                _step = RepairStep.IncrementalTroopsPlace;
+                _stepStarted = DateTime.Now;
+                return;
+            }
+
+            _step = RepairStep.Done;
+            _stepStarted = DateTime.Now;
+        }
+
+        private void StepIncrementalTroopsPlace()
+        {
+            if (GameEngine.Instance.Castle == null)
+            {
+                LogWarning("Village " + _activeVillageId + ": castle not loaded during incremental troops, aborting.");
+                _step = RepairStep.Idle;
+                return;
+            }
+
+            if (_incrTroopList == null || _incrementalIndex >= _incrTroopList.Count)
+            {
+                LogInfo("Village " + _activeVillageId + ": placed " + _incrementalPlaced + "/"
+                    + (_incrTroopList == null ? 0 : _incrTroopList.Count) + " troop element(s) individually.");
+                _step = RepairStep.Done;
+                _stepStarted = DateTime.Now;
+                return;
+            }
+
+            CampCastleElementLL e = _incrTroopList[_incrementalIndex];
+            if (GameEngine.Instance.Castle.placeSingleTroop(e))
+            {
+                GameEngine.Instance.Castle.commitCastle();
+                _step = RepairStep.IncrementalTroopsWait;
+                _stepStarted = DateTime.Now;
+            }
+            else
+            {
+                _incrementalIndex++;
+                _stepStarted = DateTime.Now;
+            }
+        }
+
+        private void StepIncrementalTroopsWait()
+        {
+            if (InterfaceMgr.Instance.WaitingForCallback)
+                return;
+
+            if (GameEngine.Instance.Castle != null && GameEngine.Instance.Castle.LastListCommitSuccess)
+            {
+                _incrementalPlaced++;
+            }
+            else if (GameEngine.Instance.Castle != null)
+            {
+                CampCastleElementLL e = _incrTroopList[_incrementalIndex];
+                LogWarning("Village " + _activeVillageId + ": troop element type " + (int) e.elementType
+                    + " at " + (int) e.xPos + "," + (int) e.yPos + " rejected ("
+                    + GameEngine.Instance.Castle.LastListCommitError + ").");
+                GameEngine.Instance.Castle.removeUncommittedElements();
+            }
+
+            _incrementalIndex++;
+            _step = RepairStep.IncrementalTroopsPlace;
             _stepStarted = DateTime.Now;
         }
 
@@ -810,6 +1072,9 @@ namespace Kingdoms.Bot.Modules
             _cycleInProgress = false;
             _memoriseStep = MemoriseStep.Idle;
             _memoriseQueue.Clear();
+            // Safety net: never leave popup suppression stuck on if the module stops
+            // mid-repair.
+            EndPopupSuppression();
         }
     }
 }

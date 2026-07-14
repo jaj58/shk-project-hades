@@ -44,6 +44,20 @@ namespace Kingdoms
     /// </summary>
     public static bool Suppress = false;
 
+    /// <summary>
+    /// Optional hook invoked (message, title) whenever a Show() call is swallowed
+    /// because Suppress is true. Lets callers (e.g. the Castle Repair module) record
+    /// the popup text to a log instead of losing it. Null = discard silently.
+    /// </summary>
+    public static Action<string, string> SuppressedHandler = null;
+
+    private static void NotifySuppressed(string txtMessage, string txtTitle)
+    {
+      if (MyMessageBox.SuppressedHandler == null) return;
+      try { MyMessageBox.SuppressedHandler(txtMessage, txtTitle); }
+      catch { }
+    }
+
     protected override void Dispose(bool disposing)
     {
       if (disposing && this.components != null)
@@ -185,7 +199,7 @@ namespace Kingdoms
 
     public static DialogResult Show(string txtMessage)
     {
-      if (MyMessageBox.Suppress) return MyMessageBox.result;
+      if (MyMessageBox.Suppress) { MyMessageBox.NotifySuppressed(txtMessage, (string) null); return MyMessageBox.result; }
       MyMessageBox.newMessageBox = new MyMessageBox();
       MyMessageBox.buttons = MessageBoxButtons.OK;
       MyMessageBox.defaultButton = MessageBoxDefaultButton.Button1;
@@ -234,7 +248,7 @@ namespace Kingdoms
 
     public static DialogResult Show(string txtMessage, string txtTitle)
     {
-      if (MyMessageBox.Suppress) return MyMessageBox.result;
+      if (MyMessageBox.Suppress) { MyMessageBox.NotifySuppressed(txtMessage, txtTitle); return MyMessageBox.result; }
       MyMessageBox.newMessageBox = new MyMessageBox();
       MyMessageBox.buttons = MessageBoxButtons.OK;
       MyMessageBox.defaultButton = MessageBoxDefaultButton.Button1;
@@ -285,7 +299,7 @@ namespace Kingdoms
 
     public static DialogResult Show(string txtMessage, string txtTitle, MessageBoxButtons buts)
     {
-      if (MyMessageBox.Suppress) return MyMessageBox.result;
+      if (MyMessageBox.Suppress) { MyMessageBox.NotifySuppressed(txtMessage, txtTitle); return MyMessageBox.result; }
       MyMessageBox.newMessageBox = new MyMessageBox();
       MyMessageBox.buttons = buts;
       MyMessageBox.defaultButton = MessageBoxDefaultButton.Button1;
@@ -341,7 +355,7 @@ namespace Kingdoms
       MessageBoxDefaultButton defaultBut,
       int x2)
     {
-      if (MyMessageBox.Suppress) return MyMessageBox.result;
+      if (MyMessageBox.Suppress) { MyMessageBox.NotifySuppressed(txtMessage, txtTitle); return MyMessageBox.result; }
       MyMessageBox.newMessageBox = new MyMessageBox();
       MyMessageBox.buttons = buts;
       MyMessageBox.defaultButton = defaultBut;

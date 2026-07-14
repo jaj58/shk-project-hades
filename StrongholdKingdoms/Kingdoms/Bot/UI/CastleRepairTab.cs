@@ -267,20 +267,34 @@ namespace Kingdoms.Bot.UI
 
         private void MemoriseInfraClick()
         {
-            CastleRepairModule module = GetModule();
-            if (module != null)
-                module.MemoriseAllInfrastructure();
-            else
-                BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Module not found.");
+            try
+            {
+                CastleRepairModule module = GetModule();
+                if (module != null)
+                    module.MemoriseAllInfrastructure();
+                else
+                    BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Module not found.");
+            }
+            catch (Exception ex)
+            {
+                BotLogger.Log("Castle Repair", BotLogLevel.Error, "Memorise infra click failed: " + ex.Message);
+            }
         }
 
         private void MemoriseTroopsClick()
         {
-            CastleRepairModule module = GetModule();
-            if (module != null)
-                module.MemoriseAllTroops();
-            else
-                BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Module not found.");
+            try
+            {
+                CastleRepairModule module = GetModule();
+                if (module != null)
+                    module.MemoriseAllTroops();
+                else
+                    BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Module not found.");
+            }
+            catch (Exception ex)
+            {
+                BotLogger.Log("Castle Repair", BotLogLevel.Error, "Memorise troops click failed: " + ex.Message);
+            }
         }
 
         private void CopySettingsClick()

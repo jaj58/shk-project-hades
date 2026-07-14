@@ -34,6 +34,11 @@ namespace Kingdoms
     private List<CastleElement> movedElements;
     private List<CastleElement> movedElementsOriginal;
     public CastleLayout castleLayout;
+    // Result of the most recent batched element commit (set in newElementListCallback).
+    // Lets callers (e.g. the Castle Repair module) tell whether a commit was accepted
+    // by the server without hijacking the global AddCastleElement callback slot.
+    public bool LastListCommitSuccess = true;
+    public string LastListCommitError = "";
     private static int fakeKeep = -1;
     private static int fakeDefensiveMode = -1;
     private static bool createMode = false;
@@ -2921,6 +2926,8 @@ namespace Kingdoms
       }
       if (returnData.Success)
       {
+        this.LastListCommitSuccess = true;
+        this.LastListCommitError = "";
         if (returnData.elements != null)
         {
           this.inBuilderMode = false;
@@ -2931,7 +2938,9 @@ namespace Kingdoms
       }
       else
       {
-        int num = (int) MyMessageBox.Show(ErrorCodes.getErrorString(returnData.m_errorCode, returnData.m_errorID), SK.Text("CastleMap_Placement_Error", "Castle Placement Error"));
+        this.LastListCommitSuccess = false;
+        this.LastListCommitError = ErrorCodes.getErrorString(returnData.m_errorCode, returnData.m_errorID);
+        int num = (int) MyMessageBox.Show(this.LastListCommitError, SK.Text("CastleMap_Placement_Error", "Castle Placement Error"));
       }
       GameEngine.Instance.World.setGoldData(returnData.currentGoldLevel, returnData.currentGoldRate);
       CastleMap.setServerTime(returnData.currentTime);
@@ -8335,6 +8344,16 @@ namespace Kingdoms
 
     public int restoreTroops()
     {
+      List<CampCastleElementLL> array = this.parseTroopsSaveList();
+      if (array == null)
+        return -1;
+      return this.placeTroops(array);
+    }
+
+    // Parse the saved troop layout into a list without placing it.
+    // Returns null if the save file is missing/unreadable.
+    public List<CampCastleElementLL> parseTroopsSaveList()
+    {
       List<CampCastleElementLL> array = new List<CampCastleElementLL>();
       try
       {
@@ -8374,9 +8393,9 @@ namespace Kingdoms
       }
       catch (Exception ex)
       {
-        return -1;
+        return (List<CampCastleElementLL>) null;
       }
-      return this.placeTroops(array);
+      return array;
     }
 
     public int placeTroops(List<CampCastleElementLL> array)
@@ -8408,7 +8427,9 @@ namespace Kingdoms
       return num1;
     }
 
-    public int restoreInfrastructure()
+    // Parse the saved infrastructure layout into a list without placing it.
+    // Returns null if the save file is missing/unreadable.
+    public List<CampCastleElement> parseInfrastructureSaveList()
     {
       List<CampCastleElement> array = new List<CampCastleElement>();
       try
@@ -8431,8 +8452,16 @@ namespace Kingdoms
       }
       catch (Exception ex)
       {
-        return -1;
+        return (List<CampCastleElement>) null;
       }
+      return array;
+    }
+
+    public int restoreInfrastructure()
+    {
+      List<CampCastleElement> array = this.parseInfrastructureSaveList();
+      if (array == null)
+        return -1;
       return this.placeInfrastructure(array);
     }
 
@@ -8455,6 +8484,58 @@ namespace Kingdoms
       this.stopPlaceElement();
       GameEngine.Instance.stopInterfaceSounds = false;
       return num1;
+    }
+
+    // Place a single infrastructure element locally (uncommitted). Mirrors the
+    // per-element body of placeInfrastructure. Returns false if it can't be placed
+    // (e.g. blocked tile / research cap). Caller commits and handles the result.
+    public bool placeSingleInfrastructure(CampCastleElement e)
+    {
+      GameEngine.Instance.stopInterfaceSounds = true;
+      bool placed = this.startPlaceElement((int) e.elementType)
+        && this.placeBuildingElement((int) e.xPos, (int) e.yPos, true) != null;
+      this.stopPlaceElement();
+      GameEngine.Instance.stopInterfaceSounds = false;
+      return placed;
+    }
+
+    // Place a single troop element locally (uncommitted). Mirrors the per-element
+    // body of placeTroops.
+    public bool placeSingleTroop(CampCastleElementLL e)
+    {
+      GameEngine.Instance.stopInterfaceSounds = true;
+      bool placed = false;
+      this.startPlacingTroops((int) e.elementType, e.reinforcement);
+      this.CurrentBrushSize = CastleMap.BrushSize.BRUSH_1X1;
+      if (this.mouseMovePlaceTroops((int) e.xPos, (int) e.yPos, true, 0))
+      {
+        CastleElement castleElement = this.troopPlaceDefender((int) e.xPos, (int) e.yPos, true);
+        if (castleElement != null)
+        {
+          castleElement.aggressiveDefender = e.aggressiveDefender;
+          placed = true;
+        }
+      }
+      this.stopPlaceElement();
+      GameEngine.Instance.stopInterfaceSounds = false;
+      return placed;
+    }
+
+    // Drop all locally-placed, not-yet-committed elements (elementID < -1). Used to
+    // discard a batch the server rejected before retrying element-by-element.
+    public void removeUncommittedElements()
+    {
+      if (this.elements == null)
+        return;
+      List<CastleElement> pending = new List<CastleElement>();
+      foreach (CastleElement element in this.elements)
+      {
+        if (element.elementID < -1L)
+          pending.Add(element);
+      }
+      foreach (CastleElement element in pending)
+        this.elements.Remove(element);
+      this.updateLayoutAndRedraw();
     }
 
     public bool gotTroopsSave() => File.Exists(this.getTroopsSaveName());
@@ -9356,6 +9437,11 @@ namespace Kingdoms
 
     public int restoreTroopsPreset(CastleMapPreset preset)
     {
+      return this.placeTroops(this.parseTroopsPresetList(preset));
+    }
+
+    public List<CampCastleElementLL> parseTroopsPresetList(CastleMapPreset preset)
+    {
       List<CampCastleElementLL> array = new List<CampCastleElementLL>();
       string[] strArray1 = preset.Data.Split(' ');
       int num1 = 0;
@@ -9395,10 +9481,15 @@ namespace Kingdoms
         if (campCastleElementLl1.elementType > (byte) 69)
           array.Add(campCastleElementLl1);
       }
-      return this.placeTroops(array);
+      return array;
     }
 
     public int restoreInfrastructurePreset(CastleMapPreset preset)
+    {
+      return this.placeInfrastructure(this.parseInfrastructurePresetList(preset));
+    }
+
+    public List<CampCastleElement> parseInfrastructurePresetList(CastleMapPreset preset)
     {
       List<CampCastleElement> array = new List<CampCastleElement>();
       string[] strArray1 = preset.Data.Split(' ');
@@ -9433,7 +9524,7 @@ namespace Kingdoms
         if (campCastleElement1.elementType < (byte) 69 && campCastleElement1.elementType != (byte) 43)
           array.Add(campCastleElement1);
       }
-      return this.placeInfrastructure(array);
+      return array;
     }
 
     public static void PopulateBasicInfo(CastleMapPreset preset)
