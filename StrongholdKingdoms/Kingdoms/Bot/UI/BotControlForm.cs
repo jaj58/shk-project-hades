@@ -1861,6 +1861,8 @@ namespace Kingdoms.Bot.UI
         {
             _crRefreshBtn.Click += delegate { CrPopulateVillageList(); };
             _crRepairAllBtn.Click += delegate { CrRepairAllNow(); };
+            _crMemoriseInfraBtn.Click += delegate { CrMemoriseInfra(); };
+            _crMemoriseTroopsBtn.Click += delegate { CrMemoriseTroops(); };
 
             _crEnabledCheck.CheckedChanged += delegate { CrPushToSettings(); };
             _crIntervalInput.ValueChanged += delegate { CrPushToSettings(); };
@@ -1957,6 +1959,46 @@ namespace Kingdoms.Bot.UI
                     break;
                 }
             }
+        }
+
+        private void CrMemoriseInfra()
+        {
+            if (BotEngine.Instance == null)
+            {
+                BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Cannot memorise: bot engine not running.");
+                return;
+            }
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                CastleRepairModule crm = m as CastleRepairModule;
+                if (crm != null)
+                {
+                    crm.MemoriseAllInfrastructure();
+                    return;
+                }
+            }
+            BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Cannot memorise: module not found.");
+        }
+
+        private void CrMemoriseTroops()
+        {
+            if (BotEngine.Instance == null)
+            {
+                BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Cannot memorise: bot engine not running.");
+                return;
+            }
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                CastleRepairModule crm = m as CastleRepairModule;
+                if (crm != null)
+                {
+                    crm.MemoriseAllTroops();
+                    return;
+                }
+            }
+            BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Cannot memorise: module not found.");
         }
 
         private void CrPushToSettings()
