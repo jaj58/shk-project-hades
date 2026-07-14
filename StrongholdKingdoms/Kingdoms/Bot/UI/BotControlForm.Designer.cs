@@ -38,6 +38,46 @@ namespace Kingdoms.Bot.UI
                     _scRefreshTimer.Stop();
                     _scRefreshTimer.Dispose();
                 }
+                if (_crRefreshTimer != null)
+                {
+                    _crRefreshTimer.Stop();
+                    _crRefreshTimer.Dispose();
+                }
+                if (_trRefreshTimer != null)
+                {
+                    _trRefreshTimer.Stop();
+                    _trRefreshTimer.Dispose();
+                }
+                if (_bldRefreshTimer != null)
+                {
+                    _bldRefreshTimer.Stop();
+                    _bldRefreshTimer.Dispose();
+                }
+                if (_abRefreshTimer != null)
+                {
+                    _abRefreshTimer.Stop();
+                    _abRefreshTimer.Dispose();
+                }
+                if (_abmRefreshTimer != null)
+                {
+                    _abmRefreshTimer.Stop();
+                    _abmRefreshTimer.Dispose();
+                }
+                if (_dfRefreshTimer != null)
+                {
+                    _dfRefreshTimer.Stop();
+                    _dfRefreshTimer.Dispose();
+                }
+                if (_mkSyncTimer != null)
+                {
+                    _mkSyncTimer.Stop();
+                    _mkSyncTimer.Dispose();
+                }
+                if (_atRefreshTimer != null)
+                {
+                    _atRefreshTimer.Stop();
+                    _atRefreshTimer.Dispose();
+                }
                 if (components != null)
                     components.Dispose();
             }
