@@ -2664,8 +2664,15 @@ namespace Kingdoms
       {
         if (zoomIn)
         {
-          Point villageLocation = GameEngine.Instance.World.getVillageLocation(villageID);
-          GameEngine.Instance.World.startMultiStageZoom(10000.0, (double) villageLocation.X, (double) villageLocation.Y);
+          if (Bot.BotEngine.Instance?.Settings?.Misc?.FastMapZoom == true)
+          {
+            GameEngine.Instance.World.centerOverVillage(villageID);
+          }
+          else
+          {
+            Point villageLocation = GameEngine.Instance.World.getVillageLocation(villageID);
+            GameEngine.Instance.World.startMultiStageZoom(10000.0, (double) villageLocation.X, (double) villageLocation.Y);
+          }
         }
         this.displaySelectedVillagePanel(villageID, false, true, true, false);
       }

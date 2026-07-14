@@ -494,6 +494,7 @@ namespace Kingdoms.Bot.UI
             this._miscWorldMapParishBuildingCountCheck = new System.Windows.Forms.CheckBox();
             this._miscShowUserScreenInfoCheck = new System.Windows.Forms.CheckBox();
             this._miscMapAttackTypeIconsCheck = new System.Windows.Forms.CheckBox();
+            this._miscFastMapZoomCheck = new System.Windows.Forms.CheckBox();
             this._miscSaleHeaderLabel = new System.Windows.Forms.Label();
             this._miscSalePctLabel = new System.Windows.Forms.Label();
             this._miscSalePctValue = new System.Windows.Forms.Label();
@@ -6080,11 +6081,12 @@ namespace Kingdoms.Bot.UI
             this._miscSettingsPanel.Controls.Add(this._miscWorldMapParishBuildingCountCheck);
             this._miscSettingsPanel.Controls.Add(this._miscShowUserScreenInfoCheck);
             this._miscSettingsPanel.Controls.Add(this._miscMapAttackTypeIconsCheck);
+            this._miscSettingsPanel.Controls.Add(this._miscFastMapZoomCheck);
             this._miscSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._miscSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._miscSettingsPanel.Name = "_miscSettingsPanel";
             this._miscSettingsPanel.Padding = new System.Windows.Forms.Padding(16);
-            this._miscSettingsPanel.Size = new System.Drawing.Size(1142, 226);
+            this._miscSettingsPanel.Size = new System.Drawing.Size(1142, 252);
             this._miscSettingsPanel.TabIndex = 0;
             // 
             // _miscCollectFreeCardsCheck
@@ -6158,6 +6160,18 @@ namespace Kingdoms.Bot.UI
             this._miscMapAttackTypeIconsCheck.Size = new System.Drawing.Size(214, 23);
             this._miscMapAttackTypeIconsCheck.TabIndex = 6;
             this._miscMapAttackTypeIconsCheck.Text = "Map Attack Type Icons";
+            //
+            // _miscFastMapZoomCheck
+            //
+            this._miscFastMapZoomCheck.AutoSize = true;
+            this._miscFastMapZoomCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._miscFastMapZoomCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._miscFastMapZoomCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscFastMapZoomCheck.Location = new System.Drawing.Point(16, 176);
+            this._miscFastMapZoomCheck.Name = "_miscFastMapZoomCheck";
+            this._miscFastMapZoomCheck.Size = new System.Drawing.Size(214, 23);
+            this._miscFastMapZoomCheck.TabIndex = 7;
+            this._miscFastMapZoomCheck.Text = "Fast Map Zoom";
             //
             // _miscSaleHeaderLabel
             //
@@ -7102,6 +7116,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _miscWorldMapParishBuildingCountCheck;
         private System.Windows.Forms.CheckBox _miscShowUserScreenInfoCheck;
         private System.Windows.Forms.CheckBox _miscMapAttackTypeIconsCheck;
+        private System.Windows.Forms.CheckBox _miscFastMapZoomCheck;
         private System.Windows.Forms.Label _miscSaleHeaderLabel;
         private System.Windows.Forms.Label _miscSalePctLabel;
         private System.Windows.Forms.Label _miscSalePctValue;

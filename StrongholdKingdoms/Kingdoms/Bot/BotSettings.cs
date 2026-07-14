@@ -1061,6 +1061,7 @@ namespace Kingdoms.Bot
         public bool WorldMapParishBuildingCount = false;
         public bool ShowUserScreenInfo = false;
         public bool MapAttackTypeIcons = false;
+        public bool FastMapZoom = false;
     }
 
     // =========================================================================
