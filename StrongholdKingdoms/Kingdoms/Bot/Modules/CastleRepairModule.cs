@@ -86,6 +86,20 @@ namespace Kingdoms.Bot.Modules
             get { return TimeSpan.FromMilliseconds(300); }
         }
 
+        // Keep ticking while disabled if a manual action is in flight: an active
+        // repair (_step), a memorise run (_memoriseStep), or a queued Repair-All
+        // (_cycleInProgress). Passive scheduled/attack repairs still require Enabled
+        // (gated inside OnTick), so a disabled+idle module does no work.
+        public override bool HasPendingWork
+        {
+            get
+            {
+                return _step != RepairStep.Idle
+                    || _memoriseStep != MemoriseStep.Idle
+                    || _cycleInProgress;
+            }
+        }
+
         private CastleRepairSettings Settings
         {
             get
@@ -154,8 +168,8 @@ namespace Kingdoms.Bot.Modules
                 return;
             }
 
-            // Scan for AI attacks
-            if (settings.RepairOnAttack)
+            // Scan for AI attacks — passive work, only when the module is enabled.
+            if (Enabled && settings.RepairOnAttack)
             {
                 ScanForArrivedAttacks(settings);
                 ProcessPendingAttackRepairs(settings);
@@ -165,6 +179,11 @@ namespace Kingdoms.Bot.Modules
             // Normal scheduled cycle
             if (_villageQueue.Count == 0 || _currentVillageIndex >= _villageQueue.Count)
             {
+                // Nothing queued to process. Starting a new periodic cycle is passive
+                // work, so a disabled module (only ticking for on-demand work) stops here.
+                if (!Enabled)
+                    return;
+
                 if ((DateTime.Now - _lastFullCycle).TotalSeconds < settings.IntervalSeconds)
                     return;
 
