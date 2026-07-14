@@ -19998,6 +19998,17 @@ namespace Kingdoms
       this.m_screenCentreY = (double) this.villageList[villageID].y;
     }
 
+    public void centerAndZoomOverVillage(int villageID)
+    {
+      if (this.villageList == null || this.villageList.Length <= villageID || villageID < 0)
+        return;
+      this.stopZoom();
+      this.WorldZoom = 27.0;
+      this.m_screenCentreX = (double) this.villageList[villageID].x;
+      this.m_screenCentreY = (double) this.villageList[villageID].y;
+      this.centreMap(false);
+    }
+
     public void zoomToVillage(int villageID)
     {
       this.startMultiStageZoom(27.0, (double) this.villageList[villageID].x, (double) this.villageList[villageID].y);

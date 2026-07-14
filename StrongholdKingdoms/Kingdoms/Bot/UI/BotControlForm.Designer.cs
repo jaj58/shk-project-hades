@@ -494,6 +494,9 @@ namespace Kingdoms.Bot.UI
             this._miscWorldMapParishBuildingCountCheck = new System.Windows.Forms.CheckBox();
             this._miscShowUserScreenInfoCheck = new System.Windows.Forms.CheckBox();
             this._miscMapAttackTypeIconsCheck = new System.Windows.Forms.CheckBox();
+            this._miscMapSwitchModeCombo = new System.Windows.Forms.ComboBox();
+            this._miscMapSwitchLabel = new System.Windows.Forms.Label();
+            this._miscShowActiveEnemyCardsCheck = new System.Windows.Forms.CheckBox();
             this._miscSaleHeaderLabel = new System.Windows.Forms.Label();
             this._miscSalePctLabel = new System.Windows.Forms.Label();
             this._miscSalePctValue = new System.Windows.Forms.Label();
@@ -6080,11 +6083,14 @@ namespace Kingdoms.Bot.UI
             this._miscSettingsPanel.Controls.Add(this._miscWorldMapParishBuildingCountCheck);
             this._miscSettingsPanel.Controls.Add(this._miscShowUserScreenInfoCheck);
             this._miscSettingsPanel.Controls.Add(this._miscMapAttackTypeIconsCheck);
+            this._miscSettingsPanel.Controls.Add(this._miscMapSwitchLabel);
+            this._miscSettingsPanel.Controls.Add(this._miscMapSwitchModeCombo);
+            this._miscSettingsPanel.Controls.Add(this._miscShowActiveEnemyCardsCheck);
             this._miscSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._miscSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._miscSettingsPanel.Name = "_miscSettingsPanel";
             this._miscSettingsPanel.Padding = new System.Windows.Forms.Padding(16);
-            this._miscSettingsPanel.Size = new System.Drawing.Size(1142, 226);
+            this._miscSettingsPanel.Size = new System.Drawing.Size(1142, 252);
             this._miscSettingsPanel.TabIndex = 0;
             // 
             // _miscCollectFreeCardsCheck
@@ -6158,6 +6164,42 @@ namespace Kingdoms.Bot.UI
             this._miscMapAttackTypeIconsCheck.Size = new System.Drawing.Size(214, 23);
             this._miscMapAttackTypeIconsCheck.TabIndex = 6;
             this._miscMapAttackTypeIconsCheck.Text = "Map Attack Type Icons";
+            //
+            // _miscMapSwitchLabel
+            //
+            this._miscMapSwitchLabel.AutoSize = true;
+            this._miscMapSwitchLabel.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._miscMapSwitchLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscMapSwitchLabel.Location = new System.Drawing.Point(16, 179);
+            this._miscMapSwitchLabel.Name = "_miscMapSwitchLabel";
+            this._miscMapSwitchLabel.Size = new System.Drawing.Size(96, 19);
+            this._miscMapSwitchLabel.TabIndex = 7;
+            this._miscMapSwitchLabel.Text = "Village Switch:";
+            //
+            // _miscMapSwitchModeCombo
+            //
+            this._miscMapSwitchModeCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._miscMapSwitchModeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._miscMapSwitchModeCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._miscMapSwitchModeCombo.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this._miscMapSwitchModeCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscMapSwitchModeCombo.Items.AddRange(new object[] { "Off", "Fast Village Switch", "Auto Zoom when switching" });
+            this._miscMapSwitchModeCombo.Location = new System.Drawing.Point(150, 176);
+            this._miscMapSwitchModeCombo.Name = "_miscMapSwitchModeCombo";
+            this._miscMapSwitchModeCombo.Size = new System.Drawing.Size(200, 25);
+            this._miscMapSwitchModeCombo.TabIndex = 8;
+            //
+            // _miscShowActiveEnemyCardsCheck
+            //
+            this._miscShowActiveEnemyCardsCheck.AutoSize = true;
+            this._miscShowActiveEnemyCardsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._miscShowActiveEnemyCardsCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._miscShowActiveEnemyCardsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscShowActiveEnemyCardsCheck.Location = new System.Drawing.Point(16, 202);
+            this._miscShowActiveEnemyCardsCheck.Name = "_miscShowActiveEnemyCardsCheck";
+            this._miscShowActiveEnemyCardsCheck.Size = new System.Drawing.Size(214, 23);
+            this._miscShowActiveEnemyCardsCheck.TabIndex = 8;
+            this._miscShowActiveEnemyCardsCheck.Text = "Show active enemy cards";
             //
             // _miscSaleHeaderLabel
             //
@@ -7102,6 +7144,9 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _miscWorldMapParishBuildingCountCheck;
         private System.Windows.Forms.CheckBox _miscShowUserScreenInfoCheck;
         private System.Windows.Forms.CheckBox _miscMapAttackTypeIconsCheck;
+        private System.Windows.Forms.ComboBox _miscMapSwitchModeCombo;
+        private System.Windows.Forms.Label _miscMapSwitchLabel;
+        private System.Windows.Forms.CheckBox _miscShowActiveEnemyCardsCheck;
         private System.Windows.Forms.Label _miscSaleHeaderLabel;
         private System.Windows.Forms.Label _miscSalePctLabel;
         private System.Windows.Forms.Label _miscSalePctValue;

@@ -5,6 +5,7 @@
 // Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.43.10\StrongholdKingdoms.exe
 
 using CommonTypes;
+using Kingdoms.Bot;
 using StatTracking;
 using System;
 using System.Drawing;
@@ -739,6 +740,10 @@ namespace Kingdoms
           break;
       }
       Sound.playBattleMusic();
+      if (BotEngine.Instance?.Settings?.Misc?.ShowActiveEnemyCards == true)
+        EnemyCardOverlay.ShowFrom(returnData.defenderResearchData);
+      else
+        EnemyCardOverlay.Clear();
       GameEngine.Instance.InitBattle(returnData.castleMapSnapshot, returnData.damageMapSnapshot, returnData.castleTroopsSnapshot, returnData.attackMapSnapshot, returnData.keepLevel, returnData.defenderResearchData, returnData.attackerResearchData, campMode, pillageInfo, ransackCount, raidCount, this.m_returnData.genericData30, this.m_returnData.defendingVillage, this.m_returnData, returnData.landType);
     }
 

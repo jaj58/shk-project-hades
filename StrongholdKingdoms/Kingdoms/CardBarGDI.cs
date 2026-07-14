@@ -192,7 +192,8 @@ namespace Kingdoms
     public bool update()
     {
       this.newDisplayedCards.Clear();
-      CardData userCardData = GameEngine.Instance.cardsManager.UserCardData;
+      bool showingEnemy = EnemyCardOverlay.Data != null && GameEngine.Instance.GameDisplayModeSubMode == GameEngine.GameDisplaySubModes.SUBMODE_BATTLE;
+      CardData userCardData = showingEnemy ? EnemyCardOverlay.Data : GameEngine.Instance.cardsManager.UserCardData;
       WorldData localWorldData = GameEngine.Instance.LocalWorldData;
       DateTime currentServerTime = VillageMap.getCurrentServerTime();
       int length = userCardData.cards.Length;
@@ -200,7 +201,7 @@ namespace Kingdoms
       {
         int card = userCardData.cards[index];
         int cardCategory = CardTypes.getCardCategory(card);
-        if (cardCategory == this.currentCardSection || this.currentCardSection == 0 || this.currentCardSection == 9 && (cardCategory == 6 || cardCategory == 7))
+        if (showingEnemy || cardCategory == this.currentCardSection || this.currentCardSection == 0 || this.currentCardSection == 9 && (cardCategory == 6 || cardCategory == 7))
         {
           TimeSpan timeSpan = userCardData.cardsExpiry[index] - currentServerTime;
           int cardDuration = CardTypes.getCardDuration(card);
@@ -223,7 +224,7 @@ namespace Kingdoms
           });
         }
       }
-      int num3 = GameEngine.Instance.cardsManager.countPlayableCardsInCardSection(this.currentCardSection);
+      int num3 = showingEnemy ? 0 : GameEngine.Instance.cardsManager.countPlayableCardsInCardSection(this.currentCardSection);
       bool flag = false;
       if (num3 != this.lastAvailableToPlay)
         flag = true;

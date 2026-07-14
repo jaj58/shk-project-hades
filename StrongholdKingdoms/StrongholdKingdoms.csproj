@@ -406,6 +406,7 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Kingdoms\CardBarGDI.cs" />
+    <Compile Include="Kingdoms\EnemyCardOverlay.cs" />
     <Compile Include="Kingdoms\SHKForm.cs">
       <SubType>Form</SubType>
     </Compile>
