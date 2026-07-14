@@ -21,6 +21,9 @@ namespace Kingdoms.Bot
         }
         public abstract TimeSpan Interval { get; }
 
+        // Modules with on-demand work override this to keep ticking while disabled.
+        public virtual bool HasPendingWork { get { return false; } }
+
         public DateTime LastRun
         {
             get { return _lastRun; }

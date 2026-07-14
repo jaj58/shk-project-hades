@@ -206,7 +206,9 @@ namespace Kingdoms.Bot
 
             foreach (IBotModule module in _modules)
             {
-                if (!module.Enabled)
+                // Disabled modules still tick if they have on-demand work queued
+                // (e.g. a manual Memorise / Repair-All triggered from the UI).
+                if (!module.Enabled && !module.HasPendingWork)
                     continue;
 
                 if ((DateTime.Now - module.LastRun) < module.Interval)

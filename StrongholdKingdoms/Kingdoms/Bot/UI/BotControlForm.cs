@@ -1135,23 +1135,21 @@ namespace Kingdoms.Bot.UI
             _grpEnabledCheck.CheckedChanged += delegate { GrpPushToSettings(); };
             _grpWebhookInput.TextChanged += delegate { GrpPushToSettings(); };
             _grpMentionTagInput.TextChanged += delegate { GrpPushToSettings(); };
-            _grpRefreshOnStartCheck.CheckedChanged += delegate { GrpPushToSettings(); GrpSaveToSettings(); };
+            _grpRefreshOnStartCheck.CheckedChanged += delegate { GrpPushToSettings(); };
             _grpAutoRefreshCheck.CheckedChanged += delegate
             {
                 _grpAutoRefreshIntervalInput.Enabled = _grpAutoRefreshCheck.Checked;
                 GrpPushToSettings();
-                GrpSaveToSettings();
             };
-            _grpAutoRefreshIntervalInput.ValueChanged += delegate { GrpPushToSettings(); GrpSaveToSettings(); };
+            _grpAutoRefreshIntervalInput.ValueChanged += delegate { GrpPushToSettings(); };
             _grpUseIgnoreForDiscordCheck.CheckedChanged += delegate
             {
                 _grpMinArmySizeInput.Enabled = _grpUseIgnoreForDiscordCheck.Checked;
                 _grpMaxLandTimeInput.Enabled = _grpUseIgnoreForDiscordCheck.Checked;
                 GrpPushToSettings();
-                GrpSaveToSettings();
             };
-            _grpMinArmySizeInput.ValueChanged += delegate { GrpPushToSettings(); GrpSaveToSettings(); };
-            _grpMaxLandTimeInput.ValueChanged += delegate { GrpPushToSettings(); GrpSaveToSettings(); };
+            _grpMinArmySizeInput.ValueChanged += delegate { GrpPushToSettings(); };
+            _grpMaxLandTimeInput.ValueChanged += delegate { GrpPushToSettings(); };
 
             _grpTestWebhookBtn.Click += delegate
             {
@@ -1314,11 +1312,6 @@ namespace Kingdoms.Bot.UI
                 row.WriteToSettings();
         }
 
-        private void GrpSaveToSettings()
-        {
-            BotEngine.Instance?.Settings?.Save();
-        }
-
         private void GrpBuildActionRows()
         {
             if (_grpActionListPanel == null) return;
@@ -1382,7 +1375,6 @@ namespace Kingdoms.Bot.UI
                     m.PlayerName = name;
                     m.VillageIds = villages;
                     s.Members.Add(m);
-                    GrpSaveToSettings();
                     _grpPlayerNameInput.Text = "";
                     _grpPlayerNameInput.Enabled = true;
                     _grpAddMemberBtn.Enabled = true;
@@ -1402,7 +1394,6 @@ namespace Kingdoms.Bot.UI
             if (s == null) return;
             s.Members.Remove(m);
             _grpSelectedMemberIndex = -1;
-            GrpSaveToSettings();
             GrpPopulateMemberList();
         }
 
@@ -1422,7 +1413,6 @@ namespace Kingdoms.Bot.UI
                 this.BeginInvoke(new Action(delegate
                 {
                     m.VillageIds = villages;
-                    GrpSaveToSettings();
                     _grpRefreshVillagesBtn.Enabled = true;
                     _grpRefreshVillagesBtn.Text = "Refresh Villages";
                     GrpShowMemberDetail(m);
@@ -1451,7 +1441,6 @@ namespace Kingdoms.Bot.UI
                 if (this.IsDisposed) return;
                 this.BeginInvoke(new Action(delegate
                 {
-                    GrpSaveToSettings();
                     _grpRefreshAllBtn.Enabled = true;
                     _grpRefreshAllBtn.Text = "Refresh All";
                     GrpPopulateMemberList();
@@ -1861,6 +1850,8 @@ namespace Kingdoms.Bot.UI
         {
             _crRefreshBtn.Click += delegate { CrPopulateVillageList(); };
             _crRepairAllBtn.Click += delegate { CrRepairAllNow(); };
+            _crMemoriseInfraBtn.Click += delegate { CrMemoriseInfra(); };
+            _crMemoriseTroopsBtn.Click += delegate { CrMemoriseTroops(); };
 
             _crEnabledCheck.CheckedChanged += delegate { CrPushToSettings(); };
             _crIntervalInput.ValueChanged += delegate { CrPushToSettings(); };
@@ -1957,6 +1948,46 @@ namespace Kingdoms.Bot.UI
                     break;
                 }
             }
+        }
+
+        private void CrMemoriseInfra()
+        {
+            if (BotEngine.Instance == null)
+            {
+                BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Cannot memorise: bot engine not running.");
+                return;
+            }
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                CastleRepairModule crm = m as CastleRepairModule;
+                if (crm != null)
+                {
+                    crm.MemoriseAllInfrastructure();
+                    return;
+                }
+            }
+            BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Cannot memorise: module not found.");
+        }
+
+        private void CrMemoriseTroops()
+        {
+            if (BotEngine.Instance == null)
+            {
+                BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Cannot memorise: bot engine not running.");
+                return;
+            }
+
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                CastleRepairModule crm = m as CastleRepairModule;
+                if (crm != null)
+                {
+                    crm.MemoriseAllTroops();
+                    return;
+                }
+            }
+            BotLogger.Log("Castle Repair", BotLogLevel.Warning, "Cannot memorise: module not found.");
         }
 
         private void CrPushToSettings()
@@ -2489,6 +2520,11 @@ namespace Kingdoms.Bot.UI
                 AtWriteToSettings();
                 tabName = "Attacker";
             }
+            else if (_tabControl.SelectedTab == _timingPage)
+            {
+                TtWriteToSettings();
+                tabName = "Timing Tool";
+            }
 
             BotEngine.Instance.ApplySettings();
             BotEngine.Instance.SaveSettings();
@@ -2510,6 +2546,11 @@ namespace Kingdoms.Bot.UI
             else if (_tabControl.SelectedTab == _radarPage)
             {
                 RdLoadFromSettings();
+                // ReloadSettings() replaced the whole BotSettings tree, so the group action
+                // rows still reference the old (detached) RadarActionSettings. Rebuild them so
+                // they rebind to the reloaded settings, then refresh the rest of the group UI.
+                GrpBuildActionRows();
+                GrpLoadFromSettings();
                 tabName = "Radar";
             }
             else if (_tabControl.SelectedTab == _recruitingPage)
@@ -2583,6 +2624,11 @@ namespace Kingdoms.Bot.UI
                 AtLoadFromSettings();
                 tabName = "Attacker";
             }
+            else if (_tabControl.SelectedTab == _timingPage)
+            {
+                TtLoadFromSettings();
+                tabName = "Timing Tool";
+            }
 
             RefreshStatus();
             BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings reloaded from disk.");
@@ -2620,6 +2666,24 @@ namespace Kingdoms.Bot.UI
                 TradeModule m = GetTradeModule();
                 if (m != null) m.SetManualDisablePending(!_trEnabledCheck.Checked);
             };
+            // Live-apply the general trade settings to memory as they're edited (consistent
+            // with every other tab). TrWriteToSettings is memory-only and guards on _trLoading;
+            // persistence still happens via the Save Settings button. NB: the actual disk write
+            // of player-route progress is done at runtime by TradeModule when
+            // AutoSavePlayerRouteProgress is on — that path is unaffected by this wiring.
+            _trIntervalInput.ValueChanged += delegate { TrWriteToSettings(); };
+            _trDelayInput.ValueChanged += delegate { TrWriteToSettings(); };
+            _trMerchantsPerTradeInput.ValueChanged += delegate { TrWriteToSettings(); };
+            _trTradeLimitInput.ValueChanged += delegate { TrWriteToSettings(); };
+            _trExchangeLimitInput.ValueChanged += delegate { TrWriteToSettings(); };
+            _trAutoHireCheck.CheckedChanged += delegate { TrWriteToSettings(); };
+            _trAutoHireLimitInput.ValueChanged += delegate { TrWriteToSettings(); };
+            _trIgnoreTransactionsCheck.CheckedChanged += delegate { TrWriteToSettings(); };
+            _trPriorityCombo.SelectedIndexChanged += delegate { TrWriteToSettings(); };
+            _trDisableOnCardExpiryCheck.CheckedChanged += delegate { TrWriteToSettings(); };
+            _trDisableAfterInput.ValueChanged += delegate { TrWriteToSettings(); };
+            _trDisbandOnDisableCheck.CheckedChanged += delegate { TrWriteToSettings(); };
+            _trAutoSaveRouteProgressCheck.CheckedChanged += delegate { TrWriteToSettings(); };
             // Persist the per-village "Should this village trade?" toggle immediately,
             // otherwise the change is lost unless the user switches village or saves.
             _trVillageTradingCheck.CheckedChanged += delegate { if (!_trLoading) TrSaveCurrentVillage(); };
@@ -3626,6 +3690,12 @@ namespace Kingdoms.Bot.UI
         {
             // Wire events for Designer-defined controls
             _bldEnabledCheck.CheckedChanged += delegate { BldWriteToSettings(); };
+            // Live-apply the general builder settings to memory as they're edited (consistent
+            // with every other tab). BldWriteToSettings is memory-only and guards on _bldLoading;
+            // persistence still happens via the Save Settings button.
+            _bldIntervalInput.ValueChanged += delegate { BldWriteToSettings(); };
+            _bldDelayInput.ValueChanged += delegate { BldWriteToSettings(); };
+            _bldWaitForResourcesCheck.CheckedChanged += delegate { BldWriteToSettings(); };
             _bldVillageCombo.SelectedIndexChanged += delegate { BldVillageSelected(); };
             _bldVillageEnabledCheck.CheckedChanged += delegate { BldVillageEnabledChanged(); };
             _bldCopySettingsBtn.Click += delegate { BldCopySettingsClick(); };
