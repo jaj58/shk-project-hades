@@ -1062,6 +1062,7 @@ namespace Kingdoms.Bot
         public bool ShowUserScreenInfo = false;
         public bool MapAttackTypeIcons = false;
         public bool FastMapZoom = false;
+        public bool ShowActiveEnemyCards = false;
     }
 
     // =========================================================================

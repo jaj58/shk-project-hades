@@ -6121,6 +6121,7 @@ namespace Kingdoms.Bot.UI
             _miscShowUserScreenInfoCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             _miscMapAttackTypeIconsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             _miscFastMapZoomCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
+            _miscShowActiveEnemyCardsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             MiscRefreshSaleInfo();
         }
 
@@ -6139,6 +6140,7 @@ namespace Kingdoms.Bot.UI
                 _miscShowUserScreenInfoCheck.Checked = s.ShowUserScreenInfo;
                 _miscMapAttackTypeIconsCheck.Checked = s.MapAttackTypeIcons;
                 _miscFastMapZoomCheck.Checked = s.FastMapZoom;
+                _miscShowActiveEnemyCardsCheck.Checked = s.ShowActiveEnemyCards;
             }
             finally { _miscLoading = false; }
         }
@@ -6156,6 +6158,7 @@ namespace Kingdoms.Bot.UI
             s.ShowUserScreenInfo = _miscShowUserScreenInfoCheck.Checked;
             s.MapAttackTypeIcons = _miscMapAttackTypeIconsCheck.Checked;
             s.FastMapZoom = _miscFastMapZoomCheck.Checked;
+            s.ShowActiveEnemyCards = _miscShowActiveEnemyCardsCheck.Checked;
             // Live only — consistent with every other tab. Persistence happens via the
             // Save Settings button; Load Settings reverts to the last saved snapshot.
         }

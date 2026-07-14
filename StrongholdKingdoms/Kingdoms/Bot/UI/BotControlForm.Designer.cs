@@ -495,6 +495,7 @@ namespace Kingdoms.Bot.UI
             this._miscShowUserScreenInfoCheck = new System.Windows.Forms.CheckBox();
             this._miscMapAttackTypeIconsCheck = new System.Windows.Forms.CheckBox();
             this._miscFastMapZoomCheck = new System.Windows.Forms.CheckBox();
+            this._miscShowActiveEnemyCardsCheck = new System.Windows.Forms.CheckBox();
             this._miscSaleHeaderLabel = new System.Windows.Forms.Label();
             this._miscSalePctLabel = new System.Windows.Forms.Label();
             this._miscSalePctValue = new System.Windows.Forms.Label();
@@ -6082,6 +6083,7 @@ namespace Kingdoms.Bot.UI
             this._miscSettingsPanel.Controls.Add(this._miscShowUserScreenInfoCheck);
             this._miscSettingsPanel.Controls.Add(this._miscMapAttackTypeIconsCheck);
             this._miscSettingsPanel.Controls.Add(this._miscFastMapZoomCheck);
+            this._miscSettingsPanel.Controls.Add(this._miscShowActiveEnemyCardsCheck);
             this._miscSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._miscSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._miscSettingsPanel.Name = "_miscSettingsPanel";
@@ -6172,6 +6174,18 @@ namespace Kingdoms.Bot.UI
             this._miscFastMapZoomCheck.Size = new System.Drawing.Size(214, 23);
             this._miscFastMapZoomCheck.TabIndex = 7;
             this._miscFastMapZoomCheck.Text = "Fast Map Zoom";
+            //
+            // _miscShowActiveEnemyCardsCheck
+            //
+            this._miscShowActiveEnemyCardsCheck.AutoSize = true;
+            this._miscShowActiveEnemyCardsCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._miscShowActiveEnemyCardsCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._miscShowActiveEnemyCardsCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscShowActiveEnemyCardsCheck.Location = new System.Drawing.Point(16, 202);
+            this._miscShowActiveEnemyCardsCheck.Name = "_miscShowActiveEnemyCardsCheck";
+            this._miscShowActiveEnemyCardsCheck.Size = new System.Drawing.Size(214, 23);
+            this._miscShowActiveEnemyCardsCheck.TabIndex = 8;
+            this._miscShowActiveEnemyCardsCheck.Text = "Show active enemy cards";
             //
             // _miscSaleHeaderLabel
             //
@@ -7117,6 +7131,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _miscShowUserScreenInfoCheck;
         private System.Windows.Forms.CheckBox _miscMapAttackTypeIconsCheck;
         private System.Windows.Forms.CheckBox _miscFastMapZoomCheck;
+        private System.Windows.Forms.CheckBox _miscShowActiveEnemyCardsCheck;
         private System.Windows.Forms.Label _miscSaleHeaderLabel;
         private System.Windows.Forms.Label _miscSalePctLabel;
         private System.Windows.Forms.Label _miscSalePctValue;

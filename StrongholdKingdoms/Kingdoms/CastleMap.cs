@@ -7229,6 +7229,7 @@ namespace Kingdoms
           this.castleCombat.CloseExtremeLogging();
           this.castleCombat.battlePaused = true;
           this.endOfBattle = true;
+          EnemyCardOverlay.Clear();
           this.endingTroopNumbers = this.castleCombat.getBattleTroopNumbers();
           InterfaceMgr.Instance.ShowViewBattleResults(this.castleCombat.hasAttackerWon(), this.startingTroopNumbers, this.endingTroopNumbers, this.VillageID, this.m_reportReturnData);
         }
