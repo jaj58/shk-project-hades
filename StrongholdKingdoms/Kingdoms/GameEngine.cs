@@ -451,8 +451,9 @@ namespace Kingdoms
         Bot.BotEngine.Instance.Shutdown();
       bool botFormWasOpen = Bot.UI.BotControlForm.CloseInstance();
       int worldId = this.World.GetGlobalWorldID();
+      int userId = RemoteServices.Instance != null ? RemoteServices.Instance.UserID : 0;
       Bot.BotEngine.Instance = new Bot.BotEngine();
-      Bot.BotEngine.Instance.Init(worldId);
+      Bot.BotEngine.Instance.Init(userId, worldId);
       if (botFormWasOpen)
         Bot.UI.BotControlForm.ShowInstance();
 

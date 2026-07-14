@@ -9,6 +9,7 @@ namespace Kingdoms.Bot
 
         private readonly List<IBotModule> _modules = new List<IBotModule>();
         private BotSettings _settings;
+        private int _userId;
         private int _worldId;
 
         public BotSettings Settings
@@ -26,11 +27,13 @@ namespace Kingdoms.Bot
             get { return _settings != null && _settings.BotEnabled; }
         }
 
-        public void Init(int worldId)
+        public void Init(int userId, int worldId)
         {
+            _userId = userId;
             _worldId = worldId;
-            _settings = BotSettings.Load(worldId);
-            BotLogger.Log("BotEngine", BotLogLevel.Info, "Bot engine initializing for world " + worldId + "...");
+            _settings = BotSettings.Load(userId, worldId);
+            BotLogger.Log("BotEngine", BotLogLevel.Info,
+                "Bot engine initializing for user " + userId + ", world " + worldId + "...");
 
             RegisterModule(new Modules.VillageSyncModule());
             RegisterModule(new Modules.RadarModule());
@@ -166,7 +169,7 @@ namespace Kingdoms.Bot
 
         public void ReloadSettings()
         {
-            _settings = BotSettings.Load(_worldId);
+            _settings = BotSettings.Load(_userId, _worldId);
             ApplySettings();
             BotLogger.Log("BotEngine", BotLogLevel.Info, "Settings reloaded from disk.");
         }
