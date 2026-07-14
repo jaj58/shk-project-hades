@@ -324,7 +324,6 @@ namespace Kingdoms.Bot.UI
             }
             _ttAddIdsBox.Text = "";
             TtRefreshSourceList();
-            SaveSettingsSafe();
         }
 
         /// <summary>
@@ -380,7 +379,6 @@ namespace Kingdoms.Bot.UI
                 {
                     _ttAddNamesBox.Text = "";
                     TtRefreshSourceList();
-                    SaveSettingsSafe();
                     _ttAddNamesBtn.Enabled = true;
                     _ttAddNamesBtn.Text = "Add Players";
                     string msg = "Added " + added + " village(s) from " + names.Count + " player(s).";
@@ -400,7 +398,6 @@ namespace Kingdoms.Bot.UI
             if (vid <= 0) { TtSetStatus("No village selected on the map."); return; }
             TtAddSource(vid);
             TtRefreshSourceList();
-            SaveSettingsSafe();
         }
 
         /// <summary>
@@ -445,7 +442,6 @@ namespace Kingdoms.Bot.UI
                     foreach (int v in villages) TtAddSource(v);
                     int added = (TtSettings != null ? TtSettings.SourceVillages.Count : 0) - before;
                     TtRefreshSourceList();
-                    SaveSettingsSafe();
                     _ttAddMapPlayerBtn.Enabled = true;
                     _ttAddMapPlayerBtn.Text = "Add Player From Map";
                     TtSetStatus("Added " + added + " village(s) for '" + playerName + "'.");
@@ -517,7 +513,6 @@ namespace Kingdoms.Bot.UI
                     }
                 }
                 TtRefreshSourceList();
-                SaveSettingsSafe();
                 TtSetStatus("Loaded " + added + " new source village(s).");
             }
             catch (Exception ex)
@@ -535,7 +530,6 @@ namespace Kingdoms.Bot.UI
             if (idx < 0 || idx >= s.SourceVillages.Count) return;
             s.SourceVillages.RemoveAt(idx);
             TtRefreshSourceList();
-            SaveSettingsSafe();
         }
 
         private void TtClearSources()
@@ -544,7 +538,6 @@ namespace Kingdoms.Bot.UI
             if (s == null) return;
             s.SourceVillages.Clear();
             TtRefreshSourceList();
-            SaveSettingsSafe();
         }
 
         private void TtRefreshSourceList()
@@ -617,18 +610,6 @@ namespace Kingdoms.Bot.UI
             s.AllowedCards.Clear();
             foreach (KeyValuePair<int, CheckBox> kv in _ttCardChecks)
                 if (kv.Value.Checked) s.AllowedCards.Add(kv.Key);
-
-            SaveSettingsSafe();
-        }
-
-        private void SaveSettingsSafe()
-        {
-            try
-            {
-                if (BotEngine.Instance != null && BotEngine.Instance.Settings != null)
-                    BotEngine.Instance.Settings.Save();
-            }
-            catch { }
         }
 
         // =====================================================================
