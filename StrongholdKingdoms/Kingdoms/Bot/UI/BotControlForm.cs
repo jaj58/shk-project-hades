@@ -6120,7 +6120,7 @@ namespace Kingdoms.Bot.UI
             _miscWorldMapParishBuildingCountCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             _miscShowUserScreenInfoCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             _miscMapAttackTypeIconsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
-            _miscFastMapZoomCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
+            _miscMapSwitchModeCombo.SelectedIndexChanged += delegate { MiscWriteToSettings(); };
             _miscShowActiveEnemyCardsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             MiscRefreshSaleInfo();
         }
@@ -6139,7 +6139,7 @@ namespace Kingdoms.Bot.UI
                 _miscWorldMapParishBuildingCountCheck.Checked = s.WorldMapParishBuildingCount;
                 _miscShowUserScreenInfoCheck.Checked = s.ShowUserScreenInfo;
                 _miscMapAttackTypeIconsCheck.Checked = s.MapAttackTypeIcons;
-                _miscFastMapZoomCheck.Checked = s.FastMapZoom;
+                _miscMapSwitchModeCombo.SelectedIndex = (s.MapSwitchMode >= 0 && s.MapSwitchMode < _miscMapSwitchModeCombo.Items.Count) ? s.MapSwitchMode : 0;
                 _miscShowActiveEnemyCardsCheck.Checked = s.ShowActiveEnemyCards;
             }
             finally { _miscLoading = false; }
@@ -6157,7 +6157,7 @@ namespace Kingdoms.Bot.UI
             s.WorldMapParishBuildingCount = _miscWorldMapParishBuildingCountCheck.Checked;
             s.ShowUserScreenInfo = _miscShowUserScreenInfoCheck.Checked;
             s.MapAttackTypeIcons = _miscMapAttackTypeIconsCheck.Checked;
-            s.FastMapZoom = _miscFastMapZoomCheck.Checked;
+            s.MapSwitchMode = _miscMapSwitchModeCombo.SelectedIndex < 0 ? 0 : _miscMapSwitchModeCombo.SelectedIndex;
             s.ShowActiveEnemyCards = _miscShowActiveEnemyCardsCheck.Checked;
             // Live only — consistent with every other tab. Persistence happens via the
             // Save Settings button; Load Settings reverts to the last saved snapshot.

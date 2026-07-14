@@ -1061,7 +1061,9 @@ namespace Kingdoms.Bot
         public bool WorldMapParishBuildingCount = false;
         public bool ShowUserScreenInfo = false;
         public bool MapAttackTypeIcons = false;
-        public bool FastMapZoom = false;
+        // 0 = Off (animated multi-stage zoom), 1 = Fast Village Switch (instant, keep zoom),
+        // 2 = Auto Zoom when switching (instant, snap to max zoom)
+        public int MapSwitchMode = 0;
         public bool ShowActiveEnemyCards = false;
     }
 
