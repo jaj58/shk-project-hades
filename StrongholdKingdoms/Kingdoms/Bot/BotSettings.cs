@@ -15,6 +15,8 @@ namespace Kingdoms.Bot
         [System.Xml.Serialization.XmlIgnore]
         public bool BotEnabled;
         [System.Xml.Serialization.XmlIgnore]
+        private int _userId;
+        [System.Xml.Serialization.XmlIgnore]
         private int _worldId;
 
         public VillageSyncSettings VillageSync = new VillageSyncSettings();
@@ -41,11 +43,22 @@ namespace Kingdoms.Bot
         // on first use (typically game startup) rather than on every world switch.
         private static readonly XmlSerializer _serializer = new XmlSerializer(typeof(BotSettings));
 
-        private static string GetSettingsFilePath(int worldId)
+        private static string GetGlobalSettingsPath()
         {
-            string dir = GameEngine.getSettingsPath(true);
-            string file = worldId > 0 ? "bot_settings_" + worldId + ".xml" : "bot_settings.xml";
-            return Path.Combine(dir, file);
+            return Path.Combine(GameEngine.getSettingsPath(true), "bot_settings.xml");
+        }
+
+        // Legacy world-only file from before player-scoping. Read-only default source —
+        // never written to, so it stays an untouched backup after accounts fork off it.
+        private static string GetLegacyWorldSettingsPath(int worldId)
+        {
+            return Path.Combine(GameEngine.getSettingsPath(true), "bot_settings_" + worldId + ".xml");
+        }
+
+        private static string GetPlayerSettingsPath(int userId, int worldId)
+        {
+            return Path.Combine(GameEngine.getSettingsPath(true),
+                "bot_settings_" + userId + "_" + worldId + ".xml");
         }
 
         private static BotSettings DeserializeFrom(string path)
@@ -69,17 +82,34 @@ namespace Kingdoms.Bot
             return null;
         }
 
-        public static BotSettings Load(int worldId)
+        public static BotSettings Load(int userId, int worldId)
         {
-            BotSettings s = DeserializeFrom(GetSettingsFilePath(worldId));
-            if (s == null && worldId > 0)
+            // Pre-login / no identity → install-global file (license check path)
+            if (userId <= 0 || worldId <= 0)
             {
-                // New world — start fresh; copy LicenseKey from the legacy global file if it exists
-                s = new BotSettings();
-                BotSettings global = DeserializeFrom(GetSettingsFilePath(0));
-                if (global != null) s.LicenseKey = global.LicenseKey;
+                BotSettings g = DeserializeFrom(GetGlobalSettingsPath());
+                if (g == null) g = new BotSettings();
+                g._userId = userId;
+                g._worldId = worldId;
+                return g;
             }
-            if (s == null) s = new BotSettings();
+
+            // Authoritative player-specific file
+            BotSettings s = DeserializeFrom(GetPlayerSettingsPath(userId, worldId));
+            if (s == null)
+            {
+                // Read-through: adopt the legacy world file as DEFAULTS (never written back).
+                // The first Save() forks to the player-specific path automatically.
+                s = DeserializeFrom(GetLegacyWorldSettingsPath(worldId));
+                if (s == null)
+                {
+                    // Truly new — seed LicenseKey from the install-global file.
+                    s = new BotSettings();
+                    BotSettings global = DeserializeFrom(GetGlobalSettingsPath());
+                    if (global != null) s.LicenseKey = global.LicenseKey;
+                }
+            }
+            s._userId = userId;
             s._worldId = worldId;
             return s;
         }
@@ -104,7 +134,12 @@ namespace Kingdoms.Bot
 
         public void Save()
         {
-            SerializeTo(GetSettingsFilePath(_worldId));
+            // Write to the player-specific file once we have a full identity; otherwise the
+            // install-global file. This guarantees the legacy world file is never overwritten.
+            string path = (_userId > 0 && _worldId > 0)
+                ? GetPlayerSettingsPath(_userId, _worldId)
+                : GetGlobalSettingsPath();
+            SerializeTo(path);
         }
     }
 

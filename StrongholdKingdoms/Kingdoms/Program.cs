@@ -1139,7 +1139,7 @@ namespace Kingdoms
     {
       try
       {
-        Bot.BotSettings settings = Bot.BotSettings.Load(0); // worldId 0 = global fallback, runs pre-login
+        Bot.BotSettings settings = Bot.BotSettings.Load(0, 0); // userId/worldId 0 = global fallback, runs pre-login
         string licenseKey = settings != null ? settings.LicenseKey : string.Empty;
 
         // First run — prompt for key
