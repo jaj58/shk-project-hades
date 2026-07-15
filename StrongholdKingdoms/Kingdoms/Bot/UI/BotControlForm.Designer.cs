@@ -38,6 +38,46 @@ namespace Kingdoms.Bot.UI
                     _scRefreshTimer.Stop();
                     _scRefreshTimer.Dispose();
                 }
+                if (_crRefreshTimer != null)
+                {
+                    _crRefreshTimer.Stop();
+                    _crRefreshTimer.Dispose();
+                }
+                if (_trRefreshTimer != null)
+                {
+                    _trRefreshTimer.Stop();
+                    _trRefreshTimer.Dispose();
+                }
+                if (_bldRefreshTimer != null)
+                {
+                    _bldRefreshTimer.Stop();
+                    _bldRefreshTimer.Dispose();
+                }
+                if (_abRefreshTimer != null)
+                {
+                    _abRefreshTimer.Stop();
+                    _abRefreshTimer.Dispose();
+                }
+                if (_abmRefreshTimer != null)
+                {
+                    _abmRefreshTimer.Stop();
+                    _abmRefreshTimer.Dispose();
+                }
+                if (_dfRefreshTimer != null)
+                {
+                    _dfRefreshTimer.Stop();
+                    _dfRefreshTimer.Dispose();
+                }
+                if (_mkSyncTimer != null)
+                {
+                    _mkSyncTimer.Stop();
+                    _mkSyncTimer.Dispose();
+                }
+                if (_atRefreshTimer != null)
+                {
+                    _atRefreshTimer.Stop();
+                    _atRefreshTimer.Dispose();
+                }
                 if (components != null)
                     components.Dispose();
             }
@@ -497,6 +537,7 @@ namespace Kingdoms.Bot.UI
             this._miscMapSwitchModeCombo = new System.Windows.Forms.ComboBox();
             this._miscMapSwitchLabel = new System.Windows.Forms.Label();
             this._miscShowActiveEnemyCardsCheck = new System.Windows.Forms.CheckBox();
+            this._miscShowAllAttackTimesCheck = new System.Windows.Forms.CheckBox();
             this._miscSaleHeaderLabel = new System.Windows.Forms.Label();
             this._miscSalePctLabel = new System.Windows.Forms.Label();
             this._miscSalePctValue = new System.Windows.Forms.Label();
@@ -6086,6 +6127,7 @@ namespace Kingdoms.Bot.UI
             this._miscSettingsPanel.Controls.Add(this._miscMapSwitchLabel);
             this._miscSettingsPanel.Controls.Add(this._miscMapSwitchModeCombo);
             this._miscSettingsPanel.Controls.Add(this._miscShowActiveEnemyCardsCheck);
+            this._miscSettingsPanel.Controls.Add(this._miscShowAllAttackTimesCheck);
             this._miscSettingsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this._miscSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._miscSettingsPanel.Name = "_miscSettingsPanel";
@@ -6200,6 +6242,18 @@ namespace Kingdoms.Bot.UI
             this._miscShowActiveEnemyCardsCheck.Size = new System.Drawing.Size(214, 23);
             this._miscShowActiveEnemyCardsCheck.TabIndex = 8;
             this._miscShowActiveEnemyCardsCheck.Text = "Show active enemy cards";
+            //
+            // _miscShowAllAttackTimesCheck
+            //
+            this._miscShowAllAttackTimesCheck.AutoSize = true;
+            this._miscShowAllAttackTimesCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._miscShowAllAttackTimesCheck.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this._miscShowAllAttackTimesCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._miscShowAllAttackTimesCheck.Location = new System.Drawing.Point(16, 228);
+            this._miscShowAllAttackTimesCheck.Name = "_miscShowAllAttackTimesCheck";
+            this._miscShowAllAttackTimesCheck.Size = new System.Drawing.Size(214, 23);
+            this._miscShowAllAttackTimesCheck.TabIndex = 9;
+            this._miscShowAllAttackTimesCheck.Text = "Show all attack times on Launch Attack";
             //
             // _miscSaleHeaderLabel
             //
@@ -7147,6 +7201,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.ComboBox _miscMapSwitchModeCombo;
         private System.Windows.Forms.Label _miscMapSwitchLabel;
         private System.Windows.Forms.CheckBox _miscShowActiveEnemyCardsCheck;
+        private System.Windows.Forms.CheckBox _miscShowAllAttackTimesCheck;
         private System.Windows.Forms.Label _miscSaleHeaderLabel;
         private System.Windows.Forms.Label _miscSalePctLabel;
         private System.Windows.Forms.Label _miscSalePctValue;
