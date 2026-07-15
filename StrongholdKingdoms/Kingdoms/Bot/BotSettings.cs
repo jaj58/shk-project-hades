@@ -1139,8 +1139,11 @@ namespace Kingdoms.Bot
         // Legacy single/dual fields kept as XmlIgnore so old XML round-trips safely
         [System.Xml.Serialization.XmlIgnore] public int CardDefId  = 0;
         [System.Xml.Serialization.XmlIgnore] public int CardDefId2 = 0;
-        public bool WasAutoStarted = false;
-        public bool ManuallyDisabledDuringWindow = false;
+        // Runtime-only window-tracking flags — never persist these. A stale WasAutoStarted=true
+        // loaded from XML makes the scheduler think the user manually disabled the module and
+        // refuse to start it for the rest of the window.
+        [System.Xml.Serialization.XmlIgnore] public bool WasAutoStarted = false;
+        [System.Xml.Serialization.XmlIgnore] public bool ManuallyDisabledDuringWindow = false;
         // Runtime-only tracking of active card instance IDs (not persisted)
         [System.Xml.Serialization.XmlIgnore]
         public List<int> LastPlayedCardInstanceIds = new List<int>();

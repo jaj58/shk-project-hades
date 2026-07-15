@@ -6875,6 +6875,7 @@ namespace Kingdoms.Bot.UI
                 cb.Location = new Point(120 + col * 32, rowY);
                 cb.Size = new Size(20, 18);
                 cb.BackColor = Color.Transparent;
+                cb.CheckedChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
                 row.HourChecks[h] = cb;
                 panel.Controls.Add(cb);
             }
