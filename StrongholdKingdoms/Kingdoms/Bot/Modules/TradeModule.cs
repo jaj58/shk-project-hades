@@ -129,6 +129,7 @@ namespace Kingdoms.Bot.Modules
             public int TargetId;
             public int ResourceId;
             public int Amount;
+            public long EstimatedGold;
             public string RouteName;
             public PlayerTradeRouteSettings PlayerRoute;
             public PlayerTradeResourceEntry PlayerEntry;
@@ -877,7 +878,7 @@ namespace Kingdoms.Bot.Modules
 
         private void RecordPending(PendingKind kind, int villageId, int targetId, int resourceId,
             int amount, string routeName, PlayerTradeRouteSettings playerRoute,
-            PlayerTradeResourceEntry playerEntry)
+            PlayerTradeResourceEntry playerEntry, long estimatedGold)
         {
             PendingDispatch pending = new PendingDispatch();
             pending.Kind = kind;
@@ -885,6 +886,7 @@ namespace Kingdoms.Bot.Modules
             pending.TargetId = targetId;
             pending.ResourceId = resourceId;
             pending.Amount = amount;
+            pending.EstimatedGold = estimatedGold;
             pending.RouteName = routeName;
             pending.PlayerRoute = playerRoute;
             pending.PlayerEntry = playerEntry;
@@ -1010,11 +1012,11 @@ namespace Kingdoms.Bot.Modules
             switch (pending.Kind)
             {
                 case PendingKind.MarketSell:
-                    _stats.RecordSell(pending.ResourceId, pending.Amount);
+                    _stats.RecordSell(pending.ResourceId, pending.Amount, pending.EstimatedGold);
                     break;
 
                 case PendingKind.MarketBuy:
-                    _stats.RecordBuy(pending.ResourceId, pending.Amount);
+                    _stats.RecordBuy(pending.ResourceId, pending.Amount, pending.EstimatedGold);
                     break;
 
                 case PendingKind.Route:
@@ -1164,8 +1166,21 @@ namespace Kingdoms.Bot.Modules
                     return TradeActionResult.Blocked;
                 }
 
+                // Expected proceeds, same formula as the game's trade panel:
+                // per-merchant value at the post-sale stock level, scaled by
+                // card-boosted carry vs base carry.
+                long estimatedGold = 0;
+                try
+                {
+                    int aggCost = TradingCalcs.calcGoldCost(GameEngine.Instance.LocalWorldData,
+                        marketStock, resourceId, marketStock + amount);
+                    estimatedGold = (long)TradingCalcs.calcSellCost(GameEngine.Instance.LocalWorldData, aggCost) *
+                        numMerchants * carryLevel / GetBaseCarryLevel(resourceId);
+                }
+                catch { }
+
                 RecordPending(PendingKind.MarketSell, villageId, bestMarket, resourceId, amount,
-                    null, null, null);
+                    null, null, null, estimatedGold);
                 LogInfo(villageName + " [Market] SELL " + amount + " " +
                         TradeModuleConstants.GetResourceName(resourceId) +
                         " -> " + GetVillageName(bestMarket) +
@@ -1248,8 +1263,20 @@ namespace Kingdoms.Bot.Modules
                     return TradeActionResult.Blocked;
                 }
 
+                // Expected cost, same formula as the game's trade panel. Recompute
+                // per-merchant cost since numMerchants may have been clamped above.
+                long estimatedGold = 0;
+                try
+                {
+                    int finalCostPerMerchant = TradingCalcs.calcGoldCost(GameEngine.Instance.LocalWorldData,
+                        marketStock, resourceId, marketStock - amount);
+                    estimatedGold = (long)finalCostPerMerchant * carryLevel /
+                        GetBaseCarryLevel(resourceId) * numMerchants;
+                }
+                catch { }
+
                 RecordPending(PendingKind.MarketBuy, villageId, bestMarket, resourceId, amount,
-                    null, null, null);
+                    null, null, null, estimatedGold);
                 LogInfo(villageName + " [Market] BUY " + amount + " " +
                         TradeModuleConstants.GetResourceName(resourceId) +
                         " <- " + GetVillageName(bestMarket) +
@@ -1467,7 +1494,7 @@ namespace Kingdoms.Bot.Modules
                         }
 
                         RecordPending(PendingKind.Route, senderId, recipientId, resourceId, amount,
-                            route.Name, null, null);
+                            route.Name, null, null, 0);
                         LogInfo(senderName + " [Route '" + route.Name + "'] -> " +
                                 GetVillageName(recipientId) +
                                 ": " + amount + " " +
@@ -1569,7 +1596,7 @@ namespace Kingdoms.Bot.Modules
                     // Progress (AmountSent) is updated only when the server confirms
                     // the send — see ApplyTradeResult.
                     RecordPending(PendingKind.PlayerRoute, senderId, route.TargetVillageId,
-                        resourceId, amount, route.Name, route, resEntry);
+                        resourceId, amount, route.Name, route, resEntry, 0);
 
                     string resourceName = TradeModuleConstants.GetResourceName(resourceId);
                     LogInfo(senderName + " [Player Route '" + route.Name + "'] -> " +
@@ -1940,6 +1967,8 @@ namespace Kingdoms.Bot.Modules
         {
             public DateTime SessionStart = DateTime.Now;
             public long SessionStartGold = 0;
+            public long GoldEarned;
+            public long GoldSpent;
             public readonly Dictionary<int, long> SoldByResource   = new Dictionary<int, long>();
             public readonly Dictionary<int, long> BoughtByResource = new Dictionary<int, long>();
             public readonly Dictionary<int, long> SentByResource   = new Dictionary<int, long>();
@@ -1948,15 +1977,17 @@ namespace Kingdoms.Bot.Modules
             public int TotalRouteSends;
             public int TotalPlayerRouteSends;
 
-            public void RecordSell(int resourceId, int amount)
+            public void RecordSell(int resourceId, int amount, long gold)
             {
                 AddTo(SoldByResource, resourceId, amount);
+                GoldEarned += gold;
                 TotalSellTrades++;
             }
 
-            public void RecordBuy(int resourceId, int amount)
+            public void RecordBuy(int resourceId, int amount, long gold)
             {
                 AddTo(BoughtByResource, resourceId, amount);
+                GoldSpent += gold;
                 TotalBuyTrades++;
             }
 
@@ -1982,6 +2013,8 @@ namespace Kingdoms.Bot.Modules
             {
                 SessionStart = DateTime.Now;
                 SessionStartGold = 0;
+                GoldEarned = 0;
+                GoldSpent = 0;
                 SoldByResource.Clear();
                 BoughtByResource.Clear();
                 SentByResource.Clear();
