@@ -166,6 +166,7 @@ namespace Kingdoms
     public static bool enterPressed = false;
     public static bool f11Pressed = false;
     public static bool f12Pressed = false;
+    public static bool ctrlFPressed = false;
     public Point lastMouseMovePosition;
     public DateTime lastMouseMoveTime = DateTime.Now;
     private static string userPath = (string) null;
@@ -1318,6 +1319,16 @@ namespace Kingdoms
                 openOnce = false;
        // GameEngine.f12Pressed = false;
         Bot.UI.BotControlForm.ShowInstance();
+      }
+      if (GameEngine.ctrlFPressed)
+      {
+        GameEngine.ctrlFPressed = false;
+        if (this.GameDisplayMode == GameEngine.GameDisplays.DISPLAY_WORLD && InterfaceMgr.Instance.ParentForm != null && InterfaceMgr.Instance.ParentForm.Visible)
+        {
+          SearchForVillagePopup searchForVillagePopup = new SearchForVillagePopup();
+          searchForVillagePopup.ShowDialog((IWin32Window) InterfaceMgr.Instance.ParentForm);
+          searchForVillagePopup.Dispose();
+        }
       }
       if (GameEngine.f11Pressed)
       {
@@ -3014,6 +3025,13 @@ namespace Kingdoms
                 if (GameEngine.Instance.GameDisplayMode != GameEngine.GameDisplays.DISPLAY_MAIL && !flag1)
                   return (IntPtr) 1;
                 break;
+              }
+              break;
+            case 70:
+              if (!flag1 && GameEngine.Instance.GFX.keyControlled && GameEngine.Instance.GameDisplayMode == GameEngine.GameDisplays.DISPLAY_WORLD)
+              {
+                GameEngine.ctrlFPressed = true;
+                return (IntPtr) 1;
               }
               break;
             case 122:
