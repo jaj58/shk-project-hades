@@ -1065,6 +1065,7 @@ namespace Kingdoms.Bot
         // 2 = Auto Zoom when switching (instant, snap to max zoom)
         public int MapSwitchMode = 0;
         public bool ShowActiveEnemyCards = false;
+        public bool ShowAllAttackTimes = false;
     }
 
     // =========================================================================

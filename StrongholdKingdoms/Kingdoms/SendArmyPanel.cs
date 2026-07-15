@@ -5,6 +5,7 @@
 // Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.43.10\StrongholdKingdoms.exe
 
 using CommonTypes;
+using Kingdoms.Bot;
 using System;
 using System.ComponentModel;
 using System.Drawing;
@@ -52,6 +53,7 @@ namespace Kingdoms
     private CustomSelfDrawPanel.CSDImage honourPenaltyImage = new CustomSelfDrawPanel.CSDImage();
     private CustomSelfDrawPanel.CSDImage captureCostImage = new CustomSelfDrawPanel.CSDImage();
     private CustomSelfDrawPanel.CSDImage seaConditionsImage = new CustomSelfDrawPanel.CSDImage();
+    private CustomSelfDrawPanel.CSDLabel[] allAttackTimeLabels = new CustomSelfDrawPanel.CSDLabel[6];
     private int m_selectedPenalty;
     private int m_captureHonourCost;
     private CastleMapAttackerSetupPanel m_parent;
@@ -150,6 +152,20 @@ namespace Kingdoms
       this.targetVillageFavourite.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.villageFavouriteClicked));
       this.targetVillageFavourite.Data = 0;
       this.gfxImage.addControl((CustomSelfDrawPanel.CSDControl) this.targetVillageFavourite);
+      for (int index = 0; index < this.allAttackTimeLabels.Length; ++index)
+      {
+        if (this.allAttackTimeLabels[index] == null)
+          this.allAttackTimeLabels[index] = new CustomSelfDrawPanel.CSDLabel();
+        this.allAttackTimeLabels[index].Text = "";
+        this.allAttackTimeLabels[index].Color = ARGBColors.White;
+        this.allAttackTimeLabels[index].DropShadowColor = ARGBColors.Black;
+        this.allAttackTimeLabels[index].Position = new Point(this.gfxImage.Width - 160 - 20, 38 + index * 13);
+        this.allAttackTimeLabels[index].Size = new Size(160, 14);
+        this.allAttackTimeLabels[index].Font = FontManager.GetFont("Arial", 8f, FontStyle.Regular);
+        this.allAttackTimeLabels[index].Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.TOP_RIGHT;
+        this.allAttackTimeLabels[index].Visible = false;
+        this.gfxImage.addControl((CustomSelfDrawPanel.CSDControl) this.allAttackTimeLabels[index]);
+      }
       this.sliderImage.Position = new Point(273, 304);
       this.sliderImage.Margin = new Rectangle(90, 70, 19, 25);
       this.sliderImage.Value = 0;
@@ -858,6 +874,21 @@ namespace Kingdoms
       this.cardbar.update();
       double distance = this.storedPreCardDistance * CardTypes.getArmySpeed(GameEngine.Instance.cardsManager.UserCardData);
       this.timeLabel.TextDiffOnly = VillageMap.createBuildTimeString((int) GameEngine.Instance.World.adjustIfIslandTravel(distance, this.m_travelFromVillage, this.m_toVillage));
+      bool showAllTimes = BotEngine.Instance?.Settings?.Misc?.ShowAllAttackTimes == true;
+      int activeMultiplier = (int) Math.Round(1.0 / CardTypes.getArmySpeed(GameEngine.Instance.cardsManager.UserCardData));
+      for (int labelIndex = 0; labelIndex < this.allAttackTimeLabels.Length; ++labelIndex)
+      {
+        if (this.allAttackTimeLabels[labelIndex] == null)
+          continue;
+        this.allAttackTimeLabels[labelIndex].Visible = showAllTimes;
+        if (showAllTimes)
+        {
+          int multiplier = labelIndex + 1;
+          double adjustedTime = GameEngine.Instance.World.adjustIfIslandTravel(this.storedPreCardDistance / (double) multiplier, this.m_travelFromVillage, this.m_toVillage);
+          this.allAttackTimeLabels[labelIndex].TextDiffOnly = "x" + multiplier.ToString() + " Attack:  " + VillageMap.createBuildTimeString((int) adjustedTime);
+          this.allAttackTimeLabels[labelIndex].Color = multiplier == activeMultiplier ? ARGBColors.Gold : ARGBColors.White;
+        }
+      }
       if (this.m_lastSeaConditions == -1)
         return;
       int index = GameEngine.Instance.World.SpecialSeaConditionsData + 4;

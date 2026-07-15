@@ -6192,6 +6192,7 @@ namespace Kingdoms.Bot.UI
             _miscMapAttackTypeIconsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             _miscMapSwitchModeCombo.SelectedIndexChanged += delegate { MiscWriteToSettings(); };
             _miscShowActiveEnemyCardsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
+            _miscShowAllAttackTimesCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             MiscRefreshSaleInfo();
         }
 
@@ -6211,6 +6212,7 @@ namespace Kingdoms.Bot.UI
                 _miscMapAttackTypeIconsCheck.Checked = s.MapAttackTypeIcons;
                 _miscMapSwitchModeCombo.SelectedIndex = (s.MapSwitchMode >= 0 && s.MapSwitchMode < _miscMapSwitchModeCombo.Items.Count) ? s.MapSwitchMode : 0;
                 _miscShowActiveEnemyCardsCheck.Checked = s.ShowActiveEnemyCards;
+                _miscShowAllAttackTimesCheck.Checked = s.ShowAllAttackTimes;
             }
             finally { _miscLoading = false; }
         }
@@ -6229,6 +6231,7 @@ namespace Kingdoms.Bot.UI
             s.MapAttackTypeIcons = _miscMapAttackTypeIconsCheck.Checked;
             s.MapSwitchMode = _miscMapSwitchModeCombo.SelectedIndex < 0 ? 0 : _miscMapSwitchModeCombo.SelectedIndex;
             s.ShowActiveEnemyCards = _miscShowActiveEnemyCardsCheck.Checked;
+            s.ShowAllAttackTimes = _miscShowAllAttackTimesCheck.Checked;
             // Live only — consistent with every other tab. Persistence happens via the
             // Save Settings button; Load Settings reverts to the last saved snapshot.
         }
