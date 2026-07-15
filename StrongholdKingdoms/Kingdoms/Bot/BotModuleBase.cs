@@ -64,6 +64,32 @@ namespace Kingdoms.Bot
         /// </summary>
         protected virtual void OnDisable() { }
 
+        /// <summary>
+        /// Removes a card instance from the local ProfileCards inventory after the
+        /// server confirmed it was consumed. Mirrors what the game's own UI does
+        /// (PlayCardsPanel/CardBarGDI call removeProfileCard on play) — without this
+        /// the played instance lingers in ProfileCards and gets re-selected even
+        /// though the server no longer accepts it. Missing IDs are ignored, so it
+        /// is safe to call from any play-response callback.
+        /// </summary>
+        protected void RemoveCardFromLocalInventory(int instanceId)
+        {
+            try
+            {
+                var mgr = GameEngine.Instance != null ? GameEngine.Instance.cardsManager : null;
+                if (mgr == null) return;
+                if (mgr.ProfileCards.ContainsKey(instanceId))
+                {
+                    mgr.removeProfileCard(instanceId);
+                    LogDebug("Removed played card instance " + instanceId + " from local inventory.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogWarning("Could not remove card instance " + instanceId + " from local inventory: " + ex.Message);
+            }
+        }
+
         protected void LogDebug(string message)
         {
             BotLogger.Log(ModuleName, BotLogLevel.Debug, message);

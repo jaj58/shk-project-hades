@@ -2357,7 +2357,12 @@ namespace Kingdoms.Bot.Modules
                     "-1",  // village = -1 → global (not village-specific)
                     RemoteServices.Instance.ProfileWorldID.ToString());
                 provider.PlayUserCard(req,
-                    delegate(ICardsProvider p, ICardsResponse r) { LogDebug("[Card] PlayUserCard response received."); },
+                    delegate(ICardsProvider p, ICardsResponse r)
+                    {
+                        LogDebug("[Card] PlayUserCard response received.");
+                        if (r != null && r.SuccessCode.HasValue && r.SuccessCode.Value == 1)
+                            RemoveCardFromLocalInventory(instanceId);
+                    },
                     (System.Windows.Forms.Control)InterfaceMgr.Instance.getDXBasePanel());
 
                 return true;

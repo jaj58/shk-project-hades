@@ -213,6 +213,7 @@ namespace Kingdoms.Bot.Modules
                         if (ok)
                         {
                             lock (_consumedLock) { _consumedInstanceIds.Add(instanceId); }
+                            RemoveCardFromLocalInventory(instanceId);
                             LogInfo("Card instance " + instanceId + " played OK.");
                             return;
                         }
@@ -230,6 +231,7 @@ namespace Kingdoms.Bot.Modules
                         if (msg.IndexOf("do not have", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
                             lock (_consumedLock) { _consumedInstanceIds.Add(instanceId); }
+                            RemoveCardFromLocalInventory(instanceId);
                         }
                     },
                     (Control)InterfaceMgr.Instance.getDXBasePanel());
