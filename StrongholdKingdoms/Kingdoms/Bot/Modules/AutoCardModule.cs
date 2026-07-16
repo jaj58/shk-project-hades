@@ -213,7 +213,10 @@ namespace Kingdoms.Bot.Modules
                     delegate(ICardsProvider p, ICardsResponse r)
                     {
                         if (r.SuccessCode.HasValue && r.SuccessCode.Value == 1)
+                        {
                             LogInfo("Card instance " + instanceId + " played successfully.");
+                            RemoveCardFromLocalInventory(instanceId);
+                        }
                         else
                             LogWarning("Card instance " + instanceId + " play failed: " + r.Message);
                     },

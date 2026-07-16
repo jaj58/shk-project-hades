@@ -3112,6 +3112,8 @@ namespace Kingdoms.Bot.UI
         private Label _trStatsStartGoldLabel;
         private Label _trStatsCurrentGoldLabel;
         private Label _trStatsGoldDeltaLabel;
+        private Label _trStatsGoldEarnedLabel;
+        private Label _trStatsGoldSpentLabel;
 
         private void TrBuildStatsTab()
         {
@@ -3129,11 +3131,15 @@ namespace Kingdoms.Bot.UI
             _trStatsStartGoldLabel   = MakeStatsLabel("Starting gold: —",      340,  8);
             _trStatsCurrentGoldLabel = MakeStatsLabel("Current gold: —",       340, 28);
             _trStatsGoldDeltaLabel   = MakeStatsLabel("Gold change: —",        340, 48);
+            _trStatsGoldEarnedLabel  = MakeStatsLabel("Gold earnt: —",         560,  8);
+            _trStatsGoldSpentLabel   = MakeStatsLabel("Gold spent: —",         560, 28);
             infoBar.Controls.Add(_trStatsSessionLabel);
             infoBar.Controls.Add(_trStatsDurationLabel);
             infoBar.Controls.Add(_trStatsStartGoldLabel);
             infoBar.Controls.Add(_trStatsCurrentGoldLabel);
             infoBar.Controls.Add(_trStatsGoldDeltaLabel);
+            infoBar.Controls.Add(_trStatsGoldEarnedLabel);
+            infoBar.Controls.Add(_trStatsGoldSpentLabel);
 
             // ── Button bar ────────────────────────────────────────────────────────
             Panel btnBar = new Panel();
@@ -3236,6 +3242,8 @@ namespace Kingdoms.Bot.UI
                 _trStatsStartGoldLabel.Text   = "Starting gold: —";
                 _trStatsCurrentGoldLabel.Text = "Current gold: —";
                 _trStatsGoldDeltaLabel.Text   = "Gold change: —";
+                _trStatsGoldEarnedLabel.Text  = "Gold earnt: —";
+                _trStatsGoldSpentLabel.Text   = "Gold spent: —";
                 _trStatsListView.Items.Clear();
                 return;
             }
@@ -3251,12 +3259,19 @@ namespace Kingdoms.Bot.UI
             try { currentGold = (long)GameEngine.Instance.World.getCurrentGold(); } catch { }
             _trStatsCurrentGoldLabel.Text = "Current gold: " + currentGold.ToString("N0");
 
-            long delta = currentGold - stats.SessionStartGold;
+            // Trading gold only (estimated per confirmed trade) — deliberately NOT
+            // a balance diff, so gold spent/earned elsewhere doesn't pollute it.
+            long delta = stats.GoldEarned - stats.GoldSpent;
             string sign = delta >= 0 ? "+" : "";
             _trStatsGoldDeltaLabel.Text   = "Gold change: " + sign + delta.ToString("N0");
             _trStatsGoldDeltaLabel.ForeColor = delta >= 0
                 ? Color.FromArgb(100, 220, 100)
                 : Color.FromArgb(220, 100, 100);
+
+            _trStatsGoldEarnedLabel.Text = "Gold earnt: +" + stats.GoldEarned.ToString("N0");
+            _trStatsGoldEarnedLabel.ForeColor = Color.FromArgb(100, 220, 100);
+            _trStatsGoldSpentLabel.Text  = "Gold spent: -" + stats.GoldSpent.ToString("N0");
+            _trStatsGoldSpentLabel.ForeColor = Color.FromArgb(220, 100, 100);
 
             _trStatsListView.Items.Clear();
 
@@ -6875,6 +6890,7 @@ namespace Kingdoms.Bot.UI
                 cb.Location = new Point(120 + col * 32, rowY);
                 cb.Size = new Size(20, 18);
                 cb.BackColor = Color.Transparent;
+                cb.CheckedChanged += delegate { if (!_autoLoading) AutoWriteToSettings(); };
                 row.HourChecks[h] = cb;
                 panel.Controls.Add(cb);
             }

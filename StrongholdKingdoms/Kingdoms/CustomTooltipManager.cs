@@ -360,10 +360,10 @@ namespace Kingdoms
           text = SK.Text("TOOLTIPS_MAINWINDOW_TOP_LEFT_RANKING", "Your Current Rank");
           break;
         case 4:
-          text = SK.Text("TOOLTIPS_MAINWINDOW_TOP_LEFT_HONOUR", "Your Current Honour Level");
+          text = SK.Text("TOOLTIPS_MAINWINDOW_TOP_LEFT_HONOUR", "Your Current Honour Level") + Environment.NewLine + "Producing per day : " + (GameEngine.Instance.World.getCurrentHonourRate() * 86400.0).ToString("N0", (IFormatProvider) GameEngine.NFI);
           break;
         case 5:
-          text = SK.Text("TOOLTIPS_MAINWINDOW_TOP_LEFT_GOLD", "Your Current Gold Level");
+          text = SK.Text("TOOLTIPS_MAINWINDOW_TOP_LEFT_GOLD", "Your Current Gold Level") + Environment.NewLine + "Producing per day : " + (GameEngine.Instance.World.getCurrentGoldRate() * 86400.0).ToString("N0", (IFormatProvider) GameEngine.NFI);
           break;
         case 6:
           if (GameEngine.Instance.LocalWorldData.EraWorld)
@@ -375,10 +375,10 @@ namespace Kingdoms
             else if (index >= VillageBuildingsData.faithPointCap_EraWorlds.Length)
               index = VillageBuildingsData.faithPointCap_EraWorlds.Length - 1;
             int pointCapEraWorld = VillageBuildingsData.faithPointCap_EraWorlds[index];
-            text = SK.Text("TOOLTIPS_MAINWINDOW_TOP_LEFT_FAITHPOINTS_CAP", "Your Current Faith Point Cap") + " : " + pointCapEraWorld.ToString("N", (IFormatProvider) nfi);
+            text = SK.Text("TOOLTIPS_MAINWINDOW_TOP_LEFT_FAITHPOINTS_CAP", "Your Current Faith Point Cap") + " : " + pointCapEraWorld.ToString("N", (IFormatProvider) nfi) + Environment.NewLine + "Producing per day : " + (GameEngine.Instance.World.getCurrentFaithPointsRate() * 86400.0).ToString("N0", (IFormatProvider) GameEngine.NFI);
             break;
           }
-          text = SK.Text("TOOLTIPS_MAINWINDOW_TOP_LEFT_FAITHPOINTS", "Your Current Faith Points");
+          text = SK.Text("TOOLTIPS_MAINWINDOW_TOP_LEFT_FAITHPOINTS", "Your Current Faith Points") + Environment.NewLine + "Producing per day : " + (GameEngine.Instance.World.getCurrentFaithPointsRate() * 86400.0).ToString("N0", (IFormatProvider) GameEngine.NFI);
           break;
         case 7:
           text = SK.Text("TOOLTIPS_MAINWINDOW_TOP_LEFT_POINTS", "Your Current Points");
