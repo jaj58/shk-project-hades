@@ -6208,7 +6208,35 @@ namespace Kingdoms.Bot.UI
             _miscMapSwitchModeCombo.SelectedIndexChanged += delegate { MiscWriteToSettings(); };
             _miscShowActiveEnemyCardsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             _miscShowAllAttackTimesCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
+
+            // Diagnostic: print the current UserID/SessionID to the log on demand.
+            // Session-loss investigation — logging SessionID across logins reveals whether
+            // the server issues small/sequential IDs (brute-forceable) or large/random ones.
+            Button printSessionBtn = new Button();
+            printSessionBtn.Text = "Print Session Info";
+            printSessionBtn.BackColor = Color.FromArgb(60, 80, 140);
+            printSessionBtn.ForeColor = Color.White;
+            printSessionBtn.FlatStyle = FlatStyle.Flat;
+            printSessionBtn.FlatAppearance.BorderSize = 0;
+            printSessionBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            printSessionBtn.Size = new Size(140, 26);
+            printSessionBtn.Location = new Point(16, _miscShowAllAttackTimesCheck.Bottom + 12);
+            printSessionBtn.Cursor = Cursors.Hand;
+            printSessionBtn.Click += delegate { MiscPrintSessionInfo(); };
+            _miscSettingsPanel.Controls.Add(printSessionBtn);
+
             MiscRefreshSaleInfo();
+        }
+
+        private void MiscPrintSessionInfo()
+        {
+            RemoteServices rs = RemoteServices.Instance;
+            if (rs == null || rs.UserID <= 0 || rs.SessionID == 0)
+            {
+                BotLogger.Log("SESSION INFO", BotLogLevel.Warning, "Not logged in — UserID=" + (rs == null ? "?" : rs.UserID.ToString()) + " SessionID=" + (rs == null ? "?" : rs.SessionID.ToString()));
+                return;
+            }
+            BotLogger.Log("SESSION INFO", BotLogLevel.Info, "Current — UserID=" + rs.UserID + " SessionID=" + rs.SessionID);
         }
 
         private void MiscLoadFromSettings()
