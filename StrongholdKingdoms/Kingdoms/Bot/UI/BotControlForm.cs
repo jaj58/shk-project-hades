@@ -7313,17 +7313,19 @@ namespace Kingdoms.Bot.UI
 
             if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
 
-            List<WorldMap.UserVillageData> villages = GameEngine.Instance.World.getUserVillageList();
-            if (villages == null) return;
+            // getUserVillageIDList excludes capitals (parish/county/province/country), which
+            // cannot scout at all — unlike getUserVillageList, which returns them too.
+            List<int> ids = GameEngine.Instance.World.getUserVillageIDList();
+            if (ids == null) return;
 
             int restoreIndex = 0;
-            foreach (WorldMap.UserVillageData uvd in villages)
+            foreach (int id in ids)
             {
                 string name = "";
-                try { name = GameEngine.Instance.World.getVillageName(uvd.villageID); } catch { }
+                try { name = GameEngine.Instance.World.getVillageName(id); } catch { }
                 if (string.IsNullOrEmpty(name)) name = "Village";
-                int index = _scVillageListBox.Items.Add(new ScoutVillageItem(uvd.villageID, name + " (" + uvd.villageID + ")"));
-                if (uvd.villageID == previousId) restoreIndex = index;
+                int index = _scVillageListBox.Items.Add(new ScoutVillageItem(id, name + " (" + id + ")"));
+                if (id == previousId) restoreIndex = index;
             }
 
             if (_scVillageListBox.Items.Count > 0)
@@ -7400,21 +7402,23 @@ namespace Kingdoms.Bot.UI
             ScoutSettings settings = BotEngine.Instance.Settings.Scout;
             VillageScoutSettings source = settings.GetVillageSettings(_scSelectedVillageId);
 
-            List<WorldMap.UserVillageData> villages = null;
+            // Capital-filtered: copying ScoutingEnabled onto a capital would enable a village
+            // that can never scout.
+            List<int> ids = null;
             try
             {
                 if (GameEngine.Instance != null && GameEngine.Instance.World != null)
-                    villages = GameEngine.Instance.World.getUserVillageList();
+                    ids = GameEngine.Instance.World.getUserVillageIDList();
             }
             catch { }
 
-            if (villages == null) return;
+            if (ids == null) return;
 
             int count = 0;
-            foreach (WorldMap.UserVillageData uvd in villages)
+            foreach (int id in ids)
             {
-                if (uvd.villageID == _scSelectedVillageId) continue;
-                VillageScoutSettings dest = settings.GetVillageSettings(uvd.villageID);
+                if (id == _scSelectedVillageId) continue;
+                VillageScoutSettings dest = settings.GetVillageSettings(id);
                 dest.ScoutingEnabled = source.ScoutingEnabled;
                 dest.ResourceTypesToScout = new List<int>(source.ResourceTypesToScout);
                 dest.ResourceTypesToIgnore = new List<int>(source.ResourceTypesToIgnore);

@@ -59,33 +59,36 @@ namespace Kingdoms.Bot.Modules
             if (TryCancelStrandedScout())
                 return;
 
-            List<WorldMap.UserVillageData> villages;
+            List<int> villages;
             try
             {
                 if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
-                villages = GameEngine.Instance.World.getUserVillageList();
+                // Capitals (parish/county/province/country) cannot scout, and getUserVillageIDList
+                // already excludes them — unlike getUserVillageList. Filtering here also neutralises
+                // any capital left enabled in a settings file written before this was filtered.
+                villages = GameEngine.Instance.World.getUserVillageIDList();
             }
             catch { return; }
 
             if (villages == null) return;
 
             // Shuffle so we don't always favour the same village
-            List<WorldMap.UserVillageData> shuffled = new List<WorldMap.UserVillageData>(villages);
+            List<int> shuffled = new List<int>(villages);
             for (int i = shuffled.Count - 1; i > 0; i--)
             {
                 int j = _rng.Next(i + 1);
-                WorldMap.UserVillageData tmp = shuffled[i];
+                int tmp = shuffled[i];
                 shuffled[i] = shuffled[j];
                 shuffled[j] = tmp;
             }
 
-            foreach (WorldMap.UserVillageData uvd in shuffled)
+            foreach (int villageId in shuffled)
             {
-                VillageScoutSettings vs = settings.GetVillageSettings(uvd.villageID);
+                VillageScoutSettings vs = settings.GetVillageSettings(villageId);
                 if (!vs.ScoutingEnabled) continue;
 
                 VillageMap village;
-                try { village = GameEngine.Instance.getVillage(uvd.villageID); }
+                try { village = GameEngine.Instance.getVillage(villageId); }
                 catch { continue; }
                 if (village == null) continue;
 
@@ -94,7 +97,7 @@ namespace Kingdoms.Bot.Modules
 
                 if (GetAvailableScouts(village) <= 0) continue;
 
-                List<StashTarget> targets = GetStashTargets(uvd.villageID, vs,
+                List<StashTarget> targets = GetStashTargets(villageId, vs,
                     settings.MaxScoutTimeSeconds, settings.Priority);
 
                 foreach (StashTarget target in targets)
