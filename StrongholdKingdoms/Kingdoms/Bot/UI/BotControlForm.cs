@@ -3715,6 +3715,7 @@ namespace Kingdoms.Bot.UI
             _bldVillageEnabledCheck.CheckedChanged += delegate { BldVillageEnabledChanged(); };
             _bldCopySettingsBtn.Click += delegate { BldCopySettingsClick(); };
             _bldImportFileBtn.Click += delegate { BldImportFromFile(); };
+            _bldRefreshVillagesBtn.Click += delegate { BldPopulateVillageCombo(); };
             _bldPriorityBtn.Click += delegate { BldEditPriorities(); };
             _bldRefreshStateBtn.Click += delegate { BldRefreshState(); };
             _bldExportFileBtn.Click += delegate { BldExportToFile(); };
@@ -3786,6 +3787,10 @@ namespace Kingdoms.Bot.UI
 
         private void BldPopulateVillageCombo()
         {
+            // Remembered so a user-pressed refresh doesn't kick them off the village
+            // they're editing (and re-trigger the auto-load on an empty layout).
+            int previousId = _bldSelectedVillageId;
+
             _bldVillageCombo.Items.Clear();
             _bldSelectedVillageId = -1;
 
@@ -3795,14 +3800,16 @@ namespace Kingdoms.Bot.UI
             List<int> ids = GameEngine.Instance.World.getUserVillageIDList();
             if (ids == null) return;
 
+            int restoreIndex = 0;
             foreach (int id in ids)
             {
                 string name = GameEngine.Instance.World.getVillageName(id);
-                _bldVillageCombo.Items.Add(new BldComboItem(id, "[" + id + "] " + name));
+                int index = _bldVillageCombo.Items.Add(new BldComboItem(id, "[" + id + "] " + name));
+                if (id == previousId) restoreIndex = index;
             }
 
             if (_bldVillageCombo.Items.Count > 0)
-                _bldVillageCombo.SelectedIndex = 0;
+                _bldVillageCombo.SelectedIndex = restoreIndex;
         }
 
         private void BldVillageSelected()
@@ -6220,10 +6227,13 @@ namespace Kingdoms.Bot.UI
             printSessionBtn.FlatAppearance.BorderSize = 0;
             printSessionBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
             printSessionBtn.Size = new Size(140, 26);
-            printSessionBtn.Location = new Point(16, _miscShowAllAttackTimesCheck.Bottom + 12);
+            // _miscSettingsPanel is docked Top with a fixed height, so a control placed below
+            // its last checkbox would be clipped. Parent to the page and sit just under the panel.
+            printSessionBtn.Location = new Point(16, _miscSettingsPanel.Bottom + 12);
             printSessionBtn.Cursor = Cursors.Hand;
             printSessionBtn.Click += delegate { MiscPrintSessionInfo(); };
-            _miscSettingsPanel.Controls.Add(printSessionBtn);
+            _miscPage.Controls.Add(printSessionBtn);
+            printSessionBtn.BringToFront();
 
             MiscRefreshSaleInfo();
         }
@@ -7184,6 +7194,7 @@ namespace Kingdoms.Bot.UI
             _scIgnoreList.DoubleClick += delegate { ScMoveSelectedToScout(); };
 
             _scCopySettingsBtn.Click += delegate { ScCopySettingsToAll(); };
+            _scRefreshVillagesBtn.Click += delegate { ScPopulateVillageList(); };
 
             // Drag-to-reorder within each list
             _scScoutList.MouseDown += ScListMouseDown;
@@ -7276,6 +7287,10 @@ namespace Kingdoms.Bot.UI
 
         private void ScPopulateVillageList()
         {
+            // Remembered so a user-pressed refresh doesn't kick them off the village
+            // whose scout/ignore lists they're editing.
+            int previousId = _scSelectedVillageId;
+
             _scVillageListBox.Items.Clear();
             _scSelectedVillageId = -1;
 
@@ -7284,16 +7299,18 @@ namespace Kingdoms.Bot.UI
             List<WorldMap.UserVillageData> villages = GameEngine.Instance.World.getUserVillageList();
             if (villages == null) return;
 
+            int restoreIndex = 0;
             foreach (WorldMap.UserVillageData uvd in villages)
             {
                 string name = "";
                 try { name = GameEngine.Instance.World.getVillageName(uvd.villageID); } catch { }
                 if (string.IsNullOrEmpty(name)) name = "Village";
-                _scVillageListBox.Items.Add(new ScoutVillageItem(uvd.villageID, name + " (" + uvd.villageID + ")"));
+                int index = _scVillageListBox.Items.Add(new ScoutVillageItem(uvd.villageID, name + " (" + uvd.villageID + ")"));
+                if (uvd.villageID == previousId) restoreIndex = index;
             }
 
             if (_scVillageListBox.Items.Count > 0)
-                _scVillageListBox.SelectedIndex = 0;
+                _scVillageListBox.SelectedIndex = restoreIndex;
         }
 
         private void ScOnVillageSelected()
@@ -7565,7 +7582,7 @@ namespace Kingdoms.Bot.UI
             // Village Builder
             LayoutRow(X, 24, G, _bldEnabledCheck, _bldStatusLabel);
             LayoutRow(X, 58, G, _bldIntervalLabel, _bldIntervalInput, _bldDelayLabel, _bldDelayInput, _bldWaitForResourcesCheck, _bldCopySettingsBtn);
-            LayoutRow(X, 18, G, _bldVillageCombo, _bldVillageEnabledCheck, _bldImportFileBtn, _bldRefreshStateBtn, _bldExportFileBtn, _bldClearLayoutBtn, _bldPriorityBtn);
+            LayoutRow(X, 18, G, _bldVillageCombo, _bldVillageEnabledCheck, _bldRefreshVillagesBtn, _bldImportFileBtn, _bldRefreshStateBtn, _bldExportFileBtn, _bldClearLayoutBtn, _bldPriorityBtn);
 
             // Auto Bomb
             LayoutRow(X, 24, G, _abEnabledCheck, _abStatusLabel, _abTargetLabel, _abTargetInput);
