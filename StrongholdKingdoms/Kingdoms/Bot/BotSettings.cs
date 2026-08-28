@@ -716,6 +716,73 @@ namespace Kingdoms.Bot
                 return "Resource " + resourceId;
             }
         }
+
+        /// <summary>
+        /// Ceiling used for limit inputs when the real cap can't be read. Deliberately
+        /// generous: a tight fallback would clamp saved settings down on load.
+        /// </summary>
+        private const int MaxCapFallback = 999999;
+
+        /// <summary>Storage capacity cards double the cap and don't stack.</summary>
+        private const double StorageCardMultiplier = 2.0;
+
+        private static ResearchData _maxedResearch;
+
+        /// <summary>
+        /// The largest capacity a village could ever hold for a resource: every capacity
+        /// research maxed plus the x2 storage card. Computed from the game's own
+        /// getResourceCap so it stays correct per world and if game data changes.
+        /// </summary>
+        public static int GetMaxPossibleCap(int resourceId, bool isCapital)
+        {
+            try
+            {
+                if (_maxedResearch == null)
+                {
+                    ResearchData rd = new ResearchData();
+                    rd.Research_Engineering = MaxResearchLevel(ResearchData.RESEARCH_ENGINEERING);
+                    rd.Research_StockpileCapacity = MaxResearchLevel(ResearchData.RESEARCH_STOCKPILECAPACITY);
+                    rd.Research_GranaryCapacity = MaxResearchLevel(ResearchData.RESEARCH_GRANARYCAPACITY);
+                    rd.Research_ArmouryCapacity = MaxResearchLevel(ResearchData.RESEARCH_ARMOURYCAPACITY);
+                    rd.Research_InnCapacity = MaxResearchLevel(ResearchData.RESEARCH_INNCAPACITY);
+                    rd.Research_HallCapacity = MaxResearchLevel(ResearchData.RESEARCH_HALLCAPACITY);
+                    _maxedResearch = rd;
+                }
+
+                double cap = _maxedResearch.getResourceCap(
+                    GameEngine.Instance.LocalWorldData, resourceId, isCapital) * StorageCardMultiplier;
+                if (cap > 0) return (int)cap;
+            }
+            catch
+            {
+            }
+
+            return MaxCapFallback;
+        }
+
+        /// <summary>
+        /// The largest of <see cref="GetMaxPossibleCap"/> across every traded good, for
+        /// inputs that apply to several goods at once (route keep/send amounts).
+        /// </summary>
+        public static int GetMaxPossibleCapAcrossAllGoods(bool isCapital)
+        {
+            int max = 0;
+            for (int i = 0; i < TradeTypeIds.Length; i++)
+            {
+                int cap = GetMaxPossibleCap(TradeTypeIds[i], isCapital);
+                if (cap > max) max = cap;
+            }
+            return max > 0 ? max : MaxCapFallback;
+        }
+
+        /// <summary>Top level of a research, clamped to the storage tables' 11 entries (0..10).</summary>
+        private static byte MaxResearchLevel(int researchType)
+        {
+            int levels = ResearchData.getNumLevels(researchType);
+            if (levels > 10) levels = 10;
+            if (levels < 0) levels = 0;
+            return (byte)levels;
+        }
     }
 
     [Serializable]
