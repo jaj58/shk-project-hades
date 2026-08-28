@@ -180,6 +180,7 @@ namespace Kingdoms.Bot
         public string DiscordWebhookUrl = "";
         public string DiscordMentionTag = "";
         public GroupRadarSettings GroupRadar = new GroupRadarSettings();
+        public RadarExceptionSettings Exceptions = new RadarExceptionSettings();
         public int AutoInterdictMonkCount = 1;
         public bool AutoRecruitMonks = false;
         public int MinArmySizeForInterdict = 100;
@@ -258,6 +259,30 @@ namespace Kingdoms.Bot
             Actions.Add(newAction);
             return newAction;
         }
+    }
+
+    // One ignored source: either a player (PlayerName set, VillageIds resolved from the
+    // server and periodically refreshed) or a single raw village (PlayerName empty).
+    [Serializable]
+    public class RadarExceptionEntry
+    {
+        public string PlayerName = "";
+        public bool Enabled = true;
+        public List<int> VillageIds = new List<int>();
+    }
+
+    [Serializable]
+    public class RadarExceptionSettings
+    {
+        public bool Enabled = false;
+        // Re-resolve each player entry's village list on map load, then every
+        // AutoRefreshIntervalMinutes thereafter (0 = periodic disabled).
+        public bool RefreshOnStart = true;
+        public int AutoRefreshIntervalMinutes = 60;
+        // Own villages the exceptions apply to. Inclusion list: empty means the
+        // exceptions apply nowhere, so an empty list can never silence the radar.
+        public List<int> AppliesToVillageIds = new List<int>();
+        public List<RadarExceptionEntry> Entries = new List<RadarExceptionEntry>();
     }
 
     [Serializable]

@@ -285,6 +285,7 @@ namespace Kingdoms.Bot.UI
                 RdBuildActionRows();
                 GrpLoadFromSettings();
                 GrpBuildActionRows();
+                ExLoadFromSettings();
                 RcLoadFromSettings();
                 CrLoadFromSettings();
                 VaLoadFromSettings();
@@ -804,8 +805,22 @@ namespace Kingdoms.Bot.UI
             groupPage.BackColor = _radarPage.BackColor;
             BuildGroupTabContent(groupPage);
 
+            // ---- Exceptions sub-tab ----
+            TabPage exceptionsPage = new TabPage("Exceptions");
+            exceptionsPage.BackColor = _radarPage.BackColor;
+            BuildExceptionsTabContent(exceptionsPage);
+
             innerTab.TabPages.Add(radarSub);
             innerTab.TabPages.Add(groupPage);
+            innerTab.TabPages.Add(exceptionsPage);
+
+            // Lazily fill the own-village list the first time the sub-tab is opened —
+            // at construction time the world may not have loaded any villages yet.
+            innerTab.Selected += delegate (object s, TabControlEventArgs e)
+            {
+                if (e.TabPage == exceptionsPage && _exVillageList.Items.Count == 0)
+                    ExPopulateVillages();
+            };
 
             _radarPage.Controls.Clear();
             _radarPage.Controls.Add(innerTab);
@@ -2447,6 +2462,7 @@ namespace Kingdoms.Bot.UI
             {
                 RdWriteToSettings();
                 GrpWriteToSettings();
+                ExWriteToSettings();
                 tabName = "Radar";
             }
             else if (_tabControl.SelectedTab == _recruitingPage)
@@ -2551,6 +2567,7 @@ namespace Kingdoms.Bot.UI
                 // they rebind to the reloaded settings, then refresh the rest of the group UI.
                 GrpBuildActionRows();
                 GrpLoadFromSettings();
+                ExLoadFromSettings();
                 tabName = "Radar";
             }
             else if (_tabControl.SelectedTab == _recruitingPage)
