@@ -8560,10 +8560,12 @@ namespace Kingdoms
         return this.backGroundImage;
       }
 
-      public void stretchBackground()
+      public void stretchBackground() => this.stretchBackground(60);
+
+      public void stretchBackground(int extraHeight)
       {
-        this.Size = new Size(199, 273);
-        this.backGroundImage.Size = new Size(GFXLibrary.mrhp_world_panel_192.Width, GFXLibrary.mrhp_world_panel_192.Height + 60);
+        this.Size = new Size(199, 213 + extraHeight);
+        this.backGroundImage.Size = new Size(GFXLibrary.mrhp_world_panel_192.Width, GFXLibrary.mrhp_world_panel_192.Height + extraHeight);
       }
 
       public void update()

@@ -5,6 +5,7 @@
 // Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.43.10\StrongholdKingdoms.exe
 
 using CommonTypes;
+using System.Collections.Generic;
 
 //#nullable disable
 namespace Kingdoms
@@ -24,12 +25,31 @@ namespace Kingdoms
     public const int MAPFILTER_PRESET_COUNTY_CAPITALS = 10;
     public const int MAPFILTER_PRESET_HIDE_ALL = 11;
     public const int MAPFILTER_CUSTOM = 10000;
+
+    // AI castle group keys used by the custom filter. PALADIN covers both the small (15)
+    // and medium (17) paladin castle types.
+    public const int CASTLE_PALADIN = 15;
+    public const int CASTLE_PALADIN_MEDIUM = 17;
+    public const int CASTLE_RAT = 7;
+    public const int CASTLE_SNAKE = 9;
+    public const int CASTLE_PIG = 11;
+    public const int CASTLE_WOLF = 13;
+
+    // Resource stash special IDs are 100 + resourceID; 100 itself is an undiscovered stash.
+    public const int STASH_NEW = 100;
+    public static readonly int[] STASH_STOCKPILE = new int[4]{ 106, 107, 108, 109 };
+    public static readonly int[] STASH_GRANARY = new int[7]{ 112, 113, 114, 115, 116, 117, 118 };
+    public static readonly int[] STASH_BANQUET = new int[8]{ 119, 121, 122, 123, 124, 125, 126, 133 };
+    public static readonly int[] STASH_WEAPONS = new int[5]{ 128, 129, 130, 131, 132 };
+
     private bool filterActive;
     private int filterMode;
     private bool filterAlwaysShowYourVillages = true;
     private bool filterShowHouseSymbols = true;
     private bool filterShowFactionSymbols = true;
     private bool filterShowUserSymbols = true;
+    private readonly List<int> customCastleSpecials = new List<int>();
+    private readonly List<int> customStashSpecials = new List<int>();
 
     public bool FilterActive
     {
@@ -65,6 +85,8 @@ namespace Kingdoms
 
     public void setFilterMode(int mode)
     {
+      if (mode != 10000)
+        this.ClearCustom();
       if (mode == 0)
       {
         this.FilterActive = false;
@@ -74,6 +96,81 @@ namespace Kingdoms
         this.FilterActive = true;
         this.filterMode = mode;
       }
+    }
+
+    public bool CustomHasAny
+    {
+      get => this.customCastleSpecials.Count > 0 || this.customStashSpecials.Count > 0;
+    }
+
+    public bool IsCastleTypeSelected(int key) => this.customCastleSpecials.Contains(key);
+
+    public void SetCastleType(int key, bool on)
+    {
+      WorldMapFilter.setSelected(this.customCastleSpecials, key, on);
+      if (key == 15)
+        WorldMapFilter.setSelected(this.customCastleSpecials, 17, on);
+      this.syncCustomMode();
+    }
+
+    public bool IsStashSelected(int special) => this.customStashSpecials.Contains(special);
+
+    public void SetStash(int special, bool on)
+    {
+      WorldMapFilter.setSelected(this.customStashSpecials, special, on);
+      this.syncCustomMode();
+    }
+
+    // Clears the selections only - it must never change the mode, or syncCustomMode re-enters.
+    public void ClearCustom()
+    {
+      this.customCastleSpecials.Clear();
+      this.customStashSpecials.Clear();
+    }
+
+    public static string getStashName(int special)
+    {
+      if (special == 100)
+        return SK.Text("MapFilterPanel_New_Stash", "New Stash");
+      try
+      {
+        if (special > 100 && special <= 199)
+        {
+          string resourceNames = VillageBuildingsData.getResourceNames(special - 100);
+          if (!string.IsNullOrEmpty(resourceNames))
+            return resourceNames;
+        }
+      }
+      catch
+      {
+      }
+      return "Type " + special.ToString();
+    }
+
+    private static void setSelected(List<int> list, int special, bool on)
+    {
+      if (on)
+      {
+        if (list.Contains(special))
+          return;
+        list.Add(special);
+      }
+      else
+        list.Remove(special);
+    }
+
+    private void syncCustomMode()
+    {
+      if (this.CustomHasAny)
+        this.setFilterMode(10000);
+      else if (this.filterMode == 10000)
+        this.setFilterMode(0);
+    }
+
+    private bool matchesCustom(VillageData village)
+    {
+      int special = village.special;
+      return special >= 100 && special <= 199 ? this.customStashSpecials.Contains(special) : this.customCastleSpecials.Contains(special);
     }
 
     private bool visibleUnderAIFilter(VillageData village)
@@ -154,6 +251,8 @@ namespace Kingdoms
           break;
         case 11:
           return false;
+        case 10000:
+          return this.matchesCustom(village);
       }
       return false;
     }
