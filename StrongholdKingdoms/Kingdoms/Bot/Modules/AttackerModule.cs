@@ -33,7 +33,13 @@ namespace Kingdoms.Bot.Modules
         private readonly object _monkLock = new object();
         private readonly Queue<MonkPrey> _monkQueue = new Queue<MonkPrey>();
 
+        // How long a single attack run is allowed to take before the watchdog assumes the
+        // thread is wedged (CastleMap/launchArmy touch game state from a background thread)
+        // and releases the _attacking flag, so the next click isn't silently dropped.
+        private const int AttackWatchdogSeconds = 60;
+
         private volatile bool _attacking;
+        private DateTime _attackStartedUtc = DateTime.MinValue;
         private Thread _attackThread;
         private ManualResetEvent _cancelEvent = new ManualResetEvent(false);
         private ManualResetEvent _callbackEvent = new ManualResetEvent(false);
@@ -82,6 +88,15 @@ namespace Kingdoms.Bot.Modules
             _cancelEvent.Set();
         }
 
+        // _cancelEvent is a ManualResetEvent, so OnDisable latches it for good. Without this
+        // reset, disabling the module once (checkbox, Load Settings, a tab rebuild) left every
+        // later attack aborting instantly at the WaitAny in AttackThreadProc until the next
+        // relog re-ran OnInitialize.
+        protected override void OnEnable()
+        {
+            _cancelEvent.Reset();
+        }
+
         protected override void OnShutdown()
         {
             _cancelEvent.Set();
@@ -96,6 +111,8 @@ namespace Kingdoms.Bot.Modules
             AttackerSettings s = Settings;
             if (s == null || !s.Enabled)
                 return;
+
+            ClearStrandedAttack();
 
             MonkPrey monkPrey = null;
             lock (_monkLock)
@@ -218,15 +235,51 @@ namespace Kingdoms.Bot.Modules
         public void AttackNow(int ownVillageId, int targetId)
         {
             AttackerSettings s = Settings;
-            if (s == null || _attacking)
+            if (s == null)
+            {
+                LogWarning("Attack on " + targetId + " skipped — no attacker settings available.");
                 return;
+            }
+
+            ClearStrandedAttack();
+            if (_attacking)
+            {
+                LogWarning("Attack on " + targetId + " skipped — another attack is still in progress.");
+                return;
+            }
 
             LaunchAttackThread(new AttackerPrey { OwnVillageId = ownVillageId, TargetId = targetId }, s);
         }
 
+        /// <summary>
+        /// Releases the _attacking flag if the attack thread died or wedged. Both AttackNow and
+        /// OnTick refuse to start work while _attacking is true, so a stranded flag used to kill
+        /// the module silently until relog.
+        /// </summary>
+        private void ClearStrandedAttack()
+        {
+            if (!_attacking)
+                return;
+
+            Thread t = _attackThread;
+            bool threadGone = t == null || !t.IsAlive;
+            bool timedOut = (DateTime.UtcNow - _attackStartedUtc).TotalSeconds > AttackWatchdogSeconds;
+            if (!threadGone && !timedOut)
+                return;
+
+            LogWarning("Clearing stranded attack state (" +
+                (threadGone ? "attack thread is gone" : "attack ran over " + AttackWatchdogSeconds + "s") +
+                ") — the next attack can start.");
+            _attacking = false;
+        }
+
         private void LaunchAttackThread(AttackerPrey prey, AttackerSettings s)
         {
+            // Clear any latched cancel from a previous disable before starting a fresh run —
+            // mirrors AutoBombModule, which resets its cancel event per launch.
+            _cancelEvent.Reset();
             _attacking = true;
+            _attackStartedUtc = DateTime.UtcNow;
             _attackThread = new Thread(() => AttackThreadProc(prey, s));
             _attackThread.IsBackground = true;
             _attackThread.Name = "Attacker";
@@ -265,6 +318,8 @@ namespace Kingdoms.Bot.Modules
                 {
                     if (waitIndex == WaitHandle.WaitTimeout)
                         LogError("PreAttackSetup callback timed out for target " + prey.TargetId + ".");
+                    else
+                        LogWarning("Attack on " + prey.TargetId + " cancelled — the module was disabled or shut down.");
                     return;
                 }
 
@@ -272,6 +327,17 @@ namespace Kingdoms.Bot.Modules
                 if (ret == null)
                 {
                     LogError("No callback data for target " + prey.TargetId + ".");
+                    return;
+                }
+
+                // PreAttackSetup's user callback is a single global slot on RemoteServices,
+                // shared with AutoBomb, AutoBombMulti and the game's own attack window. If one
+                // of those fired in between, the data we just picked up belongs to someone else
+                // — bail rather than launch an army at the wrong village.
+                if (ret.targetVillage != prey.TargetId)
+                {
+                    LogError("PreAttackSetup response was for village " + ret.targetVillage +
+                        ", not " + prey.TargetId + " — another attack path took the callback. Aborting.");
                     return;
                 }
 

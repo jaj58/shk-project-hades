@@ -156,6 +156,11 @@ namespace Kingdoms.Bot.UI
 
         // Attacker tab runtime state (controls created programmatically)
         private bool _atLoading;
+        // False until AtLoadFromSettings has run once. Populating the formation combos during
+        // WireUpAttackerTab fires SelectedIndexChanged -> AtWriteToSettings while the controls
+        // still hold designer defaults, which used to write Enabled=false over both the settings
+        // and the live module — disabling the Attacker behind a checkbox that still looked ticked.
+        private bool _atInitialised;
         private Timer _atRefreshTimer;
         private CheckBox _atEnabledCheck;
         private Label _atStatusLabel;
@@ -2597,6 +2602,12 @@ namespace Kingdoms.Bot.UI
             if (BotEngine.Instance == null) return;
 
             BotEngine.Instance.ReloadSettings();
+
+            // ReloadSettings replaced the whole settings tree and re-synced every module's
+            // Enabled from disk, but only the selected tab is refreshed below. Always reload the
+            // Attacker tab: its world-map buttons gate on the module's Enabled, so leaving that
+            // tab stale here is exactly how the attack button ends up silently doing nothing.
+            AtLoadFromSettings();
 
             string tabName = "";
             if (_tabControl.SelectedTab == _villageSyncPage)
@@ -8657,7 +8668,18 @@ namespace Kingdoms.Bot.UI
             _atRefreshTimer.Interval = 2000;
             _atRefreshTimer.Tick += delegate
             {
-                try { AtUpdateStatus(); AtRebuildPreyList(); }
+                try
+                {
+                    // The form can be opened before BotEngine exists (pre-login), in which case
+                    // the constructor's AtLoadFromSettings bails and leaves the tab uninitialised
+                    // — and AtWriteToSettings deliberately refuses to write until it has loaded
+                    // once. Do that first load as soon as the engine shows up.
+                    if (!_atInitialised && BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+                        AtLoadFromSettings();
+
+                    AtUpdateStatus();
+                    AtRebuildPreyList();
+                }
                 catch { /* swallow — timer must not propagate exceptions */ }
             };
             _atRefreshTimer.Start();
@@ -8946,10 +8968,26 @@ namespace Kingdoms.Bot.UI
 
         private void AtRefreshFormations()
         {
-            List<string> names = Modules.AutoBombModule.GetFormationNames();
-            AtRepopulateFormationCombo(_atDistrictFormationCombo, names);
-            AtRepopulateFormationCombo(_atAiFormationCombo, names);
-            AtRepopulateFormationCombo(_atEnemyFormationCombo, names);
+            // Repopulating fires SelectedIndexChanged on each combo. Suppress the settings
+            // write while that happens so a combo rebuild can never push the rest of the tab's
+            // (possibly not-yet-loaded) control values onto the settings and the live module.
+            bool wasLoading = _atLoading;
+            _atLoading = true;
+            try
+            {
+                List<string> names = Modules.AutoBombModule.GetFormationNames();
+                AtRepopulateFormationCombo(_atDistrictFormationCombo, names);
+                AtRepopulateFormationCombo(_atAiFormationCombo, names);
+                AtRepopulateFormationCombo(_atEnemyFormationCombo, names);
+            }
+            finally
+            {
+                _atLoading = wasLoading;
+            }
+
+            // A formation that no longer exists falls back to index 0 above; persist that once,
+            // deliberately, now that every control holds a loaded value.
+            AtWriteToSettings();
         }
 
         private void AtRepopulateFormationCombo(ComboBox combo, List<string> names)
@@ -8983,11 +9021,24 @@ namespace Kingdoms.Bot.UI
         private void AtUpdateStatus()
         {
             if (_atStatusLabel == null) return;
-            bool enabled = _atEnabledCheck != null && _atEnabledCheck.Checked;
-            _atStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
-            _atStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
 
             Modules.AttackerModule mod = BotEngine.Instance?.GetModule<Modules.AttackerModule>();
+
+            // Report the MODULE's state, not the checkbox — the village-panel buttons gate on
+            // mod.Enabled, so showing the checkbox here hid every desync between the two.
+            bool boxChecked = _atEnabledCheck != null && _atEnabledCheck.Checked;
+            bool enabled = mod != null ? mod.Enabled : boxChecked;
+            if (mod != null && boxChecked != enabled)
+            {
+                _atStatusLabel.Text = enabled ? "ENABLED (tab out of sync)" : "DISABLED (tab out of sync)";
+                _atStatusLabel.ForeColor = WarningCol;
+            }
+            else
+            {
+                _atStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
+                _atStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+            }
+
             int attackCount = mod != null ? mod.PreyQueueCount : 0;
             int monkCount = mod != null ? mod.MonkQueueCount : 0;
             _atQueueCountLabel.Text = "Queue: " + attackCount + " attacks, " + monkCount + " monks";
@@ -9068,12 +9119,32 @@ namespace Kingdoms.Bot.UI
             finally
             {
                 _atLoading = false;
+                _atInitialised = true;
+            }
+
+            // Keep the live module in step with what the tab now shows. Without this a load
+            // (including the Load Settings button while another tab is selected) could leave
+            // the checkbox and mod.Enabled disagreeing, and the village-panel attack buttons
+            // gate on mod.Enabled.
+            AtSyncModuleEnabled(BotEngine.Instance.Settings.Attacker.Enabled);
+        }
+
+        private static void AtSyncModuleEnabled(bool enabled)
+        {
+            if (BotEngine.Instance == null) return;
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                if (m is Modules.AttackerModule)
+                    m.Enabled = enabled;
             }
         }
 
         private void AtWriteToSettings()
         {
             if (_atLoading) return;
+            // Before the first load the controls still hold designer defaults; writing them
+            // would clobber the saved settings and disable the live module.
+            if (!_atInitialised) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
             AttackerSettings s = BotEngine.Instance.Settings.Attacker;
 
@@ -9098,11 +9169,7 @@ namespace Kingdoms.Bot.UI
             s.EnemyAttackType = AtIndexToAttackType(AtEnemyAttackTypeValues, _atEnemyAttackTypeCombo.SelectedIndex);
             s.EnemyPillagePercent = _atEnemyPillageTrack.Value;
 
-            foreach (IBotModule m in BotEngine.Instance.Modules)
-            {
-                if (m is Modules.AttackerModule)
-                    m.Enabled = s.Enabled;
-            }
+            AtSyncModuleEnabled(s.Enabled);
         }
 
         private static void AtSelectFormation(ComboBox combo, string name)

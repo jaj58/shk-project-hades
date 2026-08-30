@@ -16,6 +16,8 @@ namespace Kingdoms.Bot
             {
                 if (_enabled && !value)
                     OnDisable();
+                else if (!_enabled && value)
+                    OnEnable();
                 _enabled = value;
             }
         }
@@ -63,6 +65,13 @@ namespace Kingdoms.Bot
         /// not continue running after the module is disabled.
         /// </summary>
         protected virtual void OnDisable() { }
+
+        /// <summary>
+        /// Called when Enabled transitions from false to true at runtime.
+        /// Override to clear anything OnDisable latched (e.g. a cancel event), so a module
+        /// that is toggled off and back on works again without needing a relog.
+        /// </summary>
+        protected virtual void OnEnable() { }
 
         /// <summary>
         /// Removes a card instance from the local ProfileCards inventory after the

@@ -95,9 +95,8 @@ namespace Kingdoms
       this.attackButton_AI.CustomTooltipID = 2411;
       this.attackButton_AI.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.btnAttack_Click), "EmptyVillagePanel2_attack");
       csdImage1.addControl((CustomSelfDrawPanel.CSDControl) this.attackButton_AI);
-      this.botAttackButton_AI = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
+      this.botAttackButton_AI = MainRightHandPanel.getBotAttackButton();
       this.botAttackButton_AI.Position = new Point(29, 79 + num);
-      MainRightHandPanel.markAsBotButton(this.botAttackButton_AI, MainRightHandPanel.BOT_TOOLTIP_ATTACK);
       this.botAttackButton_AI.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAttackerClick), "EmptyVillagePanel2_bot_attacker");
       if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowAttackButton == true)
         csdImage1.addControl((CustomSelfDrawPanel.CSDControl) this.botAttackButton_AI);
@@ -616,11 +615,25 @@ namespace Kingdoms
       if (InterfaceMgr.Instance.SelectedVillage < 0)
         return;
       AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
-      if (module == null || !module.Enabled)
+      if (module == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — bot engine not ready.");
         return;
+      }
+      if (!module.Enabled)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — the Attacker module is disabled.");
+        return;
+      }
+      AttackerSettings s = module.Settings;
+      if (s == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — no attacker settings available.");
+        return;
+      }
       int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
       int target = InterfaceMgr.Instance.SelectedVillage;
-      if (module.Settings.ForceMode)
+      if (s.ForceMode)
         module.AttackNow(ownVillage, target);
       else
         module.AddPrey(new AttackerPrey { OwnVillageId = ownVillage, TargetId = target });

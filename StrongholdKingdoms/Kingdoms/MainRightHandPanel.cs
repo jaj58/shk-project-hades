@@ -5,8 +5,10 @@
 // Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.43.10\StrongholdKingdoms.exe
 
 using Kingdoms.Properties;
+using System;
 using System.ComponentModel;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Windows.Forms;
 
 //#nullable disable
@@ -81,17 +83,74 @@ namespace Kingdoms
     public const int BOT_TOOLTIP_EXCOM = 11111132;
     public const int BOT_TOOLTIP_ABSOLUTION = 11111133;
 
-    // Bot-added buttons reuse stock artwork, so wash them in a red tint to tell them apart from
-    // the real ones and give them a tooltip naming the module they drive. CSDButton.fillRect
-    // paints over the button's own rectangle, so keep the alpha low. Tune both colours here.
+    // The bot's attack button reuses the stock attack icon, which is identical to the real attack
+    // button sitting next to it. Rotating the hue turns the blue disc red while leaving the white
+    // axe heads white - the same glyph-in-another-colour trick the game's own art uses for the
+    // green reinforce variant. 140 degrees lands on red; lower goes pink, higher goes orange.
+    private const double BOT_ICON_HUE_DEGREES = 140.0;
+    private static Image botAttackNorm;
+    private static Image botAttackOver;
+    private static Image botAttackClick;
+
+    // Bot-added buttons get a tooltip naming the module they drive. The monk buttons already use
+    // their own artwork, so they only need this; the attack button also gets recoloured below.
     public static void markAsBotButton(
       CustomSelfDrawPanel.CSDButton button,
       int tooltipID)
     {
       button.CustomTooltipID = tooltipID;
-      button.FillRectColor = Color.FromArgb(60, 220, 30, 30);
-      button.FillRectOverColor = Color.FromArgb(30, 220, 30, 30);
     }
+
+    public static CustomSelfDrawPanel.CSDButton getBotAttackButton()
+    {
+      CustomSelfDrawPanel.CSDButton mrhpButton = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
+      if (MainRightHandPanel.botAttackNorm == null)
+      {
+        Image image = MainRightHandPanel.recolourBotIcon(mrhpButton.ImageNorm);
+        // The atlas images load lazily, so don't cache a placeholder - fall back to the stock icon.
+        if (image != null && image.Width > 1)
+        {
+          MainRightHandPanel.botAttackNorm = image;
+          MainRightHandPanel.botAttackOver = MainRightHandPanel.recolourBotIcon(mrhpButton.ImageOver);
+          MainRightHandPanel.botAttackClick = MainRightHandPanel.recolourBotIcon(mrhpButton.ImageClick);
+        }
+      }
+      if (MainRightHandPanel.botAttackNorm != null)
+      {
+        mrhpButton.ImageNorm = MainRightHandPanel.botAttackNorm;
+        mrhpButton.ImageOver = MainRightHandPanel.botAttackOver;
+        mrhpButton.ImageClick = MainRightHandPanel.botAttackClick;
+      }
+      MainRightHandPanel.markAsBotButton(mrhpButton, MainRightHandPanel.BOT_TOOLTIP_ATTACK);
+      return mrhpButton;
+    }
+
+    private static Image recolourBotIcon(Image source)
+    {
+      if (source == null || source.Width <= 1 || source.Height <= 1)
+        return source;
+      float c = (float) Math.Cos(MainRightHandPanel.BOT_ICON_HUE_DEGREES * Math.PI / 180.0);
+      float s = (float) Math.Sin(MainRightHandPanel.BOT_ICON_HUE_DEGREES * Math.PI / 180.0);
+      ColorMatrix colorMatrix = new ColorMatrix(new float[5][]
+      {
+        new float[5] { 0.213f + c * 0.787f - s * 0.213f, 0.213f - c * 0.213f + s * 0.143f, 0.213f - c * 0.213f - s * 0.787f, 0.0f, 0.0f },
+        new float[5] { 0.715f - c * 0.715f - s * 0.715f, 0.715f + c * 0.285f + s * 0.140f, 0.715f - c * 0.715f + s * 0.715f, 0.0f, 0.0f },
+        new float[5] { 0.072f - c * 0.072f + s * 0.928f, 0.072f - c * 0.072f - s * 0.283f, 0.072f + c * 0.928f + s * 0.072f, 0.0f, 0.0f },
+        new float[5] { 0.0f, 0.0f, 0.0f, 1.0f, 0.0f },
+        new float[5] { 0.0f, 0.0f, 0.0f, 0.0f, 1.0f }
+      });
+      Bitmap bitmap = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
+      using (Graphics graphics = Graphics.FromImage((Image) bitmap))
+      {
+        using (ImageAttributes imageAttr = new ImageAttributes())
+        {
+          imageAttr.SetColorMatrix(colorMatrix);
+          graphics.DrawImage(source, new Rectangle(0, 0, source.Width, source.Height), 0, 0, source.Width, source.Height, GraphicsUnit.Pixel, imageAttr);
+        }
+      }
+      return (Image) bitmap;
+    }
+
 
     protected override void Dispose(bool disposing)
     {

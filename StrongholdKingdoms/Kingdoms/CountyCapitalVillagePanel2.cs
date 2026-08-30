@@ -120,9 +120,8 @@ namespace Kingdoms
       this.monkButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.btnSendMonks_Click), "CountyCapitalVillagePanel2_sendmonks");
       this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.monkButton);
       // Bot buttons sit at y=88, clear of the standard row's two possible positions (y=49/142 in updateSize()).
-      this.botAttackButton = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
+      this.botAttackButton = MainRightHandPanel.getBotAttackButton();
       this.botAttackButton.Position = new Point(10, 88);
-      MainRightHandPanel.markAsBotButton(this.botAttackButton, MainRightHandPanel.BOT_TOOLTIP_ATTACK);
       this.botAttackButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAttackerClick), "CountyCapitalVillagePanel2_bot_attacker");
       if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowAttackButton == true)
         this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.botAttackButton);
@@ -306,11 +305,25 @@ namespace Kingdoms
       if (this.m_selectedVillage < 0)
         return;
       AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
-      if (module == null || !module.Enabled)
+      if (module == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — bot engine not ready.");
         return;
+      }
+      if (!module.Enabled)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — the Attacker module is disabled.");
+        return;
+      }
+      AttackerSettings s = module.Settings;
+      if (s == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — no attacker settings available.");
+        return;
+      }
       int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
       int target = this.m_selectedVillage;
-      if (module.Settings.ForceMode)
+      if (s.ForceMode)
         module.AttackNow(ownVillage, target);
       else
         module.AddPrey(new AttackerPrey { OwnVillageId = ownVillage, TargetId = target });
@@ -321,11 +334,22 @@ namespace Kingdoms
       if (this.m_selectedVillage < 0)
         return;
       AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
-      if (module == null || !module.Enabled)
+      if (module == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — bot engine not ready.");
         return;
+      }
+      if (!module.Enabled)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — the Attacker module is disabled.");
+        return;
+      }
       AttackerSettings s = module.Settings;
       if (s == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — no attacker settings available.");
         return;
+      }
       int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
       int target = this.m_selectedVillage;
       if (s.ForceMode)
@@ -339,11 +363,22 @@ namespace Kingdoms
       if (this.m_selectedVillage < 0)
         return;
       AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
-      if (module == null || !module.Enabled)
+      if (module == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — bot engine not ready.");
         return;
+      }
+      if (!module.Enabled)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — the Attacker module is disabled.");
+        return;
+      }
       AttackerSettings s = module.Settings;
       if (s == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — no attacker settings available.");
         return;
+      }
       int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
       int target = this.m_selectedVillage;
       if (s.ForceMode)
