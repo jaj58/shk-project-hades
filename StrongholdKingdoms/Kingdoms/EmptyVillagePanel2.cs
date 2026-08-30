@@ -29,6 +29,7 @@ namespace Kingdoms
     private CustomSelfDrawPanel.CSDButton scoutButton_Resources = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.MRHP_Background backGround_Charter = new CustomSelfDrawPanel.MRHP_Background();
     private CustomSelfDrawPanel.CSDLabel charterLabel = new CustomSelfDrawPanel.CSDLabel();
+    private CustomSelfDrawPanel.CSDLabel charterVillageIdLabel = new CustomSelfDrawPanel.CSDLabel();
     private CustomSelfDrawPanel.CSDImage goldImage = new CustomSelfDrawPanel.CSDImage();
     private CustomSelfDrawPanel.CSDImage honourImage = new CustomSelfDrawPanel.CSDImage();
     private CustomSelfDrawPanel.CSDLabel goldLabel = new CustomSelfDrawPanel.CSDLabel();
@@ -141,6 +142,18 @@ namespace Kingdoms
       csdImage2.addControl((CustomSelfDrawPanel.CSDControl) this.scoutButton_Resources);
       CustomSelfDrawPanel.CSDImage csdImage3 = this.backGround_Charter.init(true, 10000);
       this.addControl((CustomSelfDrawPanel.CSDControl) this.backGround_Charter);
+      // Charters have no name, so VillageData.villageName never prefixes their ID. Show it in the
+      // empty strip between the header art (ends ~y=11) and charterLabel (y=42).
+      this.charterVillageIdLabel.Text = "";
+      this.charterVillageIdLabel.Color = ARGBColors.Black;
+      this.charterVillageIdLabel.RolloverColor = ARGBColors.Blue;
+      this.charterVillageIdLabel.Font = FontManager.GetFont("Arial", 8f, FontStyle.Bold);
+      this.charterVillageIdLabel.Position = new Point(0, 20);
+      this.charterVillageIdLabel.Size = new Size(csdImage3.Width, 18);
+      this.charterVillageIdLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.TOP_CENTER;
+      this.charterVillageIdLabel.CustomTooltipID = 11111140;
+      this.charterVillageIdLabel.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.charterVillageIdClick), "EmptyVillagePanel2_charter_village_id");
+      csdImage3.addControl((CustomSelfDrawPanel.CSDControl) this.charterVillageIdLabel);
       this.charterLabel.Text = SK.Text("EmptyVillagePanel_Cost", "Cost to found this village");
       this.charterLabel.Color = ARGBColors.Black;
       this.charterLabel.Font = FontManager.GetFont("Arial", 8f, FontStyle.Regular);
@@ -443,6 +456,7 @@ namespace Kingdoms
         this.backGround_Charter.updateHeading(SK.Text("EmptyVillagePanel_Available_Village", "New Village Charter"));
         this.backGround_Charter.updatePanelTypeFromVillageID(selectedVillage);
         this.backGround_Charter.stretchBackground();
+        this.charterVillageIdLabel.TextDiffOnly = "[" + selectedVillage.ToString() + "]";
         this.Parent.Invalidate();
         double num1 = GameEngine.Instance.LocalWorldData.villageGoldCost * (GameEngine.Instance.World.calcVillageDistance(InterfaceMgr.Instance.getSelectedMenuVillage(), selectedVillage) * GameEngine.Instance.LocalWorldData.villageCostDistanceMultiplier + 1.0);
         int numOwnedVillages = GameEngine.Instance.World.numVillagesOwned();
@@ -521,6 +535,20 @@ namespace Kingdoms
       this.botAttackButton_AI.Enabled = false;
       this.scoutButton_AI.Enabled = false;
       this.scoutButton_Resources.Enabled = false;
+    }
+
+    private void charterVillageIdClick()
+    {
+      if (this.m_selectedVillage < 0)
+        return;
+      try
+      {
+        Clipboard.SetText(this.m_selectedVillage.ToString());
+      }
+      catch (Exception)
+      {
+        // Clipboard can be locked by another process; a failed copy must not kill the render loop.
+      }
     }
 
     private void btnBuyVillage_Click()
