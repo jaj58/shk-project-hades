@@ -340,7 +340,14 @@ function handle_start_timer(&$state, $req) {
     $state['scheduled_send_times'] = $send_times;
     $state['state']                = 'launching';
     $state['launch_id']            = uniqid('abm', true);
+    // Clear every stale cancel/recall signal from the previous batch. Left set, they
+    // leak into the new launch: manual_cancel makes clients recall on any later cancel,
+    // force_recall_all re-fires on any client that reconnects, and recall_acknowledged
+    // makes the coordinator re-log "[Recall] Local recalls executed by:" on every poll.
     $state['interdict_detected']   = false;
+    $state['manual_cancel']        = false;
+    $state['force_recall_all']     = false;
+    $state['recall_acknowledged']  = [];
 
     // Initialise army-return tracking for every player who has ≥1 selected attack.
     // Disconnected/no-attack players are not tracked so the coordinator isn't blocked.
