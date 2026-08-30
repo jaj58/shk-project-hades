@@ -156,6 +156,11 @@ namespace Kingdoms.Bot.UI
 
         // Attacker tab runtime state (controls created programmatically)
         private bool _atLoading;
+        // False until AtLoadFromSettings has run once. Populating the formation combos during
+        // WireUpAttackerTab fires SelectedIndexChanged -> AtWriteToSettings while the controls
+        // still hold designer defaults, which used to write Enabled=false over both the settings
+        // and the live module — disabling the Attacker behind a checkbox that still looked ticked.
+        private bool _atInitialised;
         private Timer _atRefreshTimer;
         private CheckBox _atEnabledCheck;
         private Label _atStatusLabel;
@@ -285,6 +290,7 @@ namespace Kingdoms.Bot.UI
                 RdBuildActionRows();
                 GrpLoadFromSettings();
                 GrpBuildActionRows();
+                ExLoadFromSettings();
                 RcLoadFromSettings();
                 CrLoadFromSettings();
                 VaLoadFromSettings();
@@ -804,8 +810,22 @@ namespace Kingdoms.Bot.UI
             groupPage.BackColor = _radarPage.BackColor;
             BuildGroupTabContent(groupPage);
 
+            // ---- Exceptions sub-tab ----
+            TabPage exceptionsPage = new TabPage("Exceptions");
+            exceptionsPage.BackColor = _radarPage.BackColor;
+            BuildExceptionsTabContent(exceptionsPage);
+
             innerTab.TabPages.Add(radarSub);
             innerTab.TabPages.Add(groupPage);
+            innerTab.TabPages.Add(exceptionsPage);
+
+            // Lazily fill the own-village list the first time the sub-tab is opened —
+            // at construction time the world may not have loaded any villages yet.
+            innerTab.Selected += delegate (object s, TabControlEventArgs e)
+            {
+                if (e.TabPage == exceptionsPage && _exVillageList.Items.Count == 0)
+                    ExPopulateVillages();
+            };
 
             _radarPage.Controls.Clear();
             _radarPage.Controls.Add(innerTab);
@@ -1848,6 +1868,9 @@ namespace Kingdoms.Bot.UI
 
         private void WireUpCastleRepairTab()
         {
+            // Never leave the mode combo blank — settings load replaces this.
+            _crModeCombo.SelectedIndex = (int)CastleRepairRunMode.Interval;
+
             _crRefreshBtn.Click += delegate { CrPopulateVillageList(); };
             _crRepairAllBtn.Click += delegate { CrRepairAllNow(); };
             _crMemoriseInfraBtn.Click += delegate { CrMemoriseInfra(); };
@@ -1856,7 +1879,10 @@ namespace Kingdoms.Bot.UI
             _crEnabledCheck.CheckedChanged += delegate { CrPushToSettings(); };
             _crIntervalInput.ValueChanged += delegate { CrPushToSettings(); };
             _crDelayInput.ValueChanged += delegate { CrPushToSettings(); };
-            _crRepairOnAttackCheck.CheckedChanged += delegate { CrPushToSettings(); };
+            _crModeCombo.SelectedIndexChanged += delegate { CrPushToSettings(); };
+            _crRepairOnAiAttackCheck.CheckedChanged += delegate { CrPushToSettings(); };
+            _crRepairOnPlayerAttackCheck.CheckedChanged += delegate { CrPushToSettings(); };
+            _crRepairOnScoutCheck.CheckedChanged += delegate { CrPushToSettings(); };
 
             CrBuildColumnHeaders();
 
@@ -2000,13 +2026,29 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _crEnabledCheck.Checked;
             s.IntervalSeconds = (int)_crIntervalInput.Value;
             s.DelayBetweenVillagesMs = (int)_crDelayInput.Value;
-            s.RepairOnAttack = _crRepairOnAttackCheck.Checked;
+            CrPushTriggersToSettings(s);
 
             foreach (IBotModule m in BotEngine.Instance.Modules)
             {
                 if (m is CastleRepairModule)
                     m.Enabled = s.Enabled;
             }
+        }
+
+        // Run mode + the three event-trigger checkboxes. Shared by the push-on-change
+        // and write-everything paths so the two can never drift apart.
+        private void CrPushTriggersToSettings(CastleRepairSettings s)
+        {
+            s.RunMode = _crModeCombo.SelectedIndex == (int)CastleRepairRunMode.EventsOnly
+                ? CastleRepairRunMode.EventsOnly
+                : CastleRepairRunMode.Interval;
+            s.RepairOnAiAttack = _crRepairOnAiAttackCheck.Checked;
+            s.RepairOnPlayerAttack = _crRepairOnPlayerAttackCheck.Checked;
+            s.RepairOnScout = _crRepairOnScoutCheck.Checked;
+            // The legacy flag has been superseded; keep it in step so an older build
+            // reading the same file still behaves sensibly.
+            s.RepairOnAttack = s.AnyTriggerEnabled;
+            s.TriggersMigrated = true;
         }
 
         private void CrLoadFromSettings()
@@ -2022,7 +2064,10 @@ namespace Kingdoms.Bot.UI
                     Math.Min(_crIntervalInput.Maximum, s.IntervalSeconds));
                 _crDelayInput.Value = Math.Max(_crDelayInput.Minimum,
                     Math.Min(_crDelayInput.Maximum, s.DelayBetweenVillagesMs));
-                _crRepairOnAttackCheck.Checked = s.RepairOnAttack;
+                _crModeCombo.SelectedIndex = (int)s.RunMode;
+                _crRepairOnAiAttackCheck.Checked = s.RepairOnAiAttack;
+                _crRepairOnPlayerAttackCheck.Checked = s.RepairOnPlayerAttack;
+                _crRepairOnScoutCheck.Checked = s.RepairOnScout;
 
                 CrPopulateVillageList();
             }
@@ -2038,7 +2083,7 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _crEnabledCheck.Checked;
             s.IntervalSeconds = (int)_crIntervalInput.Value;
             s.DelayBetweenVillagesMs = (int)_crDelayInput.Value;
-            s.RepairOnAttack = _crRepairOnAttackCheck.Checked;
+            CrPushTriggersToSettings(s);
 
             foreach (CastleRepairVillageRow row in _crVillageRows)
                 row.WriteToSettings(s);
@@ -2126,8 +2171,28 @@ namespace Kingdoms.Bot.UI
             if (_crEnabledCheck == null) return;
 
             bool enabled = _crEnabledCheck.Checked;
-            _crStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
-            _crStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+            bool eventsOnly = _crModeCombo.SelectedIndex == (int)CastleRepairRunMode.EventsOnly;
+            bool anyTrigger = _crRepairOnAiAttackCheck.Checked
+                || _crRepairOnPlayerAttackCheck.Checked
+                || _crRepairOnScoutCheck.Checked;
+
+            if (!enabled)
+            {
+                _crStatusLabel.Text = "DISABLED";
+                _crStatusLabel.ForeColor = ErrorCol;
+            }
+            else if (eventsOnly && !anyTrigger)
+            {
+                // Events-only with no trigger ticked can never fire — say so rather
+                // than showing a reassuring green ENABLED.
+                _crStatusLabel.Text = "ENABLED - EVENTS ONLY (no triggers)";
+                _crStatusLabel.ForeColor = ErrorCol;
+            }
+            else
+            {
+                _crStatusLabel.Text = eventsOnly ? "ENABLED - EVENTS ONLY" : "ENABLED - INTERVAL";
+                _crStatusLabel.ForeColor = SuccessCol;
+            }
 
             // Auto-refresh combo boxes when cloud presets become available
             try
@@ -2447,6 +2512,7 @@ namespace Kingdoms.Bot.UI
             {
                 RdWriteToSettings();
                 GrpWriteToSettings();
+                ExWriteToSettings();
                 tabName = "Radar";
             }
             else if (_tabControl.SelectedTab == _recruitingPage)
@@ -2537,6 +2603,12 @@ namespace Kingdoms.Bot.UI
 
             BotEngine.Instance.ReloadSettings();
 
+            // ReloadSettings replaced the whole settings tree and re-synced every module's
+            // Enabled from disk, but only the selected tab is refreshed below. Always reload the
+            // Attacker tab: its world-map buttons gate on the module's Enabled, so leaving that
+            // tab stale here is exactly how the attack button ends up silently doing nothing.
+            AtLoadFromSettings();
+
             string tabName = "";
             if (_tabControl.SelectedTab == _villageSyncPage)
             {
@@ -2551,6 +2623,7 @@ namespace Kingdoms.Bot.UI
                 // they rebind to the reloaded settings, then refresh the rest of the group UI.
                 GrpBuildActionRows();
                 GrpLoadFromSettings();
+                ExLoadFromSettings();
                 tabName = "Radar";
             }
             else if (_tabControl.SelectedTab == _recruitingPage)
@@ -3715,6 +3788,7 @@ namespace Kingdoms.Bot.UI
             _bldVillageEnabledCheck.CheckedChanged += delegate { BldVillageEnabledChanged(); };
             _bldCopySettingsBtn.Click += delegate { BldCopySettingsClick(); };
             _bldImportFileBtn.Click += delegate { BldImportFromFile(); };
+            _bldRefreshVillagesBtn.Click += delegate { BldPopulateVillageCombo(); };
             _bldPriorityBtn.Click += delegate { BldEditPriorities(); };
             _bldRefreshStateBtn.Click += delegate { BldRefreshState(); };
             _bldExportFileBtn.Click += delegate { BldExportToFile(); };
@@ -3786,6 +3860,10 @@ namespace Kingdoms.Bot.UI
 
         private void BldPopulateVillageCombo()
         {
+            // Remembered so a user-pressed refresh doesn't kick them off the village
+            // they're editing (and re-trigger the auto-load on an empty layout).
+            int previousId = _bldSelectedVillageId;
+
             _bldVillageCombo.Items.Clear();
             _bldSelectedVillageId = -1;
 
@@ -3795,14 +3873,16 @@ namespace Kingdoms.Bot.UI
             List<int> ids = GameEngine.Instance.World.getUserVillageIDList();
             if (ids == null) return;
 
+            int restoreIndex = 0;
             foreach (int id in ids)
             {
                 string name = GameEngine.Instance.World.getVillageName(id);
-                _bldVillageCombo.Items.Add(new BldComboItem(id, "[" + id + "] " + name));
+                int index = _bldVillageCombo.Items.Add(new BldComboItem(id, "[" + id + "] " + name));
+                if (id == previousId) restoreIndex = index;
             }
 
             if (_bldVillageCombo.Items.Count > 0)
-                _bldVillageCombo.SelectedIndex = 0;
+                _bldVillageCombo.SelectedIndex = restoreIndex;
         }
 
         private void BldVillageSelected()
@@ -6208,7 +6288,38 @@ namespace Kingdoms.Bot.UI
             _miscMapSwitchModeCombo.SelectedIndexChanged += delegate { MiscWriteToSettings(); };
             _miscShowActiveEnemyCardsCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
             _miscShowAllAttackTimesCheck.CheckedChanged += delegate { MiscWriteToSettings(); };
+
+            // Diagnostic: print the current UserID/SessionID to the log on demand.
+            // Session-loss investigation — logging SessionID across logins reveals whether
+            // the server issues small/sequential IDs (brute-forceable) or large/random ones.
+            Button printSessionBtn = new Button();
+            printSessionBtn.Text = "Print Session Info";
+            printSessionBtn.BackColor = Color.FromArgb(60, 80, 140);
+            printSessionBtn.ForeColor = Color.White;
+            printSessionBtn.FlatStyle = FlatStyle.Flat;
+            printSessionBtn.FlatAppearance.BorderSize = 0;
+            printSessionBtn.Font = new Font("Segoe UI", 8f, FontStyle.Bold);
+            printSessionBtn.Size = new Size(140, 26);
+            // _miscSettingsPanel is docked Top with a fixed height, so a control placed below
+            // its last checkbox would be clipped. Parent to the page and sit just under the panel.
+            printSessionBtn.Location = new Point(16, _miscSettingsPanel.Bottom + 12);
+            printSessionBtn.Cursor = Cursors.Hand;
+            printSessionBtn.Click += delegate { MiscPrintSessionInfo(); };
+            _miscPage.Controls.Add(printSessionBtn);
+            printSessionBtn.BringToFront();
+
             MiscRefreshSaleInfo();
+        }
+
+        private void MiscPrintSessionInfo()
+        {
+            RemoteServices rs = RemoteServices.Instance;
+            if (rs == null || rs.UserID <= 0 || rs.SessionID == 0)
+            {
+                BotLogger.Log("SESSION INFO", BotLogLevel.Warning, "Not logged in — UserID=" + (rs == null ? "?" : rs.UserID.ToString()) + " SessionID=" + (rs == null ? "?" : rs.SessionID.ToString()));
+                return;
+            }
+            BotLogger.Log("SESSION INFO", BotLogLevel.Info, "Current — UserID=" + rs.UserID + " SessionID=" + rs.SessionID);
         }
 
         private void MiscLoadFromSettings()
@@ -7156,6 +7267,7 @@ namespace Kingdoms.Bot.UI
             _scIgnoreList.DoubleClick += delegate { ScMoveSelectedToScout(); };
 
             _scCopySettingsBtn.Click += delegate { ScCopySettingsToAll(); };
+            _scRefreshVillagesBtn.Click += delegate { ScPopulateVillageList(); };
 
             // Drag-to-reorder within each list
             _scScoutList.MouseDown += ScListMouseDown;
@@ -7248,24 +7360,32 @@ namespace Kingdoms.Bot.UI
 
         private void ScPopulateVillageList()
         {
+            // Remembered so a user-pressed refresh doesn't kick them off the village
+            // whose scout/ignore lists they're editing.
+            int previousId = _scSelectedVillageId;
+
             _scVillageListBox.Items.Clear();
             _scSelectedVillageId = -1;
 
             if (GameEngine.Instance == null || GameEngine.Instance.World == null) return;
 
-            List<WorldMap.UserVillageData> villages = GameEngine.Instance.World.getUserVillageList();
-            if (villages == null) return;
+            // getUserVillageIDList excludes capitals (parish/county/province/country), which
+            // cannot scout at all — unlike getUserVillageList, which returns them too.
+            List<int> ids = GameEngine.Instance.World.getUserVillageIDList();
+            if (ids == null) return;
 
-            foreach (WorldMap.UserVillageData uvd in villages)
+            int restoreIndex = 0;
+            foreach (int id in ids)
             {
                 string name = "";
-                try { name = GameEngine.Instance.World.getVillageName(uvd.villageID); } catch { }
+                try { name = GameEngine.Instance.World.getVillageName(id); } catch { }
                 if (string.IsNullOrEmpty(name)) name = "Village";
-                _scVillageListBox.Items.Add(new ScoutVillageItem(uvd.villageID, name + " (" + uvd.villageID + ")"));
+                int index = _scVillageListBox.Items.Add(new ScoutVillageItem(id, name + " (" + id + ")"));
+                if (id == previousId) restoreIndex = index;
             }
 
             if (_scVillageListBox.Items.Count > 0)
-                _scVillageListBox.SelectedIndex = 0;
+                _scVillageListBox.SelectedIndex = restoreIndex;
         }
 
         private void ScOnVillageSelected()
@@ -7338,21 +7458,23 @@ namespace Kingdoms.Bot.UI
             ScoutSettings settings = BotEngine.Instance.Settings.Scout;
             VillageScoutSettings source = settings.GetVillageSettings(_scSelectedVillageId);
 
-            List<WorldMap.UserVillageData> villages = null;
+            // Capital-filtered: copying ScoutingEnabled onto a capital would enable a village
+            // that can never scout.
+            List<int> ids = null;
             try
             {
                 if (GameEngine.Instance != null && GameEngine.Instance.World != null)
-                    villages = GameEngine.Instance.World.getUserVillageList();
+                    ids = GameEngine.Instance.World.getUserVillageIDList();
             }
             catch { }
 
-            if (villages == null) return;
+            if (ids == null) return;
 
             int count = 0;
-            foreach (WorldMap.UserVillageData uvd in villages)
+            foreach (int id in ids)
             {
-                if (uvd.villageID == _scSelectedVillageId) continue;
-                VillageScoutSettings dest = settings.GetVillageSettings(uvd.villageID);
+                if (id == _scSelectedVillageId) continue;
+                VillageScoutSettings dest = settings.GetVillageSettings(id);
                 dest.ScoutingEnabled = source.ScoutingEnabled;
                 dest.ResourceTypesToScout = new List<int>(source.ResourceTypesToScout);
                 dest.ResourceTypesToIgnore = new List<int>(source.ResourceTypesToIgnore);
@@ -7499,8 +7621,9 @@ namespace Kingdoms.Bot.UI
             // Castle Repair
             LayoutRow(X, 24, G, _crEnabledCheck, _crStatusLabel);
             LayoutRow(X, 56, G, _crIntervalLabel, _crIntervalInput, _crDelayLabel, _crDelayInput);
-            LayoutRow(X, 90, G, _crRepairOnAttackCheck);
-            LayoutRow(X, 124, G, _crRefreshBtn, _crRepairAllBtn, _crCopySettingsBtn, _crMemoriseInfraBtn, _crMemoriseTroopsBtn);
+            LayoutRow(X, 90, G, _crModeLabel, _crModeCombo);
+            LayoutRow(X, 120, G, _crRepairOnAiAttackCheck, _crRepairOnPlayerAttackCheck, _crRepairOnScoutCheck);
+            LayoutRow(X, 154, G, _crRefreshBtn, _crRepairAllBtn, _crCopySettingsBtn, _crMemoriseInfraBtn, _crMemoriseTroopsBtn);
 
             // Trade
             LayoutRow(X, 24, G, _trEnabledCheck, _trStatusLabel);
@@ -7537,7 +7660,7 @@ namespace Kingdoms.Bot.UI
             // Village Builder
             LayoutRow(X, 24, G, _bldEnabledCheck, _bldStatusLabel);
             LayoutRow(X, 58, G, _bldIntervalLabel, _bldIntervalInput, _bldDelayLabel, _bldDelayInput, _bldWaitForResourcesCheck, _bldCopySettingsBtn);
-            LayoutRow(X, 18, G, _bldVillageCombo, _bldVillageEnabledCheck, _bldImportFileBtn, _bldRefreshStateBtn, _bldExportFileBtn, _bldClearLayoutBtn, _bldPriorityBtn);
+            LayoutRow(X, 18, G, _bldVillageCombo, _bldVillageEnabledCheck, _bldRefreshVillagesBtn, _bldImportFileBtn, _bldRefreshStateBtn, _bldExportFileBtn, _bldClearLayoutBtn, _bldPriorityBtn);
 
             // Auto Bomb
             LayoutRow(X, 24, G, _abEnabledCheck, _abStatusLabel, _abTargetLabel, _abTargetInput);
@@ -8545,7 +8668,18 @@ namespace Kingdoms.Bot.UI
             _atRefreshTimer.Interval = 2000;
             _atRefreshTimer.Tick += delegate
             {
-                try { AtUpdateStatus(); AtRebuildPreyList(); }
+                try
+                {
+                    // The form can be opened before BotEngine exists (pre-login), in which case
+                    // the constructor's AtLoadFromSettings bails and leaves the tab uninitialised
+                    // — and AtWriteToSettings deliberately refuses to write until it has loaded
+                    // once. Do that first load as soon as the engine shows up.
+                    if (!_atInitialised && BotEngine.Instance != null && BotEngine.Instance.Settings != null)
+                        AtLoadFromSettings();
+
+                    AtUpdateStatus();
+                    AtRebuildPreyList();
+                }
                 catch { /* swallow — timer must not propagate exceptions */ }
             };
             _atRefreshTimer.Start();
@@ -8834,10 +8968,26 @@ namespace Kingdoms.Bot.UI
 
         private void AtRefreshFormations()
         {
-            List<string> names = Modules.AutoBombModule.GetFormationNames();
-            AtRepopulateFormationCombo(_atDistrictFormationCombo, names);
-            AtRepopulateFormationCombo(_atAiFormationCombo, names);
-            AtRepopulateFormationCombo(_atEnemyFormationCombo, names);
+            // Repopulating fires SelectedIndexChanged on each combo. Suppress the settings
+            // write while that happens so a combo rebuild can never push the rest of the tab's
+            // (possibly not-yet-loaded) control values onto the settings and the live module.
+            bool wasLoading = _atLoading;
+            _atLoading = true;
+            try
+            {
+                List<string> names = Modules.AutoBombModule.GetFormationNames();
+                AtRepopulateFormationCombo(_atDistrictFormationCombo, names);
+                AtRepopulateFormationCombo(_atAiFormationCombo, names);
+                AtRepopulateFormationCombo(_atEnemyFormationCombo, names);
+            }
+            finally
+            {
+                _atLoading = wasLoading;
+            }
+
+            // A formation that no longer exists falls back to index 0 above; persist that once,
+            // deliberately, now that every control holds a loaded value.
+            AtWriteToSettings();
         }
 
         private void AtRepopulateFormationCombo(ComboBox combo, List<string> names)
@@ -8871,11 +9021,24 @@ namespace Kingdoms.Bot.UI
         private void AtUpdateStatus()
         {
             if (_atStatusLabel == null) return;
-            bool enabled = _atEnabledCheck != null && _atEnabledCheck.Checked;
-            _atStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
-            _atStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
 
             Modules.AttackerModule mod = BotEngine.Instance?.GetModule<Modules.AttackerModule>();
+
+            // Report the MODULE's state, not the checkbox — the village-panel buttons gate on
+            // mod.Enabled, so showing the checkbox here hid every desync between the two.
+            bool boxChecked = _atEnabledCheck != null && _atEnabledCheck.Checked;
+            bool enabled = mod != null ? mod.Enabled : boxChecked;
+            if (mod != null && boxChecked != enabled)
+            {
+                _atStatusLabel.Text = enabled ? "ENABLED (tab out of sync)" : "DISABLED (tab out of sync)";
+                _atStatusLabel.ForeColor = WarningCol;
+            }
+            else
+            {
+                _atStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
+                _atStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+            }
+
             int attackCount = mod != null ? mod.PreyQueueCount : 0;
             int monkCount = mod != null ? mod.MonkQueueCount : 0;
             _atQueueCountLabel.Text = "Queue: " + attackCount + " attacks, " + monkCount + " monks";
@@ -8956,12 +9119,32 @@ namespace Kingdoms.Bot.UI
             finally
             {
                 _atLoading = false;
+                _atInitialised = true;
+            }
+
+            // Keep the live module in step with what the tab now shows. Without this a load
+            // (including the Load Settings button while another tab is selected) could leave
+            // the checkbox and mod.Enabled disagreeing, and the village-panel attack buttons
+            // gate on mod.Enabled.
+            AtSyncModuleEnabled(BotEngine.Instance.Settings.Attacker.Enabled);
+        }
+
+        private static void AtSyncModuleEnabled(bool enabled)
+        {
+            if (BotEngine.Instance == null) return;
+            foreach (IBotModule m in BotEngine.Instance.Modules)
+            {
+                if (m is Modules.AttackerModule)
+                    m.Enabled = enabled;
             }
         }
 
         private void AtWriteToSettings()
         {
             if (_atLoading) return;
+            // Before the first load the controls still hold designer defaults; writing them
+            // would clobber the saved settings and disable the live module.
+            if (!_atInitialised) return;
             if (BotEngine.Instance == null || BotEngine.Instance.Settings == null) return;
             AttackerSettings s = BotEngine.Instance.Settings.Attacker;
 
@@ -8986,11 +9169,7 @@ namespace Kingdoms.Bot.UI
             s.EnemyAttackType = AtIndexToAttackType(AtEnemyAttackTypeValues, _atEnemyAttackTypeCombo.SelectedIndex);
             s.EnemyPillagePercent = _atEnemyPillageTrack.Value;
 
-            foreach (IBotModule m in BotEngine.Instance.Modules)
-            {
-                if (m is Modules.AttackerModule)
-                    m.Enabled = s.Enabled;
-            }
+            AtSyncModuleEnabled(s.Enabled);
         }
 
         private static void AtSelectFormation(ComboBox combo, string name)

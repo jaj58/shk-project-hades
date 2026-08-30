@@ -91,6 +91,7 @@ namespace Kingdoms.Bot
                 if (g == null) g = new BotSettings();
                 g._userId = userId;
                 g._worldId = worldId;
+                g.PostLoadMigrate();
                 return g;
             }
 
@@ -111,7 +112,16 @@ namespace Kingdoms.Bot
             }
             s._userId = userId;
             s._worldId = worldId;
+            s.PostLoadMigrate();
             return s;
+        }
+
+        // One-shot upgrades applied to every freshly deserialized settings object,
+        // so old files keep behaving the way the user configured them.
+        private void PostLoadMigrate()
+        {
+            if (CastleRepair != null)
+                CastleRepair.MigrateLegacyTriggers();
         }
 
         private void SerializeTo(string path)
@@ -180,6 +190,7 @@ namespace Kingdoms.Bot
         public string DiscordWebhookUrl = "";
         public string DiscordMentionTag = "";
         public GroupRadarSettings GroupRadar = new GroupRadarSettings();
+        public RadarExceptionSettings Exceptions = new RadarExceptionSettings();
         public int AutoInterdictMonkCount = 1;
         public bool AutoRecruitMonks = false;
         public int MinArmySizeForInterdict = 100;
@@ -258,6 +269,30 @@ namespace Kingdoms.Bot
             Actions.Add(newAction);
             return newAction;
         }
+    }
+
+    // One ignored source: either a player (PlayerName set, VillageIds resolved from the
+    // server and periodically refreshed) or a single raw village (PlayerName empty).
+    [Serializable]
+    public class RadarExceptionEntry
+    {
+        public string PlayerName = "";
+        public bool Enabled = true;
+        public List<int> VillageIds = new List<int>();
+    }
+
+    [Serializable]
+    public class RadarExceptionSettings
+    {
+        public bool Enabled = false;
+        // Re-resolve each player entry's village list on map load, then every
+        // AutoRefreshIntervalMinutes thereafter (0 = periodic disabled).
+        public bool RefreshOnStart = true;
+        public int AutoRefreshIntervalMinutes = 60;
+        // Own villages the exceptions apply to. Inclusion list: empty means the
+        // exceptions apply nowhere, so an empty list can never silence the radar.
+        public List<int> AppliesToVillageIds = new List<int>();
+        public List<RadarExceptionEntry> Entries = new List<RadarExceptionEntry>();
     }
 
     [Serializable]
@@ -353,13 +388,45 @@ namespace Kingdoms.Bot
         public int Priority = 1;
     }
 
+    // How the castle repair module decides when to run. Event triggers (the
+    // RepairOn* flags below) fire in BOTH modes; the mode only controls whether
+    // the timed sweep over every village runs.
+    public enum CastleRepairRunMode
+    {
+        Interval = 0,
+        EventsOnly = 1
+    }
+
     [Serializable]
     public class CastleRepairSettings
     {
         public bool Enabled;
+        public CastleRepairRunMode RunMode = CastleRepairRunMode.Interval;
         public int IntervalSeconds = 300;
         public int DelayBetweenVillagesMs = 5000;
+
+        // Legacy single trigger flag - kept only so old settings files still
+        // deserialize. Read once by MigrateLegacyTriggers(), never after that.
         public bool RepairOnAttack;
+        public bool TriggersMigrated;
+
+        public bool RepairOnAiAttack;
+        public bool RepairOnPlayerAttack;
+        public bool RepairOnScout;
+
+        public bool AnyTriggerEnabled
+        {
+            get { return RepairOnAiAttack || RepairOnPlayerAttack || RepairOnScout; }
+        }
+
+        // One-shot upgrade of the old "Repair on Attack/Spy" checkbox. Its actual
+        // behaviour was AI-attacks-only, so that is what it maps to.
+        public void MigrateLegacyTriggers()
+        {
+            if (TriggersMigrated) return;
+            if (RepairOnAttack) RepairOnAiAttack = true;
+            TriggersMigrated = true;
+        }
         public List<VillageCastleRepairSettings> Villages = new List<VillageCastleRepairSettings>();
 
         public VillageCastleRepairSettings GetVillageSettings(int villageId)
@@ -715,6 +782,73 @@ namespace Kingdoms.Bot
             {
                 return "Resource " + resourceId;
             }
+        }
+
+        /// <summary>
+        /// Ceiling used for limit inputs when the real cap can't be read. Deliberately
+        /// generous: a tight fallback would clamp saved settings down on load.
+        /// </summary>
+        private const int MaxCapFallback = 999999;
+
+        /// <summary>Storage capacity cards double the cap and don't stack.</summary>
+        private const double StorageCardMultiplier = 2.0;
+
+        private static ResearchData _maxedResearch;
+
+        /// <summary>
+        /// The largest capacity a village could ever hold for a resource: every capacity
+        /// research maxed plus the x2 storage card. Computed from the game's own
+        /// getResourceCap so it stays correct per world and if game data changes.
+        /// </summary>
+        public static int GetMaxPossibleCap(int resourceId, bool isCapital)
+        {
+            try
+            {
+                if (_maxedResearch == null)
+                {
+                    ResearchData rd = new ResearchData();
+                    rd.Research_Engineering = MaxResearchLevel(ResearchData.RESEARCH_ENGINEERING);
+                    rd.Research_StockpileCapacity = MaxResearchLevel(ResearchData.RESEARCH_STOCKPILECAPACITY);
+                    rd.Research_GranaryCapacity = MaxResearchLevel(ResearchData.RESEARCH_GRANARYCAPACITY);
+                    rd.Research_ArmouryCapacity = MaxResearchLevel(ResearchData.RESEARCH_ARMOURYCAPACITY);
+                    rd.Research_InnCapacity = MaxResearchLevel(ResearchData.RESEARCH_INNCAPACITY);
+                    rd.Research_HallCapacity = MaxResearchLevel(ResearchData.RESEARCH_HALLCAPACITY);
+                    _maxedResearch = rd;
+                }
+
+                double cap = _maxedResearch.getResourceCap(
+                    GameEngine.Instance.LocalWorldData, resourceId, isCapital) * StorageCardMultiplier;
+                if (cap > 0) return (int)cap;
+            }
+            catch
+            {
+            }
+
+            return MaxCapFallback;
+        }
+
+        /// <summary>
+        /// The largest of <see cref="GetMaxPossibleCap"/> across every traded good, for
+        /// inputs that apply to several goods at once (route keep/send amounts).
+        /// </summary>
+        public static int GetMaxPossibleCapAcrossAllGoods(bool isCapital)
+        {
+            int max = 0;
+            for (int i = 0; i < TradeTypeIds.Length; i++)
+            {
+                int cap = GetMaxPossibleCap(TradeTypeIds[i], isCapital);
+                if (cap > max) max = cap;
+            }
+            return max > 0 ? max : MaxCapFallback;
+        }
+
+        /// <summary>Top level of a research, clamped to the storage tables' 11 entries (0..10).</summary>
+        private static byte MaxResearchLevel(int researchType)
+        {
+            int levels = ResearchData.getNumLevels(researchType);
+            if (levels > 10) levels = 10;
+            if (levels < 0) levels = 0;
+            return (byte)levels;
         }
     }
 

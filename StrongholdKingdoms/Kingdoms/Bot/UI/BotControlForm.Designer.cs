@@ -217,7 +217,11 @@ namespace Kingdoms.Bot.UI
             this._crRepairAllBtn = new System.Windows.Forms.Button();
             this._crMemoriseInfraBtn = new System.Windows.Forms.Button();
             this._crMemoriseTroopsBtn = new System.Windows.Forms.Button();
-            this._crRepairOnAttackCheck = new System.Windows.Forms.CheckBox();
+            this._crModeLabel = new System.Windows.Forms.Label();
+            this._crModeCombo = new System.Windows.Forms.ComboBox();
+            this._crRepairOnAiAttackCheck = new System.Windows.Forms.CheckBox();
+            this._crRepairOnPlayerAttackCheck = new System.Windows.Forms.CheckBox();
+            this._crRepairOnScoutCheck = new System.Windows.Forms.CheckBox();
             this._crDelayInput = new System.Windows.Forms.NumericUpDown();
             this._crDelayLabel = new System.Windows.Forms.Label();
             this._crIntervalInput = new System.Windows.Forms.NumericUpDown();
@@ -273,6 +277,7 @@ namespace Kingdoms.Bot.UI
             this._bldExportFileBtn = new System.Windows.Forms.Button();
             this._bldRefreshStateBtn = new System.Windows.Forms.Button();
             this._bldImportFileBtn = new System.Windows.Forms.Button();
+            this._bldRefreshVillagesBtn = new System.Windows.Forms.Button();
             this._bldPriorityBtn = new System.Windows.Forms.Button();
             this._bldVillageEnabledCheck = new System.Windows.Forms.CheckBox();
             this._bldVillageCombo = new System.Windows.Forms.ComboBox();
@@ -486,6 +491,7 @@ namespace Kingdoms.Bot.UI
             this._scWaitForFreeSpaceCheck = new System.Windows.Forms.CheckBox();
             this._scVillageListBox = new System.Windows.Forms.ListBox();
             this._scVillageHeaderLabel = new System.Windows.Forms.Label();
+            this._scRefreshVillagesBtn = new System.Windows.Forms.Button();
             this._scVillageEnabledCheck = new System.Windows.Forms.CheckBox();
             this._scScoutListLabel = new System.Windows.Forms.Label();
             this._scIgnoreListLabel = new System.Windows.Forms.Label();
@@ -2300,7 +2306,11 @@ namespace Kingdoms.Bot.UI
             this._crSettingsPanel.Controls.Add(this._crRepairAllBtn);
             this._crSettingsPanel.Controls.Add(this._crMemoriseInfraBtn);
             this._crSettingsPanel.Controls.Add(this._crMemoriseTroopsBtn);
-            this._crSettingsPanel.Controls.Add(this._crRepairOnAttackCheck);
+            this._crSettingsPanel.Controls.Add(this._crModeLabel);
+            this._crSettingsPanel.Controls.Add(this._crModeCombo);
+            this._crSettingsPanel.Controls.Add(this._crRepairOnAiAttackCheck);
+            this._crSettingsPanel.Controls.Add(this._crRepairOnPlayerAttackCheck);
+            this._crSettingsPanel.Controls.Add(this._crRepairOnScoutCheck);
             this._crSettingsPanel.Controls.Add(this._crDelayInput);
             this._crSettingsPanel.Controls.Add(this._crDelayLabel);
             this._crSettingsPanel.Controls.Add(this._crIntervalInput);
@@ -2311,7 +2321,7 @@ namespace Kingdoms.Bot.UI
             this._crSettingsPanel.Location = new System.Drawing.Point(0, 0);
             this._crSettingsPanel.Name = "_crSettingsPanel";
             this._crSettingsPanel.Padding = new System.Windows.Forms.Padding(16, 12, 16, 8);
-            this._crSettingsPanel.Size = new System.Drawing.Size(1142, 162);
+            this._crSettingsPanel.Size = new System.Drawing.Size(1142, 190);
             this._crSettingsPanel.TabIndex = 0;
             // 
             // _crCopySettingsBtn
@@ -2389,18 +2399,69 @@ namespace Kingdoms.Bot.UI
             this._crMemoriseTroopsBtn.Text = "Memorise Troops";
             this._crMemoriseTroopsBtn.UseVisualStyleBackColor = false;
             //
-            // _crRepairOnAttackCheck
-            // 
-            this._crRepairOnAttackCheck.AutoSize = true;
-            this._crRepairOnAttackCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._crRepairOnAttackCheck.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this._crRepairOnAttackCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._crRepairOnAttackCheck.Location = new System.Drawing.Point(16, 70);
-            this._crRepairOnAttackCheck.Name = "_crRepairOnAttackCheck";
-            this._crRepairOnAttackCheck.Size = new System.Drawing.Size(141, 19);
-            this._crRepairOnAttackCheck.TabIndex = 7;
-            this._crRepairOnAttackCheck.Text = "Repair on Attack/Spy";
-            this._crRepairOnAttackCheck.UseVisualStyleBackColor = true;
+            // _crModeLabel
+            //
+            this._crModeLabel.AutoSize = true;
+            this._crModeLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._crModeLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._crModeLabel.Location = new System.Drawing.Point(16, 74);
+            this._crModeLabel.Name = "_crModeLabel";
+            this._crModeLabel.Size = new System.Drawing.Size(66, 15);
+            this._crModeLabel.TabIndex = 13;
+            this._crModeLabel.Text = "Run mode:";
+            //
+            // _crModeCombo
+            //
+            this._crModeCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._crModeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._crModeCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._crModeCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._crModeCombo.Items.AddRange(new object[] {
+            "Run on interval",
+            "Run on Attack/Spy only"});
+            this._crModeCombo.Location = new System.Drawing.Point(96, 71);
+            this._crModeCombo.Name = "_crModeCombo";
+            this._crModeCombo.Size = new System.Drawing.Size(170, 23);
+            this._crModeCombo.TabIndex = 14;
+            //
+            // _crRepairOnAiAttackCheck
+            //
+            this._crRepairOnAiAttackCheck.AutoSize = true;
+            this._crRepairOnAiAttackCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._crRepairOnAiAttackCheck.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._crRepairOnAiAttackCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._crRepairOnAiAttackCheck.Location = new System.Drawing.Point(16, 104);
+            this._crRepairOnAiAttackCheck.Name = "_crRepairOnAiAttackCheck";
+            this._crRepairOnAiAttackCheck.Size = new System.Drawing.Size(141, 19);
+            this._crRepairOnAiAttackCheck.TabIndex = 15;
+            this._crRepairOnAiAttackCheck.Text = "Repair on AI attack";
+            this._crRepairOnAiAttackCheck.UseVisualStyleBackColor = true;
+            //
+            // _crRepairOnPlayerAttackCheck
+            //
+            this._crRepairOnPlayerAttackCheck.AutoSize = true;
+            this._crRepairOnPlayerAttackCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._crRepairOnPlayerAttackCheck.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._crRepairOnPlayerAttackCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._crRepairOnPlayerAttackCheck.Location = new System.Drawing.Point(180, 104);
+            this._crRepairOnPlayerAttackCheck.Name = "_crRepairOnPlayerAttackCheck";
+            this._crRepairOnPlayerAttackCheck.Size = new System.Drawing.Size(160, 19);
+            this._crRepairOnPlayerAttackCheck.TabIndex = 16;
+            this._crRepairOnPlayerAttackCheck.Text = "Repair on player attack";
+            this._crRepairOnPlayerAttackCheck.UseVisualStyleBackColor = true;
+            //
+            // _crRepairOnScoutCheck
+            //
+            this._crRepairOnScoutCheck.AutoSize = true;
+            this._crRepairOnScoutCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._crRepairOnScoutCheck.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this._crRepairOnScoutCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._crRepairOnScoutCheck.Location = new System.Drawing.Point(360, 104);
+            this._crRepairOnScoutCheck.Name = "_crRepairOnScoutCheck";
+            this._crRepairOnScoutCheck.Size = new System.Drawing.Size(126, 19);
+            this._crRepairOnScoutCheck.TabIndex = 17;
+            this._crRepairOnScoutCheck.Text = "Repair on scout";
+            this._crRepairOnScoutCheck.UseVisualStyleBackColor = true;
             // 
             // _crDelayInput
             // 
@@ -3169,6 +3230,7 @@ namespace Kingdoms.Bot.UI
             this._bldNavPanel.Controls.Add(this._bldExportFileBtn);
             this._bldNavPanel.Controls.Add(this._bldRefreshStateBtn);
             this._bldNavPanel.Controls.Add(this._bldImportFileBtn);
+            this._bldNavPanel.Controls.Add(this._bldRefreshVillagesBtn);
             this._bldNavPanel.Controls.Add(this._bldVillageEnabledCheck);
             this._bldNavPanel.Controls.Add(this._bldVillageCombo);
             this._bldNavPanel.Dock = System.Windows.Forms.DockStyle.Top;
@@ -3185,7 +3247,7 @@ namespace Kingdoms.Bot.UI
             this._bldClearLayoutBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._bldClearLayoutBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._bldClearLayoutBtn.ForeColor = System.Drawing.Color.White;
-            this._bldClearLayoutBtn.Location = new System.Drawing.Point(890, 6);
+            this._bldClearLayoutBtn.Location = new System.Drawing.Point(903, 6);
             this._bldClearLayoutBtn.Name = "_bldClearLayoutBtn";
             this._bldClearLayoutBtn.Size = new System.Drawing.Size(100, 30);
             this._bldClearLayoutBtn.TabIndex = 5;
@@ -3200,7 +3262,7 @@ namespace Kingdoms.Bot.UI
             this._bldExportFileBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._bldExportFileBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._bldExportFileBtn.ForeColor = System.Drawing.Color.White;
-            this._bldExportFileBtn.Location = new System.Drawing.Point(770, 6);
+            this._bldExportFileBtn.Location = new System.Drawing.Point(779, 6);
             this._bldExportFileBtn.Name = "_bldExportFileBtn";
             this._bldExportFileBtn.Size = new System.Drawing.Size(110, 30);
             this._bldExportFileBtn.TabIndex = 4;
@@ -3215,7 +3277,7 @@ namespace Kingdoms.Bot.UI
             this._bldRefreshStateBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._bldRefreshStateBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._bldRefreshStateBtn.ForeColor = System.Drawing.Color.White;
-            this._bldRefreshStateBtn.Location = new System.Drawing.Point(650, 6);
+            this._bldRefreshStateBtn.Location = new System.Drawing.Point(655, 6);
             this._bldRefreshStateBtn.Name = "_bldRefreshStateBtn";
             this._bldRefreshStateBtn.Size = new System.Drawing.Size(110, 30);
             this._bldRefreshStateBtn.TabIndex = 3;
@@ -3230,12 +3292,27 @@ namespace Kingdoms.Bot.UI
             this._bldImportFileBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._bldImportFileBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._bldImportFileBtn.ForeColor = System.Drawing.Color.White;
-            this._bldImportFileBtn.Location = new System.Drawing.Point(520, 6);
+            this._bldImportFileBtn.Location = new System.Drawing.Point(521, 6);
             this._bldImportFileBtn.Name = "_bldImportFileBtn";
             this._bldImportFileBtn.Size = new System.Drawing.Size(120, 30);
             this._bldImportFileBtn.TabIndex = 2;
             this._bldImportFileBtn.Text = "Import From File";
             this._bldImportFileBtn.UseVisualStyleBackColor = false;
+            //
+            // _bldRefreshVillagesBtn
+            //
+            this._bldRefreshVillagesBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(160)))), ((int)(((byte)(255)))));
+            this._bldRefreshVillagesBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._bldRefreshVillagesBtn.FlatAppearance.BorderSize = 0;
+            this._bldRefreshVillagesBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._bldRefreshVillagesBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._bldRefreshVillagesBtn.ForeColor = System.Drawing.Color.White;
+            this._bldRefreshVillagesBtn.Location = new System.Drawing.Point(397, 6);
+            this._bldRefreshVillagesBtn.Name = "_bldRefreshVillagesBtn";
+            this._bldRefreshVillagesBtn.Size = new System.Drawing.Size(110, 30);
+            this._bldRefreshVillagesBtn.TabIndex = 7;
+            this._bldRefreshVillagesBtn.Text = "Refresh Villages";
+            this._bldRefreshVillagesBtn.UseVisualStyleBackColor = false;
             //
             // _bldPriorityBtn
             //
@@ -3245,7 +3322,7 @@ namespace Kingdoms.Bot.UI
             this._bldPriorityBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._bldPriorityBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this._bldPriorityBtn.ForeColor = System.Drawing.Color.White;
-            this._bldPriorityBtn.Location = new System.Drawing.Point(1000, 6);
+            this._bldPriorityBtn.Location = new System.Drawing.Point(1017, 6);
             this._bldPriorityBtn.Name = "_bldPriorityBtn";
             this._bldPriorityBtn.Size = new System.Drawing.Size(110, 30);
             this._bldPriorityBtn.TabIndex = 6;
@@ -3258,7 +3335,7 @@ namespace Kingdoms.Bot.UI
             this._bldVillageEnabledCheck.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._bldVillageEnabledCheck.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this._bldVillageEnabledCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._bldVillageEnabledCheck.Location = new System.Drawing.Point(330, 8);
+            this._bldVillageEnabledCheck.Location = new System.Drawing.Point(270, 8);
             this._bldVillageEnabledCheck.Name = "_bldVillageEnabledCheck";
             this._bldVillageEnabledCheck.Size = new System.Drawing.Size(113, 19);
             this._bldVillageEnabledCheck.TabIndex = 1;
@@ -3273,7 +3350,7 @@ namespace Kingdoms.Bot.UI
             this._bldVillageCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
             this._bldVillageCombo.Location = new System.Drawing.Point(16, 6);
             this._bldVillageCombo.Name = "_bldVillageCombo";
-            this._bldVillageCombo.Size = new System.Drawing.Size(300, 23);
+            this._bldVillageCombo.Size = new System.Drawing.Size(240, 23);
             this._bldVillageCombo.TabIndex = 0;
             // 
             // _bldSettingsPanel
@@ -5927,6 +6004,7 @@ namespace Kingdoms.Bot.UI
             //
             this._scVillagePanel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(28)))), ((int)(((byte)(28)))), ((int)(((byte)(38)))));
             this._scVillagePanel.Controls.Add(this._scVillageListBox);
+            this._scVillagePanel.Controls.Add(this._scRefreshVillagesBtn);
             this._scVillagePanel.Controls.Add(this._scVillageHeaderLabel);
             this._scVillagePanel.Dock = System.Windows.Forms.DockStyle.Left;
             this._scVillagePanel.Location = new System.Drawing.Point(0, 91);
@@ -5957,6 +6035,21 @@ namespace Kingdoms.Bot.UI
             this._scVillageHeaderLabel.Size = new System.Drawing.Size(220, 22);
             this._scVillageHeaderLabel.TabIndex = 1;
             this._scVillageHeaderLabel.Text = "Villages";
+            //
+            // _scRefreshVillagesBtn
+            //
+            this._scRefreshVillagesBtn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(70)))), ((int)(((byte)(50)))));
+            this._scRefreshVillagesBtn.Cursor = System.Windows.Forms.Cursors.Hand;
+            this._scRefreshVillagesBtn.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this._scRefreshVillagesBtn.FlatAppearance.BorderSize = 0;
+            this._scRefreshVillagesBtn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._scRefreshVillagesBtn.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this._scRefreshVillagesBtn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._scRefreshVillagesBtn.Name = "_scRefreshVillagesBtn";
+            this._scRefreshVillagesBtn.Size = new System.Drawing.Size(220, 26);
+            this._scRefreshVillagesBtn.TabIndex = 2;
+            this._scRefreshVillagesBtn.Text = "Refresh Villages";
+            this._scRefreshVillagesBtn.UseVisualStyleBackColor = false;
             //
             // _scDivider
             //
@@ -7022,7 +7115,11 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.NumericUpDown _crIntervalInput;
         private System.Windows.Forms.Label _crDelayLabel;
         private System.Windows.Forms.NumericUpDown _crDelayInput;
-        private System.Windows.Forms.CheckBox _crRepairOnAttackCheck;
+        private System.Windows.Forms.Label _crModeLabel;
+        private System.Windows.Forms.ComboBox _crModeCombo;
+        private System.Windows.Forms.CheckBox _crRepairOnAiAttackCheck;
+        private System.Windows.Forms.CheckBox _crRepairOnPlayerAttackCheck;
+        private System.Windows.Forms.CheckBox _crRepairOnScoutCheck;
         private System.Windows.Forms.Button _crRepairAllBtn;
         private System.Windows.Forms.Button _crMemoriseInfraBtn;
         private System.Windows.Forms.Button _crMemoriseTroopsBtn;
@@ -7047,6 +7144,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.ComboBox _bldVillageCombo;
         private System.Windows.Forms.CheckBox _bldVillageEnabledCheck;
         private System.Windows.Forms.Button _bldImportFileBtn;
+        private System.Windows.Forms.Button _bldRefreshVillagesBtn;
         private System.Windows.Forms.Button _bldPriorityBtn;
         private System.Windows.Forms.Button _bldRefreshStateBtn;
         private System.Windows.Forms.Button _bldExportFileBtn;
@@ -7301,6 +7399,7 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.CheckBox _scWaitForFreeSpaceCheck;
         private System.Windows.Forms.ListBox _scVillageListBox;
         private System.Windows.Forms.Label _scVillageHeaderLabel;
+        private System.Windows.Forms.Button _scRefreshVillagesBtn;
         private System.Windows.Forms.CheckBox _scVillageEnabledCheck;
         private System.Windows.Forms.Label _scScoutListLabel;
         private System.Windows.Forms.Label _scIgnoreListLabel;

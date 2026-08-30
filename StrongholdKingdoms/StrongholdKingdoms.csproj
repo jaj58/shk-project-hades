@@ -100,6 +100,8 @@
     <Compile Include="Kingdoms\Bot\InterdictRunner.cs" />
     <Compile Include="Kingdoms\Bot\RadarSoundPlayer.cs" />
     <Compile Include="Kingdoms\Bot\IBotModule.cs" />
+    <Compile Include="Kingdoms\Bot\AttackResultRouter.cs" />
+    <Compile Include="Kingdoms\Bot\VillageResourceRouter.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AttackerModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombMultiModule.cs" />
@@ -134,6 +136,9 @@
     <Compile Include="Kingdoms\Bot\UI\BotControlForm.TimingTool.cs">
       <DependentUpon>BotControlForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Kingdoms\Bot\UI\BotControlForm.RadarExceptions.cs">
+      <DependentUpon>BotControlForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Kingdoms\Bot\UI\CopyRecruitSettingsForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -164,6 +169,18 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Kingdoms\Bot\UI\VillageSyncTab.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\VillageRadarForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\VillageRadarRow.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\VillageStatsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\VillageStatsRow.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="UICard.cs" />

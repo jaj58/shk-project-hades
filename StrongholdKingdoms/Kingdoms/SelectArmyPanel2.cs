@@ -378,19 +378,16 @@ namespace Kingdoms
 
     private void fetchAttackDetails(long armyID)
     {
-      RemoteServices.Instance.set_RetrieveAttackResult_UserCallBack(
-        new RemoteServices.RetrieveAttackResult_UserCallBack(this.attackDetailCallback));
-      RemoteServices.Instance.RetrieveAttackResult(armyID, GameEngine.Instance.World.StoredVillageFactionPos);
+      // Routed rather than installed directly: RemoteServices has only one
+      // RetrieveAttackResult callback slot, and the radar module is asking for army
+      // details on its own schedule.
+      Bot.AttackResultRouter.Request(armyID,
+        new Action<RetrieveAttackResult_ReturnType>(this.attackDetailCallback));
     }
 
     private void attackDetailCallback(RetrieveAttackResult_ReturnType returnData)
     {
-      RemoteServices.Instance.set_RetrieveAttackResult_UserCallBack(
-        new RemoteServices.RetrieveAttackResult_UserCallBack(
-          GameEngine.Instance.World.retrieveAttackResultCallback));
-      GameEngine.Instance.World.retrieveAttackResultCallback(returnData);
-
-      if (!returnData.Success || returnData.armyData == null) return;
+      if (returnData == null || !returnData.Success || returnData.armyData == null) return;
       if (returnData.armyData.armyID != this.selectedArmyID) return;
 
       int[] serverCounts = new int[]
@@ -418,7 +415,7 @@ namespace Kingdoms
       this.Invalidate();
     }
 
-    private static string GetAttackTypeName(int attackType)
+    internal static string GetAttackTypeName(int attackType)
     {
       switch (attackType)
       {

@@ -106,7 +106,16 @@ namespace Kingdoms.Bot.Modules
 
         private Dictionary<long, bool> _knownArmyIds = new Dictionary<long, bool>();
         private Dictionary<long, bool> _knownPersonIds = new Dictionary<long, bool>();
-        private Dictionary<long, int> _incomingAttackTargets = new Dictionary<long, int>();
+        // Incoming armies whose landing gets forwarded to the castle repair module.
+        // The action key travels with the village id so the repair module can apply
+        // its own per-trigger checkboxes (AI attack / player attack / scout).
+        private class IncomingRepairTarget
+        {
+            public int VillageId;
+            public string ActionKey;
+        }
+
+        private Dictionary<long, IncomingRepairTarget> _incomingAttackTargets = new Dictionary<long, IncomingRepairTarget>();
         private Dictionary<int, DateTime> _villagesSentInterdict = new Dictionary<int, DateTime>();
         // Villages with an interdict retry cycle currently running on a background
         // thread — prevents duplicate cycles for the same village. Guarded by _interdictLock,
@@ -137,6 +146,15 @@ namespace Kingdoms.Bot.Modules
         // (the next periodic refresh will try the member again).
         private const int GroupRefreshMaxAttempts = 3;
         private const int GroupRefreshRetryDelayMs = 2000;
+
+        // Radar exceptions — per-tick snapshot of the ignore lists. _exSources maps an
+        // ignored source village to the label of the entry covering it (the player name,
+        // or "" for a raw village-ID entry) so the skip can be logged by name.
+        private Dictionary<int, string> _exSources = new Dictionary<int, string>();
+        private HashSet<int> _exTargetIds = new HashSet<int>();
+        private bool _exActive = false;
+        private DateTime _lastExceptionRefresh = DateTime.MinValue;
+        private volatile bool _exceptionRefreshInProgress = false;
 
         private class PendingPersonNotification
         {
@@ -199,6 +217,7 @@ namespace Kingdoms.Bot.Modules
             _personMissingTicks.Clear();
             _firstScan = true;
             _lastGroupRefresh = DateTime.MinValue;
+            _lastExceptionRefresh = DateTime.MinValue;
         }
 
         protected override void OnTick()
@@ -214,6 +233,10 @@ namespace Kingdoms.Bot.Modules
 
             // Auto-refresh group members' village lists (on start + periodically).
             MaybeAutoRefreshGroupMembers(settings);
+            MaybeAutoRefreshExceptionPlayers(settings);
+
+            // Snapshot the exception lists once per tick so the scans can test them cheaply.
+            BuildExceptionSnapshot(settings);
 
             // Keep our GetArmyData wrapper in place each tick. retrieveArmies() (called
             // on reconnect) resets the callback to WorldMap.getArmyData — re-setting here
@@ -384,12 +407,28 @@ namespace Kingdoms.Bot.Modules
                 string actionKey = ClassifyArmy(army);
                 if (actionKey == null) continue;
 
-                // Track incoming attacks for repair-on-attack (user village path only)
-                if (groupMember == null &&
-                    actionKey != ACTION_SCOUT && actionKey != ACTION_FORAGING && actionKey != ACTION_REINFORCEMENT &&
-                    actionKey != ACTION_AI_SCOUT && actionKey != ACTION_AI_FORAGING)
+                // Radar exceptions: suppress this army entirely — no castle-repair
+                // tracking, no monitor gate, no detail lookup, no notification.
+                string exLabel;
+                if (IsExceptedAttack(army.travelFromVillageID, army.homeVillageID, army.targetVillageID, out exLabel))
                 {
-                    _incomingAttackTargets[army.armyID] = army.targetVillageID;
+                    LogInfo(FormatExceptionSkip(GetActionLabel(actionKey),
+                        army.travelFromVillageID, army.targetVillageID, exLabel));
+                    continue;
+                }
+
+                // Track incoming attacks AND scouts for repair-on-attack (user village
+                // path only). Foraging and reinforcements never leave anything to
+                // repair. Which kinds actually trigger a repair is decided by the
+                // castle repair module's own trigger checkboxes.
+                if (groupMember == null &&
+                    actionKey != ACTION_FORAGING && actionKey != ACTION_REINFORCEMENT &&
+                    actionKey != ACTION_AI_FORAGING)
+                {
+                    IncomingRepairTarget target = new IncomingRepairTarget();
+                    target.VillageId = army.targetVillageID;
+                    target.ActionKey = actionKey;
+                    _incomingAttackTargets[army.armyID] = target;
                 }
 
                 RadarActionSettings actionSettings = groupMember != null
@@ -414,10 +453,16 @@ namespace Kingdoms.Bot.Modules
 
                     try
                     {
-                        RemoteServices.Instance.set_RetrieveAttackResult_UserCallBack(
-                            new RemoteServices.RetrieveAttackResult_UserCallBack(this.RetrieveAttackResultCallback));
-                        RemoteServices.Instance.RetrieveAttackResult(
-                            army.armyID, GameEngine.Instance.World.StoredVillageFactionPos);
+                        // Routed rather than installed directly: RemoteServices has only
+                        // one RetrieveAttackResult callback slot, shared with the army
+                        // select panel and the village radar window. The router hands us
+                        // back the reply for the army we actually asked about.
+                        long requestedArmyId = army.armyID;
+                        AttackResultRouter.Request(requestedArmyId,
+                            delegate(RetrieveAttackResult_ReturnType data)
+                            {
+                                RetrieveAttackResultCallback(requestedArmyId, data);
+                            });
                     }
                     catch (Exception ex)
                     {
@@ -436,9 +481,9 @@ namespace Kingdoms.Bot.Modules
             }
             foreach (long armyId in landedIds)
             {
-                int targetVillageId = _incomingAttackTargets[armyId];
+                IncomingRepairTarget landed = _incomingAttackTargets[armyId];
                 _incomingAttackTargets.Remove(armyId);
-                NotifyCastleRepairModule(targetVillageId);
+                NotifyCastleRepairModule(landed);
             }
 
             // Clean up stale IDs
@@ -452,45 +497,39 @@ namespace Kingdoms.Bot.Modules
                 _knownArmyIds.Remove(id);
         }
 
-        // Called by the game when RetrieveAttackResult completes � fires notifications immediately
-        private void RetrieveAttackResultCallback(RetrieveAttackResult_ReturnType returnData)
+        // Called by AttackResultRouter when RetrieveAttackResult completes for armyId, or
+        // with null/failed data when the server had no answer. Either way the pending
+        // lookup is closed out and the notification fires with whatever we have, so a
+        // silent army can't sit in _pendingLookups until the 5s sweep in
+        // ProcessPendingLookups picks it up.
+        private void RetrieveAttackResultCallback(long armyId, RetrieveAttackResult_ReturnType returnData)
         {
             try
             {
-                if (returnData == null || !returnData.Success)
+                PendingArmyLookup pending;
+                if (!_pendingLookups.TryGetValue(armyId, out pending)) return;
+                if (pending.Completed) return;   // the timeout sweep already notified
+
+                if (returnData != null && returnData.Success && returnData.armyData != null)
                 {
-                    foreach (PendingArmyLookup p in _pendingLookups.Values)
-                    {
-                        if (!p.Completed)
-                        {
-                            p.Completed = true;
-                            FireNotification(p);
-                            break;
-                        }
-                    }
-                    return;
+                    pending.NumPeasants = returnData.armyData.numPeasants;
+                    pending.NumArchers = returnData.armyData.numArchers;
+                    pending.NumPikemen = returnData.armyData.numPikemen;
+                    pending.NumSwordsmen = returnData.armyData.numSwordsmen;
+                    pending.NumCatapults = returnData.armyData.numCatapults;
+                    pending.NumCaptains = returnData.armyData.numCaptains;
+                    pending.PillagePercent = returnData.armyData.pillagePercent;
+                    pending.LootType = returnData.armyData.lootType;
+                    pending.LootLevel = returnData.armyData.lootLevel;
+                    LogDebug("Received detailed army data for armyID " + armyId);
+                }
+                else
+                {
+                    LogDebug("No detailed army data for armyID " + armyId + ", notifying with map data.");
                 }
 
-                if (returnData.armyData != null)
-                {
-                    long armyId = returnData.armyData.armyID;
-                    if (_pendingLookups.ContainsKey(armyId))
-                    {
-                        PendingArmyLookup pending = _pendingLookups[armyId];
-                        pending.NumPeasants = returnData.armyData.numPeasants;
-                        pending.NumArchers = returnData.armyData.numArchers;
-                        pending.NumPikemen = returnData.armyData.numPikemen;
-                        pending.NumSwordsmen = returnData.armyData.numSwordsmen;
-                        pending.NumCatapults = returnData.armyData.numCatapults;
-                        pending.NumCaptains = returnData.armyData.numCaptains;
-                        pending.PillagePercent = returnData.armyData.pillagePercent;
-                        pending.LootType = returnData.armyData.lootType;
-                        pending.LootLevel = returnData.armyData.lootLevel;
-                        pending.Completed = true;
-                        LogDebug("Received detailed army data for armyID " + armyId);
-                        FireNotification(pending);
-                    }
-                }
+                pending.Completed = true;
+                FireNotification(pending);
             }
             catch (Exception ex)
             {
@@ -783,6 +822,15 @@ namespace Kingdoms.Bot.Modules
 
                 string actionKey = ClassifyPerson(person, targetVillage);
                 if (actionKey == null) continue;
+
+                // Radar exceptions (PersonData has no separate travel-from village).
+                string exLabel;
+                if (IsExceptedAttack(person.person.homeVillageID, person.person.homeVillageID, targetVillage, out exLabel))
+                {
+                    LogInfo(FormatExceptionSkip(GetActionLabel(actionKey),
+                        person.person.homeVillageID, targetVillage, exLabel));
+                    continue;
+                }
 
                 if (groupMember != null)
                 {
@@ -1443,6 +1491,168 @@ namespace Kingdoms.Bot.Modules
             _groupLookupEvent.Set();
         }
 
+        // =================================================================
+        // Radar exceptions
+        // =================================================================
+
+        // Rebuilds the per-tick ignore snapshot. The UI mutates these lists on the UI
+        // thread while this runs on the tick thread, so a failed rebuild keeps the
+        // previous snapshot rather than letting the exception escape OnTick.
+        private void BuildExceptionSnapshot(RadarSettings settings)
+        {
+            RadarExceptionSettings ex = settings != null ? settings.Exceptions : null;
+
+            if (ex == null || !ex.Enabled ||
+                ex.AppliesToVillageIds == null || ex.AppliesToVillageIds.Count == 0 ||
+                ex.Entries == null || ex.Entries.Count == 0)
+            {
+                _exActive = false;
+                return;
+            }
+
+            try
+            {
+                Dictionary<int, string> sources = new Dictionary<int, string>();
+                foreach (RadarExceptionEntry entry in ex.Entries)
+                {
+                    if (entry == null || !entry.Enabled || entry.VillageIds == null) continue;
+                    string label = entry.PlayerName ?? "";
+                    foreach (int vid in entry.VillageIds)
+                        sources[vid] = label;
+                }
+
+                HashSet<int> targets = new HashSet<int>();
+                foreach (int vid in ex.AppliesToVillageIds)
+                    targets.Add(vid);
+
+                _exSources = sources;
+                _exTargetIds = targets;
+                _exActive = sources.Count > 0 && targets.Count > 0;
+            }
+            catch (Exception exc)
+            {
+                LogDebug("Exception snapshot rebuild skipped: " + exc.Message);
+            }
+        }
+
+        // True when this attack should be ignored entirely (no notification, no sound,
+        // no Discord, no auto-interdict, and no castle-repair tracking). matchedLabel
+        // receives the covering entry's player name, or "" for a raw village-ID entry.
+        private bool IsExceptedAttack(int sourceVillageId, int homeVillageId, int targetVillageId,
+                                      out string matchedLabel)
+        {
+            matchedLabel = null;
+            if (!_exActive) return false;
+            if (!_exTargetIds.Contains(targetVillageId)) return false;
+            // An army can be relayed through a staging village, so match either end.
+            if (_exSources.TryGetValue(sourceVillageId, out matchedLabel)) return true;
+            if (_exSources.TryGetValue(homeVillageId, out matchedLabel)) return true;
+            matchedLabel = null;
+            return false;
+        }
+
+        private static string FormatExceptionSkip(string what, int sourceVid, int targetVid, string label)
+        {
+            return "[Exception] Ignored " + what +
+                   " from " + GetVillageName(sourceVid) + " [" + sourceVid + "]" +
+                   (string.IsNullOrEmpty(label) ? "" : " (" + label + ")") +
+                   " -> " + GetVillageName(targetVid) + " [" + targetVid + "]";
+        }
+
+        // Re-resolves each player exception's village list (on start, then every N
+        // minutes), mirroring MaybeAutoRefreshGroupMembers. Runs on the tick thread, so
+        // the actual lookups happen off-thread.
+        private void MaybeAutoRefreshExceptionPlayers(RadarSettings settings)
+        {
+            RadarExceptionSettings ex = settings != null ? settings.Exceptions : null;
+            if (ex == null || !ex.Enabled) return;
+            if (ex.Entries == null || ex.Entries.Count == 0) return;
+            if (_exceptionRefreshInProgress) return;
+
+            bool needRefresh;
+            if (_lastExceptionRefresh == DateTime.MinValue)
+            {
+                needRefresh = ex.RefreshOnStart;
+                _lastExceptionRefresh = DateTime.Now;
+            }
+            else
+            {
+                needRefresh = ex.AutoRefreshIntervalMinutes > 0 &&
+                    (DateTime.Now - _lastExceptionRefresh).TotalMinutes >= ex.AutoRefreshIntervalMinutes;
+            }
+
+            if (!needRefresh) return;
+
+            _lastExceptionRefresh = DateTime.Now;
+            StartExceptionRefresh(ex);
+        }
+
+        private void StartExceptionRefresh(RadarExceptionSettings ex)
+        {
+            // Only player entries need re-resolving; raw village IDs never change.
+            List<RadarExceptionEntry> players = new List<RadarExceptionEntry>();
+            foreach (RadarExceptionEntry entry in ex.Entries)
+            {
+                if (entry != null && !string.IsNullOrEmpty(entry.PlayerName))
+                    players.Add(entry);
+            }
+            if (players.Count == 0) return;
+
+            _exceptionRefreshInProgress = true;
+
+            Thread t = new Thread(delegate ()
+            {
+                int updated = 0;
+                int failed = 0;
+                try
+                {
+                    foreach (RadarExceptionEntry entry in players)
+                    {
+                        List<int> villages = null;
+                        for (int attempt = 1; attempt <= GroupRefreshMaxAttempts; attempt++)
+                        {
+                            villages = ResolvePlayerVillages(entry.PlayerName);
+                            if (villages != null && villages.Count > 0) break;
+                            if (attempt < GroupRefreshMaxAttempts)
+                                Thread.Sleep(GroupRefreshRetryDelayMs);
+                        }
+
+                        // A failed lookup must never blank an entry — that would silently
+                        // re-enable alerts for a player the user chose to ignore.
+                        if (villages != null && villages.Count > 0)
+                        {
+                            entry.VillageIds = villages;
+                            updated++;
+                        }
+                        else
+                        {
+                            failed++;
+                            LogWarning("[Exception] Giving up on '" + entry.PlayerName + "' after " +
+                                       GroupRefreshMaxAttempts + " attempts; keeping existing villages.");
+                        }
+                    }
+
+                    try { if (Engine != null && Engine.Settings != null) Engine.Settings.Save(); }
+                    catch (Exception exc) { LogWarning("[Exception] Auto-refresh save failed: " + exc.Message); }
+
+                    LogInfo("[Exception] Auto-refreshed villages for " + updated + "/" +
+                            players.Count + " player(s)" +
+                            (failed > 0 ? " (" + failed + " failed)" : "") + ".");
+                }
+                catch (Exception exc)
+                {
+                    LogError("[Exception] Auto-refresh failed: " + exc.Message);
+                }
+                finally
+                {
+                    _exceptionRefreshInProgress = false;
+                }
+            });
+            t.IsBackground = true;
+            t.Name = "Radar Exception Refresh";
+            t.Start();
+        }
+
         // Wraps WorldMap.getArmyData so we can immediately sync _trackedArmies after
         // every server response — armies are tracked the instant they arrive rather than
         // waiting up to one full radar tick.
@@ -1527,15 +1737,19 @@ namespace Kingdoms.Bot.Modules
             _personMissingTicks.Clear();
         }
 
-        private void NotifyCastleRepairModule(int villageId)
+        private void NotifyCastleRepairModule(IncomingRepairTarget landed)
         {
-            if (Engine == null) return;
+            if (Engine == null || landed == null) return;
+
+            bool isScout = landed.ActionKey == ACTION_SCOUT || landed.ActionKey == ACTION_AI_SCOUT;
+            bool isAi = landed.ActionKey != null && landed.ActionKey.StartsWith("AI");
+
             foreach (IBotModule module in Engine.Modules)
             {
                 CastleRepairModule crModule = module as CastleRepairModule;
                 if (crModule != null && crModule.Enabled)
                 {
-                    crModule.NotifyAttackLanded(villageId);
+                    crModule.NotifyEventLanded(landed.VillageId, isScout, isAi);
                     break;
                 }
             }

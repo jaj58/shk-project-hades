@@ -451,6 +451,9 @@ namespace Kingdoms
       if (Bot.BotEngine.Instance != null)
         Bot.BotEngine.Instance.Shutdown();
       bool botFormWasOpen = Bot.UI.BotControlForm.CloseInstance();
+      // Every village id on screen is about to become meaningless.
+      Bot.UI.VillageRadarForm.CloseInstance();
+      Bot.UI.VillageStatsForm.CloseInstance();
       int worldId = this.World.GetGlobalWorldID();
       int userId = RemoteServices.Instance != null ? RemoteServices.Instance.UserID : 0;
       Bot.BotEngine.Instance = new Bot.BotEngine();

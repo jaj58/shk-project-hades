@@ -290,8 +290,7 @@ namespace Kingdoms.Bot.Modules
         private void BackGroundRefresh(VillageMap village)
         {
             LogInfo("Background refreshing village [" + village.VillageID + "] ");
-            RemoteServices.Instance.set_VillageBuildingChangeRates_UserCallBack(new RemoteServices.VillageBuildingChangeRates_UserCallBack(village.villageBuildingChangeRatesCallback));
-            RemoteServices.Instance.VillageBuildingChangeRates(village.VillageID, -1, -1, -1, -1);
+            VillageResourceRouter.Request(village.VillageID, null);
         }
 
         private void ForceRefresh(int villageID)

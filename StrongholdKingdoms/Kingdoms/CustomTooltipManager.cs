@@ -2578,6 +2578,24 @@ namespace Kingdoms
         case 23018:
           text = SK.Text("TOOLTIP_SEA_CONDITIONS_MAP_PLUS_5", "Tail winds mean that inter-island journeys will take one fifth of the usual time.");
           break;
+        case 11111131:
+          text = SK.Text("TOOLTIPS_BOT_ATTACK", "Attacker Module : attack this village");
+          break;
+        case 11111132:
+          text = SK.Text("TOOLTIPS_BOT_EXCOM", "Attacker Module : send monks to excommunicate");
+          break;
+        case 11111133:
+          text = SK.Text("TOOLTIPS_BOT_ABSOLUTION", "Attacker Module : send monks to absolve");
+          break;
+        case 11111134:
+          text = SK.Text("TOOLTIPS_VILLAGE_RADAR", "Village Radar : show incoming attacks, scouts and monks");
+          break;
+        case 11111135:
+          text = SK.Text("TOOLTIPS_VILLAGE_STATS", "Village Info : resources, troops and stats");
+          break;
+        case 11111140:
+          text = SK.Text("TOOLTIPS_CHARTER_VILLAGE_ID", "Click to copy this charter's village ID");
+          break;
         case 24000:
           int total = 0;
           int num9 = GameEngine.Instance.World.countRemainingRoyalTowers(ref total);

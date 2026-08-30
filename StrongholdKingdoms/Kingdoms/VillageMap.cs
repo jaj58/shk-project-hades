@@ -8104,8 +8104,10 @@ namespace Kingdoms
       {
         if (this.m_taxLevel != this.m_taxLevelServer)
           GameEngine.Instance.World.handleQuestObjectiveHappening(10003);
-        RemoteServices.Instance.set_VillageBuildingChangeRates_UserCallBack(new RemoteServices.VillageBuildingChangeRates_UserCallBack(this.villageBuildingChangeRatesCallback));
-        RemoteServices.Instance.VillageBuildingChangeRates(this.m_villageID, this.m_taxLevel, this.m_rationsLevel, this.m_aleRationsLevel, this.m_capitalTaxRate);
+        // Routed rather than installed directly: RemoteServices has only one
+        // VillageBuildingChangeRates callback slot and several places want it. The router
+        // still hands every reply to villageBuildingChangeRatesCallback.
+        Bot.VillageResourceRouter.RequestRates(this.m_villageID, this.m_taxLevel, this.m_rationsLevel, this.m_aleRationsLevel, this.m_capitalTaxRate, null);
         this.m_taxLevelSent = this.m_taxLevel;
         this.m_rationsLevelSent = this.m_rationsLevel;
         this.m_aleRationsLevelSent = this.m_aleRationsLevel;
@@ -8197,8 +8199,7 @@ namespace Kingdoms
             if (!this.ViewOnly && timeSpan.TotalSeconds > 30.0)
             {
               this.m_villageInfoUpdateLastTime = now;
-              RemoteServices.Instance.set_VillageBuildingChangeRates_UserCallBack(new RemoteServices.VillageBuildingChangeRates_UserCallBack(this.villageBuildingChangeRatesCallback));
-              RemoteServices.Instance.VillageBuildingChangeRates(this.m_villageID, -1, -1, -1, -1);
+              Bot.VillageResourceRouter.Request(this.m_villageID, null);
             }
             flag1 = true;
           }
@@ -8217,8 +8218,7 @@ namespace Kingdoms
           if (!this.ViewOnly && !GameEngine.Instance.World.isCapital(this.m_villageID) && !flag1 && timeSpan.TotalSeconds > 30.0)
           {
             this.m_villageInfoUpdateLastTime = now;
-            RemoteServices.Instance.set_VillageBuildingChangeRates_UserCallBack(new RemoteServices.VillageBuildingChangeRates_UserCallBack(this.villageBuildingChangeRatesCallback));
-            RemoteServices.Instance.VillageBuildingChangeRates(this.m_villageID, -1, -1, -1, -1);
+            Bot.VillageResourceRouter.Request(this.m_villageID, null);
           }
           flag1 = true;
         }
@@ -8235,8 +8235,7 @@ namespace Kingdoms
             if (!this.ViewOnly && !GameEngine.Instance.World.isCapital(this.m_villageID) && timeSpan.TotalSeconds > 30.0)
             {
               this.m_villageInfoUpdateLastTime = now;
-              RemoteServices.Instance.set_VillageBuildingChangeRates_UserCallBack(new RemoteServices.VillageBuildingChangeRates_UserCallBack(this.villageBuildingChangeRatesCallback));
-              RemoteServices.Instance.VillageBuildingChangeRates(this.m_villageID, -1, -1, -1, -1);
+              Bot.VillageResourceRouter.Request(this.m_villageID, null);
             }
           }
           popEvent.eventID = -1;

@@ -5,6 +5,7 @@
 // Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.43.10\StrongholdKingdoms.exe
 
 using CommonTypes;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
@@ -29,6 +30,20 @@ namespace Kingdoms
     private CustomSelfDrawPanel.CSDCheckBox houseSymbols = new CustomSelfDrawPanel.CSDCheckBox();
     private CustomSelfDrawPanel.CSDCheckBox factionSymbols = new CustomSelfDrawPanel.CSDCheckBox();
     private CustomSelfDrawPanel.CSDCheckBox userSymbols = new CustomSelfDrawPanel.CSDCheckBox();
+    private CustomSelfDrawPanel.CSDLabel castleLabel = new CustomSelfDrawPanel.CSDLabel();
+    private CustomSelfDrawPanel.CSDCheckBox paladinCastles = new CustomSelfDrawPanel.CSDCheckBox();
+    private CustomSelfDrawPanel.CSDCheckBox ratCastles = new CustomSelfDrawPanel.CSDCheckBox();
+    private CustomSelfDrawPanel.CSDCheckBox snakeCastles = new CustomSelfDrawPanel.CSDCheckBox();
+    private CustomSelfDrawPanel.CSDCheckBox pigCastles = new CustomSelfDrawPanel.CSDCheckBox();
+    private CustomSelfDrawPanel.CSDCheckBox wolfCastles = new CustomSelfDrawPanel.CSDCheckBox();
+    private CustomSelfDrawPanel.CSDLabel stashLabel = new CustomSelfDrawPanel.CSDLabel();
+    private CustomSelfDrawPanel.CSDCheckBox stockpileGoods = new CustomSelfDrawPanel.CSDCheckBox();
+    private CustomSelfDrawPanel.CSDCheckBox granaryGoods = new CustomSelfDrawPanel.CSDCheckBox();
+    private CustomSelfDrawPanel.CSDCheckBox banquetGoods = new CustomSelfDrawPanel.CSDCheckBox();
+    private CustomSelfDrawPanel.CSDCheckBox weaponGoods = new CustomSelfDrawPanel.CSDCheckBox();
+    private CustomSelfDrawPanel.CSDListBox goodsList = new CustomSelfDrawPanel.CSDListBox();
+    private List<CustomSelfDrawPanel.CSDListItem> goodsItems = new List<CustomSelfDrawPanel.CSDListItem>();
+    private bool customControlsReady;
     private CustomSelfDrawPanel.CSDButton clearButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton cancelButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton searchButton = new CustomSelfDrawPanel.CSDButton();
@@ -73,7 +88,7 @@ namespace Kingdoms
       this.AutoScaleMode = AutoScaleMode.None;
       this.BackColor = ARGBColors.Transparent;
       this.Name = nameof (MapFilterPanel2);
-      this.Size = new Size(199, 273);
+      this.Size = new Size(199, 552);
       this.ResumeLayout(false);
     }
 
@@ -87,11 +102,12 @@ namespace Kingdoms
 
     public void init()
     {
+      this.customControlsReady = false;
       this.clearControls();
       this.backImage = this.backGround.init(true, 1506);
       this.backGround.updateHeading(SK.Text("MapFilterSelectPanel_Map_Filtering", "Map Filtering"));
       this.addControl((CustomSelfDrawPanel.CSDControl) this.backGround);
-      this.backGround.stretchBackground();
+      this.backGround.stretchBackground(339);
       this.selectedImage.Image = (Image) GFXLibrary.mrhp_world_icons_filter_selected;
       this.selectedImage.Position = new Point(6, 45);
       this.selectedImage.Visible = false;
@@ -188,17 +204,39 @@ namespace Kingdoms
       this.userSymbols.Data = 0;
       this.userSymbols.setCheckChangedDelegate(new CustomSelfDrawPanel.CSDCheckBox.CSD_CheckChangedDelegate(this.userToggled));
       this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.userSymbols);
+      WorldMapFilter worldMapFilter = GameEngine.Instance.World.worldMapFilter;
+      this.initSectionLabel(this.castleLabel, SK.Text("MapFilterPanel_AI_Castles", "AI Castles"), 216);
+      this.initFilterCheckBox(this.paladinCastles, new Point(15, 236), SK.Text("MapFilterPanel_Paladin_Castles", "Paladin"), worldMapFilter.IsCastleTypeSelected(15), new CustomSelfDrawPanel.CSDCheckBox.CSD_CheckChangedDelegate(this.paladinToggled));
+      this.initFilterCheckBox(this.ratCastles, new Point(100, 236), SK.Text("MapFilterPanel_Rat_Castles", "Rat"), worldMapFilter.IsCastleTypeSelected(7), new CustomSelfDrawPanel.CSDCheckBox.CSD_CheckChangedDelegate(this.ratToggled));
+      this.initFilterCheckBox(this.snakeCastles, new Point(15, 256), SK.Text("MapFilterPanel_Snake_Castles", "Snake"), worldMapFilter.IsCastleTypeSelected(9), new CustomSelfDrawPanel.CSDCheckBox.CSD_CheckChangedDelegate(this.snakeToggled));
+      this.initFilterCheckBox(this.pigCastles, new Point(100, 256), SK.Text("MapFilterPanel_Pig_Castles", "Pig"), worldMapFilter.IsCastleTypeSelected(11), new CustomSelfDrawPanel.CSDCheckBox.CSD_CheckChangedDelegate(this.pigToggled));
+      this.initFilterCheckBox(this.wolfCastles, new Point(15, 276), SK.Text("MapFilterPanel_Wolf_Castles", "Wolf"), worldMapFilter.IsCastleTypeSelected(13), new CustomSelfDrawPanel.CSDCheckBox.CSD_CheckChangedDelegate(this.wolfToggled));
+      this.initSectionLabel(this.stashLabel, SK.Text("MapFilterPanel_Resource_Stashes", "Resource Stashes"), 298);
+      this.initFilterCheckBox(this.stockpileGoods, new Point(15, 318), SK.Text("MapFilterPanel_Stockpile_Goods", "Stockpile"), MapFilterPanel2.isGroupSelected(WorldMapFilter.STASH_STOCKPILE), new CustomSelfDrawPanel.CSDCheckBox.CSD_CheckChangedDelegate(this.stockpileToggled));
+      this.initFilterCheckBox(this.granaryGoods, new Point(100, 318), SK.Text("MapFilterPanel_Granary_Goods", "Granary"), MapFilterPanel2.isGroupSelected(WorldMapFilter.STASH_GRANARY), new CustomSelfDrawPanel.CSDCheckBox.CSD_CheckChangedDelegate(this.granaryToggled));
+      this.initFilterCheckBox(this.banquetGoods, new Point(15, 338), SK.Text("MapFilterPanel_Banquet_Goods", "Banquet"), MapFilterPanel2.isGroupSelected(WorldMapFilter.STASH_BANQUET), new CustomSelfDrawPanel.CSDCheckBox.CSD_CheckChangedDelegate(this.banquetToggled));
+      this.initFilterCheckBox(this.weaponGoods, new Point(100, 338), SK.Text("MapFilterPanel_Weapon_Goods", "Weapons"), MapFilterPanel2.isGroupSelected(WorldMapFilter.STASH_WEAPONS), new CustomSelfDrawPanel.CSDCheckBox.CSD_CheckChangedDelegate(this.weaponsToggled));
+      // A fresh listbox each time: CSDListBox.created survives clearControls(), so reusing the
+      // old instance would skip Create() and leave the entries and scrollbar missing.
+      this.goodsList = new CustomSelfDrawPanel.CSDListBox();
+      this.goodsList.Size = new Size(180, 126);
+      this.goodsList.Position = new Point(6, 360);
+      this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.goodsList);
+      this.goodsList.Create(7, 18);
+      this.goodsList.setLineClickedDelegate(new CustomSelfDrawPanel.CSDListBox.CSD_LineClickedDelegate(this.goodClicked));
+      this.buildGoodsList();
+      this.customControlsReady = true;
       this.searchButton.ImageNorm = (Image) GFXLibrary.mrhp_button_filter_search[0];
       this.searchButton.ImageOver = (Image) GFXLibrary.mrhp_button_filter_search[1];
       this.searchButton.ImageClick = (Image) GFXLibrary.mrhp_button_filter_search[2];
-      this.searchButton.Position = new Point(103, 215);
+      this.searchButton.Position = new Point(103, 494);
       this.searchButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.searchFilter), "StatsPanel_search");
       this.searchButton.CustomTooltipID = 2460;
       this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.searchButton);
       this.clearButton.ImageNorm = (Image) GFXLibrary.mrhp_button_filter_off[0];
       this.clearButton.ImageOver = (Image) GFXLibrary.mrhp_button_filter_off[1];
       this.clearButton.ImageClick = (Image) GFXLibrary.mrhp_button_filter_off[2];
-      this.clearButton.Position = new Point(19, 215);
+      this.clearButton.Position = new Point(19, 494);
       this.clearButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.clearFilter), "MapFilterPanel2_clear");
       this.clearButton.CustomTooltipID = 2459;
       this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.clearButton);
@@ -264,6 +302,170 @@ namespace Kingdoms
 
     public void update() => this.backGround.update();
 
+    private void initSectionLabel(CustomSelfDrawPanel.CSDLabel label, string text, int y)
+    {
+      label.Text = text;
+      label.Position = new Point(5, y);
+      label.Color = ARGBColors.Black;
+      label.Size = new Size(180, 25);
+      label.Font = FontManager.GetFont("Arial", 8f, FontStyle.Bold);
+      label.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.TOP_CENTER;
+      this.backImage.addControl((CustomSelfDrawPanel.CSDControl) label);
+    }
+
+    private void initFilterCheckBox(
+      CustomSelfDrawPanel.CSDCheckBox checkBox,
+      Point position,
+      string text,
+      bool isChecked,
+      CustomSelfDrawPanel.CSDCheckBox.CSD_CheckChangedDelegate callback)
+    {
+      checkBox.CheckedImage = (Image) GFXLibrary.mrhp_world_filter_check[0];
+      checkBox.UncheckedImage = (Image) GFXLibrary.mrhp_world_filter_check[1];
+      checkBox.Position = position;
+      checkBox.Checked = isChecked;
+      checkBox.CBLabel.Text = text;
+      checkBox.CBLabel.Color = ARGBColors.Black;
+      checkBox.CBLabel.Position = new Point(20, -1);
+      checkBox.CBLabel.Size = new Size(80, 25);
+      checkBox.CBLabel.Font = FontManager.GetFont("Arial", 8f, FontStyle.Regular);
+      checkBox.setCheckChangedDelegate(callback);
+      this.backImage.addControl((CustomSelfDrawPanel.CSDControl) checkBox);
+    }
+
+    private void buildGoodsList()
+    {
+      this.goodsItems = new List<CustomSelfDrawPanel.CSDListItem>();
+      this.addGoodsItems(new int[1]{ WorldMapFilter.STASH_NEW });
+      this.addGoodsItems(WorldMapFilter.STASH_STOCKPILE);
+      this.addGoodsItems(WorldMapFilter.STASH_GRANARY);
+      this.addGoodsItems(WorldMapFilter.STASH_BANQUET);
+      this.addGoodsItems(WorldMapFilter.STASH_WEAPONS);
+      this.goodsList.populate(this.goodsItems);
+      this.refreshGoodsList();
+    }
+
+    private void addGoodsItems(int[] specials)
+    {
+      for (int index = 0; index < specials.Length; ++index)
+      {
+        CustomSelfDrawPanel.CSDListItem goodsItem = new CustomSelfDrawPanel.CSDListItem();
+        goodsItem.Data = specials[index];
+        goodsItem.Text = WorldMapFilter.getStashName(specials[index]);
+        this.goodsItems.Add(goodsItem);
+      }
+    }
+
+    private static bool isGroupSelected(int[] specials)
+    {
+      WorldMapFilter worldMapFilter = GameEngine.Instance.World.worldMapFilter;
+      for (int index = 0; index < specials.Length; ++index)
+      {
+        if (!worldMapFilter.IsStashSelected(specials[index]))
+          return false;
+      }
+      return true;
+    }
+
+    // Re-derives the green row highlights and the four group checkboxes from the filter state.
+    // highlightedItems is matched by reference, so the CSDListItem instances must be the ones
+    // held in goodsItems.
+    private void refreshGoodsList()
+    {
+      WorldMapFilter worldMapFilter = GameEngine.Instance.World.worldMapFilter;
+      this.goodsList.highlightedItems.Clear();
+      foreach (CustomSelfDrawPanel.CSDListItem goodsItem in this.goodsItems)
+      {
+        if (worldMapFilter.IsStashSelected(goodsItem.Data))
+          this.goodsList.highlightedItems.Add(goodsItem);
+      }
+      this.stockpileGoods.Checked = MapFilterPanel2.isGroupSelected(WorldMapFilter.STASH_STOCKPILE);
+      this.granaryGoods.Checked = MapFilterPanel2.isGroupSelected(WorldMapFilter.STASH_GRANARY);
+      this.banquetGoods.Checked = MapFilterPanel2.isGroupSelected(WorldMapFilter.STASH_BANQUET);
+      this.weaponGoods.Checked = MapFilterPanel2.isGroupSelected(WorldMapFilter.STASH_WEAPONS);
+      this.goodsList.updateEntries();
+    }
+
+    // Called after a preset button has cleared the custom selections, so the panel stops
+    // showing ticks for a filter that is no longer applied.
+    private void refreshCustomControls()
+    {
+      if (!this.customControlsReady)
+        return;
+      WorldMapFilter worldMapFilter = GameEngine.Instance.World.worldMapFilter;
+      this.paladinCastles.Checked = worldMapFilter.IsCastleTypeSelected(15);
+      this.ratCastles.Checked = worldMapFilter.IsCastleTypeSelected(7);
+      this.snakeCastles.Checked = worldMapFilter.IsCastleTypeSelected(9);
+      this.pigCastles.Checked = worldMapFilter.IsCastleTypeSelected(11);
+      this.wolfCastles.Checked = worldMapFilter.IsCastleTypeSelected(13);
+      this.refreshGoodsList();
+    }
+
+    private void goodClicked(CustomSelfDrawPanel.CSDListItem item)
+    {
+      if (item == null)
+        return;
+      WorldMapFilter worldMapFilter = GameEngine.Instance.World.worldMapFilter;
+      worldMapFilter.SetStash(item.Data, !worldMapFilter.IsStashSelected(item.Data));
+      this.goodsList.clearSelectedItem();
+      this.refreshGoodsList();
+      this.backImage.invalidate();
+    }
+
+    private void setGroupSelected(int[] specials, bool on)
+    {
+      WorldMapFilter worldMapFilter = GameEngine.Instance.World.worldMapFilter;
+      for (int index = 0; index < specials.Length; ++index)
+        worldMapFilter.SetStash(specials[index], on);
+      this.refreshGoodsList();
+      this.backImage.invalidate();
+    }
+
+    private void paladinToggled()
+    {
+      GameEngine.Instance.World.worldMapFilter.SetCastleType(15, this.paladinCastles.Checked);
+    }
+
+    private void ratToggled()
+    {
+      GameEngine.Instance.World.worldMapFilter.SetCastleType(7, this.ratCastles.Checked);
+    }
+
+    private void snakeToggled()
+    {
+      GameEngine.Instance.World.worldMapFilter.SetCastleType(9, this.snakeCastles.Checked);
+    }
+
+    private void pigToggled()
+    {
+      GameEngine.Instance.World.worldMapFilter.SetCastleType(11, this.pigCastles.Checked);
+    }
+
+    private void wolfToggled()
+    {
+      GameEngine.Instance.World.worldMapFilter.SetCastleType(13, this.wolfCastles.Checked);
+    }
+
+    private void stockpileToggled()
+    {
+      this.setGroupSelected(WorldMapFilter.STASH_STOCKPILE, this.stockpileGoods.Checked);
+    }
+
+    private void granaryToggled()
+    {
+      this.setGroupSelected(WorldMapFilter.STASH_GRANARY, this.granaryGoods.Checked);
+    }
+
+    private void banquetToggled()
+    {
+      this.setGroupSelected(WorldMapFilter.STASH_BANQUET, this.banquetGoods.Checked);
+    }
+
+    private void weaponsToggled()
+    {
+      this.setGroupSelected(WorldMapFilter.STASH_WEAPONS, this.weaponGoods.Checked);
+    }
+
     private void factionClick()
     {
       if (RemoteServices.Instance.UserFactionID >= 0)
@@ -273,6 +475,7 @@ namespace Kingdoms
       this.selectedImage.Position = this.factionButton.Position;
       this.selectedImage.Position = new Point(this.selectedImage.Position.X - 5, this.selectedImage.Position.Y - 5);
       this.selectedImage.Visible = true;
+      this.refreshCustomControls();
       this.backImage.invalidate();
     }
 
@@ -282,6 +485,7 @@ namespace Kingdoms
       this.selectedImage.Position = this.houseButton.Position;
       this.selectedImage.Position = new Point(this.selectedImage.Position.X - 5, this.selectedImage.Position.Y - 5);
       this.selectedImage.Visible = true;
+      this.refreshCustomControls();
       this.backImage.invalidate();
     }
 
@@ -291,6 +495,7 @@ namespace Kingdoms
       this.selectedImage.Position = this.tradeButton.Position;
       this.selectedImage.Position = new Point(this.selectedImage.Position.X - 5, this.selectedImage.Position.Y - 5);
       this.selectedImage.Visible = true;
+      this.refreshCustomControls();
       this.backImage.invalidate();
     }
 
@@ -300,6 +505,7 @@ namespace Kingdoms
       this.selectedImage.Position = this.scoutButton.Position;
       this.selectedImage.Position = new Point(this.selectedImage.Position.X - 5, this.selectedImage.Position.Y - 5);
       this.selectedImage.Visible = true;
+      this.refreshCustomControls();
       this.backImage.invalidate();
     }
 
@@ -309,6 +515,7 @@ namespace Kingdoms
       this.selectedImage.Position = this.attackButton.Position;
       this.selectedImage.Position = new Point(this.selectedImage.Position.X - 5, this.selectedImage.Position.Y - 5);
       this.selectedImage.Visible = true;
+      this.refreshCustomControls();
       this.backImage.invalidate();
     }
 
@@ -318,6 +525,7 @@ namespace Kingdoms
       this.selectedImage.Position = this.aiButton.Position;
       this.selectedImage.Position = new Point(this.selectedImage.Position.X - 5, this.selectedImage.Position.Y - 5);
       this.selectedImage.Visible = true;
+      this.refreshCustomControls();
       this.backImage.invalidate();
     }
 
@@ -345,6 +553,7 @@ namespace Kingdoms
     {
       GameEngine.Instance.World.worldMapFilter.setFilterMode(0);
       this.selectedImage.Visible = false;
+      this.refreshCustomControls();
       this.backImage.invalidate();
     }
 

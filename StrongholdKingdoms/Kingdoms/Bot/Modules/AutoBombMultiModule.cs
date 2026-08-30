@@ -411,9 +411,26 @@ namespace Kingdoms.Bot.Modules
             if (settings == null || !settings.IsCoordinator) return;
             try
             {
+                // Clear the client-side latches BEFORE resetting the server. These survive the
+                // launch thread and are otherwise only cleared on a fresh launch or a queue
+                // advance — neither of which is reachable from a cancelled session. Left set,
+                // _interdictDetected immediately re-cancels the session we just reset, and
+                // _prepareErrorCancel makes OnSessionCancelled skip the recall on a later cancel.
+                StopLaunchThread();
+                _interdictDetected   = false;
+                _fakeSendTriggered   = false;
+                _prepareErrorCancel  = false;
+                _pendingManualCancel = false;
+                _lastForceRecallSeen = false;
+                _sentArmies.Clear();
+                _recallAcknowledged.Clear();
+                lock (_recallRetryLock) { _recallRetriesRemaining = 0; }
+
                 PostAction(settings, "reset_session", new Dictionary<string, object>
                     { ["player_name"] = GetLocalPlayerName() });
-                settings.SessionState = "idle";
+                settings.SessionState      = "idle";
+                settings.InterdictDetected = false;
+                settings.ManualCancel      = false;
                 settings.ConnectedPlayers.Clear();
                 LogInfo("Session reset.");
             }
@@ -474,7 +491,12 @@ namespace Kingdoms.Bot.Modules
             // ── Resend pending cancel/recall signals ──────────────────────────
             // If an interdict was detected or a manual cancel is pending, resend the signal
             // every poll cycle so players who missed the previous signal will catch it.
-            if ((_interdictDetected || _pendingManualCancel) && settings.IsCoordinator)
+            // Gated on _launching: once the launch thread has exited there is nothing left to
+            // cancel, and _interdictDetected is a latch that survives it. Without this gate the
+            // coordinator re-posts cancel_attacks forever, so Reset Session (or pointing at a
+            // fresh API state) is undone within one poll and the session can never leave
+            // 'cancelled'.
+            if (_launching && (_interdictDetected || _pendingManualCancel) && settings.IsCoordinator)
             {
                 try
                 {
@@ -984,8 +1006,9 @@ namespace Kingdoms.Bot.Modules
 
             lock (_attacksLock) { _myAttacks = myEntries; }
 
-            _interdictDetected = false;
-            _fakeSendTriggered = false;
+            _interdictDetected  = false;
+            _fakeSendTriggered  = false;
+            _prepareErrorCancel = false; // latch from a previous batch; otherwise OnSessionCancelled skips the recall
             _playedCardInstanceIds.Clear();
             _cardFreeAt = DateTime.MinValue;
             _sentArmies.Clear();
@@ -1212,12 +1235,19 @@ namespace Kingdoms.Bot.Modules
 
                     // Fake-send + queue: wait for the recall timer before trying to
                     // advance — otherwise WaitForArmiesReturn sees the armies still
-                    // outbound and we'd never clear them.
-                    if (settings.FakeSendEnabled && sentCount > 0 && !_fakeSendTriggered)
+                    // outbound and we'd never clear them. Skip the wait entirely when an
+                    // auto-recall has already happened (local OR remote interdict, fake-send,
+                    // prepare error): the armies are already coming home, and _cancelLaunchEvent
+                    // is already set so the wait would return instantly anyway.
+                    if (settings.FakeSendEnabled && sentCount > 0 && !_fakeSendTriggered && !autoRecalled)
                     {
                         LogInfo("[Queue] Waiting for fake-send recall timer before advancing...");
                         _cancelLaunchEvent.WaitOne(); // timer, interdict, or manual cancel sets this
-                        if (!_fakeSendTriggered && !_interdictDetected && !_prepareErrorCancel)
+                        // Same auto-recall test as above — must include settings.InterdictDetected
+                        // or a remote player's interdict is misread as a manual cancel and the
+                        // queue stops instead of advancing to the next target.
+                        if (!_fakeSendTriggered && !_interdictDetected && !_prepareErrorCancel &&
+                            !settings.InterdictDetected)
                         {
                             LogInfo("[Queue] Manually cancelled before fake-send timer. Stopping.");
                             break;

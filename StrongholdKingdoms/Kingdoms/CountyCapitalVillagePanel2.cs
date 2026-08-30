@@ -120,9 +120,8 @@ namespace Kingdoms
       this.monkButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.btnSendMonks_Click), "CountyCapitalVillagePanel2_sendmonks");
       this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.monkButton);
       // Bot buttons sit at y=88, clear of the standard row's two possible positions (y=49/142 in updateSize()).
-      this.botAttackButton = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
+      this.botAttackButton = MainRightHandPanel.getBotAttackButton();
       this.botAttackButton.Position = new Point(10, 88);
-      this.botAttackButton.CustomTooltipID = 11111131;
       this.botAttackButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAttackerClick), "CountyCapitalVillagePanel2_bot_attacker");
       if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowAttackButton == true)
         this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.botAttackButton);
@@ -130,6 +129,7 @@ namespace Kingdoms
       this.absButton.ImageOver = (Image) GFXLibrary.monk_screen_button_array_75x75[26];
       this.absButton.Size = new Size(40, 40);
       this.absButton.Position = new Point(60, 88);
+      MainRightHandPanel.markAsBotButton(this.absButton, MainRightHandPanel.BOT_TOOLTIP_ABSOLUTION);
       this.absButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAbsClick), "CountyCapitalVillagePanel2_bot_abs");
       if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowMonksButton == true)
         this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.absButton);
@@ -137,6 +137,7 @@ namespace Kingdoms
       this.excomButton.ImageOver = (Image) GFXLibrary.monk_screen_button_array_75x75[27];
       this.excomButton.Size = new Size(40, 40);
       this.excomButton.Position = new Point(110, 88);
+      MainRightHandPanel.markAsBotButton(this.excomButton, MainRightHandPanel.BOT_TOOLTIP_EXCOM);
       this.excomButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotExcomClick), "CountyCapitalVillagePanel2_bot_excom");
       if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowMonksButton == true)
         this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.excomButton);
@@ -208,6 +209,7 @@ namespace Kingdoms
     {
       this.m_selectedVillage = selectedVillage;
       this.backGround.updateHeading(GameEngine.Instance.World.getVillageName(selectedVillage));
+      this.backGround.setHeadingVillageID(selectedVillage);
       this.backGround.setActionFromVillage(InterfaceMgr.Instance.getSelectedMenuVillage(), selectedVillage);
       if (ownVillage < 0 || !GameEngine.Instance.World.isUserVillage(ownVillage))
       {
@@ -303,11 +305,25 @@ namespace Kingdoms
       if (this.m_selectedVillage < 0)
         return;
       AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
-      if (module == null || !module.Enabled)
+      if (module == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — bot engine not ready.");
         return;
+      }
+      if (!module.Enabled)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — the Attacker module is disabled.");
+        return;
+      }
+      AttackerSettings s = module.Settings;
+      if (s == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — no attacker settings available.");
+        return;
+      }
       int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
       int target = this.m_selectedVillage;
-      if (module.Settings.ForceMode)
+      if (s.ForceMode)
         module.AttackNow(ownVillage, target);
       else
         module.AddPrey(new AttackerPrey { OwnVillageId = ownVillage, TargetId = target });
@@ -318,11 +334,22 @@ namespace Kingdoms
       if (this.m_selectedVillage < 0)
         return;
       AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
-      if (module == null || !module.Enabled)
+      if (module == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — bot engine not ready.");
         return;
+      }
+      if (!module.Enabled)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — the Attacker module is disabled.");
+        return;
+      }
       AttackerSettings s = module.Settings;
       if (s == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — no attacker settings available.");
         return;
+      }
       int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
       int target = this.m_selectedVillage;
       if (s.ForceMode)
@@ -336,11 +363,22 @@ namespace Kingdoms
       if (this.m_selectedVillage < 0)
         return;
       AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
-      if (module == null || !module.Enabled)
+      if (module == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — bot engine not ready.");
         return;
+      }
+      if (!module.Enabled)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — the Attacker module is disabled.");
+        return;
+      }
       AttackerSettings s = module.Settings;
       if (s == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — no attacker settings available.");
         return;
+      }
       int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
       int target = this.m_selectedVillage;
       if (s.ForceMode)

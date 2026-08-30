@@ -132,9 +132,8 @@ namespace Kingdoms
       this.castleButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.castleClick), "ParishCapitalVillagePanel2_view_castle");
       this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.castleButton);
       // Bot attack button sits immediately to the left of the report button.
-      this.botAttackButton = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
+      this.botAttackButton = MainRightHandPanel.getBotAttackButton();
       this.botAttackButton.Position = new Point(50, 112);
-      this.botAttackButton.CustomTooltipID = 11111131;
       this.botAttackButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAttackerClick), "ParishCapitalVillagePanel2_bot_attacker");
       if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowAttackButton == true)
         this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.botAttackButton);
@@ -415,11 +414,25 @@ namespace Kingdoms
       if (this.m_selectedVillage < 0)
         return;
       AttackerModule module = BotEngine.Instance?.GetModule<AttackerModule>();
-      if (module == null || !module.Enabled)
+      if (module == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — bot engine not ready.");
         return;
+      }
+      if (!module.Enabled)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — the Attacker module is disabled.");
+        return;
+      }
+      AttackerSettings s = module.Settings;
+      if (s == null)
+      {
+        BotLogger.Log("Attacker", BotLogLevel.Warning, "Button ignored for village " + this.m_selectedVillage + " — no attacker settings available.");
+        return;
+      }
       int ownVillage = InterfaceMgr.Instance.OwnSelectedVillage;
       int target = this.m_selectedVillage;
-      if (module.Settings.ForceMode)
+      if (s.ForceMode)
         module.AttackNow(ownVillage, target);
       else
         module.AddPrey(new AttackerPrey { OwnVillageId = ownVillage, TargetId = target });

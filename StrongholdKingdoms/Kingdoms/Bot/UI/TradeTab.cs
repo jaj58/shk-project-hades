@@ -23,6 +23,8 @@ namespace Kingdoms.Bot.UI
         private Panel _headerPanel;
         private const int RowHeight = 24;
         private const int HeaderHeight = 22;
+        // Wide enough for the 7-digit storage caps the limit fields now accept.
+        internal const int GridWidth = 520;
 
         public TradeResourceGrid()
         {
@@ -31,10 +33,10 @@ namespace Kingdoms.Bot.UI
 
             _headerPanel = new Panel();
             _headerPanel.Location = new Point(0, 0);
-            _headerPanel.Size = new Size(480, HeaderHeight);
+            _headerPanel.Size = new Size(GridWidth, HeaderHeight);
             _headerPanel.BackColor = HeaderBg;
 
-            int[] colX = new int[] { 12, 100, 150, 210, 280, 340, 400 };
+            int[] colX = new int[] { 12, 100, 150, 210, 300, 360, 420 };
             string[] colT = new string[] { "Type", "Sell", "Min", "Sell Limit", "Buy", "Max", "Buy Limit" };
             for (int i = 0; i < colT.Length; i++)
             {
@@ -69,12 +71,22 @@ namespace Kingdoms.Bot.UI
             byte[] ids = TradeModuleConstants.TradeTypeIds;
             _rows = new TradeResourceRow[ids.Length];
 
+            bool isCapital = false;
+            try
+            {
+                if (info != null && GameEngine.Instance != null && GameEngine.Instance.World != null)
+                    isCapital = GameEngine.Instance.World.isCapital(info.VillageId);
+            }
+            catch
+            {
+            }
+
             for (int i = 0; i < ids.Length; i++)
             {
                 TradeTypeEntry entry = info != null ? info.GetTradeType(ids[i]) : null;
-                _rows[i] = new TradeResourceRow(ids[i], entry, i);
+                _rows[i] = new TradeResourceRow(ids[i], entry, i, isCapital);
                 _rows[i].Location = new Point(0, HeaderHeight + i * RowHeight);
-                _rows[i].Size = new Size(480, RowHeight);
+                _rows[i].Size = new Size(GridWidth, RowHeight);
                 this.Controls.Add(_rows[i]);
             }
         }
@@ -102,10 +114,12 @@ namespace Kingdoms.Bot.UI
         private NumericUpDown _maxBuyPrice;
         private NumericUpDown _buyLimit;
 
-        public TradeResourceRow(byte resourceId, TradeTypeEntry entry, int index)
+        public TradeResourceRow(byte resourceId, TradeTypeEntry entry, int index, bool isCapital)
         {
             _resourceId = resourceId;
             this.BackColor = index % 2 == 0 ? RowEven : RowOdd;
+
+            int maxLimit = TradeModuleConstants.GetMaxPossibleCap(resourceId, isCapital);
 
             Label nameLabel = new Label();
             nameLabel.Text = TradeModuleConstants.GetResourceName((int)resourceId);
@@ -121,16 +135,16 @@ namespace Kingdoms.Bot.UI
             _minSellPrice = MakeNumeric(148, 0, 999, entry != null ? entry.MinSellPrice : 0, 54);
             this.Controls.Add(_minSellPrice);
 
-            _sellLimit = MakeNumeric(210, 0, 99999, entry != null ? entry.SellLimit : 0, 62);
+            _sellLimit = MakeNumeric(210, 0, maxLimit, entry != null ? entry.SellLimit : 0, 82);
             this.Controls.Add(_sellLimit);
 
-            _buyCheck = MakeCheck(284, entry != null && entry.Buy);
+            _buyCheck = MakeCheck(304, entry != null && entry.Buy);
             this.Controls.Add(_buyCheck);
 
-            _maxBuyPrice = MakeNumeric(338, 0, 999, entry != null ? entry.MaxBuyPrice : 150, 54);
+            _maxBuyPrice = MakeNumeric(358, 0, 999, entry != null ? entry.MaxBuyPrice : 150, 54);
             this.Controls.Add(_maxBuyPrice);
 
-            _buyLimit = MakeNumeric(400, 0, 99999, entry != null ? entry.BuyLimit : 0, 62);
+            _buyLimit = MakeNumeric(420, 0, maxLimit, entry != null ? entry.BuyLimit : 0, 82);
             this.Controls.Add(_buyLimit);
         }
 
@@ -164,9 +178,11 @@ namespace Kingdoms.Bot.UI
             nud.Font = new Font("Segoe UI", 7.5f);
             nud.Location = new Point(x, 2);
             nud.Size = new Size(w, 20);
-            nud.Maximum = max;
+            // Never clamp a stored value downward: WriteToEntry would then persist the
+            // clamped number and silently destroy the user's setting.
+            nud.Maximum = Math.Max(max, value);
             nud.Minimum = min;
-            nud.Value = Math.Max(min, Math.Min(max, value));
+            nud.Value = Math.Max(min, value);
             return nud;
         }
     }
@@ -409,22 +425,25 @@ namespace Kingdoms.Bot.UI
             _resourceList.CheckOnClick = true;
             this.Controls.Add(_resourceList);
 
-            // Settings row
+            // Settings row. A route can carry any good, so the amount fields use the
+            // largest per-good storage ceiling rather than a per-resource one.
+            int maxAmount = TradeModuleConstants.GetMaxPossibleCapAcrossAllGoods(false);
+
             int sy = 280;
             Label keepLbl = MakeLabel("Keep minimum in source:", 14, sy);
             this.Controls.Add(keepLbl);
-            _keepMinInput = MakeNumeric(210, sy - 2, 0, 99999, 0);
+            _keepMinInput = MakeNumeric(210, sy - 2, 0, maxAmount, 0, 90);
             this.Controls.Add(_keepMinInput);
 
-            Label maxMerLbl = MakeLabel("Max merchants per transaction:", 290, sy);
+            Label maxMerLbl = MakeLabel("Max merchants per transaction:", 310, sy);
             this.Controls.Add(maxMerLbl);
-            _maxMerchantsInput = MakeNumeric(510, sy - 2, 1, 500, 5);
+            _maxMerchantsInput = MakeNumeric(530, sy - 2, 1, 500, 5);
             this.Controls.Add(_maxMerchantsInput);
 
             sy += 32;
             Label sendLbl = MakeLabel("Max amount to store in target:", 14, sy);
             this.Controls.Add(sendLbl);
-            _sendMaxInput = MakeNumeric(210, sy - 2, 0, 99999, 5000);
+            _sendMaxInput = MakeNumeric(210, sy - 2, 0, maxAmount, 5000, 90);
             this.Controls.Add(_sendMaxInput);
 
             _distLimitCheck = new CheckBox();
@@ -432,11 +451,11 @@ namespace Kingdoms.Bot.UI
             _distLimitCheck.FlatStyle = FlatStyle.Flat;
             _distLimitCheck.ForeColor = TextPri;
             _distLimitCheck.Font = new Font("Segoe UI", 8.5f);
-            _distLimitCheck.Location = new Point(290, sy);
+            _distLimitCheck.Location = new Point(310, sy);
             _distLimitCheck.AutoSize = true;
             this.Controls.Add(_distLimitCheck);
 
-            _distLimitInput = MakeNumeric(420, sy - 2, 1, 9999, 100);
+            _distLimitInput = MakeNumeric(440, sy - 2, 1, 9999, 100);
             this.Controls.Add(_distLimitInput);
 
             // Buttons
@@ -562,7 +581,9 @@ namespace Kingdoms.Bot.UI
         private static decimal Clamp(NumericUpDown nud, int val)
         {
             if (val < (int)nud.Minimum) return nud.Minimum;
-            if (val > (int)nud.Maximum) return nud.Maximum;
+            // Widen rather than clamp: saving writes the displayed value back, so
+            // clamping here would quietly overwrite a larger stored setting.
+            if (val > (int)nud.Maximum) nud.Maximum = val;
             return val;
         }
 
@@ -579,16 +600,23 @@ namespace Kingdoms.Bot.UI
 
         private static NumericUpDown MakeNumeric(int x, int y, int min, int max, int val)
         {
+            return MakeNumeric(x, y, min, max, val, 70);
+        }
+
+        private static NumericUpDown MakeNumeric(int x, int y, int min, int max, int val, int w)
+        {
             NumericUpDown nud = new NumericUpDown();
             nud.BackColor = Color.FromArgb(50, 52, 64);
             nud.ForeColor = Color.FromArgb(230, 230, 240);
             nud.BorderStyle = BorderStyle.FixedSingle;
             nud.Font = new Font("Segoe UI", 8.5f);
             nud.Location = new Point(x, y);
-            nud.Size = new Size(70, 22);
-            nud.Maximum = max;
+            nud.Size = new Size(w, 22);
+            // Never clamp a stored value downward, or saving would persist the
+            // clamped number and silently destroy the user's setting.
+            nud.Maximum = Math.Max(max, val);
             nud.Minimum = min;
-            nud.Value = Math.Max(min, Math.Min(max, val));
+            nud.Value = Math.Max(min, val);
             return nud;
         }
 

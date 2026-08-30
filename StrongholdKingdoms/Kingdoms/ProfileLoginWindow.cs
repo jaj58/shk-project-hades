@@ -3270,6 +3270,7 @@ label_57:
       StatTrackingClient.Instance().ActivateTrigger(14, (object) ProfileLoginWindow.LastNumberOfWorldsPlaying);
       VillageMap.setServerTime(returnData.m_currentTime);
       RemoteServices.Instance.SessionID = returnData.m_sessionID;
+      Bot.BotLogger.Log("SESSION INFO", Bot.BotLogLevel.Info, "Login complete — UserID=" + RemoteServices.Instance.UserID + " SessionID=" + RemoteServices.Instance.SessionID + " WorldID=" + returnData.m_worldID);
       RemoteServices.Instance.WorldGUID = new Guid(returnData.m_worldIdentity);
       RemoteServices.Instance.UserFactionID = returnData.m_userFactionID;
       RemoteServices.Instance.Admin = returnData.m_admin;
