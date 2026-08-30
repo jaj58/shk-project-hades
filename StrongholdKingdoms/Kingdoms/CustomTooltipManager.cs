@@ -2587,6 +2587,9 @@ namespace Kingdoms
         case 11111133:
           text = SK.Text("TOOLTIPS_BOT_ABSOLUTION", "Attacker Module : send monks to absolve");
           break;
+        case 11111134:
+          text = SK.Text("TOOLTIPS_VILLAGE_RADAR", "Village Radar : show incoming attacks, scouts and monks");
+          break;
         case 11111140:
           text = SK.Text("TOOLTIPS_CHARTER_VILLAGE_ID", "Click to copy this charter's village ID");
           break;

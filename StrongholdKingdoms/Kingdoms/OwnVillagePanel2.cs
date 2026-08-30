@@ -27,6 +27,7 @@ namespace Kingdoms
     private CustomSelfDrawPanel.CSDButton castleButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton resourcesButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton troopsButton = new CustomSelfDrawPanel.CSDButton();
+    private CustomSelfDrawPanel.CSDButton radarButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDLabel lblProtected = new CustomSelfDrawPanel.CSDLabel();
     private CustomSelfDrawPanel.CSDLabel lblProtectionType = new CustomSelfDrawPanel.CSDLabel();
     private CustomSelfDrawPanel.CSDButton leftButton = new CustomSelfDrawPanel.CSDButton();
@@ -153,6 +154,13 @@ namespace Kingdoms
       this.troopsButton.CustomTooltipID = 2440;
       this.troopsButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.troopsClick), "OwnVillagePanel2_troops");
       this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.troopsButton);
+      // The village/castle/resources/troops row is already full width, so the radar
+      // button goes in the free top-right corner - the same spot the mod uses for its
+      // extra buttons on OtherVillagePanel2. Nothing here is moved by updateSize().
+      this.radarButton = MainRightHandPanel.getVillageRadarButton();
+      this.radarButton.Position = new Point(160, 14);
+      this.radarButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.VillageRadarClick), "OwnVillagePanel2_village_radar");
+      this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.radarButton);
       this.lblProtectionType.Text = "";
       this.lblProtectionType.Color = ARGBColors.Black;
       this.lblProtectionType.Font = FontManager.GetFont("Arial", 9f, FontStyle.Regular);
@@ -325,6 +333,13 @@ namespace Kingdoms
       this.backGround.setActionFromVillage(selectedVillage, -1);
       this.updateSize();
       this.update();
+    }
+
+    private void VillageRadarClick()
+    {
+      if (this.m_selectedVillage < 0)
+        return;
+      Bot.UI.VillageRadarForm.ShowFor(this.m_selectedVillage);
     }
 
     private void btnSendOutResources_Click(object sender, EventArgs e)

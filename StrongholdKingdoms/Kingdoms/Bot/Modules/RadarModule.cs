@@ -453,10 +453,16 @@ namespace Kingdoms.Bot.Modules
 
                     try
                     {
-                        RemoteServices.Instance.set_RetrieveAttackResult_UserCallBack(
-                            new RemoteServices.RetrieveAttackResult_UserCallBack(this.RetrieveAttackResultCallback));
-                        RemoteServices.Instance.RetrieveAttackResult(
-                            army.armyID, GameEngine.Instance.World.StoredVillageFactionPos);
+                        // Routed rather than installed directly: RemoteServices has only
+                        // one RetrieveAttackResult callback slot, shared with the army
+                        // select panel and the village radar window. The router hands us
+                        // back the reply for the army we actually asked about.
+                        long requestedArmyId = army.armyID;
+                        AttackResultRouter.Request(requestedArmyId,
+                            delegate(RetrieveAttackResult_ReturnType data)
+                            {
+                                RetrieveAttackResultCallback(requestedArmyId, data);
+                            });
                     }
                     catch (Exception ex)
                     {
@@ -491,45 +497,39 @@ namespace Kingdoms.Bot.Modules
                 _knownArmyIds.Remove(id);
         }
 
-        // Called by the game when RetrieveAttackResult completes � fires notifications immediately
-        private void RetrieveAttackResultCallback(RetrieveAttackResult_ReturnType returnData)
+        // Called by AttackResultRouter when RetrieveAttackResult completes for armyId, or
+        // with null/failed data when the server had no answer. Either way the pending
+        // lookup is closed out and the notification fires with whatever we have, so a
+        // silent army can't sit in _pendingLookups until the 5s sweep in
+        // ProcessPendingLookups picks it up.
+        private void RetrieveAttackResultCallback(long armyId, RetrieveAttackResult_ReturnType returnData)
         {
             try
             {
-                if (returnData == null || !returnData.Success)
+                PendingArmyLookup pending;
+                if (!_pendingLookups.TryGetValue(armyId, out pending)) return;
+                if (pending.Completed) return;   // the timeout sweep already notified
+
+                if (returnData != null && returnData.Success && returnData.armyData != null)
                 {
-                    foreach (PendingArmyLookup p in _pendingLookups.Values)
-                    {
-                        if (!p.Completed)
-                        {
-                            p.Completed = true;
-                            FireNotification(p);
-                            break;
-                        }
-                    }
-                    return;
+                    pending.NumPeasants = returnData.armyData.numPeasants;
+                    pending.NumArchers = returnData.armyData.numArchers;
+                    pending.NumPikemen = returnData.armyData.numPikemen;
+                    pending.NumSwordsmen = returnData.armyData.numSwordsmen;
+                    pending.NumCatapults = returnData.armyData.numCatapults;
+                    pending.NumCaptains = returnData.armyData.numCaptains;
+                    pending.PillagePercent = returnData.armyData.pillagePercent;
+                    pending.LootType = returnData.armyData.lootType;
+                    pending.LootLevel = returnData.armyData.lootLevel;
+                    LogDebug("Received detailed army data for armyID " + armyId);
+                }
+                else
+                {
+                    LogDebug("No detailed army data for armyID " + armyId + ", notifying with map data.");
                 }
 
-                if (returnData.armyData != null)
-                {
-                    long armyId = returnData.armyData.armyID;
-                    if (_pendingLookups.ContainsKey(armyId))
-                    {
-                        PendingArmyLookup pending = _pendingLookups[armyId];
-                        pending.NumPeasants = returnData.armyData.numPeasants;
-                        pending.NumArchers = returnData.armyData.numArchers;
-                        pending.NumPikemen = returnData.armyData.numPikemen;
-                        pending.NumSwordsmen = returnData.armyData.numSwordsmen;
-                        pending.NumCatapults = returnData.armyData.numCatapults;
-                        pending.NumCaptains = returnData.armyData.numCaptains;
-                        pending.PillagePercent = returnData.armyData.pillagePercent;
-                        pending.LootType = returnData.armyData.lootType;
-                        pending.LootLevel = returnData.armyData.lootLevel;
-                        pending.Completed = true;
-                        LogDebug("Received detailed army data for armyID " + armyId);
-                        FireNotification(pending);
-                    }
-                }
+                pending.Completed = true;
+                FireNotification(pending);
             }
             catch (Exception ex)
             {

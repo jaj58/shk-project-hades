@@ -23,6 +23,7 @@ namespace Kingdoms
     private CustomSelfDrawPanel.CSDButton tradeButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton attackButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton botAttackButton = new CustomSelfDrawPanel.CSDButton();
+    private CustomSelfDrawPanel.CSDButton radarButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton absButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton excomButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton scoutButton = new CustomSelfDrawPanel.CSDButton();
@@ -138,6 +139,11 @@ namespace Kingdoms
       this.botAttackButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAttackerClick), "OtherVillagePanel2_bot_attacker");
       if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowAttackButton == true)
         this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.botAttackButton);
+      // Village radar sits in the gap between the vassal button and the rename pencil.
+      this.radarButton = MainRightHandPanel.getVillageRadarButton();
+      this.radarButton.Position = new Point(128, 112);
+      this.radarButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.VillageRadarClick), "OtherVillagePanel2_village_radar");
+      this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.radarButton);
       // Monk buttons sit side by side in the top-right corner.
       this.excomButton.ImageNorm = (Image) GFXLibrary.monk_screen_button_array_75x75[20];
       this.excomButton.ImageOver = (Image) GFXLibrary.monk_screen_button_array_75x75[27];
@@ -217,7 +223,11 @@ namespace Kingdoms
       this.vassalButton.Position = new Point(96, 112 + num1 + num2);
       this.castleButton.Position = new Point(64, 112 + num1 + num2);
       this.botAttackButton.Position = new Point(32, 112 + num1 + num2);
-      this.renameButton.Position = new Point(149, 112 + num1 + num2);
+      this.radarButton.Position = new Point(128, 112 + num1 + num2);
+      // The radar button takes the next slot on the 32px grid after the vassal button,
+      // which ran into the admin-only rename pencil at its old x of 149 - nudge the pencil
+      // along to the end of the row.
+      this.renameButton.Position = new Point(166, 112 + num1 + num2);
       this.backGround.invalidate();
     }
 
@@ -445,6 +455,13 @@ namespace Kingdoms
         module.AttackNow(ownVillage, target);
       else
         module.AddPrey(new AttackerPrey { OwnVillageId = ownVillage, TargetId = target });
+    }
+
+    private void VillageRadarClick()
+    {
+      if (this.m_selectedVillage < 0)
+        return;
+      Bot.UI.VillageRadarForm.ShowFor(this.m_selectedVillage);
     }
 
     private void BotAbsClick()

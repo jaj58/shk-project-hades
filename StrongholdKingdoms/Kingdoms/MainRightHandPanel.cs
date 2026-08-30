@@ -82,15 +82,22 @@ namespace Kingdoms
     public const int BOT_TOOLTIP_ATTACK = 11111131;
     public const int BOT_TOOLTIP_EXCOM = 11111132;
     public const int BOT_TOOLTIP_ABSOLUTION = 11111133;
+    public const int BOT_TOOLTIP_VILLAGE_RADAR = 11111134;
 
     // The bot's attack button reuses the stock attack icon, which is identical to the real attack
     // button sitting next to it. Rotating the hue turns the blue disc red while leaving the white
     // axe heads white - the same glyph-in-another-colour trick the game's own art uses for the
     // green reinforce variant. 140 degrees lands on red; lower goes pink, higher goes orange.
     private const double BOT_ICON_HUE_DEGREES = 140.0;
+    // The village radar button reuses the same attack icon again, so it needs its own hue to
+    // read as a different button: further round than the bot attack red, landing on orange.
+    private const double RADAR_ICON_HUE_DEGREES = 185.0;
     private static Image botAttackNorm;
     private static Image botAttackOver;
     private static Image botAttackClick;
+    private static Image radarNorm;
+    private static Image radarOver;
+    private static Image radarClick;
 
     // Bot-added buttons get a tooltip naming the module they drive. The monk buttons already use
     // their own artwork, so they only need this; the attack button also gets recoloured below.
@@ -106,13 +113,13 @@ namespace Kingdoms
       CustomSelfDrawPanel.CSDButton mrhpButton = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
       if (MainRightHandPanel.botAttackNorm == null)
       {
-        Image image = MainRightHandPanel.recolourBotIcon(mrhpButton.ImageNorm);
+        Image image = MainRightHandPanel.recolourBotIcon(mrhpButton.ImageNorm, MainRightHandPanel.BOT_ICON_HUE_DEGREES);
         // The atlas images load lazily, so don't cache a placeholder - fall back to the stock icon.
         if (image != null && image.Width > 1)
         {
           MainRightHandPanel.botAttackNorm = image;
-          MainRightHandPanel.botAttackOver = MainRightHandPanel.recolourBotIcon(mrhpButton.ImageOver);
-          MainRightHandPanel.botAttackClick = MainRightHandPanel.recolourBotIcon(mrhpButton.ImageClick);
+          MainRightHandPanel.botAttackOver = MainRightHandPanel.recolourBotIcon(mrhpButton.ImageOver, MainRightHandPanel.BOT_ICON_HUE_DEGREES);
+          MainRightHandPanel.botAttackClick = MainRightHandPanel.recolourBotIcon(mrhpButton.ImageClick, MainRightHandPanel.BOT_ICON_HUE_DEGREES);
         }
       }
       if (MainRightHandPanel.botAttackNorm != null)
@@ -125,12 +132,37 @@ namespace Kingdoms
       return mrhpButton;
     }
 
-    private static Image recolourBotIcon(Image source)
+    // Opens the Village Radar window for the selected village - same attack glyph, orange.
+    public static CustomSelfDrawPanel.CSDButton getVillageRadarButton()
+    {
+      CustomSelfDrawPanel.CSDButton mrhpButton = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
+      if (MainRightHandPanel.radarNorm == null)
+      {
+        Image image = MainRightHandPanel.recolourBotIcon(mrhpButton.ImageNorm, MainRightHandPanel.RADAR_ICON_HUE_DEGREES);
+        // The atlas images load lazily, so don't cache a placeholder - fall back to the stock icon.
+        if (image != null && image.Width > 1)
+        {
+          MainRightHandPanel.radarNorm = image;
+          MainRightHandPanel.radarOver = MainRightHandPanel.recolourBotIcon(mrhpButton.ImageOver, MainRightHandPanel.RADAR_ICON_HUE_DEGREES);
+          MainRightHandPanel.radarClick = MainRightHandPanel.recolourBotIcon(mrhpButton.ImageClick, MainRightHandPanel.RADAR_ICON_HUE_DEGREES);
+        }
+      }
+      if (MainRightHandPanel.radarNorm != null)
+      {
+        mrhpButton.ImageNorm = MainRightHandPanel.radarNorm;
+        mrhpButton.ImageOver = MainRightHandPanel.radarOver;
+        mrhpButton.ImageClick = MainRightHandPanel.radarClick;
+      }
+      MainRightHandPanel.markAsBotButton(mrhpButton, MainRightHandPanel.BOT_TOOLTIP_VILLAGE_RADAR);
+      return mrhpButton;
+    }
+
+    private static Image recolourBotIcon(Image source, double hueDegrees)
     {
       if (source == null || source.Width <= 1 || source.Height <= 1)
         return source;
-      float c = (float) Math.Cos(MainRightHandPanel.BOT_ICON_HUE_DEGREES * Math.PI / 180.0);
-      float s = (float) Math.Sin(MainRightHandPanel.BOT_ICON_HUE_DEGREES * Math.PI / 180.0);
+      float c = (float) Math.Cos(hueDegrees * Math.PI / 180.0);
+      float s = (float) Math.Sin(hueDegrees * Math.PI / 180.0);
       ColorMatrix colorMatrix = new ColorMatrix(new float[5][]
       {
         new float[5] { 0.213f + c * 0.787f - s * 0.213f, 0.213f - c * 0.213f + s * 0.143f, 0.213f - c * 0.213f - s * 0.787f, 0.0f, 0.0f },
