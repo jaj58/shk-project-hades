@@ -226,11 +226,14 @@ namespace Kingdoms.Bot
                     }
                     else
                     {
-                        // A village the client has never downloaded has nothing to import
-                        // into, but the clock and the player's own totals still count.
+                        // No VillageMap means this is a village the client never downloaded
+                        // - only the Village Info window asks about those, every other
+                        // caller here holds a loaded village. Take the clock, which is the
+                        // server's and so village-independent, but deliberately NOT the
+                        // gold and honour: it is unverified whose totals a reply about
+                        // someone else's village carries, and guessing wrong would corrupt
+                        // the player's own displayed gold.
                         VillageMap.setServerTime(data.currentTime);
-                        GameEngine.Instance.World.setGoldData(data.currentGoldLevel, data.currentGoldRate);
-                        GameEngine.Instance.World.setHonourData(data.currentHonourLevel, data.currentHonourRate);
                     }
                 }
             }
