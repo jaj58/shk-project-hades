@@ -68,6 +68,19 @@ namespace Kingdoms.Bot
         }
 
         /// <summary>
+        /// Reads a village the player does NOT own, passing 1 for all four rates instead of
+        /// -1. That looks wrong and is deliberate: the -1 "no change" form comes back empty
+        /// for other players' villages, while the 1s form is what the old mod used and is
+        /// known to answer. The server cannot apply rate changes to a village you do not
+        /// own, so the values are inert - which is exactly why this must never be used on
+        /// one of your own villages, where they would really be applied.
+        /// </summary>
+        public static void RequestForeign(int villageID, Action<VillageBuildingChangeRates_ReturnType> onResult)
+        {
+            Enqueue(villageID, 1, 1, 1, 1, false, onResult);
+        }
+
+        /// <summary>
         /// Applies new tax / rations / ale rations / capital tax rates to a village. Pass -1
         /// for any rate that should be left alone. Never deduplicated or dropped - unlike a
         /// read, losing one of these would silently discard the player's change.
@@ -247,7 +260,10 @@ namespace Kingdoms.Bot
             {
                 Waiter match = null;
 
-                if (data != null && data.Success)
+                // Match on the village id whether or not the call succeeded - a failed reply
+                // still usually names the village, and the requester wants to hear about the
+                // failure rather than time out.
+                if (data != null)
                 {
                     for (int i = 0; i < _inFlight.Count; i++)
                     {
@@ -259,9 +275,8 @@ namespace Kingdoms.Bot
                     }
                 }
 
-                // A failure reply can't be trusted to carry the village id it was asked
-                // about, so retire the oldest in-flight request rather than let it hold a
-                // slot for the full timeout.
+                // Some failures come back with no usable village id, so retire the oldest
+                // in-flight request rather than let it hold a slot for the full timeout.
                 if (match == null)
                 {
                     for (int i = 0; i < _inFlight.Count; i++)

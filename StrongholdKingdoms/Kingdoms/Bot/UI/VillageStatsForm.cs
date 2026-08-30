@@ -11,12 +11,14 @@ namespace Kingdoms.Bot.UI
     /// Village Info - everything one village has, in one scrollable list: stockpile, food,
     /// goods, weapons, troops at home and stationed, population and the village's dates.
     ///
-    /// All of it comes from a single VillageBuildingChangeRates RPC asked with -1 for all
-    /// four rates, which means "change nothing, just tell me the current state". It answers
-    /// with the same VillageResourceAndStatsReturnData the game imports into a VillageMap
-    /// when you enter a village. Going to the server rather than reading the local VillageMap
-    /// means the window works on villages that were never downloaded, and that what it shows
-    /// is the server's view rather than the client's extrapolation.
+    /// All of it comes from a single VillageBuildingChangeRates RPC, which answers with the
+    /// same VillageResourceAndStatsReturnData the game imports into a VillageMap when you
+    /// enter a village. Going to the server rather than reading the local VillageMap means
+    /// the window works on villages that were never downloaded, and that what it shows is
+    /// the server's view rather than the client's extrapolation.
+    ///
+    /// Own villages are asked with -1 for all four rates ("change nothing"). Other players'
+    /// villages need the 1,1,1,1 form instead - see VillageResourceRouter.RequestForeign.
     /// </summary>
     internal class VillageStatsForm : MyFormBase
     {
@@ -48,8 +50,9 @@ namespace Kingdoms.Bot.UI
 
         private int _villageId = -1;
         private bool _requestPending;
-        private bool _capsAvailable;
+        private bool _isOwnVillage;
         private bool _isCapital;
+        private string _lastReplyNote = "";
         private VillageResourceAndStatsReturnData _data;
         private DateTime _dataTime = DateTime.MinValue;
 
@@ -248,15 +251,16 @@ namespace Kingdoms.Bot.UI
             _villageId = villageId;
             _data = null;
             _dataTime = DateTime.MinValue;
+            _lastReplyNote = "";
             this.Title = "Village Info - " + DescribeVillage(villageId);
 
             // Storage caps come from the local player's research and cards, so they only
             // describe the local player's own villages.
-            _capsAvailable = false;
+            _isOwnVillage = false;
             _isCapital = false;
             try
             {
-                _capsAvailable = GameEngine.Instance.World.isUserVillage(villageId);
+                _isOwnVillage = GameEngine.Instance.World.isUserVillage(villageId);
                 _isCapital = GameEngine.Instance.World.isCapital(villageId);
             }
             catch (Exception) { }
@@ -276,8 +280,15 @@ namespace Kingdoms.Bot.UI
             UpdateHeader();
 
             int villageId = _villageId;
-            VillageResourceRouter.Request(villageId,
-                delegate(VillageBuildingChangeRates_ReturnType data) { OnData(villageId, data); });
+            Action<VillageBuildingChangeRates_ReturnType> callback =
+                delegate(VillageBuildingChangeRates_ReturnType data) { OnData(villageId, data); };
+
+            // Our own villages get the harmless "change nothing" form. Other players' come
+            // back empty from that, so they get the old mod's form - see RequestForeign.
+            if (_isOwnVillage)
+                VillageResourceRouter.Request(villageId, callback);
+            else
+                VillageResourceRouter.RequestForeign(villageId, callback);
         }
 
         // Runs on the UI thread - RemoteServices dispatches replies from the main loop.
@@ -287,14 +298,37 @@ namespace Kingdoms.Bot.UI
             if (villageId != _villageId) return;
 
             _requestPending = false;
+            _lastReplyNote = "";
 
-            if (data == null || !data.Success || data.villageResourcesAndStats == null)
+            UniversalDebugLog.Log("VillageStatsForm: village " + villageId + " reply "
+                + (data == null
+                    ? "(none - timed out or failed to send)"
+                    : "success=" + data.Success + " errorCode=" + data.m_errorCode
+                      + " errorID=" + data.m_errorID + " villageID=" + data.villageID
+                      + " stats=" + (data.villageResourcesAndStats == null ? "null" : "present")));
+
+            if (data == null)
             {
-                ShowStatus("The server returned no resource data for this village.");
+                ShowStatus("No reply from the server for this village.");
                 UpdateHeader();
                 UpdateFooter();
                 return;
             }
+
+            // Deliberately NOT gated on data.Success: the old mod's window never checked it
+            // either, and a reply can carry usable stats alongside a non-success flag. Only
+            // a missing payload is actually fatal.
+            if (data.villageResourcesAndStats == null)
+            {
+                ShowStatus("The server returned no resource data for this village."
+                    + "\n(success=" + data.Success + ", error " + data.m_errorCode + "/" + data.m_errorID + ")");
+                UpdateHeader();
+                UpdateFooter();
+                return;
+            }
+
+            if (!data.Success)
+                _lastReplyNote = "server flagged this reply as failed (" + data.m_errorCode + ")";
 
             _data = data.villageResourcesAndStats;
             _dataTime = data.currentTime;
@@ -626,15 +660,18 @@ namespace Kingdoms.Bot.UI
             if (!string.IsNullOrEmpty(owner))
                 text += "  -  " + owner;
 
-            if (!_capsAvailable)
+            if (!_isOwnVillage)
                 text += "  -  storage caps unavailable (not your village)";
+
+            if (!string.IsNullOrEmpty(_lastReplyNote))
+                text += "  -  " + _lastReplyNote;
 
             _footerLabel.Text = text;
         }
 
         private int GetCap(int resourceId)
         {
-            if (!_capsAvailable) return 0;
+            if (!_isOwnVillage) return 0;
 
             try
             {
