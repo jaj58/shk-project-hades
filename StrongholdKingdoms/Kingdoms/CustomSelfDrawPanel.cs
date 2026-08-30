@@ -8540,6 +8540,7 @@ namespace Kingdoms
         this.headingLabel.Size = new Size(168, 23);
         this.headingLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.CENTER_CENTER;
         this.headingLabel.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.headingClicked), "MRHP_Background_heading");
+        this.headingLabel.setRightClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.copyHeadingVillageID));
         this.headerImage.addControl((CustomSelfDrawPanel.CSDControl) this.headingLabel);
         this.subHeadingLabel.Text = "";
         this.subHeadingLabel.Color = ARGBColors.Black;
@@ -9125,6 +9126,27 @@ namespace Kingdoms
           return;
         GameEngine.Instance.World.zoomToVillage(this.headingVillageID);
       }
+
+      // The heading shows "[id] Name" when View Village IDs is on, and its left click is already
+      // taken by zoomToVillage, so copying the ID goes on the right click - the same idiom the
+      // mail, forum and stats panels use.
+      private void copyHeadingVillageID()
+      {
+        if (this.headingVillageID < 0)
+          return;
+        try
+        {
+          Clipboard.SetText(this.headingVillageID.ToString());
+        }
+        catch (Exception)
+        {
+          // Clipboard can be locked by another process; a failed copy must not kill the render loop.
+        }
+      }
+
+      // Panels that set a fixed background type never call updatePanelTypeFromVillageID, so they
+      // need this to make the heading's zoom and copy actions work.
+      public void setHeadingVillageID(int villageID) => this.headingVillageID = villageID;
 
       public void initTravelButton(CustomSelfDrawPanel.CSDButton button)
       {

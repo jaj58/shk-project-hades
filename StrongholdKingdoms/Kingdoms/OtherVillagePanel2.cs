@@ -135,7 +135,7 @@ namespace Kingdoms
       // Bot attack button sits immediately to the left of the report button.
       this.botAttackButton = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
       this.botAttackButton.Position = new Point(32, 112);
-      this.botAttackButton.CustomTooltipID = 11111131;
+      MainRightHandPanel.markAsBotButton(this.botAttackButton, MainRightHandPanel.BOT_TOOLTIP_ATTACK);
       this.botAttackButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAttackerClick), "OtherVillagePanel2_bot_attacker");
       if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowAttackButton == true)
         this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.botAttackButton);
@@ -144,6 +144,7 @@ namespace Kingdoms
       this.excomButton.ImageOver = (Image) GFXLibrary.monk_screen_button_array_75x75[27];
       this.excomButton.Size = new Size(40, 40);
       this.excomButton.Position = new Point(108, 17);
+      MainRightHandPanel.markAsBotButton(this.excomButton, MainRightHandPanel.BOT_TOOLTIP_EXCOM);
       this.excomButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotExcomClick), "OtherVillagePanel2_bot_excom");
       if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowMonksButton == true)
         this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.excomButton);
@@ -151,6 +152,7 @@ namespace Kingdoms
       this.absButton.ImageOver = (Image) GFXLibrary.monk_screen_button_array_75x75[26];
       this.absButton.Size = new Size(40, 40);
       this.absButton.Position = new Point(150, 17);
+      MainRightHandPanel.markAsBotButton(this.absButton, MainRightHandPanel.BOT_TOOLTIP_ABSOLUTION);
       this.absButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAbsClick), "OtherVillagePanel2_bot_abs");
       if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowMonksButton == true)
         this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.absButton);

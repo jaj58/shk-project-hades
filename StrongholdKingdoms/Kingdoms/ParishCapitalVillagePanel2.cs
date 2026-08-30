@@ -134,7 +134,7 @@ namespace Kingdoms
       // Bot attack button sits immediately to the left of the report button.
       this.botAttackButton = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
       this.botAttackButton.Position = new Point(50, 112);
-      this.botAttackButton.CustomTooltipID = 11111131;
+      MainRightHandPanel.markAsBotButton(this.botAttackButton, MainRightHandPanel.BOT_TOOLTIP_ATTACK);
       this.botAttackButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAttackerClick), "ParishCapitalVillagePanel2_bot_attacker");
       if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowAttackButton == true)
         this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.botAttackButton);

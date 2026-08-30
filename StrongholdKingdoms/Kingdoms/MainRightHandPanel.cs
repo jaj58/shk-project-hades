@@ -77,6 +77,22 @@ namespace Kingdoms
       return mrhpButton;
     }
 
+    public const int BOT_TOOLTIP_ATTACK = 11111131;
+    public const int BOT_TOOLTIP_EXCOM = 11111132;
+    public const int BOT_TOOLTIP_ABSOLUTION = 11111133;
+
+    // Bot-added buttons reuse stock artwork, so wash them in a red tint to tell them apart from
+    // the real ones and give them a tooltip naming the module they drive. CSDButton.fillRect
+    // paints over the button's own rectangle, so keep the alpha low. Tune both colours here.
+    public static void markAsBotButton(
+      CustomSelfDrawPanel.CSDButton button,
+      int tooltipID)
+    {
+      button.CustomTooltipID = tooltipID;
+      button.FillRectColor = Color.FromArgb(60, 220, 30, 30);
+      button.FillRectOverColor = Color.FromArgb(30, 220, 30, 30);
+    }
+
     protected override void Dispose(bool disposing)
     {
       if (disposing && this.components != null)

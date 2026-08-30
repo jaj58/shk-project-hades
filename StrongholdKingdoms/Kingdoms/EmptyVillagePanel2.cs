@@ -97,7 +97,7 @@ namespace Kingdoms
       csdImage1.addControl((CustomSelfDrawPanel.CSDControl) this.attackButton_AI);
       this.botAttackButton_AI = MainRightHandPanel.getMRHPButton(MainRightHandPanel.MRHPButton.ATTACK);
       this.botAttackButton_AI.Position = new Point(29, 79 + num);
-      this.botAttackButton_AI.CustomTooltipID = 11111131;
+      MainRightHandPanel.markAsBotButton(this.botAttackButton_AI, MainRightHandPanel.BOT_TOOLTIP_ATTACK);
       this.botAttackButton_AI.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.BotAttackerClick), "EmptyVillagePanel2_bot_attacker");
       if (BotEngine.Instance?.GetModule<AttackerModule>()?.Settings?.ShowAttackButton == true)
         csdImage1.addControl((CustomSelfDrawPanel.CSDControl) this.botAttackButton_AI);
@@ -153,6 +153,7 @@ namespace Kingdoms
       this.charterVillageIdLabel.Alignment = CustomSelfDrawPanel.CSD_Text_Alignment.TOP_CENTER;
       this.charterVillageIdLabel.CustomTooltipID = 11111140;
       this.charterVillageIdLabel.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.charterVillageIdClick), "EmptyVillagePanel2_charter_village_id");
+      this.charterVillageIdLabel.setRightClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.charterVillageIdClick));
       csdImage3.addControl((CustomSelfDrawPanel.CSDControl) this.charterVillageIdLabel);
       this.charterLabel.Text = SK.Text("EmptyVillagePanel_Cost", "Cost to found this village");
       this.charterLabel.Color = ARGBColors.Black;
