@@ -83,6 +83,7 @@ namespace Kingdoms
     public const int BOT_TOOLTIP_EXCOM = 11111132;
     public const int BOT_TOOLTIP_ABSOLUTION = 11111133;
     public const int BOT_TOOLTIP_VILLAGE_RADAR = 11111134;
+    public const int BOT_TOOLTIP_VILLAGE_STATS = 11111135;
 
     // The bot's attack button reuses the stock attack icon, which is identical to the real attack
     // button sitting next to it. Rotating the hue turns the blue disc red while leaving the white
@@ -155,6 +156,19 @@ namespace Kingdoms
       }
       MainRightHandPanel.markAsBotButton(mrhpButton, MainRightHandPanel.BOT_TOOLTIP_VILLAGE_RADAR);
       return mrhpButton;
+    }
+
+    // Opens the Village Info window for the selected village - the game's own resources
+    // glyph, unrecoloured. OverBrighten / MoveOnClick are how the stock single-image
+    // buttons get their hover and press feedback.
+    public static CustomSelfDrawPanel.CSDButton getVillageStatsButton()
+    {
+      CustomSelfDrawPanel.CSDButton button = new CustomSelfDrawPanel.CSDButton();
+      button.ImageNorm = (Image) GFXLibrary.int_world_icon_resource;
+      button.OverBrighten = true;
+      button.MoveOnClick = true;
+      MainRightHandPanel.markAsBotButton(button, MainRightHandPanel.BOT_TOOLTIP_VILLAGE_STATS);
+      return button;
     }
 
     private static Image recolourBotIcon(Image source, double hueDegrees)

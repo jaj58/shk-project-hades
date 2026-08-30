@@ -7592,8 +7592,11 @@ namespace Kingdoms
       if (!flag || this.ViewOnly)
         return;
       this.weaponProductionLastTimeRequest = now;
-      RemoteServices.Instance.set_UpdateVillageResourcesInfo_UserCallBack(new RemoteServices.UpdateVillageResourcesInfo_UserCallBack(this.updateVillageResourcesInfoCallback));
-      RemoteServices.Instance.UpdateVillageResourcesInfo(this.m_villageID);
+      // Routed rather than installed directly: RemoteServices has only one
+      // UpdateVillageResourcesInfo callback slot and the Village Info window asks for
+      // village resources on its own schedule. The router still runs the bookkeeping that
+      // updateVillageResourcesInfoCallback used to do.
+      Bot.VillageResourceRouter.Request(this.m_villageID, null);
     }
 
     public void updateVillageResourcesInfoCallback(UpdateVillageResourcesInfo_ReturnType returnData)

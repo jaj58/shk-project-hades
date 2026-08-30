@@ -24,6 +24,7 @@ namespace Kingdoms
     private CustomSelfDrawPanel.CSDButton attackButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton botAttackButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton radarButton = new CustomSelfDrawPanel.CSDButton();
+    private CustomSelfDrawPanel.CSDButton statsButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton absButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton excomButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton scoutButton = new CustomSelfDrawPanel.CSDButton();
@@ -144,6 +145,11 @@ namespace Kingdoms
       this.radarButton.Position = new Point(128, 112);
       this.radarButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.VillageRadarClick), "OtherVillagePanel2_village_radar");
       this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.radarButton);
+      // Village Info takes the last slot on the 32px grid.
+      this.statsButton = MainRightHandPanel.getVillageStatsButton();
+      this.statsButton.Position = new Point(160, 112);
+      this.statsButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.VillageStatsClick), "OtherVillagePanel2_village_stats");
+      this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.statsButton);
       // Monk buttons sit side by side in the top-right corner.
       this.excomButton.ImageNorm = (Image) GFXLibrary.monk_screen_button_array_75x75[20];
       this.excomButton.ImageOver = (Image) GFXLibrary.monk_screen_button_array_75x75[27];
@@ -224,10 +230,11 @@ namespace Kingdoms
       this.castleButton.Position = new Point(64, 112 + num1 + num2);
       this.botAttackButton.Position = new Point(32, 112 + num1 + num2);
       this.radarButton.Position = new Point(128, 112 + num1 + num2);
-      // The radar button takes the next slot on the 32px grid after the vassal button,
-      // which ran into the admin-only rename pencil at its old x of 149 - nudge the pencil
-      // along to the end of the row.
-      this.renameButton.Position = new Point(166, 112 + num1 + num2);
+      this.statsButton.Position = new Point(160, 112 + num1 + num2);
+      // The radar and Village Info buttons take the last two slots on the 32px grid after
+      // the vassal button, which leaves nowhere to the right for the admin-only rename
+      // pencil on a 199px panel - park it in the empty space before the row starts.
+      this.renameButton.Position = new Point(4, 112 + num1 + num2);
       this.backGround.invalidate();
     }
 
@@ -462,6 +469,13 @@ namespace Kingdoms
       if (this.m_selectedVillage < 0)
         return;
       Bot.UI.VillageRadarForm.ShowFor(this.m_selectedVillage);
+    }
+
+    private void VillageStatsClick()
+    {
+      if (this.m_selectedVillage < 0)
+        return;
+      Bot.UI.VillageStatsForm.ShowFor(this.m_selectedVillage);
     }
 
     private void BotAbsClick()

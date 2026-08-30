@@ -28,6 +28,7 @@ namespace Kingdoms
     private CustomSelfDrawPanel.CSDButton resourcesButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton troopsButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDButton radarButton = new CustomSelfDrawPanel.CSDButton();
+    private CustomSelfDrawPanel.CSDButton statsButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDLabel lblProtected = new CustomSelfDrawPanel.CSDLabel();
     private CustomSelfDrawPanel.CSDLabel lblProtectionType = new CustomSelfDrawPanel.CSDLabel();
     private CustomSelfDrawPanel.CSDButton leftButton = new CustomSelfDrawPanel.CSDButton();
@@ -161,6 +162,11 @@ namespace Kingdoms
       this.radarButton.Position = new Point(160, 14);
       this.radarButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.VillageRadarClick), "OwnVillagePanel2_village_radar");
       this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.radarButton);
+      // Village Info shares the free top strip with the radar button.
+      this.statsButton = MainRightHandPanel.getVillageStatsButton();
+      this.statsButton.Position = new Point(128, 14);
+      this.statsButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.VillageStatsClick), "OwnVillagePanel2_village_stats");
+      this.backImage.addControl((CustomSelfDrawPanel.CSDControl) this.statsButton);
       this.lblProtectionType.Text = "";
       this.lblProtectionType.Color = ARGBColors.Black;
       this.lblProtectionType.Font = FontManager.GetFont("Arial", 9f, FontStyle.Regular);
@@ -340,6 +346,13 @@ namespace Kingdoms
       if (this.m_selectedVillage < 0)
         return;
       Bot.UI.VillageRadarForm.ShowFor(this.m_selectedVillage);
+    }
+
+    private void VillageStatsClick()
+    {
+      if (this.m_selectedVillage < 0)
+        return;
+      Bot.UI.VillageStatsForm.ShowFor(this.m_selectedVillage);
     }
 
     private void btnSendOutResources_Click(object sender, EventArgs e)
