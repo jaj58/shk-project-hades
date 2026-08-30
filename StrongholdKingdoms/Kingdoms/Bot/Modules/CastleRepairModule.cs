@@ -12,9 +12,19 @@ namespace Kingdoms.Bot.Modules
         private List<int> _villageQueue = new List<int>();
         private DateTime _lastVillageAction = DateTime.MinValue;
         private Dictionary<int, bool> _pendingRepairOnAttack = new Dictionary<int, bool>();
-        private Dictionary<long, int> _trackedAttacks = new Dictionary<long, int>();
+        private Dictionary<long, TrackedIncoming> _trackedAttacks = new Dictionary<long, TrackedIncoming>();
         private bool _firstScan = true;
         private bool _cycleInProgress = false;
+
+        // Kinds of incoming army the module reacts to — one per trigger checkbox on
+        // the Castle Repair tab.
+        private enum IncomingKind { AiAttack, PlayerAttack, Scout }
+
+        private class TrackedIncoming
+        {
+            public int VillageId;
+            public IncomingKind Kind;
+        }
 
         // State machine steps matching the proven CastleRepairService sequence:
         //   switch village -> download -> wait castle -> initial commit (refresh damage) ->
@@ -25,6 +35,7 @@ namespace Kingdoms.Bot.Modules
             Idle,
             SwitchVillage,
             WaitForCastle,
+            ForceRedownload,
             InitialCommit,
             WaitInitialCommit,
             WaitAfterInitialCommit,
@@ -59,6 +70,12 @@ namespace Kingdoms.Bot.Modules
         private const int StepTimeoutMs = 15000;
         private const int ShortDelayMs = 1000;
         private const int LongDelayMs = 2000;
+
+        // A village whose castle never loads used to be dropped for the whole cycle.
+        // Instead we force a cache-bypassing re-download and wait again, up to this
+        // many times (worst case ~45s before the village is finally skipped).
+        private int _castleLoadRetries;
+        private const int MaxCastleLoadRetries = 2;
 
         // =================================================================
         // Memorise state machine — snapshot current castle layout to local
@@ -168,8 +185,9 @@ namespace Kingdoms.Bot.Modules
                 return;
             }
 
-            // Scan for AI attacks — passive work, only when the module is enabled.
-            if (Enabled && settings.RepairOnAttack)
+            // Scan for arrived attacks/scouts — passive work, only when the module is
+            // enabled. Event triggers fire in BOTH run modes.
+            if (Enabled && settings.AnyTriggerEnabled)
             {
                 ScanForArrivedAttacks(settings);
                 ProcessPendingAttackRepairs(settings);
@@ -182,6 +200,12 @@ namespace Kingdoms.Bot.Modules
                 // Nothing queued to process. Starting a new periodic cycle is passive
                 // work, so a disabled module (only ticking for on-demand work) stops here.
                 if (!Enabled)
+                    return;
+
+                // Attack/Spy-only mode never starts a timed sweep. Manual Repair All
+                // and event-triggered repairs are unaffected — they fill the queue
+                // directly, so they never reach this block.
+                if (settings.RunMode != CastleRepairRunMode.Interval)
                     return;
 
                 if ((DateTime.Now - _lastFullCycle).TotalSeconds < settings.IntervalSeconds)
@@ -227,7 +251,9 @@ namespace Kingdoms.Bot.Modules
         }
 
         // =================================================================
-        // Attack detection — only AI attacks (getSpecial != 0)
+        // Attack/scout detection — AI attacks, player attacks and scouts, each
+        // gated by its own checkbox. Works with the Radar module switched off;
+        // Radar's bridge (NotifyEventLanded) is a supplement, not a requirement.
         // =================================================================
 
         private void ScanForArrivedAttacks(CastleRepairSettings settings)
@@ -238,41 +264,42 @@ namespace Kingdoms.Bot.Modules
             SparseArray armyArray = GameEngine.Instance.World.getArmyArray();
             if (armyArray == null) return;
 
-            Dictionary<long, int> currentAttacks = new Dictionary<long, int>();
+            Dictionary<long, TrackedIncoming> currentAttacks = new Dictionary<long, TrackedIncoming>();
 
             foreach (WorldMap.LocalArmyData army in armyArray)
             {
                 if (!IsTargetingUser(army.targetVillageID)) continue;
 
-                // Skip scouts, foraging, reinforcements, captains
-                if (army.attackType == 11 || army.attackType == 9 ||
-                    army.attackType == 12 || army.attackType == 13)
+                // Skip foraging, captains and reinforcements — nothing to repair after those.
+                if (army.attackType == 9 || army.attackType == 12 ||
+                    army.attackType == 13 || army.reinforcements)
                     continue;
 
-                // Only AI attacks — getSpecial != 0 means AI village
-                try
-                {
-                    if (GameEngine.Instance.World.getSpecial(army.homeVillageID) == 0)
-                        continue;
-                }
-                catch { continue; }
-
-                currentAttacks[army.armyID] = army.targetVillageID;
+                // Track every candidate regardless of which triggers are ticked; the
+                // filtering happens at landing time below.
+                TrackedIncoming ti = new TrackedIncoming();
+                ti.VillageId = army.targetVillageID;
+                ti.Kind = ClassifyIncoming(army);
+                currentAttacks[army.armyID] = ti;
             }
 
             if (!_firstScan)
             {
                 foreach (long armyId in _trackedAttacks.Keys)
                 {
-                    if (!currentAttacks.ContainsKey(armyId))
-                    {
-                        int villageId = _trackedAttacks[armyId];
-                        if (!_pendingRepairOnAttack.ContainsKey(villageId))
-                        {
-                            LogInfo("AI attack arrived at village " + villageId + ", queuing repair.");
-                            _pendingRepairOnAttack[villageId] = true;
-                        }
-                    }
+                    if (currentAttacks.ContainsKey(armyId)) continue;
+
+                    TrackedIncoming landed = _trackedAttacks[armyId];
+
+                    // Filter on the enabled triggers HERE, not when tracking — otherwise
+                    // unticking a box mid-flight drops in-flight armies from the tracked
+                    // set and they register as bogus landings on the next scan.
+                    if (!IsTriggerEnabled(settings, landed.Kind)) continue;
+                    if (_pendingRepairOnAttack.ContainsKey(landed.VillageId)) continue;
+
+                    LogInfo(DescribeKind(landed.Kind) + " arrived at village "
+                        + landed.VillageId + ", queuing repair.");
+                    _pendingRepairOnAttack[landed.VillageId] = true;
                 }
             }
             else
@@ -281,6 +308,50 @@ namespace Kingdoms.Bot.Modules
             }
 
             _trackedAttacks = currentAttacks;
+        }
+
+        // Mirrors RadarModule.ClassifyArmy's scout test (a scout-only army) and its
+        // AI-source test, accepting either the departure village or the home village
+        // as the AI marker.
+        private static IncomingKind ClassifyIncoming(WorldMap.LocalArmyData army)
+        {
+            if (army.attackType == 11 ||
+                (army.numScouts > 0 && army.numPeasants == 0 && army.numArchers == 0 &&
+                 army.numPikemen == 0 && army.numSwordsmen == 0 && army.numCatapults == 0))
+                return IncomingKind.Scout;
+
+            return IsAISource(army) ? IncomingKind.AiAttack : IncomingKind.PlayerAttack;
+        }
+
+        private static bool IsAISource(WorldMap.LocalArmyData army)
+        {
+            try
+            {
+                WorldMap world = GameEngine.Instance.World;
+                return world.getSpecial(army.travelFromVillageID) != 0
+                    || world.getSpecial(army.homeVillageID) != 0;
+            }
+            catch { return false; }
+        }
+
+        private static bool IsTriggerEnabled(CastleRepairSettings settings, IncomingKind kind)
+        {
+            switch (kind)
+            {
+                case IncomingKind.Scout: return settings.RepairOnScout;
+                case IncomingKind.AiAttack: return settings.RepairOnAiAttack;
+                default: return settings.RepairOnPlayerAttack;
+            }
+        }
+
+        private static string DescribeKind(IncomingKind kind)
+        {
+            switch (kind)
+            {
+                case IncomingKind.Scout: return "Scout";
+                case IncomingKind.AiAttack: return "AI attack";
+                default: return "Player attack";
+            }
         }
 
         private static bool IsTargetingUser(int villageId)
@@ -301,7 +372,7 @@ namespace Kingdoms.Bot.Modules
         private void ProcessPendingAttackRepairs(CastleRepairSettings settings)
         {
             if (_pendingRepairOnAttack.Count == 0) return;
-            if (!settings.RepairOnAttack) { _pendingRepairOnAttack.Clear(); return; }
+            if (!settings.AnyTriggerEnabled) { _pendingRepairOnAttack.Clear(); return; }
 
             List<int> toProcess = new List<int>(_pendingRepairOnAttack.Keys);
 
@@ -461,6 +532,7 @@ namespace Kingdoms.Bot.Modules
             _stepStarted = DateTime.Now;
             _incrInfraList = null;
             _incrTroopList = null;
+            _castleLoadRetries = 0;
 
             // Suppress the game's blocking modal popups (e.g. "research skill not
             // available", "cannot place there", "Castle Placement Error") for the
@@ -500,6 +572,12 @@ namespace Kingdoms.Bot.Modules
         {
             if ((DateTime.Now - _stepStarted).TotalMilliseconds > StepTimeoutMs)
             {
+                // The village never finished downloading — force a re-download and
+                // wait again rather than dropping the village for this cycle.
+                if (_step == RepairStep.WaitForCastle &&
+                    BeginCastleLoadRetry("timed out waiting for castle"))
+                    return;
+
                 LogWarning("Step " + _step + " timed out for village " + _activeVillageId + ", aborting.");
                 _step = RepairStep.Idle;
                 StampCycleCompleteIfDone();
@@ -515,6 +593,9 @@ namespace Kingdoms.Bot.Modules
                         break;
                     case RepairStep.WaitForCastle:
                         StepWaitForCastle();
+                        break;
+                    case RepairStep.ForceRedownload:
+                        StepForceRedownload();
                         break;
                     case RepairStep.InitialCommit:
                         StepDoCommit(RepairStep.WaitInitialCommit);
@@ -592,8 +673,45 @@ namespace Kingdoms.Bot.Modules
             _stepStarted = DateTime.Now;
         }
 
+        // The castle for the active village never arrived. The usual cause is another
+        // module (VillageSync, Defender) or the user re-pointing the selected village
+        // mid-flight: getCastleCallBack only assigns GameEngine.Castle when the reply's
+        // village is still the selected one, so our castle is silently dropped.
+        // Re-assert the selection and force a re-download that bypasses the game's
+        // 5-minute village cache. Returns false once the retry budget is spent.
+        private bool BeginCastleLoadRetry(string reason)
+        {
+            if (_castleLoadRetries >= MaxCastleLoadRetries)
+                return false;
+
+            _castleLoadRetries++;
+            LogWarning("Village " + _activeVillageId + ": " + reason
+                + ", forcing re-download (retry " + _castleLoadRetries
+                + "/" + MaxCastleLoadRetries + ").");
+            _step = RepairStep.ForceRedownload;
+            _stepStarted = DateTime.Now;
+            return true;
+        }
+
+        private void StepForceRedownload()
+        {
+            LogDebug("Forcing re-download of village " + _activeVillageId);
+            InterfaceMgr.Instance.setVillageNameBar(_activeVillageId);
+            // Nulls the cached village so downloadCurrentVillage goes to the server
+            // instead of serving a stale (or never-populated) cache entry.
+            GameEngine.Instance.forceDownloadCurrentVillage();
+            _step = RepairStep.WaitForCastle;
+            _stepStarted = DateTime.Now;
+        }
+
         private void StepWaitForCastle()
         {
+            // Selection stolen from under us — the castle we are waiting for will
+            // never be assigned, so retry now instead of burning the full timeout.
+            if (InterfaceMgr.Instance.getSelectedMenuVillage() != _activeVillageId &&
+                BeginCastleLoadRetry("village selection changed during download"))
+                return;
+
             if (GameEngine.Instance.Castle == null)
                 return;
             if (GameEngine.Instance.Castle.VillageID != _activeVillageId)
@@ -1049,13 +1167,28 @@ namespace Kingdoms.Bot.Modules
             return null;
         }
 
+        // Radar bridge. Radar polls the same army array we do, so this mostly just
+        // wins the race by a scan or two; duplicates coalesce on village id.
+        public void NotifyEventLanded(int villageId, bool isScout, bool isAi)
+        {
+            CastleRepairSettings settings = Settings;
+            if (settings == null) return;
+
+            IncomingKind kind = isScout
+                ? IncomingKind.Scout
+                : (isAi ? IncomingKind.AiAttack : IncomingKind.PlayerAttack);
+
+            if (!IsTriggerEnabled(settings, kind)) return;
+            if (_pendingRepairOnAttack.ContainsKey(villageId)) return;
+
+            LogInfo("Radar notified " + DescribeKind(kind).ToLower() + " landed at village "
+                + villageId + ", queuing repair.");
+            _pendingRepairOnAttack[villageId] = true;
+        }
+
         public void NotifyAttackLanded(int villageId)
         {
-            if (!_pendingRepairOnAttack.ContainsKey(villageId))
-            {
-                LogInfo("Radar notified attack landed at village " + villageId + ", queuing repair.");
-                _pendingRepairOnAttack[villageId] = true;
-            }
+            NotifyEventLanded(villageId, false, false);
         }
 
         public static List<string> GetPresetNames(PresetType type)

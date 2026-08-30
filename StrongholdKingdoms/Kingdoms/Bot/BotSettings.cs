@@ -91,6 +91,7 @@ namespace Kingdoms.Bot
                 if (g == null) g = new BotSettings();
                 g._userId = userId;
                 g._worldId = worldId;
+                g.PostLoadMigrate();
                 return g;
             }
 
@@ -111,7 +112,16 @@ namespace Kingdoms.Bot
             }
             s._userId = userId;
             s._worldId = worldId;
+            s.PostLoadMigrate();
             return s;
+        }
+
+        // One-shot upgrades applied to every freshly deserialized settings object,
+        // so old files keep behaving the way the user configured them.
+        private void PostLoadMigrate()
+        {
+            if (CastleRepair != null)
+                CastleRepair.MigrateLegacyTriggers();
         }
 
         private void SerializeTo(string path)
@@ -378,13 +388,45 @@ namespace Kingdoms.Bot
         public int Priority = 1;
     }
 
+    // How the castle repair module decides when to run. Event triggers (the
+    // RepairOn* flags below) fire in BOTH modes; the mode only controls whether
+    // the timed sweep over every village runs.
+    public enum CastleRepairRunMode
+    {
+        Interval = 0,
+        EventsOnly = 1
+    }
+
     [Serializable]
     public class CastleRepairSettings
     {
         public bool Enabled;
+        public CastleRepairRunMode RunMode = CastleRepairRunMode.Interval;
         public int IntervalSeconds = 300;
         public int DelayBetweenVillagesMs = 5000;
+
+        // Legacy single trigger flag - kept only so old settings files still
+        // deserialize. Read once by MigrateLegacyTriggers(), never after that.
         public bool RepairOnAttack;
+        public bool TriggersMigrated;
+
+        public bool RepairOnAiAttack;
+        public bool RepairOnPlayerAttack;
+        public bool RepairOnScout;
+
+        public bool AnyTriggerEnabled
+        {
+            get { return RepairOnAiAttack || RepairOnPlayerAttack || RepairOnScout; }
+        }
+
+        // One-shot upgrade of the old "Repair on Attack/Spy" checkbox. Its actual
+        // behaviour was AI-attacks-only, so that is what it maps to.
+        public void MigrateLegacyTriggers()
+        {
+            if (TriggersMigrated) return;
+            if (RepairOnAttack) RepairOnAiAttack = true;
+            TriggersMigrated = true;
+        }
         public List<VillageCastleRepairSettings> Villages = new List<VillageCastleRepairSettings>();
 
         public VillageCastleRepairSettings GetVillageSettings(int villageId)

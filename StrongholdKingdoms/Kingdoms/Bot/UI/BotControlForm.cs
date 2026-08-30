@@ -1863,6 +1863,9 @@ namespace Kingdoms.Bot.UI
 
         private void WireUpCastleRepairTab()
         {
+            // Never leave the mode combo blank — settings load replaces this.
+            _crModeCombo.SelectedIndex = (int)CastleRepairRunMode.Interval;
+
             _crRefreshBtn.Click += delegate { CrPopulateVillageList(); };
             _crRepairAllBtn.Click += delegate { CrRepairAllNow(); };
             _crMemoriseInfraBtn.Click += delegate { CrMemoriseInfra(); };
@@ -1871,7 +1874,10 @@ namespace Kingdoms.Bot.UI
             _crEnabledCheck.CheckedChanged += delegate { CrPushToSettings(); };
             _crIntervalInput.ValueChanged += delegate { CrPushToSettings(); };
             _crDelayInput.ValueChanged += delegate { CrPushToSettings(); };
-            _crRepairOnAttackCheck.CheckedChanged += delegate { CrPushToSettings(); };
+            _crModeCombo.SelectedIndexChanged += delegate { CrPushToSettings(); };
+            _crRepairOnAiAttackCheck.CheckedChanged += delegate { CrPushToSettings(); };
+            _crRepairOnPlayerAttackCheck.CheckedChanged += delegate { CrPushToSettings(); };
+            _crRepairOnScoutCheck.CheckedChanged += delegate { CrPushToSettings(); };
 
             CrBuildColumnHeaders();
 
@@ -2015,13 +2021,29 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _crEnabledCheck.Checked;
             s.IntervalSeconds = (int)_crIntervalInput.Value;
             s.DelayBetweenVillagesMs = (int)_crDelayInput.Value;
-            s.RepairOnAttack = _crRepairOnAttackCheck.Checked;
+            CrPushTriggersToSettings(s);
 
             foreach (IBotModule m in BotEngine.Instance.Modules)
             {
                 if (m is CastleRepairModule)
                     m.Enabled = s.Enabled;
             }
+        }
+
+        // Run mode + the three event-trigger checkboxes. Shared by the push-on-change
+        // and write-everything paths so the two can never drift apart.
+        private void CrPushTriggersToSettings(CastleRepairSettings s)
+        {
+            s.RunMode = _crModeCombo.SelectedIndex == (int)CastleRepairRunMode.EventsOnly
+                ? CastleRepairRunMode.EventsOnly
+                : CastleRepairRunMode.Interval;
+            s.RepairOnAiAttack = _crRepairOnAiAttackCheck.Checked;
+            s.RepairOnPlayerAttack = _crRepairOnPlayerAttackCheck.Checked;
+            s.RepairOnScout = _crRepairOnScoutCheck.Checked;
+            // The legacy flag has been superseded; keep it in step so an older build
+            // reading the same file still behaves sensibly.
+            s.RepairOnAttack = s.AnyTriggerEnabled;
+            s.TriggersMigrated = true;
         }
 
         private void CrLoadFromSettings()
@@ -2037,7 +2059,10 @@ namespace Kingdoms.Bot.UI
                     Math.Min(_crIntervalInput.Maximum, s.IntervalSeconds));
                 _crDelayInput.Value = Math.Max(_crDelayInput.Minimum,
                     Math.Min(_crDelayInput.Maximum, s.DelayBetweenVillagesMs));
-                _crRepairOnAttackCheck.Checked = s.RepairOnAttack;
+                _crModeCombo.SelectedIndex = (int)s.RunMode;
+                _crRepairOnAiAttackCheck.Checked = s.RepairOnAiAttack;
+                _crRepairOnPlayerAttackCheck.Checked = s.RepairOnPlayerAttack;
+                _crRepairOnScoutCheck.Checked = s.RepairOnScout;
 
                 CrPopulateVillageList();
             }
@@ -2053,7 +2078,7 @@ namespace Kingdoms.Bot.UI
             s.Enabled = _crEnabledCheck.Checked;
             s.IntervalSeconds = (int)_crIntervalInput.Value;
             s.DelayBetweenVillagesMs = (int)_crDelayInput.Value;
-            s.RepairOnAttack = _crRepairOnAttackCheck.Checked;
+            CrPushTriggersToSettings(s);
 
             foreach (CastleRepairVillageRow row in _crVillageRows)
                 row.WriteToSettings(s);
@@ -2141,8 +2166,28 @@ namespace Kingdoms.Bot.UI
             if (_crEnabledCheck == null) return;
 
             bool enabled = _crEnabledCheck.Checked;
-            _crStatusLabel.Text = enabled ? "ENABLED" : "DISABLED";
-            _crStatusLabel.ForeColor = enabled ? SuccessCol : ErrorCol;
+            bool eventsOnly = _crModeCombo.SelectedIndex == (int)CastleRepairRunMode.EventsOnly;
+            bool anyTrigger = _crRepairOnAiAttackCheck.Checked
+                || _crRepairOnPlayerAttackCheck.Checked
+                || _crRepairOnScoutCheck.Checked;
+
+            if (!enabled)
+            {
+                _crStatusLabel.Text = "DISABLED";
+                _crStatusLabel.ForeColor = ErrorCol;
+            }
+            else if (eventsOnly && !anyTrigger)
+            {
+                // Events-only with no trigger ticked can never fire — say so rather
+                // than showing a reassuring green ENABLED.
+                _crStatusLabel.Text = "ENABLED - EVENTS ONLY (no triggers)";
+                _crStatusLabel.ForeColor = ErrorCol;
+            }
+            else
+            {
+                _crStatusLabel.Text = eventsOnly ? "ENABLED - EVENTS ONLY" : "ENABLED - INTERVAL";
+                _crStatusLabel.ForeColor = SuccessCol;
+            }
 
             // Auto-refresh combo boxes when cloud presets become available
             try
@@ -7565,8 +7610,9 @@ namespace Kingdoms.Bot.UI
             // Castle Repair
             LayoutRow(X, 24, G, _crEnabledCheck, _crStatusLabel);
             LayoutRow(X, 56, G, _crIntervalLabel, _crIntervalInput, _crDelayLabel, _crDelayInput);
-            LayoutRow(X, 90, G, _crRepairOnAttackCheck);
-            LayoutRow(X, 124, G, _crRefreshBtn, _crRepairAllBtn, _crCopySettingsBtn, _crMemoriseInfraBtn, _crMemoriseTroopsBtn);
+            LayoutRow(X, 90, G, _crModeLabel, _crModeCombo);
+            LayoutRow(X, 120, G, _crRepairOnAiAttackCheck, _crRepairOnPlayerAttackCheck, _crRepairOnScoutCheck);
+            LayoutRow(X, 154, G, _crRefreshBtn, _crRepairAllBtn, _crCopySettingsBtn, _crMemoriseInfraBtn, _crMemoriseTroopsBtn);
 
             // Trade
             LayoutRow(X, 24, G, _trEnabledCheck, _trStatusLabel);

@@ -106,7 +106,16 @@ namespace Kingdoms.Bot.Modules
 
         private Dictionary<long, bool> _knownArmyIds = new Dictionary<long, bool>();
         private Dictionary<long, bool> _knownPersonIds = new Dictionary<long, bool>();
-        private Dictionary<long, int> _incomingAttackTargets = new Dictionary<long, int>();
+        // Incoming armies whose landing gets forwarded to the castle repair module.
+        // The action key travels with the village id so the repair module can apply
+        // its own per-trigger checkboxes (AI attack / player attack / scout).
+        private class IncomingRepairTarget
+        {
+            public int VillageId;
+            public string ActionKey;
+        }
+
+        private Dictionary<long, IncomingRepairTarget> _incomingAttackTargets = new Dictionary<long, IncomingRepairTarget>();
         private Dictionary<int, DateTime> _villagesSentInterdict = new Dictionary<int, DateTime>();
         // Villages with an interdict retry cycle currently running on a background
         // thread — prevents duplicate cycles for the same village. Guarded by _interdictLock,
@@ -408,12 +417,18 @@ namespace Kingdoms.Bot.Modules
                     continue;
                 }
 
-                // Track incoming attacks for repair-on-attack (user village path only)
+                // Track incoming attacks AND scouts for repair-on-attack (user village
+                // path only). Foraging and reinforcements never leave anything to
+                // repair. Which kinds actually trigger a repair is decided by the
+                // castle repair module's own trigger checkboxes.
                 if (groupMember == null &&
-                    actionKey != ACTION_SCOUT && actionKey != ACTION_FORAGING && actionKey != ACTION_REINFORCEMENT &&
-                    actionKey != ACTION_AI_SCOUT && actionKey != ACTION_AI_FORAGING)
+                    actionKey != ACTION_FORAGING && actionKey != ACTION_REINFORCEMENT &&
+                    actionKey != ACTION_AI_FORAGING)
                 {
-                    _incomingAttackTargets[army.armyID] = army.targetVillageID;
+                    IncomingRepairTarget target = new IncomingRepairTarget();
+                    target.VillageId = army.targetVillageID;
+                    target.ActionKey = actionKey;
+                    _incomingAttackTargets[army.armyID] = target;
                 }
 
                 RadarActionSettings actionSettings = groupMember != null
@@ -460,9 +475,9 @@ namespace Kingdoms.Bot.Modules
             }
             foreach (long armyId in landedIds)
             {
-                int targetVillageId = _incomingAttackTargets[armyId];
+                IncomingRepairTarget landed = _incomingAttackTargets[armyId];
                 _incomingAttackTargets.Remove(armyId);
-                NotifyCastleRepairModule(targetVillageId);
+                NotifyCastleRepairModule(landed);
             }
 
             // Clean up stale IDs
@@ -1722,15 +1737,19 @@ namespace Kingdoms.Bot.Modules
             _personMissingTicks.Clear();
         }
 
-        private void NotifyCastleRepairModule(int villageId)
+        private void NotifyCastleRepairModule(IncomingRepairTarget landed)
         {
-            if (Engine == null) return;
+            if (Engine == null || landed == null) return;
+
+            bool isScout = landed.ActionKey == ACTION_SCOUT || landed.ActionKey == ACTION_AI_SCOUT;
+            bool isAi = landed.ActionKey != null && landed.ActionKey.StartsWith("AI");
+
             foreach (IBotModule module in Engine.Modules)
             {
                 CastleRepairModule crModule = module as CastleRepairModule;
                 if (crModule != null && crModule.Enabled)
                 {
-                    crModule.NotifyAttackLanded(villageId);
+                    crModule.NotifyEventLanded(landed.VillageId, isScout, isAi);
                     break;
                 }
             }
