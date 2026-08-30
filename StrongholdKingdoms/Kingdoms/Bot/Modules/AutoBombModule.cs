@@ -1187,12 +1187,7 @@ namespace Kingdoms.Bot.Modules
                         {
                             VillageMap v = GameEngine.Instance.getVillage(villageId);
                             if (v != null)
-                            {
-                                RemoteServices.Instance.set_VillageBuildingChangeRates_UserCallBack(
-                                    new RemoteServices.VillageBuildingChangeRates_UserCallBack(
-                                        v.villageBuildingChangeRatesCallback));
-                                RemoteServices.Instance.VillageBuildingChangeRates(villageId, -1, -1, -1, -1);
-                            }
+                                VillageResourceRouter.Request(villageId, null);
                         }
                         catch (Exception ex)
                         {

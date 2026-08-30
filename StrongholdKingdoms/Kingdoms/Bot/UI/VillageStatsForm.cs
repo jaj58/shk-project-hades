@@ -11,11 +11,12 @@ namespace Kingdoms.Bot.UI
     /// Village Info - everything one village has, in one scrollable list: stockpile, food,
     /// goods, weapons, troops at home and stationed, population and the village's dates.
     ///
-    /// All of it comes from a single UpdateVillageResourcesInfo RPC, which answers with the
-    /// same VillageResourceAndStatsReturnData the game imports into a VillageMap when you
-    /// enter a village. Going to the server rather than reading the local VillageMap means
-    /// the window works on villages that were never downloaded, and that what it shows is
-    /// the server's view rather than the client's extrapolation.
+    /// All of it comes from a single VillageBuildingChangeRates RPC asked with -1 for all
+    /// four rates, which means "change nothing, just tell me the current state". It answers
+    /// with the same VillageResourceAndStatsReturnData the game imports into a VillageMap
+    /// when you enter a village. Going to the server rather than reading the local VillageMap
+    /// means the window works on villages that were never downloaded, and that what it shows
+    /// is the server's view rather than the client's extrapolation.
     /// </summary>
     internal class VillageStatsForm : MyFormBase
     {
@@ -276,11 +277,11 @@ namespace Kingdoms.Bot.UI
 
             int villageId = _villageId;
             VillageResourceRouter.Request(villageId,
-                delegate(UpdateVillageResourcesInfo_ReturnType data) { OnData(villageId, data); });
+                delegate(VillageBuildingChangeRates_ReturnType data) { OnData(villageId, data); });
         }
 
         // Runs on the UI thread - RemoteServices dispatches replies from the main loop.
-        private void OnData(int villageId, UpdateVillageResourcesInfo_ReturnType data)
+        private void OnData(int villageId, VillageBuildingChangeRates_ReturnType data)
         {
             if (this.IsDisposed) return;
             if (villageId != _villageId) return;
