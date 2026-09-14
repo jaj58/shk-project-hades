@@ -37,7 +37,7 @@
   };
 
   var MAIN_SETTINGS = [
-    ['keep_amount', 'Keep amount', 'Givers never go below this many of a good'],
+    ['keep_amount', 'Keep amount', 'Givers never go below this many of a good (balancing too)'],
     ['safety_margin', 'Safety margin', 'Fill to this many under the target'],
     ['min_send', 'Smallest shipment', 'Orders below this aren\'t created'],
     ['max_travel_minutes', 'Max travel (minutes)', '0 = any distance']
@@ -48,9 +48,11 @@
     ['settle_buffer_seconds', 'Arrival buffer (s)', 'Keep counting a delivery until the receiver\'s data is this much newer than its arrival'],
     ['lease_seconds', 'Order lease (s)', 'An unsent order is re-planned after this long'],
     ['producer_min_buildings', 'Producer buildings', 'Auto-fill: buildings needed to count as making a good'],
+    ['balance_tolerance_percent', 'Balance tolerance (%)', 'Only rebalance a village more than this % of its cap off the balance level'],
     ['max_report_age_hours', 'Max report age (h)', 'Skip receivers not seen for this long (0 = never)']
   ];
   var TOGGLE_SETTINGS = [
+    ['balance_goods', 'Balance goods between villages that make them (Auto-fill: same fill % for every producer, after non-producers are served)'],
     ['include_own_villages', 'Send between a player\'s own villages'],
     ['send_unusable_goods', 'Send goods the receiver can\'t banquet with yet (not researched — still stored)']
   ];
@@ -452,7 +454,14 @@
     var title = name(g) + ': ' + fmt(c.level) + ' in hall';
     if (c.inbound) title += ', ' + fmt(c.inbound) + ' on the way';
     if (c.leased_in) title += ', ' + fmt(c.leased_in) + ' queued';
-    if (c.target) title += '. Filling to ' + fmt(c.target) + (c.shortfall ? ' (' + fmt(c.shortfall) + ' short)' : '');
+    if (c.balance) {
+      // A producer evened out with the group's other producers of this good.
+      skipText = 'balance to ' + fmt(c.target);
+      title += '. Balancing with other producers to ' + fmt(c.target) +
+        (c.shortfall ? ' (' + fmt(c.shortfall) + ' short)' : '');
+    } else if (c.target) {
+      title += '. Filling to ' + fmt(c.target) + (c.shortfall ? ' (' + fmt(c.shortfall) + ' short)' : '');
+    }
     if (c.skip) title += '. Not receiving: ' + c.skip;
     if (produces) title += '. ' + v.buildings[g] + ' building(s), ' + fmt(v.prod[g]) + '/day';
 

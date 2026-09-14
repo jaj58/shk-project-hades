@@ -61,6 +61,11 @@ function bq_default_settings(): array {
         // autofill: a village "produces" a good when it has this many finished production buildings for it.
         // Building count, not rate: a full hall can stall production, and full producers are the best donors.
         'producer_min_buildings'     => 1,
+        // autofill: also even out villages that make the same good (same fill % of cap),
+        // once villages that don't make it have been served.
+        'balance_goods'              => false,
+        // Only rebalance when a village is more than this % of its cap off the balance level.
+        'balance_tolerance_percent'  => 10,
         // Sends between two villages of the same player.
         'include_own_villages'       => true,
         // Send goods above the receiver's Craftsmanship level (storable but not banquetable).
@@ -105,13 +110,14 @@ function bq_normalize_settings($in): array {
         'lease_seconds'              => [30, 900],
         'producer_min_buildings'     => [1, 100],
         'max_report_age_hours'       => [0, 720],
+        'balance_tolerance_percent'  => [1, 50],
     ];
     foreach ($ints as $k => [$min, $max]) {
         if (isset($in[$k]) && is_numeric($in[$k])) {
             $s[$k] = max($min, min($max, (int)$in[$k]));
         }
     }
-    foreach (['include_own_villages', 'send_unusable_goods'] as $k) {
+    foreach (['include_own_villages', 'send_unusable_goods', 'balance_goods'] as $k) {
         if (array_key_exists($k, $in)) $s[$k] = (bool)$in[$k];
     }
     return $s;
@@ -424,27 +430,37 @@ function bq_is_focus(array $settings, array $village): bool {
 }
 
 /**
- * The amount a receiver should be filled to for one good (0 = not a receiver),
- * or a reason it's skipped. Shared by the planner and the website grid.
+ * Why a village can't receive a good at all (paused, no hall, stale report, not
+ * researched...), or '' if it can. Mode-independent; shared by every fill rule.
  */
-function bq_target(array $settings, array $players, array $village, int $good, int $game_now): array {
-    $mode = $settings['mode'];
-    if ($mode === 'off') return [0, 'off'];
-    if (empty($settings['goods_enabled'][$good])) return [0, 'good disabled'];
+function bq_receiver_block(array $settings, array $players, array $village, int $good, int $game_now): string {
+    if ($settings['mode'] === 'off') return 'off';
+    if (empty($settings['goods_enabled'][$good])) return 'good disabled';
 
     $uid = (int)$village['user_id'];
-    if (!isset($players[$uid])) return [0, 'no player'];
-    if (in_array($uid, $settings['paused_players'], true)) return [0, 'paused'];
-    if (empty($village['has_hall'])) return [0, 'no village hall'];
+    if (!isset($players[$uid])) return 'no player';
+    if (in_array($uid, $settings['paused_players'], true)) return 'paused';
+    if (empty($village['has_hall'])) return 'no village hall';
 
     $maxAge = (int)$settings['max_report_age_hours'];
-    if ($maxAge > 0 && $game_now - (int)$village['levels_at_game'] > $maxAge * 3600) return [0, 'report too old'];
+    if ($maxAge > 0 && $game_now - (int)$village['levels_at_game'] > $maxAge * 3600) return 'report too old';
 
     if (!$settings['send_unusable_goods'] && $good >= (int)$players[$uid]['craftsmanship']) {
-        return [0, 'not researched'];
+        return 'not researched';
     }
+    return '';
+}
 
-    if ($mode === 'focus') {
+/**
+ * The amount a receiver should be filled to for one good (0 = not a receiver),
+ * or a reason it's skipped. Shared by the planner and the website grid.
+ * Balancing between producers is layered on top — see bq_balance_targets.
+ */
+function bq_target(array $settings, array $players, array $village, int $good, int $game_now): array {
+    $block = bq_receiver_block($settings, $players, $village, $good, $game_now);
+    if ($block !== '') return [0, $block];
+
+    if ($settings['mode'] === 'focus') {
         if (!bq_is_focus($settings, $village)) return [0, 'not focused'];
     } else { // autofill
         if (bq_is_producer($settings, $village, $good)) {
@@ -479,55 +495,60 @@ function bq_travel_seconds(array $players, array $from, array $to): float {
     return sqrt($dx * $dx + $dy * $dy) * $spt;
 }
 
+/** A village's amount of a good once everything already committed has landed or left. */
+function bq_effective_level(array $entry): float {
+    return $entry['level'] + $entry['inbound'] + $entry['leased_in'] - $entry['leased_out'];
+}
+
 /**
- * Create new leased orders to cover every receiver's shortfall.
+ * Balance targets: [vid][good] => amount, for villages that PRODUCE a good (auto-fill
+ * with balance_goods on). Plain auto-fill never sends a producer its own good, so two
+ * venison villages could otherwise sit at 2000 and 500 forever.
  *
- * shortfall = target - (projected level + in flight + leased in) - safety margin
- *
- * Emptiest receivers first (by fill ratio); for each, nearest donors first.
- * Amounts are whole merchant loads except when the load exactly closes the gap.
- * Returns the new shipment rows (also appended to $shipments).
+ * Every eligible producer of a good is filled to the same fraction of its cap:
+ *   fraction = sum(effective levels) / sum(caps), capped at 1
+ * so a 5400-cap hall holds twice what a 2700-cap hall does. Effective levels include
+ * goods on the road and leased orders, so the fraction holds still while a rebalance
+ * is in flight (no ping-pong). Needs at least two producers of the good.
  */
-function bq_plan(array &$shipments, array $settings, array $players, array $villages, int $api_now, int $game_now): array {
-    if ($settings['mode'] === 'off') return [];
+function bq_balance_targets(array $settings, array $players, array $villages, array $ledger, int $game_now): array {
+    $out = [];
+    if ($settings['mode'] !== 'autofill' || empty($settings['balance_goods'])) return $out;
 
-    [$ledger, $leasedMerchants] = bq_ledger($villages, $shipments, $game_now);
-
-    $needs = [];
-    foreach ($villages as $vid => $v) {
-        for ($g = 0; $g < BQ_NUM_GOODS; $g++) {
-            [$target] = bq_target($settings, $players, $v, $g, $game_now);
-            if ($target <= 0) continue;
-            $e = $ledger[$vid][$g];
-            $counted = $e['level'] + $e['inbound'] + $e['leased_in'];
-            $shortfall = (int)floor($target - $counted - (int)$settings['safety_margin']);
-            if ($shortfall < (int)$settings['min_send']) continue;
-            $needs[] = [
-                'vid'       => $vid,
-                'good'      => $g,
-                'shortfall' => $shortfall,
-                'ratio'     => $counted / $target,
-            ];
+    for ($g = 0; $g < BQ_NUM_GOODS; $g++) {
+        $caps = [];
+        $sumLevel = 0.0;
+        $sumCap = 0;
+        foreach ($villages as $vid => $v) {
+            if (!bq_is_producer($settings, $v, $g)) continue;
+            if (bq_receiver_block($settings, $players, $v, $g, $game_now) !== '') continue;
+            $cap = bq_effective_cap($settings, $v);
+            if ($cap <= 0) continue;
+            $caps[$vid] = $cap;
+            $sumLevel += max(0.0, bq_effective_level($ledger[$vid][$g]));
+            $sumCap += $cap;
+        }
+        if (count($caps) < 2 || $sumCap <= 0) continue;
+        $fraction = min(1.0, $sumLevel / $sumCap);
+        foreach ($caps as $vid => $cap) {
+            $out[$vid][$g] = (int)floor($fraction * $cap);
         }
     }
-    usort($needs, function ($a, $b) {
-        if ($a['ratio'] != $b['ratio']) return $a['ratio'] < $b['ratio'] ? -1 : 1;
-        if ($a['shortfall'] !== $b['shortfall']) return $b['shortfall'] - $a['shortfall'];
-        if ($a['vid'] !== $b['vid']) return $a['vid'] - $b['vid'];
-        return $a['good'] - $b['good'];
-    });
+    return $out;
+}
 
-    // Donor capacity after the leases already outstanding.
-    $avail = [];
+/** A village's balance tolerance in goods: balance_tolerance_percent of its cap, at least min_send. */
+function bq_balance_tolerance(array $settings, array $village): int {
+    $cap = bq_effective_cap($settings, $village);
+    return max((int)$settings['min_send'], (int)ceil($cap * (int)$settings['balance_tolerance_percent'] / 100));
+}
+
+/** Merchants still free per village and open orders per player, after outstanding leases. */
+function bq_capacity(array $villages, array $shipments, array $leasedMerchants): array {
     $merchantsFree = [];
     foreach ($villages as $vid => $v) {
-        $merchantsFree[$vid] = max(0, (int)$v['merchants_free'] - $leasedMerchants[$vid]);
-        for ($g = 0; $g < BQ_NUM_GOODS; $g++) {
-            $a = bq_donor_available($settings, $players, $v, $g, $ledger[$vid][$g]['level'], $api_now);
-            $avail[$vid][$g] = max(0, $a - $ledger[$vid][$g]['leased_out']);
-        }
+        $merchantsFree[$vid] = max(0, (int)$v['merchants_free'] - ($leasedMerchants[$vid] ?? 0));
     }
-
     $ordersPerUser = [];
     foreach ($shipments as $s) {
         if ($s['status'] === 'leased') {
@@ -535,12 +556,31 @@ function bq_plan(array &$shipments, array $settings, array $players, array $vill
             $ordersPerUser[$u] = ($ordersPerUser[$u] ?? 0) + 1;
         }
     }
+    return [$merchantsFree, $ordersPerUser];
+}
 
+/** Emptiest receivers first, then biggest shortfall; ids break ties so plans are deterministic. */
+function bq_sort_needs(array &$needs): void {
+    usort($needs, function ($a, $b) {
+        if ($a['ratio'] != $b['ratio']) return $a['ratio'] < $b['ratio'] ? -1 : 1;
+        if ($a['shortfall'] !== $b['shortfall']) return $b['shortfall'] - $a['shortfall'];
+        if ($a['vid'] !== $b['vid']) return $a['vid'] - $b['vid'];
+        return $a['good'] - $b['good'];
+    });
+}
+
+/**
+ * Turn needs into leased orders. $avail[vid][good] is what each donor may give in this
+ * pass; it, the merchant counts and the per-player order counts are decremented as
+ * orders are created. Nearest donors first; whole merchant loads except when a load
+ * exactly closes the gap.
+ */
+function bq_allocate(array &$shipments, array &$created, array $settings, array $players, array $villages,
+                     array $needs, array &$avail, array &$merchantsFree, array &$ordersPerUser, int $api_now): void {
     $maxTravel = (int)$settings['max_travel_minutes'] * 60;
     $minSend   = (int)$settings['min_send'];
     $maxOrders = (int)$settings['max_orders_per_player'];
     $leaseEnd  = $api_now + (int)$settings['lease_seconds'];
-    $created   = [];
 
     foreach ($needs as $need) {
         $to = $villages[$need['vid']];
@@ -550,7 +590,7 @@ function bq_plan(array &$shipments, array $settings, array $players, array $vill
         $donors = [];
         foreach ($villages as $vid => $from) {
             if ($vid === $need['vid']) continue;
-            if ($avail[$vid][$g] < $minSend || $merchantsFree[$vid] <= 0) continue;
+            if (($avail[$vid][$g] ?? 0) < $minSend || $merchantsFree[$vid] <= 0) continue;
             if (!$settings['include_own_villages'] && (int)$from['user_id'] === (int)$to['user_id']) continue;
             $travel = bq_travel_seconds($players, $from, $to);
             if ($maxTravel > 0 && $travel > $maxTravel) continue;
@@ -599,17 +639,105 @@ function bq_plan(array &$shipments, array $settings, array $players, array $vill
             if ($shortfall < $minSend) break;
         }
     }
+}
+
+/**
+ * Create new leased orders.
+ *
+ * Pass 1 (every mode): shortfall = target - (projected level + in flight + leased in) - safety margin.
+ *   Emptiest receivers first; donors give what they hold above keep_amount.
+ * Pass 2 (auto-fill with balance_goods): producers of the same good are evened out to the
+ *   same fill fraction. It runs after pass 1's orders are counted, so villages that don't
+ *   make a good are always served first — and they never give goods back.
+ *
+ * Returns the new shipment rows (also appended to $shipments).
+ */
+function bq_plan(array &$shipments, array $settings, array $players, array $villages, int $api_now, int $game_now): array {
+    if ($settings['mode'] === 'off') return [];
+    $created = [];
+
+    // ── Pass 1: fill targets ────────────────────────────────────────────────
+    [$ledger, $leasedMerchants] = bq_ledger($villages, $shipments, $game_now);
+
+    $needs = [];
+    foreach ($villages as $vid => $v) {
+        for ($g = 0; $g < BQ_NUM_GOODS; $g++) {
+            [$target] = bq_target($settings, $players, $v, $g, $game_now);
+            if ($target <= 0) continue;
+            $e = $ledger[$vid][$g];
+            $counted = $e['level'] + $e['inbound'] + $e['leased_in'];
+            $shortfall = (int)floor($target - $counted - (int)$settings['safety_margin']);
+            if ($shortfall < (int)$settings['min_send']) continue;
+            $needs[] = ['vid' => $vid, 'good' => $g, 'shortfall' => $shortfall, 'ratio' => $counted / $target];
+        }
+    }
+    bq_sort_needs($needs);
+
+    $avail = [];
+    foreach ($villages as $vid => $v) {
+        for ($g = 0; $g < BQ_NUM_GOODS; $g++) {
+            $a = bq_donor_available($settings, $players, $v, $g, $ledger[$vid][$g]['level'], $api_now);
+            $avail[$vid][$g] = max(0, $a - $ledger[$vid][$g]['leased_out']);
+        }
+    }
+    [$merchantsFree, $ordersPerUser] = bq_capacity($villages, $shipments, $leasedMerchants);
+    bq_allocate($shipments, $created, $settings, $players, $villages, $needs, $avail, $merchantsFree, $ordersPerUser, $api_now);
+
+    // ── Pass 2: balance producers ───────────────────────────────────────────
+    if ($settings['mode'] !== 'autofill' || empty($settings['balance_goods'])) return $created;
+
+    // Re-read the ledger so pass 1's new leases count on both sides.
+    [$ledger, $leasedMerchants] = bq_ledger($villages, $shipments, $game_now);
+    $targets = bq_balance_targets($settings, $players, $villages, $ledger, $game_now);
+    if (!$targets) return $created;
+
+    $needs = [];
+    $avail = [];
+    foreach ($targets as $vid => $byGood) {
+        $v = $villages[$vid];
+        $tolerance = bq_balance_tolerance($settings, $v);
+        $cap = max(1, bq_effective_cap($settings, $v));
+        foreach ($byGood as $g => $target) {
+            $e = $ledger[$vid][$g];
+            $effective = bq_effective_level($e);
+
+            // More than the tolerance below the balance level: receive.
+            $shortfall = (int)floor($target - $effective);
+            if ($shortfall >= $tolerance) {
+                $needs[] = ['vid' => $vid, 'good' => $g, 'shortfall' => $shortfall, 'ratio' => $effective / $cap];
+            }
+
+            // More than the tolerance above it: give down to the balance level, but only
+            // goods actually in the hall and never below keep_amount.
+            $surplus = (int)floor($effective - $target);
+            if ($surplus >= $tolerance) {
+                $inHall = bq_donor_available($settings, $players, $v, $g, $e['level'], $api_now) - $e['leased_out'];
+                $avail[$vid][$g] = max(0, min($surplus, $inHall));
+            }
+        }
+    }
+    if (!$needs) return $created;
+    bq_sort_needs($needs);
+
+    [$merchantsFree, $ordersPerUser] = bq_capacity($villages, $shipments, $leasedMerchants);
+    bq_allocate($shipments, $created, $settings, $players, $villages, $needs, $avail, $merchantsFree, $ordersPerUser, $api_now);
     return $created;
 }
 
 /** Website grid: every village x good with the numbers the planner used. */
 function bq_grid(array $settings, array $players, array $villages, array $shipments, int $game_now): array {
     [$ledger] = bq_ledger($villages, $shipments, $game_now);
+    $balance = bq_balance_targets($settings, $players, $villages, $ledger, $game_now);
     $grid = [];
     foreach ($villages as $vid => $v) {
         $row = [];
         for ($g = 0; $g < BQ_NUM_GOODS; $g++) {
             [$target, $reason] = bq_target($settings, $players, $v, $g, $game_now);
+            $balanced = isset($balance[$vid][$g]);
+            if ($balanced) {
+                $target = $balance[$vid][$g];
+                $reason = '';
+            }
             $e = $ledger[$vid][$g];
             $counted = $e['level'] + $e['inbound'] + $e['leased_in'];
             $row[] = [
@@ -619,6 +747,7 @@ function bq_grid(array $settings, array $players, array $villages, array $shipme
                 'target'    => $target,
                 'shortfall' => $target > 0 ? max(0, (int)floor($target - $counted)) : 0,
                 'skip'      => $reason,
+                'balance'   => $balanced,
             ];
         }
         $grid[(string)$vid] = $row;
