@@ -318,6 +318,96 @@ check(sum_to(bq_plan($ship, settings(), $players, $vOld, $API_NOW, $GAME_NOW), 2
 $ship = [];
 check(count(bq_plan($ship, settings(['mode' => 'off']), $players, $villages, $API_NOW, $GAME_NOW)) === 0, 'off plans nothing');
 
+// ── Balancing producers ─────────────────────────────────────────────────────
+$VEN = 0;
+function producer(int $vid, int $uid, int $venison, array $o = []): array {
+    return village($vid, $uid, array_merge([
+        'levels' => [$venison, 0, 0, 0, 0, 0, 0, 0], 'buildings' => [1, 0, 0, 0, 0, 0, 0, 0],
+    ], $o));
+}
+function orders_into(array $rows, array $vids): int {
+    $n = 0;
+    foreach ($rows as $r) if (in_array((int)$r['to_village_id'], $vids, true)) $n++;
+    return $n;
+}
+
+$pB = [1 => player(1), 2 => player(2), 3 => player(3)];
+$vB = [30 => producer(30, 1, 2000), 31 => producer(31, 2, 500)];
+
+$s = bq_normalize_settings(['balance_goods' => true, 'balance_tolerance_percent' => 99]);
+check($s['balance_goods'] === true && $s['balance_tolerance_percent'] === 50, 'balance settings normalised');
+
+$ship = [];
+check(count(bq_plan($ship, settings(), $pB, $vB, $API_NOW, $GAME_NOW)) === 0,
+    'without balance_goods producers are left alone');
+
+$ship = [];
+$created = bq_plan($ship, settings(['balance_goods' => true]), $pB, $vB, $API_NOW, $GAME_NOW);
+check(sum_to($created, 31, $VEN) === 750 && orders_into($created, [30]) === 0, '2000 / 500 balances to 1250 each');
+
+// Leases in place, then the send in flight with the donor's post-send report: stable.
+persist($ship);
+check(count(bq_plan($ship, settings(['balance_goods' => true]), $pB, $vB, $API_NOW + 5, $GAME_NOW + 5)) === 0,
+    'balance leases stop a second rebalance');
+$vSent = [30 => producer(30, 1, 1250), 31 => producer(31, 2, 500)];
+$ship = [bq_new_shipment(['id' => 70, 'status' => 'in_flight', 'from_user_id' => 1, 'from_village_id' => 30,
+    'to_user_id' => 2, 'to_village_id' => 31, 'good' => $VEN, 'amount' => 750, 'trader_id' => 7, 'eta_game' => $GAME_NOW + 600], $API_NOW)];
+check(count(bq_plan($ship, settings(['balance_goods' => true]), $pB, $vSent, $API_NOW, $GAME_NOW)) === 0,
+    'no ping-pong while the rebalance is on the road');
+
+$ship = [];
+check(count(bq_plan($ship, settings(['balance_goods' => true]), $pB,
+    [30 => producer(30, 1, 1400), 31 => producer(31, 2, 1200)], $API_NOW, $GAME_NOW)) === 0,
+    'within tolerance nothing moves');
+
+// Same fill percentage across different caps: 4000/5400 + 500/2700 -> 3000 and 1500.
+$ship = [];
+$created = bq_plan($ship, settings(['balance_goods' => true]), $pB,
+    [30 => producer(30, 1, 4000, ['hall_cap' => 5400]), 31 => producer(31, 2, 500)], $API_NOW, $GAME_NOW);
+check(sum_to($created, 31, $VEN) === 1000, 'balances by fill percentage, not raw amount');
+
+// keep_amount still protects the giver: 1200 / 200 with keep 1000 -> only 200 moves.
+$ship = [];
+$created = bq_plan($ship, settings(['balance_goods' => true, 'keep_amount' => 1000, 'balance_tolerance_percent' => 5]), $pB,
+    [30 => producer(30, 1, 1200), 31 => producer(31, 2, 200)], $API_NOW, $GAME_NOW);
+check(sum_to($created, 31, $VEN) === 200, 'balancing never takes a giver below keep_amount');
+
+// Three producers: 2400 / 1200 / 900 -> 1500 each.
+$ship = [];
+$created = bq_plan($ship, settings(['balance_goods' => true]), $pB,
+    [30 => producer(30, 1, 2400), 31 => producer(31, 2, 1200), 32 => producer(32, 3, 900)], $API_NOW, $GAME_NOW);
+check(sum_to($created, 32, $VEN) === 600 && sum_to($created, 31, $VEN) === 300, 'three producers even out');
+
+// Offline giver: nothing can move.
+$ship = [];
+check(count(bq_plan($ship, settings(['balance_goods' => true]), [1 => player(1, ['last_seen' => 1]), 2 => player(2)], $vB,
+    $API_NOW, $GAME_NOW)) === 0, 'offline producer cannot give when balancing');
+
+// Villages that don't make the good come first, and never give it back.
+$vMix = [
+    10 => producer(10, 1, 2700),
+    11 => producer(11, 2, 500),
+    20 => village(20, 3),               // makes no venison, empty
+];
+$ship = [];
+$created = bq_plan($ship, settings(['balance_goods' => true]), $pB, $vMix, $API_NOW, $GAME_NOW);
+check(sum_to($created, 20, $VEN) === 2700, 'non-producer still filled to cap first');
+check(orders_into($created, [10, 11]) === 0, 'producers not rebalanced out of goods owed to non-producers');
+$fromNonProducer = 0;
+foreach ($created as $c) if ($c['from_village_id'] === 20) $fromNonProducer++;
+check($fromNonProducer === 0, 'non-producer never gives goods back');
+
+// Focus mode ignores balance_goods.
+[$ledgerF] = bq_ledger($vB, [], $GAME_NOW);
+check(bq_balance_targets(settings(['mode' => 'focus', 'balance_goods' => true]), $pB, $vB, $ledgerF, $GAME_NOW) === [],
+    'balance only applies in auto-fill');
+
+// Grid shows the balance level for producers.
+$gridB = bq_grid(settings(['balance_goods' => true]), $pB, $vB, [], $GAME_NOW);
+check($gridB['30'][$VEN]['target'] === 1250 && $gridB['30'][$VEN]['balance'] === true && $gridB['30'][$VEN]['skip'] === '',
+    'grid shows producer balance target');
+check($gridB['31'][$VEN]['shortfall'] === 750, 'grid shows balance shortfall');
+
 // ── Grid ────────────────────────────────────────────────────────────────────
 $grid = bq_grid(settings(), $players, $villages, [], $GAME_NOW);
 check($grid['20'][$salt]['shortfall'] === 1700 && $grid['10'][$salt]['skip'] === 'produces it', 'grid reports shortfall and skip reasons');
