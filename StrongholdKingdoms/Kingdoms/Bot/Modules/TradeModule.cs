@@ -96,6 +96,7 @@ namespace Kingdoms.Bot.Modules
             new Dictionary<int, PendingDispatch>();
         private readonly List<TradeResult> _resultQueue = new List<TradeResult>();
         private const double PendingTimeoutSeconds = 90.0;
+        private const string GateOwner = "Trade";
 
         // Session statistics
         private readonly TradeSessionStats _stats = new TradeSessionStats();
@@ -193,14 +194,14 @@ namespace Kingdoms.Bot.Modules
             // against the actual server response instead of assumed successful.
             VillageMap.BotStockExchangeTradeResult =
                 new Action<StockExchangeTrade_ReturnType>(OnStockExchangeTradeResult);
-            VillageMap.BotSendMarketResourcesResult =
-                new Action<SendMarketResources_ReturnType>(OnSendMarketResourcesResult);
+            // Village-to-village sends share one callback slot with Banquet Sender — see VillageSendGate.
+            VillageSendGate.Register(GateOwner, OnSendMarketResourcesResult);
         }
 
         protected override void OnShutdown()
         {
             VillageMap.BotStockExchangeTradeResult = null;
-            VillageMap.BotSendMarketResourcesResult = null;
+            VillageSendGate.Unregister(GateOwner);
         }
 
         protected override void OnDisable()
@@ -1487,8 +1488,14 @@ namespace Kingdoms.Bot.Modules
                         if (numMerchants <= 0) continue;
 
                         int amount = numMerchants * carryLevel;
+                        if (!VillageSendGate.TryClaim(GateOwner, senderId))
+                        {
+                            LogDebug(senderName + " [Route]: another module's send is in flight, retrying next tick.");
+                            return TradeActionResult.Blocked;
+                        }
                         if (!senderMap.sendResources(recipientId, resourceId, amount))
                         {
+                            VillageSendGate.Release(GateOwner, senderId);
                             LogDebug(senderName + " [Route]: send lock busy, retrying next tick.");
                             return TradeActionResult.Blocked;
                         }
@@ -1587,8 +1594,14 @@ namespace Kingdoms.Bot.Modules
                     int amount = (int)Math.Min(canSend, (double)(numMerchants * carryLevel));
                     if (amount <= 0) continue;
 
+                    if (!VillageSendGate.TryClaim(GateOwner, senderId))
+                    {
+                        LogDebug(senderName + " [Player Route]: another module's send is in flight, retrying next tick.");
+                        return TradeActionResult.Blocked;
+                    }
                     if (!senderMap.sendResources(route.TargetVillageId, resourceId, amount))
                     {
+                        VillageSendGate.Release(GateOwner, senderId);
                         LogDebug(senderName + " [Player Route]: send lock busy, retrying next tick.");
                         return TradeActionResult.Blocked;
                     }
@@ -1622,7 +1635,7 @@ namespace Kingdoms.Bot.Modules
         /// collection mid-enumeration; all filtering then runs on the local copy which
         /// can never be concurrently modified, eliminating the spin-wait freeze.
         /// </summary>
-        private static List<WorldMap.LocalTrader> SnapshotTraderArray()
+        internal static List<WorldMap.LocalTrader> SnapshotTraderArray()
         {
             SparseArray traderArray = GameEngine.Instance.World.getTraderArray();
             while (true)
