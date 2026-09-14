@@ -49,3 +49,30 @@ If `session_key.txt` does not exist or is empty, the API accepts all requests wi
 ## Resetting State
 
 If a session gets stuck, the coordinator can click **Reset Session** in the Auto Bomb Multi tab, or you can manually delete `state.json` from the server — the API will recreate it on the next request.
+
+---
+
+# Banquet Sender — API Setup
+
+Shares banquet goods between players. Unlike Auto Bomb Multi it keeps its data in
+MySQL (the same `hades_bot` database as the licence system), so the record of goods
+on the road survives redeploys.
+
+1. Run `migrations/add_banquet_sender_tables.sql` once against the database
+   (TablePlus or the Railway MySQL shell). It only creates the `bq_*` tables.
+2. Deploy as usual — `api/banquet_api.php`, `api/banquet_planner.php` and the
+   website in `api/banquet/` ship with the rest of `api/`.
+3. Pick a group key (6+ characters) and give it to every player. In the bot's
+   **Banquet Sender** tab each player sets:
+   - API URL: `https://<your-domain>/api/banquet_api.php`
+   - Group key: the shared key
+   - Enabled
+4. Open `https://<your-domain>/api/banquet/` (or **Open Group Website** in the tab)
+   and choose **Auto-fill** or **Focus**. Anyone with the key can change settings.
+
+Tests (no production access needed):
+
+```
+php tests/banquet_planner_test.php                        # planner maths, no DB
+php tests/banquet_api_integration.php http://host/api/banquet_api.php   # needs a DB with the tables
+```

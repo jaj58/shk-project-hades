@@ -2920,8 +2920,9 @@ namespace Kingdoms.Bot.Modules
             bool r; return bool.TryParse(v.ToString(), out r) ? r : def;
         }
 
-        // Simple JSON serializer/deserializer — no external dependencies, .NET 3.5 compatible
-        private static class SimpleJson
+        // Simple JSON serializer/deserializer — no external dependencies, .NET 3.5 compatible.
+        // Also used by BanquetSenderModule.
+        internal static class SimpleJson
         {
             public static object DeserializeObject(string json, ref int pos)
             {

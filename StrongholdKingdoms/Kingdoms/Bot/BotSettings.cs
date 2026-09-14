@@ -32,6 +32,7 @@ namespace Kingdoms.Bot
         public MiscSettings Misc = new MiscSettings();
         public AutoSettings Auto = new AutoSettings();
         public BanquetSettings Banquet = new BanquetSettings();
+        public BanquetSenderSettings BanquetSender = new BanquetSenderSettings();
         public DefenderSettings Defender = new DefenderSettings();
         public MonkSettings Monk = new MonkSettings();
         public AttackerSettings Attacker = new AttackerSettings();
@@ -1377,6 +1378,25 @@ namespace Kingdoms.Bot
         public int VillageId;
         // Indices 0-7: Venison, Furniture, Metalware, Clothes, Wine, Salt, Spices, Silk
         public List<int> EnabledGoods = new List<int>();
+    }
+
+    /// <summary>
+    /// Banquet Sender: shares banquet goods between players through api/banquet_api.php.
+    /// What to send and where is decided server-side (group settings on the website);
+    /// these are only the per-account connection and safety settings.
+    /// </summary>
+    [Serializable]
+    public class BanquetSenderSettings
+    {
+        public bool Enabled = false;
+        public string ApiUrl = "";
+        // Shared group key — the same for every player in the group and for the website.
+        public string GroupKey = "";
+        public int SyncIntervalSeconds = 20;
+        // Merchants per village the planner may not use, so the Trade module keeps some.
+        public int MerchantsReserve = 0;
+        // Re-download villages the API says have arrived shipments it can't see yet.
+        public bool RefreshArrivedVillages = true;
     }
 
     // =========================================================================
