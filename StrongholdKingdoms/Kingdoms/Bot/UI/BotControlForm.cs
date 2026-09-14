@@ -262,6 +262,7 @@ namespace Kingdoms.Bot.UI
                 WireUpMiscTab();
                 WireUpPopularityTab();
                 WireUpBanquetTab();
+                WireUpBanquetSenderTab();
                 WireUpAutoTab();
                 WireUpScoutTab();
                 WireUpDefenderTab();
@@ -305,6 +306,7 @@ namespace Kingdoms.Bot.UI
                 ScLoadFromSettings();
                 DfLoadFromSettings();
                 TtLoadFromSettings();
+                BsLoadFromSettings();
                 AtLoadFromSettings();
             }
         }
@@ -2586,6 +2588,11 @@ namespace Kingdoms.Bot.UI
                 AtWriteToSettings();
                 tabName = "Attacker";
             }
+            else if (_tabControl.SelectedTab == _bsPage)
+            {
+                BsWriteToSettings();
+                tabName = "Banquet Sender";
+            }
             else if (_tabControl.SelectedTab == _timingPage)
             {
                 TtWriteToSettings();
@@ -2696,6 +2703,11 @@ namespace Kingdoms.Bot.UI
             {
                 AtLoadFromSettings();
                 tabName = "Attacker";
+            }
+            else if (_tabControl.SelectedTab == _bsPage)
+            {
+                BsLoadFromSettings();
+                tabName = "Banquet Sender";
             }
             else if (_tabControl.SelectedTab == _timingPage)
             {

@@ -51,6 +51,7 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.AutoCardModule());
             RegisterModule(new Modules.AutoModuleSchedulerModule());
             RegisterModule(new Modules.BanquetModule());
+            RegisterModule(new Modules.BanquetSenderModule());
             RegisterModule(new Modules.DefenderModule());
             RegisterModule(new Modules.MonkModule());
             RegisterModule(new Modules.AttackerModule());
@@ -121,6 +122,8 @@ namespace Kingdoms.Bot
                     module.Enabled = _settings.Scout.Enabled;
                 else if (module is Modules.BanquetModule)
                     module.Enabled = _settings.Banquet.Enabled;
+                else if (module is Modules.BanquetSenderModule)
+                    module.Enabled = _settings.BanquetSender.Enabled;
                 else if (module is Modules.MonkModule)
                     module.Enabled = _settings.Monk.Enabled;
                 else if (module is Modules.AttackerModule)
@@ -157,6 +160,8 @@ namespace Kingdoms.Bot
                     _settings.Scout.Enabled = module.Enabled;
                 else if (module is Modules.BanquetModule)
                     _settings.Banquet.Enabled = module.Enabled;
+                else if (module is Modules.BanquetSenderModule)
+                    _settings.BanquetSender.Enabled = module.Enabled;
                 else if (module is Modules.MonkModule)
                     _settings.Monk.Enabled = module.Enabled;
                 else if (module is Modules.AttackerModule)
