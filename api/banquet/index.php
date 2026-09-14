@@ -1,3 +1,9 @@
+<?php
+// Cloudflare caches .js for hours, so app.js is requested under a content hash:
+// every change to it gets a new URL and players never run a stale script.
+$appVersion = substr(md5_file(__DIR__ . '/app.js'), 0, 10);
+header('Cache-Control: no-cache');
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -254,6 +260,6 @@
 
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.js"></script>
+<script src="app.js?v=<?= $appVersion ?>"></script>
 </body>
 </html>
