@@ -241,6 +241,7 @@
     if (!state || !form) return;
     renderHeader();
     $('new-group').classList.toggle('hidden', state.exists && state.players.length > 0);
+    renderTotals();
     renderModes();
     renderGoods();
     renderFocus();
@@ -264,6 +265,151 @@
     var pill = $('mode-pill');
     pill.textContent = mode === 'autofill' ? 'Auto-fill' : mode === 'focus' ? 'Focus' : 'Off';
     pill.className = 'pill ' + (mode === 'off' ? 'red' : 'gold');
+  }
+
+  /**
+   * Per-good totals for a set of villages, from the same numbers the planner used:
+   * level = in the hall now (report + production since), inbound = on the way,
+   * queued = ordered but still in the giver's hall (so not added to the total).
+   * Villages without a Village Hall can't hold goods and are left out.
+   */
+  function goodTotals(villages) {
+    var out = state.goods.map(function () {
+      return { halls: 0, inbound: 0, queued: 0, cap: 0, prod: 0, producers: 0, villages: 0 };
+    });
+    villages.forEach(function (v) {
+      if (!v.has_hall) return;
+      var cells = state.grid[String(v.village_id)] || [];
+      out.forEach(function (t, g) {
+        var c = cells[g] || {};
+        t.halls += c.level || 0;
+        t.inbound += c.inbound || 0;
+        t.queued += c.leased_in || 0;
+        t.cap += v.hall_cap || 0;
+        t.prod += (v.prod && v.prod[g]) || 0;
+        if (v.buildings && v.buildings[g] > 0) t.producers++;
+        t.villages++;
+      });
+    });
+    return out;
+  }
+
+  /**
+   * Production per day per good for a set of players, as if every building is running:
+   * [{ cards, none, now }] where cards = with the cards in play, none = with no cards,
+   * now = what buildings are actually producing (full halls stop production).
+   * Bots older than this feature don't send the card figures; their actual rate is used
+   * for both so the totals still add up.
+   */
+  function productionTotals(players) {
+    var out = state.goods.map(function () { return { cards: 0, none: 0, now: 0 }; });
+    players.forEach(function (p) {
+      var c = p.cards || {};
+      var hasPotential = Array.isArray(c.prod_with_cards) && Array.isArray(c.prod_without_cards);
+      var now = state.goods.map(function () { return 0; });
+      state.villages.forEach(function (v) {
+        if (v.user_id !== p.user_id || !v.prod) return;
+        v.prod.forEach(function (n, g) { now[g] += n || 0; });
+      });
+      out.forEach(function (t, g) {
+        t.now += now[g];
+        t.cards += hasPotential ? (c.prod_with_cards[g] || 0) : now[g];
+        t.none += hasPotential ? (c.prod_without_cards[g] || 0) : now[g];
+      });
+    });
+    return out;
+  }
+
+  function cardsInPlay(p) {
+    var list = (p.cards && Array.isArray(p.cards.in_play)) ? p.cards.in_play : [];
+    var elapsed = (p.last_seen_ago || 0) + (Date.now() - fetchedAt) / 1000;
+    return list.map(function (c) {
+      return { id: c.id, name: c.name, left: (c.expires_in_sec || 0) - elapsed };
+    }).filter(function (c) { return c.left > 0; });
+  }
+
+  function renderTotals() {
+    var card = $('summary-card');
+    var withHall = state.villages.filter(function (v) { return v.has_hall; });
+    card.classList.toggle('hidden', !withHall.length);
+    if (!withHall.length) return;
+
+    var totals = goodTotals(state.villages);
+    var production = productionTotals(state.players);
+    $('summary-note').textContent = withHall.length + ' villages with a hall · ' +
+      state.players.length + ' players · production is per day while buildings run';
+
+    var box = $('totals');
+    clear(box);
+    totals.forEach(function (t, g) {
+      var stock = t.halls + t.inbound;
+      var fillPct = t.cap ? Math.min(100, stock / t.cap * 100) : 0;
+      var hallPct = t.cap ? Math.min(100, t.halls / t.cap * 100) : 0;
+      var pr = production[g];
+      var cardBoost = Math.round(pr.cards) > Math.round(pr.none);
+      box.appendChild(el('div', {
+        class: 'total' + (form.goods_enabled[g] ? '' : ' off'),
+        title: name(g) + ': ' + fmt(t.halls) + ' in halls, ' + fmt(t.inbound) + ' on the way, ' + fmt(t.queued) +
+          ' queued (still in the givers\' halls). Capacity ' + fmt(t.cap) + '. ' + t.producers + ' of ' + t.villages +
+          ' villages make it.\nProduction per day while running: ' + fmt(pr.cards) + ' with cards in play, ' +
+          fmt(pr.none) + ' with no cards. Producing right now: ' + fmt(pr.now) + ' (full halls stop production).' +
+          (form.goods_enabled[g] ? '' : '\nNot being shared.')
+      }, [
+        el('div', { class: 'name', text: name(g) }),
+        el('div', { class: 'big num', text: fmt(stock) }),
+        el('div', { class: 'bar' }, [
+          el('i', { class: 'level', style: 'width:' + hallPct + '%' }),
+          el('i', { class: 'inbound', style: 'left:' + hallPct + '%;width:' + Math.max(0, fillPct - hallPct) + '%' })
+        ]),
+        el('div', { class: 'line' }, [el('b', { class: 'num', text: Math.round(fillPct) + '%' }), ' of ' + fmt(t.cap)]),
+        el('div', { class: 'line' }, ['avg ', el('b', { class: 'num', text: fmt(stock / t.villages) }), ' per hall']),
+        t.inbound || t.queued
+          ? el('div', { class: 'line num', text: (t.inbound ? fmt(t.inbound) + ' on the way' : '') +
+              (t.inbound && t.queued ? ' · ' : '') + (t.queued ? fmt(t.queued) + ' queued' : '') })
+          : null,
+        el('div', { class: 'line' }, [
+          el('b', { class: 'num', text: fmt(pr.cards) }), '/day · ', t.producers + ' make it'
+        ]),
+        el('div', { class: 'line' }, cardBoost
+          ? [el('b', { class: 'num', text: fmt(pr.none) }), ' without cards']
+          : ['no production cards'])
+      ]));
+    });
+
+    renderByPlayer();
+  }
+
+  function renderByPlayer() {
+    var table = $('by-player');
+    clear(table);
+    table.className = 'by-player';
+    var head = [el('th', { text: 'Player' })];
+    state.goods.forEach(function (g) { head.push(el('th', { class: 'good', text: g })); });
+    table.appendChild(el('tr', {}, head));
+
+    state.players.slice().sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); }).forEach(function (p) {
+      var villages = state.villages.filter(function (v) { return v.user_id === p.user_id; });
+      var totals = goodTotals(villages);
+      var production = productionTotals([p]);
+      var row = [el('td', {}, [el('b', { text: p.name || ('User ' + p.user_id) }),
+        el('div', { class: 'faint', style: 'font-size:12px', text: villages.length + ' villages' })])];
+      totals.forEach(function (t, g) {
+        var stock = t.halls + t.inbound;
+        var pr = production[g];
+        var boosted = Math.round(pr.cards) > Math.round(pr.none);
+        row.push(el('td', {
+          class: 'good-total num',
+          title: fmt(t.halls) + ' in halls, ' + fmt(t.inbound) + ' on the way, capacity ' + fmt(t.cap) +
+            (pr.cards ? '. ' + fmt(pr.cards) + '/day with cards, ' + fmt(pr.none) + '/day without' : '')
+        }, [
+          fmt(stock),
+          el('div', { class: 'faint', style: 'font-size:11px', text: (t.cap ? Math.round(stock / t.cap * 100) : 0) + '%' }),
+          pr.cards ? el('div', { class: 'faint', style: 'font-size:11px' + (boosted ? ';color:var(--gold)' : ''),
+            text: fmt(pr.cards) + '/day' + (boosted ? ' (' + fmt(pr.none) + ')' : '') }) : null
+        ]));
+      });
+      table.appendChild(el('tr', {}, row));
+    });
   }
 
   function renderModes() {
@@ -351,7 +497,7 @@
       return;
     }
     table.appendChild(el('tr', {}, ['Player', 'World', 'Villages', 'Goods unlocked', 'Merchant speed', 'Hall card',
-      'Max per player', 'Paused', 'Version', ''].map(function (h) { return el('th', { text: h }); })));
+      'Cards in play', 'Max per player', 'Paused', 'Version', ''].map(function (h) { return el('th', { text: h }); })));
 
     var caps = capsOf('player_caps');
     state.players.forEach(function (p) {
@@ -366,6 +512,15 @@
         el('td', { class: 'num', text: p.craftsmanship + ' / 8' }),
         el('td', { class: 'num', text: cards.merchant_speed ? 'x' + cards.merchant_speed : '—' }),
         el('td', {}, [cards.hall_multiplier > 1 ? el('span', { class: 'pill gold', text: 'x' + cards.hall_multiplier }) : el('span', { class: 'faint', text: 'no' })]),
+        el('td', { style: 'white-space:normal;min-width:220px' }, (function () {
+          if (!Array.isArray(cards.in_play)) return [el('span', { class: 'faint', text: 'update bot to see' })];
+          var inPlay = cardsInPlay(p);
+          if (!inPlay.length) return [el('span', { class: 'faint', text: 'none' })];
+          return inPlay.map(function (c) {
+            return el('span', { class: 'pill gold', style: 'margin:1px 4px 1px 0', title: c.name + ' — ' + duration(c.left) + ' left',
+              text: c.name + ' · ' + duration(c.left) });
+          });
+        })()),
         el('td', {}, [el('input', {
           type: 'number', class: 'cap', min: '0', placeholder: 'hall cap', value: caps[p.user_id] || '',
           oninput: function (e) {

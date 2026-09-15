@@ -150,6 +150,18 @@ header('Cache-Control: no-cache');
   .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
   .legend i { display: inline-block; width: 12px; height: 5px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
 
+  /* Totals */
+  .totals { display: grid; grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 10px; }
+  .total { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .total.off { opacity: .45; }
+  .total .name { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  .total .big { font-size: 20px; font-weight: 700; margin: 2px 0 0; }
+  .total .line { font-size: 12px; color: var(--muted); }
+  .total .line b { color: var(--text); font-weight: 600; }
+  .total .bar { height: 6px; margin: 6px 0 5px; }
+  table.by-player td.good-total { text-align: right; }
+  table.by-player th.good { text-align: right; }
+
   .tabs { display: flex; gap: 6px; }
   .tab { background: none; border: 1px solid transparent; border-radius: 6px; padding: 3px 10px; cursor: pointer; color: var(--muted); }
   .tab.active { border-color: var(--line); background: var(--panel-2); color: var(--text); }
@@ -206,6 +218,17 @@ header('Cache-Control: no-cache');
       No bots have connected with this key yet. Give the key to your players: they paste it into the
       <b>Banquet Sender</b> tab with the API URL and tick <b>Enabled</b>. You can set everything up here first.
     </div>
+
+    <section class="card" id="summary-card">
+      <h2>Totals <span class="right muted" id="summary-note"></span></h2>
+      <div class="card-body">
+        <div class="totals" id="totals"></div>
+        <details class="adv" id="by-player-box">
+          <summary>By player</summary>
+          <div class="table-wrap" style="margin-top:10px"><table id="by-player"></table></div>
+        </details>
+      </div>
+    </section>
 
     <section class="card">
       <h2>What to send</h2>

@@ -308,6 +308,14 @@ namespace Kingdoms.Bot.Modules
             for (int g = 0; g < GoodResourceIds.Length; g++)
                 carry.Add(Math.Max(1, worldData.traderCarryingLevels[GoodResourceIds[g]]));
 
+            // Potential production per good across all downloaded villages, with the cards in
+            // play and with none — for the website's totals (what halls make while running).
+            CardData noCards = new CardData();
+            noCards.cards = new int[0];
+            noCards.cardsExpiry = new DateTime[0];
+            double[] prodWithCards = new double[GoodResourceIds.Length];
+            double[] prodWithoutCards = new double[GoodResourceIds.Length];
+
             List<object> villages = new List<object>();
             List<object> allIds = new List<object>();
             HashSet<int> ownIds = new HashSet<int>();
@@ -322,6 +330,7 @@ namespace Kingdoms.Bot.Modules
                 if (map == null) continue; // not downloaded yet: the API keeps its last report
 
                 villages.Add(BuildVillageReport(map, vid, settings, worldData, cardData, gameNow));
+                AddPotentialProduction(map, worldData, cardData, noCards, prodWithCards, prodWithoutCards);
             }
 
             Dictionary<string, object> player = new Dictionary<string, object>();
@@ -337,6 +346,16 @@ namespace Kingdoms.Bot.Modules
             cards["hall_multiplier"] = CardTypes.getResourceCapMultiplier(GoodResourceIds[0], cardData);
             double tradeTimeFactor = CardTypes.cards_adjustTradeTimes(cardData);
             cards["merchant_speed"] = tradeTimeFactor > 0 ? Math.Round(1.0 / tradeTimeFactor, 2) : 1.0;
+            List<object> withCards = new List<object>();
+            List<object> withoutCards = new List<object>();
+            for (int g = 0; g < GoodResourceIds.Length; g++)
+            {
+                withCards.Add(Math.Round(prodWithCards[g], 1));
+                withoutCards.Add(Math.Round(prodWithoutCards[g], 1));
+            }
+            cards["prod_with_cards"] = withCards;
+            cards["prod_without_cards"] = withoutCards;
+            cards["in_play"] = BuildCardsInPlay(cardData, serverNow);
             player["cards"] = cards;
 
             Dictionary<string, object> payload = new Dictionary<string, object>();
@@ -345,6 +364,102 @@ namespace Kingdoms.Bot.Modules
             payload["all_village_ids"] = allIds;
             payload["outbound"] = BuildOutbound(ownIds, serverNow);
             return payload;
+        }
+
+        /// <summary>
+        /// Adds each finished banquet-good building's production per day, as if it is running,
+        /// once with the cards in play and once with none. Same formula as the game's own
+        /// per-day figure when placing a building (VillageMap.updatePlacementText): 86400 /
+        /// production time to the Village Hall × payload. Production cards multiply the payload.
+        /// Unlike building.calcRate this doesn't drop to 0 when the hall is full.
+        /// </summary>
+        private static void AddPotentialProduction(VillageMap map, WorldData worldData, CardData cardData,
+            CardData noCards, double[] withCards, double[] withoutCards)
+        {
+            try
+            {
+                VillageMapBuilding hall = map.findBuildingType(0);
+                if (hall == null) return;
+                ResearchData research = GameEngine.Instance.World.UserResearchData;
+
+                foreach (VillageMapBuilding b in new List<VillageMapBuilding>(map.Buildings))
+                {
+                    int g = GoodIndex(b.buildingType);
+                    if (g < 0 || !b.complete) continue;
+
+                    double travel = VillageBuildingsData.calcTravelTimeTiled(worldData, hall.buildingLocation,
+                        b.buildingLocation).TotalSeconds;
+                    double payload = worldData.getPayloadSize(b.buildingType);
+
+                    double time = VillageBuildingsData.calcProductionTime(worldData, research, b.buildingType, travel,
+                        0.0, 1, map.VillageMapType, map.m_parishCapitalResearchData, cardData);
+                    if (time > 0)
+                        withCards[g] += 86400.0 / time * CardTypes.adjustPayloadSize(cardData, payload, b.buildingType);
+
+                    double baseTime = VillageBuildingsData.calcProductionTime(worldData, research, b.buildingType, travel,
+                        0.0, 1, map.VillageMapType, map.m_parishCapitalResearchData, noCards);
+                    if (baseTime > 0)
+                        withoutCards[g] += 86400.0 / baseTime * CardTypes.adjustPayloadSize(noCards, payload, b.buildingType);
+                }
+            }
+            catch
+            {
+                // Building list changed mid-read or the village isn't fully loaded: skip it this sync.
+            }
+        }
+
+        /// <summary>
+        /// Cards in play that matter to banquet goods, with seconds left at sync time.
+        /// Type IDs verified against CommonTypes.dll (production x3/x5/x10 via adjustPayloadSize,
+        /// Lavish Banqueting via getBanquetHonourValue, 2822 via getResourceCapMultiplier on venison).
+        /// </summary>
+        private static List<object> BuildCardsInPlay(CardData cardData, DateTime serverNow)
+        {
+            List<object> list = new List<object>();
+            if (cardData == null || cardData.cards == null) return list;
+            for (int i = 0; i < cardData.cards.Length; i++)
+            {
+                if (cardData.cards[i] == 0) continue;
+                int type;
+                try { type = CardTypes.getCardType(cardData.cards[i]); }
+                catch { continue; }
+
+                string name = BanquetCardName(type);
+                if (name == null) continue;
+
+                long left = 0;
+                if (cardData.cardsExpiry != null && i < cardData.cardsExpiry.Length)
+                    left = (long)(cardData.cardsExpiry[i] - serverNow).TotalSeconds;
+                if (left <= 0) continue;
+
+                Dictionary<string, object> c = new Dictionary<string, object>();
+                c["id"] = type;
+                c["name"] = name;
+                c["expires_in_sec"] = left;
+                list.Add(c);
+            }
+            return list;
+        }
+
+        private static string BanquetCardName(int type)
+        {
+            // 1284..1307: three tiers per banquet good, in GoodResourceIds order.
+            if (type >= 1284 && type <= 1307)
+            {
+                string[] tiers = { "x3", "x5", "x10" };
+                return GoodNames[(type - 1284) / 3] + " production " + tiers[(type - 1284) % 3];
+            }
+            switch (type)
+            {
+                case 1281: return "Lavish Banqueting (honour x1.2)";
+                case 1282: return "Advanced Lavish Banqueting (honour x2)";
+                case 1283: return "Expert Lavish Banqueting (honour x3)";
+                case 1537: return "Carters (merchants x2)";
+                case 1538: return "Advanced Carters (merchants x4)";
+                case 1539: return "Expert Carters (merchants x8)";
+                case 2822: return "Expanded Keep Storage (hall x2)";
+                default: return null;
+            }
         }
 
         private static Dictionary<string, object> BuildVillageReport(VillageMap map, int vid,
