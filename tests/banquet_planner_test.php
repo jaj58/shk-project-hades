@@ -408,6 +408,69 @@ check($gridB['30'][$VEN]['target'] === 1250 && $gridB['30'][$VEN]['balance'] ===
     'grid shows producer balance target');
 check($gridB['31'][$VEN]['shortfall'] === 750, 'grid shows balance shortfall');
 
+// ── Per-player roles and ignored villages ───────────────────────────────────
+$s = bq_normalize_settings(['no_give_players' => ['1', 'x'], 'ignored_villages' => [20, 20]]);
+check($s['no_give_players'] === [1] && $s['ignored_villages'] === [20] && $s['no_receive_players'] === [],
+    'role and ignore lists normalised');
+
+// Autofill base case again: village 10 (player 1) makes salt, 20/21 (player 2) need it.
+$ship = [];
+check(sum_to(bq_plan($ship, settings(['ignored_villages' => [20]]), $players, $villages, $API_NOW, $GAME_NOW), 20, $salt) === 0,
+    'ignored village is not filled');
+$ship = [];
+check(count(bq_plan($ship, settings(['ignored_villages' => [10]]), $players, $villages, $API_NOW, $GAME_NOW)) === 0,
+    'ignored village does not give');
+
+$ship = [];
+check(count(bq_plan($ship, settings(['no_give_players' => [1]]), $players, $villages, $API_NOW, $GAME_NOW)) === 0,
+    'no-give player sends nothing');
+$ship = [];
+$created = bq_plan($ship, settings(['no_give_players' => [2]]), $players, $villages, $API_NOW, $GAME_NOW);
+check(sum_to($created, 20, $salt) === 1700, 'no-give player still receives');
+
+$ship = [];
+$created = bq_plan($ship, settings(['no_receive_players' => [2]]), $players, $villages, $API_NOW, $GAME_NOW);
+check(orders_into($created, [20, 21]) === 0, 'no-receive player gets nothing');
+$vRecv = $villages; $vRecv[30] = village(30, 3, ['levels' => [0, 0, 0, 0, 0, 0, 0, 0]]);
+$ship = [];
+$created = bq_plan($ship, settings(['no_receive_players' => [1]]), $pB, $vRecv, $API_NOW, $GAME_NOW);
+check(sum_to($created, 30, $salt) > 0, 'no-receive player still gives');
+
+// Focus: a focused player who doesn't receive gets nothing.
+$ship = [];
+check(count(bq_plan($ship, settings(['mode' => 'focus', 'focus_players' => [3], 'no_receive_players' => [3]]),
+    $playersF, $villagesF, $API_NOW, $GAME_NOW)) === 0, 'focus respects no-receive');
+
+// Balancing roles. 30 (p1) 2000, 31 (p2) 500 venison.
+$ship = [];
+check(count(bq_plan($ship, settings(['balance_goods' => true, 'no_balance_players' => [2]]), $pB, $vB, $API_NOW, $GAME_NOW)) === 0,
+    'no-balance player is left out (single producer left, nothing to balance)');
+$ship = [];
+check(count(bq_plan($ship, settings(['balance_goods' => true, 'ignored_villages' => [31]]), $pB, $vB, $API_NOW, $GAME_NOW)) === 0,
+    'ignored village is left out of balancing');
+$ship = [];
+$created = bq_plan($ship, settings(['balance_goods' => true, 'no_give_players' => [1]]), $pB, $vB, $API_NOW, $GAME_NOW);
+check(count($created) === 0, 'balancing needs a giver: no-give producer keeps its surplus');
+$ship = [];
+$created = bq_plan($ship, settings(['balance_goods' => true, 'no_receive_players' => [2]]), $pB, $vB, $API_NOW, $GAME_NOW);
+check(count($created) === 0, 'no-receive producer is not balanced up');
+
+// A giver-only player still counts toward the balance level: 2400 (p1, no receive) / 1200 / 900 -> 1500.
+$ship = [];
+$created = bq_plan($ship, settings(['balance_goods' => true, 'no_receive_players' => [1]]), $pB,
+    [30 => producer(30, 1, 2400), 31 => producer(31, 2, 1200), 32 => producer(32, 3, 900)], $API_NOW, $GAME_NOW);
+check(sum_to($created, 32, $VEN) === 600 && sum_to($created, 31, $VEN) === 300 && orders_into($created, [30]) === 0,
+    'giver-only producer still counts toward the balance level');
+
+// Legacy paused_players still switches everything off.
+$ship = [];
+check(count(bq_plan($ship, settings(['paused_players' => [1]]), $players, $villages, $API_NOW, $GAME_NOW)) === 0,
+    'paused player neither gives nor receives');
+
+$gridI = bq_grid(settings(['ignored_villages' => [20], 'no_receive_players' => [2]]), $players, $villages, [], $GAME_NOW);
+check($gridI['20'][$salt]['skip'] === 'ignored' && $gridI['21'][$salt]['skip'] === 'not receiving',
+    'grid shows ignored / not receiving');
+
 // ── Grid ────────────────────────────────────────────────────────────────────
 $grid = bq_grid(settings(), $players, $villages, [], $GAME_NOW);
 check($grid['20'][$salt]['shortfall'] === 1700 && $grid['10'][$salt]['skip'] === 'produces it', 'grid reports shortfall and skip reasons');

@@ -31,6 +31,8 @@
     'not focused': '',
     'paused': 'paused',
     'report too old': 'old report',
+    'ignored': 'ignored',
+    'not receiving': 'not receiving',
     'good disabled': 'off',
     'no player': '',
     'off': ''
@@ -184,8 +186,29 @@
   function applyState(j) {
     state = j;
     fetchedAt = Date.now();
-    if (!dirty) form = clone(j.settings);
+    if (!dirty) form = formFrom(j.settings);
     render();
+  }
+
+  var ROLE_LISTS = ['no_give_players', 'no_receive_players', 'no_balance_players'];
+
+  /**
+   * The editable copy of the saved settings. Older groups used one "paused" list; it's
+   * folded into the three role lists (paused = all three off) and cleared, so the next
+   * save stores roles only.
+   */
+  function formFrom(settings) {
+    var f = clone(settings);
+    ROLE_LISTS.concat(['ignored_villages']).forEach(function (k) { if (!Array.isArray(f[k])) f[k] = []; });
+    (f.paused_players || []).forEach(function (uid) {
+      ROLE_LISTS.forEach(function (k) { if (f[k].indexOf(uid) < 0) f[k].push(uid); });
+    });
+    f.paused_players = [];
+    return f;
+  }
+
+  function isIgnored(village) {
+    return form.ignored_villages.indexOf(village.village_id) >= 0;
   }
 
   function markDirty() {
@@ -197,7 +220,7 @@
     $('save-btn').disabled = true;
     api('set_settings', { settings: form, cancel_open_orders: true }).then(function (j) {
       dirty = false;
-      form = clone(j.settings);
+      form = formFrom(j.settings);
       $('savebar').classList.add('hidden');
       toast('Settings saved.');
       refresh();
@@ -208,7 +231,7 @@
 
   function discard() {
     dirty = false;
-    form = clone(state.settings);
+    form = formFrom(state.settings);
     $('savebar').classList.add('hidden');
     render();
   }
@@ -308,7 +331,7 @@
       var hasPotential = Array.isArray(c.prod_with_cards) && Array.isArray(c.prod_without_cards);
       var now = state.goods.map(function () { return 0; });
       state.villages.forEach(function (v) {
-        if (v.user_id !== p.user_id || !v.prod) return;
+        if (v.user_id !== p.user_id || !v.prod || isIgnored(v)) return;
         v.prod.forEach(function (n, g) { now[g] += n || 0; });
       });
       out.forEach(function (t, g) {
@@ -330,14 +353,18 @@
 
   function renderTotals() {
     var card = $('summary-card');
-    var withHall = state.villages.filter(function (v) { return v.has_hall; });
-    card.classList.toggle('hidden', !withHall.length);
-    if (!withHall.length) return;
+    // Ignored villages take no part in sharing, so their goods aren't counted either.
+    var counted = state.villages.filter(function (v) { return !isIgnored(v); });
+    var ignoredCount = state.villages.length - counted.length;
+    var withHall = counted.filter(function (v) { return v.has_hall; });
+    card.classList.toggle('hidden', !state.villages.length);
+    if (!state.villages.length) return;
 
-    var totals = goodTotals(state.villages);
+    var totals = goodTotals(counted);
     var production = productionTotals(state.players);
     $('summary-note').textContent = withHall.length + ' villages with a hall · ' +
-      state.players.length + ' players · production is per day while buildings run';
+      state.players.length + ' players' + (ignoredCount ? ' · ' + ignoredCount + ' ignored, not counted' : '') +
+      ' · production is per day while buildings run';
 
     var box = $('totals');
     clear(box);
@@ -388,11 +415,12 @@
     table.appendChild(el('tr', {}, head));
 
     state.players.slice().sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); }).forEach(function (p) {
-      var villages = state.villages.filter(function (v) { return v.user_id === p.user_id; });
+      var own = state.villages.filter(function (v) { return v.user_id === p.user_id; });
+      var villages = own.filter(function (v) { return !isIgnored(v); });
       var totals = goodTotals(villages);
       var production = productionTotals([p]);
       var row = [el('td', {}, [el('b', { text: p.name || ('User ' + p.user_id) }),
-        el('div', { class: 'faint', style: 'font-size:12px', text: villages.length + ' villages' })])];
+        el('div', { class: 'faint', style: 'font-size:12px', text: villages.length + ' villages' + (own.length > villages.length ? ' (' + (own.length - villages.length) + ' ignored)' : '') })])];
       totals.forEach(function (t, g) {
         var stock = t.halls + t.inbound;
         var pr = production[g];
@@ -497,13 +525,27 @@
       return;
     }
     table.appendChild(el('tr', {}, ['Player', 'World', 'Villages', 'Goods unlocked', 'Merchant speed', 'Hall card',
-      'Cards in play', 'Max per player', 'Paused', 'Version', ''].map(function (h) { return el('th', { text: h }); })));
+      'Cards in play', 'Max per player', 'Gives', 'Receives', 'Balances', 'Version', ''].map(function (h) {
+        var tips = {
+          Gives: 'Untick: nothing is sent from this player\'s villages',
+          Receives: 'Untick: nothing is sent to this player (filling or balancing)',
+          Balances: 'Untick: this player\'s producers are left out of Balance goods'
+        };
+        return el('th', { text: h, title: tips[h] || null });
+      })));
 
     var caps = capsOf('player_caps');
     state.players.forEach(function (p) {
       var seen = p.online ? 'online' : (p.last_seen_ago == null ? 'offline' : 'seen ' + duration(p.last_seen_ago) + ' ago');
       var cards = p.cards || {};
-      var paused = form.paused_players.indexOf(p.user_id) >= 0;
+      // Checked = allowed; the settings store who is switched OFF.
+      var role = function (listKey, title) {
+        var off = form[listKey].indexOf(p.user_id) >= 0;
+        return el('td', {}, [el('input', {
+          type: 'checkbox', checked: !off, title: title,
+          onchange: function () { toggleIn(form[listKey], p.user_id); markDirty(); }
+        })]);
+      };
       table.appendChild(el('tr', {}, [
         el('td', {}, [el('span', { class: 'dot' + (p.online ? ' on' : '') }), el('b', { text: p.name || ('User ' + p.user_id) }),
           el('div', { class: 'faint', style: 'font-size:12px', text: seen })]),
@@ -529,7 +571,9 @@
             markDirty();
           }
         })]),
-        el('td', {}, [el('input', { type: 'checkbox', checked: paused, onchange: function () { toggleIn(form.paused_players, p.user_id); markDirty(); } })]),
+        role('no_give_players', 'Sends goods to others'),
+        role('no_receive_players', 'Gets goods sent to them'),
+        role('no_balance_players', 'Producers take part in Balance goods'),
         el('td', { class: 'faint', text: p.client_version || '' }),
         el('td', {}, [el('button', {
           class: 'btn small danger', text: 'Remove',
@@ -568,15 +612,23 @@
       table.appendChild(el('tr', { class: 'player-row' }, [el('td', { colspan: String(state.goods.length + 1), text: p ? p.name : 'User ' + uid })]));
       byPlayer[uid].sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (v) {
         var focused = form.focus_villages.indexOf(v.village_id) >= 0;
+        var ignored = isIgnored(v);
         var meta = 'cap ' + fmt(v.effective_cap) + (v.effective_cap !== v.hall_cap ? ' of ' + fmt(v.hall_cap) : '') +
           ' · ' + v.merchants_free + ' merchants';
         var age = v.snapshot_age_sec == null ? 'never downloaded' : 'data ' + duration(v.snapshot_age_sec) + ' old';
-        var row = [el('td', {}, [
+        var row = [el('td', { class: 'vhead' }, [
           el('div', {}, [
             el('button', {
               class: 'btn small', title: 'Focus this village', text: focused ? '★' : '☆',
               style: focused ? 'color:var(--gold)' : '',
               onclick: function () { toggleIn(form.focus_villages, v.village_id); markDirty(); render(); }
+            }), ' ',
+            el('button', {
+              class: 'btn small' + (ignored ? ' danger' : ''),
+              title: ignored ? 'Ignored: never gives, receives or balances. Click to include it again.'
+                : 'Ignore this village: it won\'t give, receive or balance',
+              text: ignored ? 'Ignored' : 'Ignore',
+              onclick: function () { toggleIn(form.ignored_villages, v.village_id); markDirty(); render(); }
             }), ' ',
             el('span', { class: 'vname', text: v.name }),
             v.has_hall ? null : el('span', { class: 'pill red', style: 'margin-left:6px', text: 'no hall' })
@@ -594,7 +646,7 @@
 
         var cells = (state.grid[String(v.village_id)] || []);
         state.goods.forEach(function (name, g) { row.push(gridCell(v, g, cells[g])); });
-        table.appendChild(el('tr', {}, row));
+        table.appendChild(el('tr', { class: ignored ? 'ignored' : null }, row));
       });
     });
   }

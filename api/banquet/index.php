@@ -146,6 +146,7 @@ header('Cache-Control: no-cache');
   .skip-reason { font-size: 11px; color: var(--faint); }
   .prod { color: var(--gold); font-size: 11px; }
   .vname { font-weight: 600; }
+  table.grid tr.ignored td.cell, table.grid tr.ignored .vname, table.grid tr.ignored .vmeta { opacity: .4; }
   .vmeta { font-size: 12px; color: var(--muted); }
   .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
   .legend i { display: inline-block; width: 12px; height: 5px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }

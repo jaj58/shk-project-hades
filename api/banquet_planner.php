@@ -72,8 +72,15 @@ function bq_default_settings(): array {
         'send_unusable_goods'        => false,
         // Receivers whose last report is older than this are skipped (0 = never skip).
         'max_report_age_hours'       => 24,
-        // user_ids excluded as both donor and receiver
+        // user_ids excluded as giver, receiver and from balancing (the website now writes the
+        // three per-role lists below instead; kept so older saved settings still apply).
         'paused_players'             => [],
+        // Per-player roles (user_ids): never send from / never send to / leave out of balancing.
+        'no_give_players'            => [],
+        'no_receive_players'         => [],
+        'no_balance_players'         => [],
+        // Villages that take no part at all: never give, receive or balance.
+        'ignored_villages'           => [],
     ];
 }
 
@@ -89,6 +96,9 @@ function bq_normalize_settings($in): array {
     $s['focus_players']  = bq_int_list($in['focus_players'] ?? []);
     $s['focus_villages'] = bq_int_list($in['focus_villages'] ?? []);
     $s['paused_players'] = bq_int_list($in['paused_players'] ?? []);
+    foreach (['no_give_players', 'no_receive_players', 'no_balance_players', 'ignored_villages'] as $k) {
+        $s[$k] = bq_int_list($in[$k] ?? []);
+    }
 
     if (isset($in['goods_enabled']) && is_array($in['goods_enabled'])) {
         for ($g = 0; $g < BQ_NUM_GOODS; $g++) {
@@ -434,21 +444,47 @@ function bq_is_focus(array $settings, array $village): bool {
  * researched...), or '' if it can. Mode-independent; shared by every fill rule.
  */
 function bq_receiver_block(array $settings, array $players, array $village, int $good, int $game_now): string {
+    $block = bq_common_block($settings, $players, $village, $good, $game_now);
+    if ($block !== '') return $block;
+    if (in_array((int)$village['user_id'], $settings['no_receive_players'], true)) return 'not receiving';
+    return bq_storage_block($settings, $players, $village, $good);
+}
+
+/**
+ * Why a village takes no part at all for a good — as giver, receiver or in balancing —
+ * or '' if it does: mode off, good disabled, village ignored, player unknown or paused,
+ * report too old.
+ */
+function bq_common_block(array $settings, array $players, array $village, int $good, int $game_now): string {
     if ($settings['mode'] === 'off') return 'off';
     if (empty($settings['goods_enabled'][$good])) return 'good disabled';
+    if (in_array((int)$village['village_id'], $settings['ignored_villages'], true)) return 'ignored';
 
     $uid = (int)$village['user_id'];
     if (!isset($players[$uid])) return 'no player';
     if (in_array($uid, $settings['paused_players'], true)) return 'paused';
-    if (empty($village['has_hall'])) return 'no village hall';
 
     $maxAge = (int)$settings['max_report_age_hours'];
     if ($maxAge > 0 && $game_now - (int)$village['levels_at_game'] > $maxAge * 3600) return 'report too old';
+    return '';
+}
 
-    if (!$settings['send_unusable_goods'] && $good >= (int)$players[$uid]['craftsmanship']) {
+/** Why a village can't hold / use a good: no Village Hall, or not researched (unless allowed). */
+function bq_storage_block(array $settings, array $players, array $village, int $good): string {
+    if (empty($village['has_hall'])) return 'no village hall';
+    $uid = (int)$village['user_id'];
+    if (!$settings['send_unusable_goods'] && $good >= (int)($players[$uid]['craftsmanship'] ?? 0)) {
         return 'not researched';
     }
     return '';
+}
+
+/** Whether a producer takes part in balancing a good (auto-fill + balance_goods). */
+function bq_balance_member(array $settings, array $players, array $village, int $good, int $game_now): bool {
+    if (!bq_is_producer($settings, $village, $good)) return false;
+    if (bq_common_block($settings, $players, $village, $good, $game_now) !== '') return false;
+    if (in_array((int)$village['user_id'], $settings['no_balance_players'], true)) return false;
+    return bq_storage_block($settings, $players, $village, $good) === '';
 }
 
 /**
@@ -471,12 +507,13 @@ function bq_target(array $settings, array $players, array $village, int $good, i
 }
 
 /** How much of a good a village can give away right now (before leases already issued). */
-function bq_donor_available(array $settings, array $players, array $village, int $good, float $level, int $api_now): int {
+function bq_donor_available(array $settings, array $players, array $village, int $good, float $level,
+                            int $api_now, int $game_now): int {
     $mode = $settings['mode'];
-    if ($mode === 'off' || empty($settings['goods_enabled'][$good])) return 0;
+    if (bq_common_block($settings, $players, $village, $good, $game_now) !== '') return 0;
     $uid = (int)$village['user_id'];
-    if (!isset($players[$uid]) || !bq_player_online($players[$uid], $api_now)) return 0;
-    if (in_array($uid, $settings['paused_players'], true)) return 0;
+    if (!bq_player_online($players[$uid], $api_now)) return 0;
+    if (in_array($uid, $settings['no_give_players'], true)) return 0;
 
     if ($mode === 'focus') {
         if (bq_is_focus($settings, $village)) return 0;
@@ -520,8 +557,7 @@ function bq_balance_targets(array $settings, array $players, array $villages, ar
         $sumLevel = 0.0;
         $sumCap = 0;
         foreach ($villages as $vid => $v) {
-            if (!bq_is_producer($settings, $v, $g)) continue;
-            if (bq_receiver_block($settings, $players, $v, $g, $game_now) !== '') continue;
+            if (!bq_balance_member($settings, $players, $v, $g, $game_now)) continue;
             $cap = bq_effective_cap($settings, $v);
             if ($cap <= 0) continue;
             $caps[$vid] = $cap;
@@ -676,7 +712,7 @@ function bq_plan(array &$shipments, array $settings, array $players, array $vill
     $avail = [];
     foreach ($villages as $vid => $v) {
         for ($g = 0; $g < BQ_NUM_GOODS; $g++) {
-            $a = bq_donor_available($settings, $players, $v, $g, $ledger[$vid][$g]['level'], $api_now);
+            $a = bq_donor_available($settings, $players, $v, $g, $ledger[$vid][$g]['level'], $api_now, $game_now);
             $avail[$vid][$g] = max(0, $a - $ledger[$vid][$g]['leased_out']);
         }
     }
@@ -697,13 +733,15 @@ function bq_plan(array &$shipments, array $settings, array $players, array $vill
         $v = $villages[$vid];
         $tolerance = bq_balance_tolerance($settings, $v);
         $cap = max(1, bq_effective_cap($settings, $v));
+        $canReceive = !in_array((int)$v['user_id'], $settings['no_receive_players'], true);
         foreach ($byGood as $g => $target) {
             $e = $ledger[$vid][$g];
             $effective = bq_effective_level($e);
 
-            // More than the tolerance below the balance level: receive.
+            // More than the tolerance below the balance level: receive (if the player receives).
+            // Givers-only players still count toward the balance level.
             $shortfall = (int)floor($target - $effective);
-            if ($shortfall >= $tolerance) {
+            if ($canReceive && $shortfall >= $tolerance) {
                 $needs[] = ['vid' => $vid, 'good' => $g, 'shortfall' => $shortfall, 'ratio' => $effective / $cap];
             }
 
@@ -711,7 +749,7 @@ function bq_plan(array &$shipments, array $settings, array $players, array $vill
             // goods actually in the hall and never below keep_amount.
             $surplus = (int)floor($effective - $target);
             if ($surplus >= $tolerance) {
-                $inHall = bq_donor_available($settings, $players, $v, $g, $e['level'], $api_now) - $e['leased_out'];
+                $inHall = bq_donor_available($settings, $players, $v, $g, $e['level'], $api_now, $game_now) - $e['leased_out'];
                 $avail[$vid][$g] = max(0, min($surplus, $inHall));
             }
         }
