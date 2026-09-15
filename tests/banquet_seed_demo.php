@@ -47,11 +47,35 @@ foreach ($players as $uid => [$pname, $makes]) {
     $villages[$uid] = $list;
 }
 
+// Cards data as the bot reports it: potential production per good with/without cards,
+// and the banquet-relevant cards in play. Aldric runs Expert Deer Stalking + Expanded Keep Storage.
+function demo_cards($uid) {
+    global $villages;
+    $with = array_fill(0, 8, 0.0);
+    foreach ($villages[$uid] as $v) {
+        foreach ($v['prod'] as $g => $n) $with[$g] += $n;
+    }
+    $without = $with;
+    $inPlay = [];
+    if ($uid === 101) {
+        $without[0] = round($with[0] / 10, 1);
+        $inPlay[] = ['id' => 1286, 'name' => 'Venison production x10', 'expires_in_sec' => 5 * 3600];
+        $inPlay[] = ['id' => 2822, 'name' => 'Expanded Keep Storage (hall x2)', 'expires_in_sec' => 26 * 3600];
+    }
+    if ($uid === 102) {
+        $without[5] = round($with[5] / 5, 1);
+        $inPlay[] = ['id' => 1300, 'name' => 'Salt production x5', 'expires_in_sec' => 2 * 3600 + 600];
+        $inPlay[] = ['id' => 1538, 'name' => 'Advanced Carters (merchants x4)', 'expires_in_sec' => 40 * 60];
+    }
+    return ['hall_multiplier' => $uid === 101 ? 2 : 1, 'merchant_speed' => $uid === 102 ? 4 : 1,
+        'prod_with_cards' => $with, 'prod_without_cards' => $without, 'in_play' => $inPlay];
+}
+
 $sync = function ($uid, $extra = []) use (&$villages, $players, &$G) {
     return call('sync', array_merge([
         'player' => ['user_id' => $uid, 'name' => $players[$uid][0], 'world' => 'Global Conflict 7', 'game_time' => $G,
             'craftsmanship' => $uid === 104 ? 6 : 8, 'sec_per_tile' => 4.2, 'carry' => array_fill(0, 8, 10),
-            'client_version' => 'demo', 'cards' => ['hall_multiplier' => $uid === 101 ? 2 : 1, 'merchant_speed' => $uid === 102 ? 4 : 1]],
+            'client_version' => 'demo', 'cards' => demo_cards($uid)],
         'villages' => $villages[$uid],
     ], $extra));
 };
