@@ -96,26 +96,33 @@ namespace Kingdoms.Bot.Modules
 
             village.banqueting.updateLevels(true);
 
-            // Find the minimum resource level across all enabled + unlocked goods with production.
+            // Find the minimum resource level across all enabled + unlocked goods.
             // Goods beyond the research cap are already zeroed by updateLevels().
+            // Every enabled good must be in stock: if any is empty, skip the village rather than
+            // banqueting the leftovers of the others on their own.
             int minAmt = int.MaxValue;
             foreach (int goodIdx in vs.EnabledGoods)
             {
                 if (goodIdx >= researchLevel) continue;
                 int level = village.banqueting.resourceLevels[goodIdx];
-                if (level > 0 && level < minAmt)
+                if (level <= 0)
+                {
+                    LogDebug(string.Format("Village {0}: no {1} in stock, skipping banquet",
+                        village.VillageID, GoodNames[goodIdx]));
+                    return;
+                }
+                if (level < minAmt)
                     minAmt = level;
             }
 
             if (minAmt == int.MaxValue) return;
 
-            // Use equal minimum amounts per selected good (matches old restriction-mode behaviour)
+            // Use the same (minimum) amount of every selected good
             int[] amounts = new int[8];
             foreach (int goodIdx in vs.EnabledGoods)
             {
                 if (goodIdx >= researchLevel) continue;
-                if (village.banqueting.resourceLevels[goodIdx] >= minAmt)
-                    amounts[goodIdx] = minAmt;
+                amounts[goodIdx] = minAmt;
             }
 
             RemoteServices.Instance.VillageHoldBanquet(
