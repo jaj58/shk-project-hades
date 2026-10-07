@@ -163,8 +163,13 @@ header('Cache-Control: no-cache');
   table.by-player td.good-total { text-align: right; }
   table.by-player th.good { text-align: right; }
   select { background: #0f0f13; border: 1px solid var(--line); border-radius: 5px; padding: 4px 8px; }
-  table.planner td.tier { text-align: right; }
-  table.planner td.tier.active { color: var(--gold); }
+  /* Numeric columns: same width, right aligned, headers aligned with their values.
+     The table hugs its columns instead of stretching, so the goods stay next to the numbers. */
+  table.planner { width: auto; }
+  table.planner th.good, table.planner td.tier { text-align: right; width: 128px; }
+  table.planner th:first-child, table.planner td:first-child { width: auto; min-width: 130px; }
+  table.planner td.tier { font-variant-numeric: tabular-nums; }
+  table.planner td.tier.active { color: var(--gold); background: var(--gold-soft); }
   table.planner td.tier .eta { display: block; font-size: 11px; color: var(--faint); }
   table.planner td.tier.active .eta { color: var(--gold); opacity: .8; }
 
