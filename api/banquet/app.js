@@ -14,6 +14,7 @@
   var fetchedAt = 0;
   var shipTab = 'active';
   var refreshTimer = null;
+  var plannerUid = null;   // player chosen in the card planner
 
   var STATUS = {
     leased:    ['Queued', 'amber'],
@@ -432,6 +433,74 @@
     });
 
     renderByPlayer();
+    renderCardPlanner(totals, production);
+  }
+
+  /**
+   * What a production card would do. Each player reports production with the cards they
+   * have in play and with none, so a card of tier T on one good simply replaces that
+   * player's share with base x T — the rest of the group is unchanged.
+   */
+  function renderCardPlanner(totals, production) {
+    var box = $('planner-box');
+    var able = state.players.filter(function (p) {
+      return p.cards && Array.isArray(p.cards.prod_without_cards) && Array.isArray(p.cards.prod_with_cards);
+    });
+    box.classList.toggle('hidden', !able.length);
+    if (!able.length) return;
+
+    var sel = $('planner-player');
+    if (plannerUid == null || !able.some(function (p) { return p.user_id === plannerUid; })) {
+      plannerUid = able[0].user_id;
+    }
+    if (document.activeElement !== sel) {
+      clear(sel);
+      able.forEach(function (p) {
+        sel.appendChild(el('option', { value: String(p.user_id), text: p.name || ('User ' + p.user_id) }));
+      });
+      sel.value = String(plannerUid);
+    }
+
+    var player = able.filter(function (p) { return p.user_id === plannerUid; })[0];
+    var base = player.cards.prod_without_cards;
+    var current = player.cards.prod_with_cards;
+    var tiers = [1, 3, 5, 10];
+
+    var table = $('planner-table');
+    clear(table);
+    table.className = 'planner';
+    table.appendChild(el('tr', {}, ['Good', 'Their base', 'No card', 'x3', 'x5', 'x10'].map(function (h, i) {
+      return el('th', { class: i >= 1 ? 'good' : null, text: h });
+    })));
+
+    var any = false;
+    state.goods.forEach(function (goodName, g) {
+      if (!(base[g] > 0)) return;   // they don't make it
+      any = true;
+      // What the rest of the group makes, so only this player's share changes.
+      var others = Math.max(0, production[g].cards - (current[g] || 0));
+      var remaining = Math.max(0, totals[g].cap - (totals[g].halls + totals[g].inbound));
+      var activeTier = Math.round((current[g] || 0) / base[g]);
+
+      var row = [el('td', {}, [el('b', { text: goodName })]),
+        el('td', { class: 'tier' }, [fmt(base[g]) + '/day'])];
+      tiers.forEach(function (t) {
+        var rate = others + base[g] * t;
+        var eta = fillEta(remaining, rate);
+        row.push(el('td', {
+          class: 'tier' + (t === activeTier ? ' active' : ''),
+          title: t === activeTier ? 'This is what they have in play now' : null
+        }, [
+          fmt(rate) + '/day' + (t === activeTier ? ' (now)' : ''),
+          el('span', { class: 'eta', text: eta || '—' })
+        ]));
+      });
+      table.appendChild(el('tr', {}, row));
+    });
+
+    if (!any) {
+      table.appendChild(el('tr', {}, [el('td', { class: 'empty', text: 'This player makes no banquet goods.' })]));
+    }
   }
 
   function renderByPlayer() {
@@ -781,6 +850,10 @@
   });
   $('login-key').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('login-btn').click(); });
   $('logout-btn').addEventListener('click', function () { storeKey(null); key = null; state = null; showLogin(); });
+  $('planner-player').addEventListener('change', function (e) {
+    plannerUid = parseInt(e.target.value, 10);
+    render();
+  });
   $('save-btn').addEventListener('click', save);
   $('discard-btn').addEventListener('click', discard);
   $('clear-all-btn').addEventListener('click', function () {

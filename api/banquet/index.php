@@ -162,6 +162,11 @@ header('Cache-Control: no-cache');
   .total .bar { height: 6px; margin: 6px 0 5px; }
   table.by-player td.good-total { text-align: right; }
   table.by-player th.good { text-align: right; }
+  select { background: #0f0f13; border: 1px solid var(--line); border-radius: 5px; padding: 4px 8px; }
+  table.planner td.tier { text-align: right; }
+  table.planner td.tier.active { color: var(--gold); }
+  table.planner td.tier .eta { display: block; font-size: 11px; color: var(--faint); }
+  table.planner td.tier.active .eta { color: var(--gold); opacity: .8; }
 
   .tabs { display: flex; gap: 6px; }
   .tab { background: none; border: 1px solid transparent; border-radius: 6px; padding: 3px 10px; cursor: pointer; color: var(--muted); }
@@ -227,6 +232,16 @@ header('Cache-Control: no-cache');
         <details class="adv" id="by-player-box">
           <summary>By player</summary>
           <div class="table-wrap" style="margin-top:10px"><table id="by-player"></table></div>
+        </details>
+        <details class="adv" id="planner-box">
+          <summary>Card planner — what a production card would do</summary>
+          <div style="margin-top:10px">
+            <label class="check">Player
+              <select id="planner-player"></select>
+            </label>
+            <span class="muted" style="margin-left:10px">Group production per day and time till full if this player played a card on that good.</span>
+          </div>
+          <div class="table-wrap" style="margin-top:10px"><table id="planner-table"></table></div>
         </details>
       </div>
     </section>
