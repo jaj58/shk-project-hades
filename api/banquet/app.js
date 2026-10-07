@@ -343,6 +343,26 @@
     return out;
   }
 
+  /** Coarse duration for long waits: "3d 4h", "7h 20m", "45m". */
+  function longDuration(sec) {
+    var d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
+    if (d >= 10) return d + 'd';
+    if (d > 0) return d + 'd ' + h + 'h';
+    if (h > 0) return h + 'h ' + (m < 10 ? '0' : '') + m + 'm';
+    return Math.max(1, m) + 'm';
+  }
+
+  /**
+   * How long until every hall is full, at the given production per day. Rough by
+   * nature: it assumes production keeps flowing (a full hall actually stops) and that
+   * goods get spread around, and it ignores what banquets consume.
+   */
+  function fillEta(remaining, perDay) {
+    if (remaining <= 0) return 'full';
+    if (!perDay || perDay <= 0) return null;
+    return 'full in ' + longDuration(remaining / perDay * 86400);
+  }
+
   function cardsInPlay(p) {
     var list = (p.cards && Array.isArray(p.cards.in_play)) ? p.cards.in_play : [];
     var elapsed = (p.last_seen_ago || 0) + (Date.now() - fetchedAt) / 1000;
@@ -374,12 +394,19 @@
       var hallPct = t.cap ? Math.min(100, t.halls / t.cap * 100) : 0;
       var pr = production[g];
       var cardBoost = Math.round(pr.cards) > Math.round(pr.none);
+      var remaining = Math.max(0, t.cap - stock);
+      var eta = fillEta(remaining, pr.cards);
+      var etaNow = fillEta(remaining, pr.now);
       box.appendChild(el('div', {
         class: 'total' + (form.goods_enabled[g] ? '' : ' off'),
         title: name(g) + ': ' + fmt(t.halls) + ' in halls, ' + fmt(t.inbound) + ' on the way, ' + fmt(t.queued) +
           ' queued (still in the givers\' halls). Capacity ' + fmt(t.cap) + '. ' + t.producers + ' of ' + t.villages +
           ' villages make it.\nProduction per day while running: ' + fmt(pr.cards) + ' with cards in play, ' +
           fmt(pr.none) + ' with no cards. Producing right now: ' + fmt(pr.now) + ' (full halls stop production).' +
+          '\n' + fmt(remaining) + ' short of full' +
+          (eta && remaining > 0 ? ', ' + eta + ' at ' + fmt(pr.cards) + '/day' +
+            (etaNow && Math.round(pr.now) !== Math.round(pr.cards) ? ' (' + etaNow + ' at the rate being produced right now)' : '') : '') +
+          '. Assumes production keeps flowing and goods get spread around; banquets consume goods.' +
           (form.goods_enabled[g] ? '' : '\nNot being shared.')
       }, [
         el('div', { class: 'name', text: name(g) }),
@@ -389,6 +416,7 @@
           el('i', { class: 'inbound', style: 'left:' + hallPct + '%;width:' + Math.max(0, fillPct - hallPct) + '%' })
         ]),
         el('div', { class: 'line' }, [el('b', { class: 'num', text: Math.round(fillPct) + '%' }), ' of ' + fmt(t.cap)]),
+        el('div', { class: 'line num', style: remaining <= 0 ? 'color:var(--green)' : null }, [eta || '—']),
         el('div', { class: 'line' }, ['avg ', el('b', { class: 'num', text: fmt(stock / t.villages) }), ' per hall']),
         t.inbound || t.queued
           ? el('div', { class: 'line num', text: (t.inbound ? fmt(t.inbound) + ' on the way' : '') +
