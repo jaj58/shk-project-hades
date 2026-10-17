@@ -2412,63 +2412,123 @@ namespace Kingdoms.Bot.UI
         // Log
         // =====================================================================
 
+        // Log lines are buffered and written to the box in batches from a UI timer.
+        // Appending one line at a time cost ~45ms per line once the box held a few thousand
+        // lines (mostly ScrollToCaret, plus Lines.Length re-splitting the whole text), and
+        // the game loop runs every queued BeginInvoke inside one DoEvents — so a burst of
+        // lines from a background module (Monk routes) froze the game for seconds.
+        // A batch costs about one line's worth.
+        private const int MaxLogLines = 3000;
+        private const int LogTrimLines = 500;
+        private const int WM_SETREDRAW = 0x000B;
+        private readonly List<BotLogEntry> _pendingLog = new List<BotLogEntry>();
+        private readonly Queue<int> _logLineLengths = new Queue<int>();
+        private Timer _logFlushTimer;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
         private void SubscribeToLog()
         {
+            _logFlushTimer = new Timer();
+            _logFlushTimer.Interval = 200;
+            _logFlushTimer.Tick += delegate { FlushPendingLog(); };
+            _logFlushTimer.Start();
             BotLogger.OnLogAdded += OnLogEntryAdded;
         }
 
+        // Any thread. Only queues — FlushPendingLog does the RichTextBox work.
         private void OnLogEntryAdded(BotLogEntry entry)
         {
-            if (_logBox.InvokeRequired)
-            {
-                try
-                {
-                    _logBox.BeginInvoke(new Action<BotLogEntry>(AppendLogEntry), entry);
-                }
-                catch { }
-                return;
-            }
-            AppendLogEntry(entry);
+            lock (_pendingLog)
+                _pendingLog.Add(entry);
         }
 
-        private void AppendLogEntry(BotLogEntry entry)
+        private void FlushPendingLog()
         {
-            if (_logBox.IsDisposed) return;
-
-            Color color;
-            switch (entry.Level)
+            List<BotLogEntry> batch;
+            lock (_pendingLog)
             {
-                case BotLogLevel.Debug: color = TextSec; break;
-                case BotLogLevel.Warning: color = WarningCol; break;
-                case BotLogLevel.Error: color = ErrorCol; break;
-                default: color = TextPri; break;
+                if (_pendingLog.Count == 0) return;
+                batch = new List<BotLogEntry>(_pendingLog);
+                _pendingLog.Clear();
+            }
+            AppendLogEntries(batch);
+        }
+
+        private void AppendLogEntries(List<BotLogEntry> entries)
+        {
+            if (_logBox.IsDisposed || entries.Count == 0) return;
+
+            // One AppendText for the whole batch; only non-default lines get recoloured.
+            System.Text.StringBuilder text = new System.Text.StringBuilder();
+            List<int> runStart = new List<int>();
+            List<int> runLength = new List<int>();
+            List<Color> runColor = new List<Color>();
+            foreach (BotLogEntry entry in entries)
+            {
+                Color color;
+                switch (entry.Level)
+                {
+                    case BotLogLevel.Debug: color = TextSec; break;
+                    case BotLogLevel.Warning: color = WarningCol; break;
+                    case BotLogLevel.Error: color = ErrorCol; break;
+                    default: color = TextPri; break;
+                }
+
+                string ts = entry.Timestamp.ToString("HH:mm:ss");
+                string lvl = entry.Level.ToString().ToUpper().PadRight(5);
+                string line = ts + " [" + lvl + "] [" + entry.ModuleName + "] " + entry.Message + "\n";
+
+                if (color != TextPri)
+                {
+                    runStart.Add(text.Length);
+                    runLength.Add(line.Length);
+                    runColor.Add(color);
+                }
+                text.Append(line);
+                _logLineLengths.Enqueue(line.Length);
             }
 
-            string ts = entry.Timestamp.ToString("HH:mm:ss");
-            string lvl = entry.Level.ToString().ToUpper().PadRight(5);
-            string line = ts + " [" + lvl + "] [" + entry.ModuleName + "] " + entry.Message + "\n";
-
-            _logBox.SelectionStart = _logBox.TextLength;
-            _logBox.SelectionLength = 0;
-            _logBox.SelectionColor = color;
-            _logBox.AppendText(line);
-
-            if (_logBox.Lines.Length > 3000)
+            SendMessage(_logBox.Handle, WM_SETREDRAW, IntPtr.Zero, IntPtr.Zero);
+            try
             {
-                _logBox.ReadOnly = false;
-                _logBox.SelectionStart = 0;
-                _logBox.SelectionLength = _logBox.GetFirstCharIndexFromLine(500);
-                _logBox.SelectedText = "";
-                _logBox.ReadOnly = true;
+                int start = _logBox.TextLength;
+                _logBox.SelectionStart = start;
+                _logBox.SelectionLength = 0;
+                _logBox.SelectionColor = TextPri;
+                _logBox.AppendText(text.ToString());
+                for (int i = 0; i < runStart.Count; i++)
+                {
+                    _logBox.Select(start + runStart[i], runLength[i]);
+                    _logBox.SelectionColor = runColor[i];
+                }
+
+                if (_logLineLengths.Count > MaxLogLines)
+                {
+                    int cut = 0;
+                    while (_logLineLengths.Count > MaxLogLines - LogTrimLines)
+                        cut += _logLineLengths.Dequeue();
+                    _logBox.ReadOnly = false;
+                    _logBox.Select(0, cut);
+                    _logBox.SelectedText = "";
+                    _logBox.ReadOnly = true;
+                }
+
+                _logBox.SelectionStart = _logBox.TextLength;
+                _logBox.SelectionLength = 0;
             }
-            _logBox.SelectionStart = _logBox.TextLength;
+            finally
+            {
+                SendMessage(_logBox.Handle, WM_SETREDRAW, new IntPtr(1), IntPtr.Zero);
+                _logBox.Invalidate();
+            }
             _logBox.ScrollToCaret();
         }
 
         private void ReplayExistingLogs()
         {
-            foreach (BotLogEntry entry in BotLogger.GetEntries())
-                AppendLogEntry(entry);
+            AppendLogEntries(BotLogger.GetEntries());
         }
 
         // =====================================================================
@@ -2722,6 +2782,9 @@ namespace Kingdoms.Bot.UI
 
         private void ClearLogBtn_Click(object sender, EventArgs e)
         {
+            lock (_pendingLog)
+                _pendingLog.Clear();
+            _logLineLengths.Clear();
             _logBox.Clear();
             BotLogger.Clear();
         }
@@ -7712,6 +7775,7 @@ namespace Kingdoms.Bot.UI
                 return;
             }
             BotLogger.OnLogAdded -= OnLogEntryAdded;
+            if (_logFlushTimer != null) _logFlushTimer.Stop();
             base.OnFormClosing(e);
         }
     }
