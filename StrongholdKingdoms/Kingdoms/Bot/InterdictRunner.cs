@@ -22,12 +22,6 @@ namespace Kingdoms.Bot
         // request onto the UI/game thread. Null => best-effort direct call.
         public static Action<Action> UiInvoke;
 
-        // Only one interdict send may be in flight globally, because the SendPeople
-        // callback is a single shared slot on RemoteServices.
-        private static readonly object _sendLock = new object();
-        private static readonly AutoResetEvent _sendDone = new AutoResetEvent(false);
-        private static volatile bool _lastSuccess;
-        private static volatile int _expectedVillage = -1;
         private static volatile string _lastErr = "";
         private static readonly Random _rand = new Random();
 
@@ -105,7 +99,8 @@ namespace Kingdoms.Bot
                     int before = village.calcTotalMonksAtHome();
                     if (before < desiredMonks && allowHire)
                     {
-                        int made = MakeMonksMore(villageId, desiredMonks - before);
+                        int made = MonkSender.OnGameThread<int>(
+                            delegate { return MakeMonksMore(villageId, desiredMonks - before); }, 0);
                         if (made > 0)
                         {
                             BotLogger.Log(logModule, BotLogLevel.Info,
@@ -170,59 +165,15 @@ namespace Kingdoms.Bot
             return true;
         }
 
-        // Sends the self-interdict and blocks until the callback confirms, fails, or
-        // times out. Serialized so only one send uses the shared callback slot at a time.
+        // Sends the self-interdict and blocks until the server confirms, rejects, or
+        // times out. Goes through MonkSender so it shares the single SendPeople slot
+        // with the Monk routes instead of racing them for it.
         private static bool SendAndWait(int villageId, int monks, string logModule)
         {
-            lock (_sendLock)
-            {
-                _sendDone.WaitOne(0);              // drain any stale signal
-                _expectedVillage = villageId;
-                _lastSuccess = false;
-                _lastErr = "no response";
-
-                RemoteServices.Instance.set_SendPeople_UserCallBack(
-                    new RemoteServices.SendPeople_UserCallBack(SendPeopleCallback));
-                RemoteServices.Instance.SendPeople(villageId, villageId, 4, monks, 4, -1);
-
-                if (!_sendDone.WaitOne(20000))
-                {
-                    _lastErr = "no response within 20s";
-                    return false;
-                }
-                return _lastSuccess;
-            }
-        }
-
-        private static void SendPeopleCallback(SendPeople_ReturnType result)
-        {
-            try
-            {
-                // A late callback from a previously timed-out attempt can arrive here;
-                // it targets the same village, so honouring it is harmless.
-                if (result.Success)
-                {
-                    GameEngine.Instance.World.importOrphanedPeople(result.people, result.currentTime, -2);
-                    GameEngine.Instance.World.setFaithPointsData(
-                        result.currentFaithPointsLevel, result.currentFaithPointsRate);
-                    _lastSuccess = true;
-                }
-                else
-                {
-                    _lastSuccess = false;
-                    _lastErr = ErrorCodes.getErrorString(result.m_errorCode, result.m_errorID);
-                }
-            }
-            catch (Exception ex)
-            {
-                _lastSuccess = false;
-                _lastErr = ex.Message;
-            }
-            finally
-            {
-                if (result.targetVillageID == _expectedVillage)
-                    _sendDone.Set();
-            }
+            string err;
+            MonkSendResult r = MonkSender.SendAndWait(villageId, villageId, monks, 4, 20000, out err);
+            if (r != MonkSendResult.Success) _lastErr = err;
+            return r == MonkSendResult.Success;
         }
 
         // Polls until the village reports at least `target` monks at home, or timeout.
@@ -239,7 +190,7 @@ namespace Kingdoms.Bot
         }
 
         // Polls until the village map is loaded into memory, or timeout.
-        private static VillageMap WaitForLoad(int villageId, int timeoutMs, Func<bool> cancelled)
+        internal static VillageMap WaitForLoad(int villageId, int timeoutMs, Func<bool> cancelled)
         {
             int waited = 0;
             while (waited < timeoutMs)
@@ -255,7 +206,7 @@ namespace Kingdoms.Bot
 
         // Requests a force-load of the village, marshaled onto the UI/game thread
         // because it touches InterfaceMgr/GameEngine view state.
-        private static void RequestLoad(int villageId)
+        internal static void RequestLoad(int villageId)
         {
             Action load = delegate
             {

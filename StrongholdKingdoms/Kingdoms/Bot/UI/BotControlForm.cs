@@ -270,13 +270,14 @@ namespace Kingdoms.Bot.UI
                 WireUpTimingTab();
                 WireUpAttackerTab();
 
-                // Let background interdict threads marshal village-load requests
-                // (which touch InterfaceMgr/game view state) onto the UI thread.
+                // Let background monk/interdict threads marshal game calls (village loads,
+                // RPCs, people-list reads) onto the UI thread. Runs inline when already on
+                // it, so a caller that waits for the result can't block on itself.
                 InterdictRunner.UiInvoke = delegate (Action a)
                 {
                     try
                     {
-                        if (this.IsHandleCreated && !this.IsDisposed) this.BeginInvoke(a);
+                        if (this.IsHandleCreated && !this.IsDisposed && this.InvokeRequired) this.BeginInvoke(a);
                         else a();
                     }
                     catch { try { a(); } catch { } }

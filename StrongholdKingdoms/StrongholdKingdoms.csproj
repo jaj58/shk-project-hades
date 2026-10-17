@@ -98,6 +98,7 @@
     <Compile Include="Kingdoms\Bot\ModuleCardCatalog.cs" />
     <Compile Include="Kingdoms\Bot\DiscordNotifier.cs" />
     <Compile Include="Kingdoms\Bot\InterdictRunner.cs" />
+    <Compile Include="Kingdoms\Bot\MonkSender.cs" />
     <Compile Include="Kingdoms\Bot\RadarSoundPlayer.cs" />
     <Compile Include="Kingdoms\Bot\IBotModule.cs" />
     <Compile Include="Kingdoms\Bot\AttackResultRouter.cs" />
