@@ -271,6 +271,7 @@ namespace Kingdoms.Bot.UI
                 WireUpMonkTab();
                 WireUpTimingTab();
                 WireUpAttackerTab();
+                WireUpResearchTab();
 
                 // Let background monk/interdict threads marshal game calls (village loads,
                 // RPCs, people-list reads) onto the UI thread. Runs inline when already on
@@ -311,6 +312,7 @@ namespace Kingdoms.Bot.UI
                 TtLoadFromSettings();
                 BsLoadFromSettings();
                 AtLoadFromSettings();
+                RsLoadFromSettings();
             }
         }
 
@@ -2661,6 +2663,11 @@ namespace Kingdoms.Bot.UI
                 TtWriteToSettings();
                 tabName = "Timing Tool";
             }
+            else if (_tabControl.SelectedTab == _rsPage)
+            {
+                RsWriteToSettings();
+                tabName = "Research";
+            }
 
             BotEngine.Instance.ApplySettings();
             BotEngine.Instance.SaveSettings();
@@ -2776,6 +2783,11 @@ namespace Kingdoms.Bot.UI
             {
                 TtLoadFromSettings();
                 tabName = "Timing Tool";
+            }
+            else if (_tabControl.SelectedTab == _rsPage)
+            {
+                RsLoadFromSettings();
+                tabName = "Research";
             }
 
             RefreshStatus();

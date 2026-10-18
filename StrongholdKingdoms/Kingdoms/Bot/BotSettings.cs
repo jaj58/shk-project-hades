@@ -37,6 +37,7 @@ namespace Kingdoms.Bot
         public MonkSettings Monk = new MonkSettings();
         public AttackerSettings Attacker = new AttackerSettings();
         public TimingToolSettings TimingTool = new TimingToolSettings();
+        public ResearchSettings Research = new ResearchSettings();
 
         // XmlSerializer generates and compiles a dynamic serialization assembly the first time
         // it is constructed for a given type. For a complex type like BotSettings this takes
@@ -125,6 +126,9 @@ namespace Kingdoms.Bot
                 CastleRepair.MigrateLegacyTriggers();
             if (Trade != null)
                 Trade.MigrateLegacyPriority();
+            if (Research == null)
+                Research = new ResearchSettings();
+            Research.Normalize();
         }
 
         private void SerializeTo(string path)
@@ -1640,6 +1644,71 @@ namespace Kingdoms.Bot
         // before sending. Capped by ordination research level at runtime.
         public int AutoRecruitMonks = 0;
         public List<MonkRouteSettings> Routes = new List<MonkRouteSettings>();
+    }
+
+    // =========================================================================
+    // Research Module Settings
+    // =========================================================================
+
+    public enum ResearchRankUpMode
+    {
+        Off = 0,
+        // Rank up only when the plan is stuck on research points or on rank
+        WhenNeeded = 1,
+        WheneverPossible = 2
+    }
+
+    [Serializable]
+    public class ResearchPlanEntry
+    {
+        public int ResearchType;
+        public int TargetLevel;
+        public bool Enabled = true;
+
+        public ResearchPlanEntry Clone()
+        {
+            return new ResearchPlanEntry { ResearchType = ResearchType, TargetLevel = TargetLevel, Enabled = Enabled };
+        }
+    }
+
+    [Serializable]
+    public class ResearchSettings
+    {
+        public bool Enabled = false;
+        public int CheckIntervalSeconds = 10;
+        // Research slots to keep filled (in progress + queued). Only premium accounts get more than 1.
+        public int MaxQueueSlots = 6;
+        public bool AutoPrerequisites = true;
+        public ResearchRankUpMode RankUpMode = ResearchRankUpMode.Off;
+        public bool BuyPointsWithGold = false;
+        public int MaxGoldPerPoint = 100000;
+        public int MinGoldReserve = 0;
+        // Plan order is priority: index 0 is researched first.
+        public List<ResearchPlanEntry> Plan = new List<ResearchPlanEntry>();
+
+        /// <summary>
+        /// Drops entries for unknown / parish-capital research types and duplicate types (first
+        /// wins), and clamps target levels. Safe to call on hand-edited or imported plans.
+        /// </summary>
+        public void Normalize()
+        {
+            if (Plan == null)
+                Plan = new List<ResearchPlanEntry>();
+            HashSet<int> seen = new HashSet<int>();
+            List<ResearchPlanEntry> clean = new List<ResearchPlanEntry>();
+            foreach (ResearchPlanEntry e in Plan)
+            {
+                if (e == null || !ResearchPlanner.IsKnownPlayerResearch(e.ResearchType) || !seen.Add(e.ResearchType))
+                    continue;
+                e.TargetLevel = Math.Max(1, Math.Min(ResearchPlanner.MaxTargetLevel, e.TargetLevel));
+                clean.Add(e);
+            }
+            Plan = clean;
+            CheckIntervalSeconds = Math.Max(3, Math.Min(3600, CheckIntervalSeconds));
+            MaxQueueSlots = Math.Max(1, Math.Min(ResearchPlanner.PremiumSlotLimit, MaxQueueSlots));
+            MaxGoldPerPoint = Math.Max(0, MaxGoldPerPoint);
+            MinGoldReserve = Math.Max(0, MinGoldReserve);
+        }
     }
 
     [Serializable]

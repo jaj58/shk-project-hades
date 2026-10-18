@@ -9534,6 +9534,53 @@ namespace Kingdoms
       this.onResearchPointPurchaseDelegate();
     }
 
+    // Bot-safe research sends for the Research module. They share doResearch/buyResearchPoint's
+    // in-flight guards (so the bot never fires while the player's own click is pending) but leave
+    // uiResearchDelegate alone, and hand the bot the full return data (the stock delegate has no
+    // parameters, so no error code). The stock callback always runs first so game state, the
+    // research panel and the in-flight flag stay correct. Returns false if a request is pending.
+    public bool BotResearchRequestPending
+    {
+      get => this.inDoResearch && (DateTime.Now - this.lastDoResearchClick).TotalSeconds < 120.0;
+    }
+
+    public bool BotBuyPointRequestPending
+    {
+      get => this.inBuyPoint && (DateTime.Now - this.lastBuyPointClick).TotalSeconds < 120.0;
+    }
+
+    public bool botDoResearch(int researchType, Action<DoResearch_ReturnType> onResult)
+    {
+      if (this.BotResearchRequestPending)
+        return false;
+      this.inDoResearch = true;
+      this.lastDoResearchClick = DateTime.Now;
+      RemoteServices.Instance.set_DoResearch_UserCallBack((RemoteServices.DoResearch_UserCallBack) (returnData =>
+      {
+        this.doResearchCallback(returnData);
+        if (onResult != null)
+          onResult(returnData);
+      }));
+      RemoteServices.Instance.DoResearch(researchType);
+      return true;
+    }
+
+    public bool botBuyResearchPoint(Action<BuyResearchPoint_ReturnType> onResult)
+    {
+      if (this.BotBuyPointRequestPending)
+        return false;
+      this.inBuyPoint = true;
+      this.lastBuyPointClick = DateTime.Now;
+      RemoteServices.Instance.set_BuyResearchPoint_UserCallBack((RemoteServices.BuyResearchPoint_UserCallBack) (returnData =>
+      {
+        this.buyResearchPointCallback(returnData);
+        if (onResult != null)
+          onResult(returnData);
+      }));
+      RemoteServices.Instance.BuyResearchPoint();
+      return true;
+    }
+
     public bool doesUserHaveVillageInParishByCapital(int capitalID)
     {
       return this.doesUserHaveVillageInParish(this.getParishFromVillageID(capitalID));

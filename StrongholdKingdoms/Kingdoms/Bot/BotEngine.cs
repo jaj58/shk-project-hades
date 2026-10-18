@@ -55,6 +55,7 @@ namespace Kingdoms.Bot
             RegisterModule(new Modules.DefenderModule());
             RegisterModule(new Modules.MonkModule());
             RegisterModule(new Modules.AttackerModule());
+            RegisterModule(new Modules.ResearchModule());
 
             foreach (IBotModule module in _modules)
             {
@@ -128,6 +129,8 @@ namespace Kingdoms.Bot
                     module.Enabled = _settings.Monk.Enabled;
                 else if (module is Modules.AttackerModule)
                     module.Enabled = _settings.Attacker.Enabled;
+                else if (module is Modules.ResearchModule)
+                    module.Enabled = _settings.Research.Enabled;
             }
         }
 
@@ -166,6 +169,8 @@ namespace Kingdoms.Bot
                     _settings.Monk.Enabled = module.Enabled;
                 else if (module is Modules.AttackerModule)
                     _settings.Attacker.Enabled = module.Enabled;
+                else if (module is Modules.ResearchModule)
+                    _settings.Research.Enabled = module.Enabled;
             }
 
             _settings.Save();

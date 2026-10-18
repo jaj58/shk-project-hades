@@ -94,6 +94,7 @@
     <Compile Include="Kingdoms\Bot\BotModuleBase.cs" />
     <Compile Include="Kingdoms\Bot\BotSettings.cs" />
     <Compile Include="Kingdoms\Bot\TimingSearch.cs" />
+    <Compile Include="Kingdoms\Bot\ResearchPlanner.cs" />
     <Compile Include="Kingdoms\Bot\ProductionCardCatalog.cs" />
     <Compile Include="Kingdoms\Bot\ModuleCardCatalog.cs" />
     <Compile Include="Kingdoms\Bot\DiscordNotifier.cs" />
@@ -119,6 +120,7 @@
     <Compile Include="Kingdoms\Bot\Modules\PopularityModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\RadarModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\RecruitingModule.cs" />
+    <Compile Include="Kingdoms\Bot\Modules\ResearchModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\ScoutModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\TradeModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\TradeDisbandModule.cs" />
@@ -140,6 +142,9 @@
       <DependentUpon>BotControlForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Kingdoms\Bot\UI\BotControlForm.TimingTool.cs">
+      <DependentUpon>BotControlForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\BotControlForm.Research.cs">
       <DependentUpon>BotControlForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Kingdoms\Bot\UI\BotControlForm.RadarExceptions.cs">
