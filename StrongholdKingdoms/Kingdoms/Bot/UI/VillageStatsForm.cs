@@ -50,6 +50,9 @@ namespace Kingdoms.Bot.UI
 
         private int _villageId = -1;
         private bool _requestPending;
+        // The callback handed to the router for the outstanding request, kept so cancelling
+        // drops only this window's interest and not the Village Overview's in the same reply.
+        private Action<VillageBuildingChangeRates_ReturnType> _pendingCallback;
         private bool _isOwnVillage;
         private bool _isCapital;
         private string _lastReplyNote = "";
@@ -246,7 +249,7 @@ namespace Kingdoms.Bot.UI
         private void Retarget(int villageId)
         {
             if (_villageId >= 0 && _villageId != villageId)
-                VillageResourceRouter.Cancel(_villageId);
+                CancelPending();
 
             _villageId = villageId;
             _data = null;
@@ -279,9 +282,14 @@ namespace Kingdoms.Bot.UI
             _requestPending = true;
             UpdateHeader();
 
+            // A Refresh while a request is still out replaces it rather than stacking a
+            // second callback onto the same reply.
+            CancelPending();
+
             int villageId = _villageId;
             Action<VillageBuildingChangeRates_ReturnType> callback =
                 delegate(VillageBuildingChangeRates_ReturnType data) { OnData(villageId, data); };
+            _pendingCallback = callback;
 
             // Our own villages get the harmless "change nothing" form. Other players' come
             // back empty from that, so they get the old mod's form - see RequestForeign.
@@ -335,6 +343,13 @@ namespace Kingdoms.Bot.UI
             RenderRows();
             UpdateHeader();
             UpdateFooter();
+        }
+
+        private void CancelPending()
+        {
+            if (_pendingCallback != null)
+                VillageResourceRouter.Cancel(_villageId, _pendingCallback);
+            _pendingCallback = null;
         }
 
         private void RefreshClick(object sender, EventArgs e)
@@ -672,20 +687,7 @@ namespace Kingdoms.Bot.UI
         private int GetCap(int resourceId)
         {
             if (!_isOwnVillage) return 0;
-
-            try
-            {
-                double cap = GameEngine.Instance.World.UserResearchData.getResourceCap(
-                        GameEngine.Instance.LocalWorldData, resourceId, _isCapital) *
-                    CardTypes.getResourceCapMultiplier(resourceId,
-                        GameEngine.Instance.cardsManager.UserCardData);
-                if (cap > 0) return (int)cap;
-            }
-            catch (Exception)
-            {
-            }
-
-            return 0;
+            return VillageCaps.GetResourceCap(resourceId, _isCapital);
         }
 
         // The localised name, falling back to English. getResourceNames comes back empty if
@@ -786,7 +788,7 @@ namespace Kingdoms.Bot.UI
             }
 
             if (_villageId >= 0)
-                VillageResourceRouter.Cancel(_villageId);
+                CancelPending();
 
             if (_instance == this)
                 _instance = null;

@@ -104,6 +104,10 @@
     <Compile Include="Kingdoms\Bot\IBotModule.cs" />
     <Compile Include="Kingdoms\Bot\AttackResultRouter.cs" />
     <Compile Include="Kingdoms\Bot\VillageResourceRouter.cs" />
+    <Compile Include="Kingdoms\Bot\VillageCaps.cs" />
+    <Compile Include="Kingdoms\Bot\VillageOverviewCache.cs" />
+    <Compile Include="Kingdoms\Bot\VillageOverviewColumns.cs" />
+    <Compile Include="Kingdoms\Bot\VillageOverviewRow.cs" />
     <Compile Include="Kingdoms\Bot\VillageSendGate.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AttackerModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombModule.cs" />
@@ -147,6 +151,9 @@
     <Compile Include="Kingdoms\Bot\UI\BotControlForm.Research.cs">
       <DependentUpon>BotControlForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Kingdoms\Bot\UI\BotControlForm.VillageOverview.cs">
+      <DependentUpon>BotControlForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Kingdoms\Bot\UI\BotControlForm.RadarExceptions.cs">
       <DependentUpon>BotControlForm.cs</DependentUpon>
     </Compile>
@@ -183,6 +190,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Kingdoms\Bot\UI\ArmyTimerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Kingdoms\Bot\UI\VillageOverviewForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Kingdoms\Bot\UI\VillageRadarForm.cs">

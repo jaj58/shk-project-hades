@@ -272,6 +272,7 @@ namespace Kingdoms.Bot.UI
                 WireUpTimingTab();
                 WireUpAttackerTab();
                 WireUpResearchTab();
+                WireUpVillageOverviewButton();
 
                 // Let background monk/interdict threads marshal game calls (village loads,
                 // RPCs, people-list reads) onto the UI thread. Runs inline when already on

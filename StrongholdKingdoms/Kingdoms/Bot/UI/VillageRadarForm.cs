@@ -320,7 +320,7 @@ namespace Kingdoms.Bot.UI
 
         // Mirrors WorldMap.countIncomingAttacks: outbound only (lootType < 0), and not
         // one of the friendly army types that happen to travel the same way.
-        private static bool IsHostileIncoming(WorldMap.LocalArmyData army)
+        internal static bool IsHostileIncoming(WorldMap.LocalArmyData army)
         {
             if (army.lootType >= 0) return false;                 // returning home with loot
             if (army.reinforcements) return false;

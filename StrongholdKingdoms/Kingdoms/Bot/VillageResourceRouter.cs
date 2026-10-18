@@ -56,11 +56,20 @@ namespace Kingdoms.Bot
         private static readonly List<Waiter> _queued = new List<Waiter>();
 
         /// <summary>
+        /// Raised on the UI thread for every reply this router receives, whoever asked for it
+        /// - Village Sync's background refreshes, the game's own stats refreshes, the Village
+        /// Info window. Lets the Village Overview collect village data passively instead of
+        /// asking again for something another caller just fetched. Handlers must be cheap.
+        /// </summary>
+        public static event Action<VillageBuildingChangeRates_ReturnType> ReplyObserved;
+
+        /// <summary>
         /// Asks the server for one village's current resources, stats and buildings without
         /// changing anything. onResult runs on the UI thread and may be handed a null/failed
         /// result - callers must cope with not getting the data, and may pass null to request
         /// purely for the game's own bookkeeping. Requesting a village that already has a
-        /// read outstanding takes over its callback rather than sending a second RPC.
+        /// read outstanding joins that request rather than sending a second RPC: every
+        /// caller's callback is kept and each one hears about the reply.
         /// </summary>
         public static void Request(int villageID, Action<VillageBuildingChangeRates_ReturnType> onResult)
         {
@@ -101,13 +110,16 @@ namespace Kingdoms.Bot
             lock (_lock)
             {
                 // Only reads collapse into each other; a write always goes out on its own.
+                // Collapsing adds the new callback rather than replacing the old one - a
+                // background refresh passing null used to wipe out a window's callback, which
+                // then never heard back at all.
                 if (!isWrite)
                 {
                     for (int i = 0; i < _inFlight.Count; i++)
                     {
                         if (_inFlight[i].VillageID == villageID && !_inFlight[i].IsWrite)
                         {
-                            _inFlight[i].OnResult = onResult;
+                            _inFlight[i].OnResult = AddHandler(_inFlight[i].OnResult, onResult);
                             return;
                         }
                     }
@@ -116,7 +128,7 @@ namespace Kingdoms.Bot
                     {
                         if (_queued[i].VillageID == villageID && !_queued[i].IsWrite)
                         {
-                            _queued[i].OnResult = onResult;
+                            _queued[i].OnResult = AddHandler(_queued[i].OnResult, onResult);
                             return;
                         }
                     }
@@ -157,6 +169,61 @@ namespace Kingdoms.Bot
                         _queued.RemoveAt(i);
                 }
             }
+        }
+
+        /// <summary>
+        /// Drops one caller's interest in a village's reply, leaving anyone else waiting on
+        /// the same request alone. The request itself still goes out - a read nobody is
+        /// listening to still refreshes the game's own copy of the village.
+        /// </summary>
+        public static void Cancel(int villageID, Action<VillageBuildingChangeRates_ReturnType> handler)
+        {
+            if (handler == null) return;
+
+            lock (_lock)
+            {
+                for (int i = 0; i < _inFlight.Count; i++)
+                {
+                    if (_inFlight[i].VillageID == villageID)
+                        _inFlight[i].OnResult = (Action<VillageBuildingChangeRates_ReturnType>)
+                            Delegate.Remove(_inFlight[i].OnResult, handler);
+                }
+
+                for (int i = 0; i < _queued.Count; i++)
+                {
+                    if (_queued[i].VillageID == villageID)
+                        _queued[i].OnResult = (Action<VillageBuildingChangeRates_ReturnType>)
+                            Delegate.Remove(_queued[i].OnResult, handler);
+                }
+            }
+        }
+
+        /// <summary>Requests on the wire and waiting behind them, for status displays.</summary>
+        public static void GetCounts(out int inFlight, out int queued)
+        {
+            lock (_lock)
+            {
+                inFlight = _inFlight.Count;
+                queued = _queued.Count;
+            }
+        }
+
+        // Combines callbacks without adding the same one twice, so a caller that asks for a
+        // village again before the first reply lands is still only told once.
+        private static Action<VillageBuildingChangeRates_ReturnType> AddHandler(
+            Action<VillageBuildingChangeRates_ReturnType> existing,
+            Action<VillageBuildingChangeRates_ReturnType> added)
+        {
+            if (added == null) return existing;
+            if (existing == null) return added;
+
+            Delegate[] current = existing.GetInvocationList();
+            for (int i = 0; i < current.Length; i++)
+            {
+                if (current[i].Equals(added)) return existing;
+            }
+
+            return (Action<VillageBuildingChangeRates_ReturnType>)Delegate.Combine(existing, added);
         }
 
         private static void PumpQueue()
@@ -240,8 +307,8 @@ namespace Kingdoms.Bot
                     else
                     {
                         // No VillageMap means this is a village the client never downloaded
-                        // - only the Village Info window asks about those, every other
-                        // caller here holds a loaded village. Take the clock, which is the
+                        // - only the Village Info and Village Overview windows ask about
+                        // those, every other caller here holds a loaded village. Take the clock, which is the
                         // server's and so village-independent, but deliberately NOT the
                         // gold and honour: it is unverified whose totals a reply about
                         // someone else's village carries, and guessing wrong would corrupt
@@ -252,6 +319,17 @@ namespace Kingdoms.Bot
             }
             catch (Exception)
             {
+            }
+
+            Action<VillageBuildingChangeRates_ReturnType> observers = ReplyObserved;
+            if (data != null && observers != null)
+            {
+                Delegate[] list = observers.GetInvocationList();
+                for (int i = 0; i < list.Length; i++)
+                {
+                    try { ((Action<VillageBuildingChangeRates_ReturnType>)list[i])(data); }
+                    catch (Exception) { }
+                }
             }
 
             Action<VillageBuildingChangeRates_ReturnType> onResult = null;
@@ -323,8 +401,14 @@ namespace Kingdoms.Bot
             VillageBuildingChangeRates_ReturnType data)
         {
             if (onResult == null) return;
-            try { onResult(data); }
-            catch (Exception) { }
+
+            // One throwing caller mustn't stop the others sharing the request hearing back.
+            Delegate[] list = onResult.GetInvocationList();
+            for (int i = 0; i < list.Length; i++)
+            {
+                try { ((Action<VillageBuildingChangeRates_ReturnType>)list[i])(data); }
+                catch (Exception) { }
+            }
         }
     }
 }

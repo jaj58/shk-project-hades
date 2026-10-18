@@ -37,6 +37,7 @@ namespace Kingdoms.Bot
         public MonkSettings Monk = new MonkSettings();
         public AttackerSettings Attacker = new AttackerSettings();
         public TimingToolSettings TimingTool = new TimingToolSettings();
+        public VillageOverviewSettings VillageOverview = new VillageOverviewSettings();
         public ResearchSettings Research = new ResearchSettings();
 
         // XmlSerializer generates and compiles a dynamic serialization assembly the first time
@@ -1226,6 +1227,41 @@ namespace Kingdoms.Bot
         public int InterdictCount;
         [System.Xml.Serialization.XmlIgnore]
         public double ServerClockOffsetSeconds;
+    }
+
+    // =========================================================================
+    // Village Overview Settings
+    // =========================================================================
+
+    /// <summary>
+    /// The Village Overview window's layout and refresh choices. Saved when the window
+    /// closes, not on the bot window's Save button.
+    /// </summary>
+    [Serializable]
+    public class VillageOverviewSettings
+    {
+        public bool ShowResources = true;
+        public bool ShowMilitary;
+        public bool ShowVillage = true;
+        public bool ShowUnits;
+        public List<string> HiddenColumns = new List<string>();
+        // Set once the columns hidden by default have been added to HiddenColumns, so a
+        // column the user turned back on stays on.
+        public bool DefaultsApplied;
+
+        public string SortKey = "name";
+        public bool SortDescending;
+        public int TypeFilter;           // 0 = villages, 1 = capitals, 2 = all
+        public bool IncomingOnly;
+        public bool DownloadedOnly;
+
+        /// <summary>Minutes before a server snapshot is asked for again; 0 = manual only.</summary>
+        public int AutoRefreshMinutes = 5;
+
+        public int WindowX;
+        public int WindowY;
+        public int WindowWidth;
+        public int WindowHeight;
     }
 
     // =========================================================================

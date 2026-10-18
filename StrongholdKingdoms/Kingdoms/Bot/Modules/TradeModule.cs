@@ -1993,17 +1993,8 @@ namespace Kingdoms.Bot.Modules
         /// </summary>
         private static int GetResourceCap(int resourceId)
         {
-            try
-            {
-                double cap = GameEngine.Instance.World.UserResearchData.getResourceCap(
-                        GameEngine.Instance.LocalWorldData, resourceId, false) *
-                    CardTypes.getResourceCapMultiplier(resourceId,
-                        GameEngine.Instance.cardsManager.UserCardData);
-                if (cap > 0) return (int)cap;
-            }
-            catch
-            {
-            }
+            int cap = VillageCaps.GetResourceCap(resourceId, false);
+            if (cap > 0) return cap;
 
             switch (resourceId)
             {

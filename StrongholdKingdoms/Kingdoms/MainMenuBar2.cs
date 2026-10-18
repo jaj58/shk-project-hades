@@ -24,6 +24,10 @@ namespace Kingdoms
     private CustomSelfDrawPanel.CSDButton btnMyAccount = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDFill pnlLoadLight = new CustomSelfDrawPanel.CSDFill();
     private MenuMailPanel MenuButtonsPanel = new MenuMailPanel();
+    // Bot: opens the Village Overview window. Sits one button-slot left of the premium
+    // overview button (MenuButtonsPanel's first button), positioned in resize().
+    private CustomSelfDrawPanel.CSDButton btnBotOverview;
+    private const int BotOverviewSlot = 35;
     private SaveFileDialog SaveCSVFileDialog;
     private SaveFileDialog SavePNGFileDialog;
     private static bool castleCopyMode;
@@ -96,6 +100,10 @@ namespace Kingdoms
       this.MenuButtonsPanel.Size = new Size(150, 24);
       this.mainBackgroundImage.addControl((CustomSelfDrawPanel.CSDControl) this.MenuButtonsPanel);
       this.MenuButtonsPanel.init();
+      this.btnBotOverview = MainRightHandPanel.getVillageOverviewMenuButton();
+      this.btnBotOverview.Position = new Point(0, 0);
+      this.btnBotOverview.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.btnBotOverview_Click));
+      this.mainBackgroundImage.addControl((CustomSelfDrawPanel.CSDControl) this.btnBotOverview);
       this.btnHelpMenu.FillRectOverColor = Color.FromArgb(32, 0, 0, 0);
       this.btnHelpMenu.Position = new Point(323, 1);
       this.btnHelpMenu.Size = new Size(62, 23);
@@ -874,6 +882,21 @@ namespace Kingdoms
       this.btnMyAccount.Position = new Point(this.Width - 297, 1);
       this.pnlLoadLight.Position = new Point(this.Width - 4, 0);
       this.MenuButtonsPanel.Position = new Point(this.Width - 464, 0);
+      if (this.btnBotOverview != null)
+      {
+        // Below ~1170px of game window the menu bar is too narrow for the extra slot (the
+        // premium button is already at the left edge), so the bot window's footer button
+        // is the way in there instead.
+        int x = this.MenuButtonsPanel.Position.X - MainMenuBar2.BotOverviewSlot;
+        this.btnBotOverview.Position = new Point(x, 0);
+        this.btnBotOverview.Visible = x >= 0;
+      }
+    }
+
+    private void btnBotOverview_Click()
+    {
+      GameEngine.Instance.playInterfaceSound("WorldMapScreen_menu_leaderboard");
+      Bot.UI.VillageOverviewForm.ShowInstance();
     }
 
     private void endOfTheWorldCallback(EndOfTheWorldStats_ReturnType returnData)
