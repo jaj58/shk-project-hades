@@ -177,6 +177,9 @@
     <Compile Include="Kingdoms\Bot\UI\VillageSyncTab.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Kingdoms\Bot\UI\ArmyTimerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Kingdoms\Bot\UI\VillageRadarForm.cs">
       <SubType>Form</SubType>
     </Compile>

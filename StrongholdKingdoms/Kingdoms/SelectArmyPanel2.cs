@@ -22,6 +22,7 @@ namespace Kingdoms
     private CustomSelfDrawPanel.CSDButton targetVillageButton = new CustomSelfDrawPanel.CSDButton();
     private CustomSelfDrawPanel.CSDImage travelDirection = new CustomSelfDrawPanel.CSDImage();
     private CustomSelfDrawPanel.CSDButton returnButton = new CustomSelfDrawPanel.CSDButton();
+    private CustomSelfDrawPanel.CSDButton timerButton = new CustomSelfDrawPanel.CSDButton();
     private bool forceReturnOff;
     private int fromVillageID = -1;
     private int toVillageID = -1;
@@ -139,6 +140,19 @@ namespace Kingdoms
         this.troopLabels[i].Visible = false;
         csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.troopLabels[i]);
       }
+
+      // Pops this army's countdown out into its own window, under the troop grid (ends y=281)
+      this.timerButton.ImageNorm = (Image) GFXLibrary.mrhp_button_80_normal;
+      this.timerButton.ImageOver = (Image) GFXLibrary.mrhp_button_80_over;
+      this.timerButton.ImageClick = (Image) GFXLibrary.mrhp_button_80_pushed;
+      this.timerButton.Position = new Point((csdImage.Width - this.timerButton.ImageNorm.Size.Width) / 2, 289);
+      this.timerButton.Text.Text = "Timer";
+      this.timerButton.Text.Font = FontManager.GetFont("Arial", 9f, FontStyle.Bold);
+      this.timerButton.Text.Size = new Size(this.timerButton.ImageNorm.Size.Width - 6, this.timerButton.ImageNorm.Size.Height);
+      this.timerButton.TextYOffset = -3;
+      this.timerButton.Text.Color = ARGBColors.Black;
+      this.timerButton.setClickDelegate(new CustomSelfDrawPanel.CSDControl.CSD_ClickDelegate(this.timerClick), "SelectArmyPanel2_timer");
+      csdImage.addControl((CustomSelfDrawPanel.CSDControl) this.timerButton);
     }
 
     public void update()
@@ -293,6 +307,38 @@ namespace Kingdoms
       if (this.m_army == null || this.toVillageID < 0)
         return;
       GameEngine.Instance.World.zoomToVillage(this.toVillageID);
+    }
+
+    private void timerClick()
+    {
+      WorldMap.LocalArmyData army = GameEngine.Instance.World.getArmy(this.selectedArmyID);
+      if (army == null || army.dead)
+        return;
+
+      // Same measure as the countdown in update(), so the timer starts on the panel's number
+      double secsLeft = army.localEndTime - DXTimer.GetCurrentMilliseconds() / 1000.0;
+      if (secsLeft < 0.0)
+        secsLeft = 0.0;
+
+      // The travel buttons already hold the panel's names (incl. Tutorial/Unknown); a
+      // returning army travels target -> home
+      bool returning = army.lootType >= 0;
+      string home = this.homeVillageButton.Text.Text;
+      string target = this.targetVillageButton.Text.Text;
+
+      string action;
+      if (returning)
+        action = SK.Text("SelectArmyPanel_Returning", "Returning");
+      else if (army.isScouts())
+        action = SK.Text("SelectArmyPanel_Scouting", "Scouting");
+      else
+      {
+        action = SelectArmyPanel2.GetAttackTypeName(army.attackType);
+        if (action.Length == 0)
+          action = SK.Text("GENERIC_Attacking", "Attacking");
+      }
+
+      Bot.UI.ArmyTimerForm.Open(action, returning ? target : home, returning ? home : target, secsLeft);
     }
 
     private void cancelClick()
