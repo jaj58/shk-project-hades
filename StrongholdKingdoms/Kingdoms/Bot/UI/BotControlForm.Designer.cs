@@ -251,8 +251,15 @@ namespace Kingdoms.Bot.UI
             this._trDisableAfterMinLabel = new System.Windows.Forms.Label();
             this._trDisbandOnDisableCheck = new System.Windows.Forms.CheckBox();
             this._trAutoSaveRouteProgressCheck = new System.Windows.Forms.CheckBox();
-            this._trPriorityCombo = new System.Windows.Forms.ComboBox();
-            this._trPriorityLabel = new System.Windows.Forms.Label();
+            this._trOrderLabel = new System.Windows.Forms.Label();
+            this._trOrderSellLabel = new System.Windows.Forms.Label();
+            this._trOrderSellCombo = new System.Windows.Forms.ComboBox();
+            this._trOrderBuyLabel = new System.Windows.Forms.Label();
+            this._trOrderBuyCombo = new System.Windows.Forms.ComboBox();
+            this._trOrderRoutesLabel = new System.Windows.Forms.Label();
+            this._trOrderRoutesCombo = new System.Windows.Forms.ComboBox();
+            this._trOrderPlayerLabel = new System.Windows.Forms.Label();
+            this._trOrderPlayerCombo = new System.Windows.Forms.ComboBox();
             this._trIgnoreTransactionsCheck = new System.Windows.Forms.CheckBox();
             this._trAutoHireLimitInput = new System.Windows.Forms.NumericUpDown();
             this._trAutoHireLimitLabel = new System.Windows.Forms.Label();
@@ -2790,8 +2797,15 @@ namespace Kingdoms.Bot.UI
             this._trSettingsPanel.Controls.Add(this._trDisableAfterMinLabel);
             this._trSettingsPanel.Controls.Add(this._trDisbandOnDisableCheck);
             this._trSettingsPanel.Controls.Add(this._trDisableOnCardExpiryCheck);
-            this._trSettingsPanel.Controls.Add(this._trPriorityCombo);
-            this._trSettingsPanel.Controls.Add(this._trPriorityLabel);
+            this._trSettingsPanel.Controls.Add(this._trOrderPlayerCombo);
+            this._trSettingsPanel.Controls.Add(this._trOrderPlayerLabel);
+            this._trSettingsPanel.Controls.Add(this._trOrderRoutesCombo);
+            this._trSettingsPanel.Controls.Add(this._trOrderRoutesLabel);
+            this._trSettingsPanel.Controls.Add(this._trOrderBuyCombo);
+            this._trSettingsPanel.Controls.Add(this._trOrderBuyLabel);
+            this._trSettingsPanel.Controls.Add(this._trOrderSellCombo);
+            this._trSettingsPanel.Controls.Add(this._trOrderSellLabel);
+            this._trSettingsPanel.Controls.Add(this._trOrderLabel);
             this._trSettingsPanel.Controls.Add(this._trIgnoreTransactionsCheck);
             this._trSettingsPanel.Controls.Add(this._trAutoHireLimitInput);
             this._trSettingsPanel.Controls.Add(this._trAutoHireLimitLabel);
@@ -2887,31 +2901,102 @@ namespace Kingdoms.Bot.UI
             this._trDisbandOnDisableCheck.TabIndex = 22;
             this._trDisbandOnDisableCheck.Text = "Disband traders when disabled";
             //
-            // _trPriorityLabel
+            // _trOrderLabel
             //
-            this._trPriorityLabel.AutoSize = true;
-            this._trPriorityLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
-            this._trPriorityLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(200)))), ((int)(((byte)(210)))));
-            this._trPriorityLabel.Location = new System.Drawing.Point(490, 72);
-            this._trPriorityLabel.Name = "_trPriorityLabel";
-            this._trPriorityLabel.Text = "Priority:";
+            this._trOrderLabel.AutoSize = true;
+            this._trOrderLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trOrderLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(200)))), ((int)(((byte)(210)))));
+            this._trOrderLabel.Location = new System.Drawing.Point(16, 136);
+            this._trOrderLabel.Name = "_trOrderLabel";
+            this._trOrderLabel.Text = "Order:";
             //
-            // _trPriorityCombo
+            // _trOrderSellLabel
             //
-            this._trPriorityCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this._trPriorityCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this._trPriorityCombo.Font = new System.Drawing.Font("Segoe UI", 8.5F);
-            this._trPriorityCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
-            this._trPriorityCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
-            this._trPriorityCombo.Location = new System.Drawing.Point(545, 68);
-            this._trPriorityCombo.Name = "_trPriorityCombo";
-            this._trPriorityCombo.Size = new System.Drawing.Size(300, 22);
-            this._trPriorityCombo.TabIndex = 16;
-            this._trPriorityCombo.Items.AddRange(new object[] {
-                "Market Priority (Sell then Buy)",
-                "Market Priority (Buy then Sell)",
-                "Village Route Priority",
-                "Player Route Priority"});
+            this._trOrderSellLabel.AutoSize = true;
+            this._trOrderSellLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trOrderSellLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._trOrderSellLabel.Location = new System.Drawing.Point(70, 136);
+            this._trOrderSellLabel.Name = "_trOrderSellLabel";
+            this._trOrderSellLabel.Text = "Market sells";
+            //
+            // _trOrderSellCombo
+            //
+            this._trOrderSellCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._trOrderSellCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._trOrderSellCombo.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trOrderSellCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._trOrderSellCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._trOrderSellCombo.Location = new System.Drawing.Point(150, 132);
+            this._trOrderSellCombo.Name = "_trOrderSellCombo";
+            this._trOrderSellCombo.Size = new System.Drawing.Size(40, 22);
+            this._trOrderSellCombo.TabIndex = 16;
+            this._trOrderSellCombo.Items.AddRange(new object[] { "1", "2", "3", "4" });
+            //
+            // _trOrderBuyLabel
+            //
+            this._trOrderBuyLabel.AutoSize = true;
+            this._trOrderBuyLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trOrderBuyLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._trOrderBuyLabel.Location = new System.Drawing.Point(200, 136);
+            this._trOrderBuyLabel.Name = "_trOrderBuyLabel";
+            this._trOrderBuyLabel.Text = "Market buys";
+            //
+            // _trOrderBuyCombo
+            //
+            this._trOrderBuyCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._trOrderBuyCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._trOrderBuyCombo.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trOrderBuyCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._trOrderBuyCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._trOrderBuyCombo.Location = new System.Drawing.Point(280, 132);
+            this._trOrderBuyCombo.Name = "_trOrderBuyCombo";
+            this._trOrderBuyCombo.Size = new System.Drawing.Size(40, 22);
+            this._trOrderBuyCombo.TabIndex = 16;
+            this._trOrderBuyCombo.Items.AddRange(new object[] { "1", "2", "3", "4" });
+            //
+            // _trOrderRoutesLabel
+            //
+            this._trOrderRoutesLabel.AutoSize = true;
+            this._trOrderRoutesLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trOrderRoutesLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._trOrderRoutesLabel.Location = new System.Drawing.Point(330, 136);
+            this._trOrderRoutesLabel.Name = "_trOrderRoutesLabel";
+            this._trOrderRoutesLabel.Text = "Village routes";
+            //
+            // _trOrderRoutesCombo
+            //
+            this._trOrderRoutesCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._trOrderRoutesCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._trOrderRoutesCombo.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trOrderRoutesCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._trOrderRoutesCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._trOrderRoutesCombo.Location = new System.Drawing.Point(420, 132);
+            this._trOrderRoutesCombo.Name = "_trOrderRoutesCombo";
+            this._trOrderRoutesCombo.Size = new System.Drawing.Size(40, 22);
+            this._trOrderRoutesCombo.TabIndex = 16;
+            this._trOrderRoutesCombo.Items.AddRange(new object[] { "1", "2", "3", "4" });
+            //
+            // _trOrderPlayerLabel
+            //
+            this._trOrderPlayerLabel.AutoSize = true;
+            this._trOrderPlayerLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trOrderPlayerLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(165)))), ((int)(((byte)(180)))));
+            this._trOrderPlayerLabel.Location = new System.Drawing.Point(470, 136);
+            this._trOrderPlayerLabel.Name = "_trOrderPlayerLabel";
+            this._trOrderPlayerLabel.Text = "Player routes";
+            //
+            // _trOrderPlayerCombo
+            //
+            this._trOrderPlayerCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._trOrderPlayerCombo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._trOrderPlayerCombo.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this._trOrderPlayerCombo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(50)))), ((int)(((byte)(52)))), ((int)(((byte)(64)))));
+            this._trOrderPlayerCombo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this._trOrderPlayerCombo.Location = new System.Drawing.Point(560, 132);
+            this._trOrderPlayerCombo.Name = "_trOrderPlayerCombo";
+            this._trOrderPlayerCombo.Size = new System.Drawing.Size(40, 22);
+            this._trOrderPlayerCombo.TabIndex = 16;
+            this._trOrderPlayerCombo.Items.AddRange(new object[] { "1", "2", "3", "4" });
             // 
             // _trIgnoreTransactionsCheck
             // 
@@ -7269,8 +7354,15 @@ namespace Kingdoms.Bot.UI
         private System.Windows.Forms.Label _trAutoHireLimitLabel;
         private System.Windows.Forms.NumericUpDown _trAutoHireLimitInput;
         private System.Windows.Forms.CheckBox _trIgnoreTransactionsCheck;
-        private System.Windows.Forms.ComboBox _trPriorityCombo;
-        private System.Windows.Forms.Label _trPriorityLabel;
+        private System.Windows.Forms.Label _trOrderLabel;
+        private System.Windows.Forms.Label _trOrderSellLabel;
+        private System.Windows.Forms.ComboBox _trOrderSellCombo;
+        private System.Windows.Forms.Label _trOrderBuyLabel;
+        private System.Windows.Forms.ComboBox _trOrderBuyCombo;
+        private System.Windows.Forms.Label _trOrderRoutesLabel;
+        private System.Windows.Forms.ComboBox _trOrderRoutesCombo;
+        private System.Windows.Forms.Label _trOrderPlayerLabel;
+        private System.Windows.Forms.ComboBox _trOrderPlayerCombo;
         private System.Windows.Forms.TabPage _trStatsTab;
         private System.Windows.Forms.CheckBox _trDisableOnCardExpiryCheck;
         private System.Windows.Forms.Label _trDisableAfterLabel;

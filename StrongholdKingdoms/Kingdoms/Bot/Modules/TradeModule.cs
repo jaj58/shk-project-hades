@@ -59,6 +59,12 @@ namespace Kingdoms.Bot.Modules
         private readonly List<TradeCategory> _remainingCategories = new List<TradeCategory>();
         private readonly Dictionary<TradeCategory, int> _dispatchCounts =
             new Dictionary<TradeCategory, int>();
+        // When the active village last dispatched a price fetch (MinValue = not
+        // yet). Prices fetched in BeginVillage can expire while earlier categories
+        // drain, so a later market category refetches — but at most once per cache
+        // lifetime, so a market whose fetch keeps failing can't loop. Reset in
+        // BeginVillage.
+        private DateTime _villagePricesRequestedAt = DateTime.MinValue;
         private DateTime _blockedSince = DateTime.MinValue;
         // Resources the server rejected with "not enough resources to send" this
         // cycle, keyed by village. A sell shortage is seller-side (our local
@@ -103,7 +109,8 @@ namespace Kingdoms.Bot.Modules
 
         private enum TradeCategory
         {
-            Markets,
+            MarketSell,
+            MarketBuy,
             Routes,
             PlayerRoutes
         }
@@ -272,8 +279,8 @@ namespace Kingdoms.Bot.Modules
             RefreshCapitalsList();
             BuildUnifiedVillageQueue(settings);
 
-            LogInfo("Starting trade cycle. " + _villageQueue.Count + " village(s) to process. Priority: " +
-                settings.Priority.ToString());
+            LogInfo("Starting trade cycle. " + _villageQueue.Count + " village(s) to process. Order: " +
+                DescribeCategoryOrder(settings));
 
             if (_villageQueue.Count == 0)
             {
@@ -314,6 +321,7 @@ namespace Kingdoms.Bot.Modules
             _activeVillageId = villageId;
             _remainingCategories.Clear();
             _dispatchCounts.Clear();
+            _villagePricesRequestedAt = DateTime.MinValue;
             _sellBlockedThisCycle.Remove(villageId);
             _marketBlockedThisCycle.Remove(villageId);
             _blockedSince = DateTime.MinValue;
@@ -330,25 +338,25 @@ namespace Kingdoms.Bot.Modules
             bool hasRoutes = _routesBySender.ContainsKey(villageId);
             bool hasPlayerRoutes = _playerRoutesBySender.ContainsKey(villageId);
 
-            // Categories run in priority order: each one drains fully (one server
+            // Categories run in the user's order: each one drains fully (one server
             // call per tick) before the next is attempted.
-            switch (settings.Priority)
+            foreach (TradeCategoryKind kind in settings.GetCategoryOrder())
             {
-                case TradePriority.VillageRoutes:
-                    if (hasRoutes) _remainingCategories.Add(TradeCategory.Routes);
-                    if (hasMarkets) _remainingCategories.Add(TradeCategory.Markets);
-                    if (hasPlayerRoutes) _remainingCategories.Add(TradeCategory.PlayerRoutes);
-                    break;
-                case TradePriority.PlayerRoutes:
-                    if (hasPlayerRoutes) _remainingCategories.Add(TradeCategory.PlayerRoutes);
-                    if (hasRoutes) _remainingCategories.Add(TradeCategory.Routes);
-                    if (hasMarkets) _remainingCategories.Add(TradeCategory.Markets);
-                    break;
-                default: // MarketSellFirst / MarketBuyFirst
-                    if (hasMarkets) _remainingCategories.Add(TradeCategory.Markets);
-                    if (hasRoutes) _remainingCategories.Add(TradeCategory.Routes);
-                    if (hasPlayerRoutes) _remainingCategories.Add(TradeCategory.PlayerRoutes);
-                    break;
+                switch (kind)
+                {
+                    case TradeCategoryKind.MarketSell:
+                        if (hasMarkets) _remainingCategories.Add(TradeCategory.MarketSell);
+                        break;
+                    case TradeCategoryKind.MarketBuy:
+                        if (hasMarkets) _remainingCategories.Add(TradeCategory.MarketBuy);
+                        break;
+                    case TradeCategoryKind.VillageRoutes:
+                        if (hasRoutes) _remainingCategories.Add(TradeCategory.Routes);
+                        break;
+                    default:
+                        if (hasPlayerRoutes) _remainingCategories.Add(TradeCategory.PlayerRoutes);
+                        break;
+                }
             }
 
             if (_remainingCategories.Count == 0)
@@ -409,6 +417,19 @@ namespace Kingdoms.Bot.Modules
                     continue;
                 }
 
+                // A market category queued behind routes can find the prices from
+                // BeginVillage expired; without a refetch FindBestMarket would skip
+                // every market (no blind trades).
+                if (IsMarketCategory(category) && !IsMarketBlockedThisCycle(villageId) &&
+                    (DateTime.Now - _villagePricesRequestedAt).TotalMinutes >= PriceCacheValidMinutes &&
+                    !HasFreshPricesForVillage(villageId, settings))
+                {
+                    LogDebug(villageName + ": market prices expired, refreshing before " + category + ".");
+                    RequestPrices(villageId, settings.GetVillageMarketInfo(villageId), settings);
+                    if (_waitingForPrices)
+                        return; // StepVillage resumes once the fetch resolves
+                }
+
                 TradeActionResult result = TryCategory(category, map, villageId, villageName, settings);
 
                 if (result == TradeActionResult.Dispatched)
@@ -450,9 +471,11 @@ namespace Kingdoms.Bot.Modules
         {
             switch (category)
             {
-                case TradeCategory.Markets:
+                case TradeCategory.MarketSell:
+                case TradeCategory.MarketBuy:
                     return TryMarketTrade(map, villageId, villageName,
-                        settings.GetVillageMarketInfo(villageId), settings);
+                        settings.GetVillageMarketInfo(villageId), settings,
+                        category == TradeCategory.MarketSell);
 
                 case TradeCategory.Routes:
                     List<TradeRouteSettings> routes;
@@ -476,6 +499,28 @@ namespace Kingdoms.Bot.Modules
             return 0;
         }
 
+        private static bool IsMarketCategory(TradeCategory category)
+        {
+            return category == TradeCategory.MarketSell || category == TradeCategory.MarketBuy;
+        }
+
+        private static string DescribeCategoryOrder(TradeSettings settings)
+        {
+            string s = "";
+            foreach (TradeCategoryKind kind in settings.GetCategoryOrder())
+            {
+                if (s.Length > 0) s += " > ";
+                switch (kind)
+                {
+                    case TradeCategoryKind.MarketSell: s += "Market sells"; break;
+                    case TradeCategoryKind.MarketBuy: s += "Market buys"; break;
+                    case TradeCategoryKind.VillageRoutes: s += "Village routes"; break;
+                    default: s += "Player routes"; break;
+                }
+            }
+            return s;
+        }
+
         private void AdvanceToNextVillage()
         {
             _currentVillageIndex++;
@@ -493,8 +538,10 @@ namespace Kingdoms.Bot.Modules
             _routesBySender.Clear();
             _playerRoutesBySender.Clear();
 
-            // Index routes by sender village
-            foreach (TradeRouteSettings route in settings.Routes)
+            // Index routes by sender village, in priority order (1 first) so each
+            // sender's list drains its highest-priority routes first.
+            foreach (TradeRouteSettings route in OrderByPriority(settings.Routes,
+                delegate(TradeRouteSettings r) { return r.Priority; }))
             {
                 if (!route.Enabled || route.FromVillages.Count == 0 ||
                     route.ToVillages.Count == 0 || route.Resources.Count == 0)
@@ -512,8 +559,9 @@ namespace Kingdoms.Bot.Modules
                 }
             }
 
-            // Index player routes by sender village
-            foreach (PlayerTradeRouteSettings route in settings.PlayerRoutes)
+            // Index player routes by sender village, in priority order (1 first)
+            foreach (PlayerTradeRouteSettings route in OrderByPriority(settings.PlayerRoutes,
+                delegate(PlayerTradeRouteSettings r) { return r.Priority; }))
             {
                 if (!route.Enabled || route.FromVillages.Count == 0 ||
                     route.TargetVillageId <= 0 || route.Resources.Count == 0)
@@ -585,6 +633,24 @@ namespace Kingdoms.Bot.Modules
             LogDebug("Queue built: " + _villageQueue.Count + " village(s). " +
                      _routesBySender.Count + " village(s) with routes. " +
                      _playerRoutesBySender.Count + " village(s) with player routes.");
+        }
+
+        // Stable sort by priority, 1 first; equal priorities keep their list order
+        // (List.Sort alone is unstable).
+        private static List<T> OrderByPriority<T>(List<T> items, Converter<T, int> getPriority)
+        {
+            List<int> indices = new List<int>(items.Count);
+            for (int i = 0; i < items.Count; i++)
+                indices.Add(i);
+            indices.Sort(delegate(int a, int b)
+            {
+                int c = getPriority(items[a]).CompareTo(getPriority(items[b]));
+                return c != 0 ? c : a.CompareTo(b);
+            });
+            List<T> ordered = new List<T>(items.Count);
+            foreach (int i in indices)
+                ordered.Add(items[i]);
+            return ordered;
         }
 
         private void RevalidateMarketTargets(int villageId, VillageMarketTradeInfo info)
@@ -698,6 +764,7 @@ namespace Kingdoms.Bot.Modules
 
             _waitingForPrices = true;
             _priceFetchStarted = DateTime.Now;
+            _villagePricesRequestedAt = DateTime.Now;
             _priceFetchVillageId = villageId;
             try { _premiumFetch = GameEngine.Instance.World.isAccountPremium(); }
             catch { _premiumFetch = false; }
@@ -1053,11 +1120,12 @@ namespace Kingdoms.Bot.Modules
         // =====================================================================
 
         /// <summary>
-        /// Attempt ONE market trade for this village.
-        /// Sell/buy order is determined by settings.Priority.
+        /// Attempt ONE market sell (selling=true) or buy for this village. Goods are
+        /// tried in their Sell/Buy priority order (1 first); equal priorities go
+        /// furthest-from-limit first.
         /// </summary>
         private TradeActionResult TryMarketTrade(VillageMap map, int villageId, string villageName,
-            VillageMarketTradeInfo villageInfo, TradeSettings settings)
+            VillageMarketTradeInfo villageInfo, TradeSettings settings, bool selling)
         {
             // The server already rejected a trade here this cycle for lack of
             // traders — our merchant count is stale, so every market trade would
@@ -1086,23 +1154,28 @@ namespace Kingdoms.Bot.Modules
             List<TradeTypeEntry> sortedTypes = new List<TradeTypeEntry>();
             foreach (TradeTypeEntry t in villageInfo.TradeTypes)
             {
-                if (!t.Sell && !t.Buy) continue;
+                if (selling ? !t.Sell : !t.Buy) continue;
                 if (!areWeaponsAllowed && TradeModuleConstants.IsWeapon(t.ResourceId)) continue;
                 sortedTypes.Add(t);
             }
 
             if (sortedTypes.Count == 0)
             {
-                LogDebug(villageName + " [Market]: No sell/buy resource types configured.");
+                LogDebug(villageName + " [Market]: No " + (selling ? "sell" : "buy") +
+                    " resource types configured.");
                 return TradeActionResult.NoWork;
             }
 
             sortedTypes.Sort(delegate(TradeTypeEntry a, TradeTypeEntry b)
             {
+                int priA = selling ? a.SellPriority : a.BuyPriority;
+                int priB = selling ? b.SellPriority : b.BuyPriority;
+                if (priA != priB) return priA.CompareTo(priB);
+
                 double diffA = Math.Abs(map.getResourceLevel((int)a.ResourceId) -
-                    (a.Sell ? (double)a.SellLimit : (double)a.BuyLimit));
+                    (selling ? (double)a.SellLimit : (double)a.BuyLimit));
                 double diffB = Math.Abs(map.getResourceLevel((int)b.ResourceId) -
-                    (b.Sell ? (double)b.SellLimit : (double)b.BuyLimit));
+                    (selling ? (double)b.SellLimit : (double)b.BuyLimit));
                 double capA = (double)GetResourceCap((int)a.ResourceId);
                 double capB = (double)GetResourceCap((int)b.ResourceId);
                 if (capA <= 0) capA = 1;
@@ -1110,23 +1183,11 @@ namespace Kingdoms.Bot.Modules
                 return (diffB / capB).CompareTo(diffA / capA);
             });
 
-            TradeActionResult first;
-            if (settings.Priority == TradePriority.MarketBuyFirst)
-            {
-                first = TryMarketBuy(map, villageId, villageName, villageInfo, settings,
-                    sortedTypes, tradersAtHome, movingTraders);
-                if (first != TradeActionResult.NoWork) return first;
+            if (selling)
                 return TryMarketSell(map, villageId, villageName, villageInfo, settings,
                     sortedTypes, tradersAtHome, movingTraders);
-            }
-            else
-            {
-                first = TryMarketSell(map, villageId, villageName, villageInfo, settings,
-                    sortedTypes, tradersAtHome, movingTraders);
-                if (first != TradeActionResult.NoWork) return first;
-                return TryMarketBuy(map, villageId, villageName, villageInfo, settings,
-                    sortedTypes, tradersAtHome, movingTraders);
-            }
+            return TryMarketBuy(map, villageId, villageName, villageInfo, settings,
+                sortedTypes, tradersAtHome, movingTraders);
         }
 
         private TradeActionResult TryMarketSell(VillageMap map, int villageId, string villageName,

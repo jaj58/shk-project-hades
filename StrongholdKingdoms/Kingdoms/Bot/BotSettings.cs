@@ -123,6 +123,8 @@ namespace Kingdoms.Bot
         {
             if (CastleRepair != null)
                 CastleRepair.MigrateLegacyTriggers();
+            if (Trade != null)
+                Trade.MigrateLegacyPriority();
         }
 
         private void SerializeTo(string path)
@@ -531,12 +533,23 @@ namespace Kingdoms.Bot
         public int Priority = 1;
     }
 
+    // Legacy single-choice category priority. Superseded by the four
+    // TradeSettings.*Order fields; read once by MigrateLegacyPriority().
     public enum TradePriority
     {
         MarketSellFirst = 0,   // Market first: sell before buy
         MarketBuyFirst  = 1,   // Market first: buy before sell
         VillageRoutes   = 2,   // Village routes first
         PlayerRoutes    = 3    // Player routes first
+    }
+
+    // The four trade categories a village works through, in a user-chosen order.
+    public enum TradeCategoryKind
+    {
+        MarketSell    = 0,
+        MarketBuy     = 1,
+        VillageRoutes = 2,
+        PlayerRoutes  = 3
     }
 
     [Serializable]
@@ -551,7 +564,15 @@ namespace Kingdoms.Bot
         public bool AutoHireMerchants = false;
         public int AutoHireMerchantsLimit = 50;
         public bool IgnoreCurrentTransactions = false;
+        // Legacy - kept only so old settings files still deserialize.
         public TradePriority Priority = TradePriority.MarketSellFirst;
+        // Category run order, 1 = first. Plain ints rather than a List because
+        // XmlSerializer appends to a pre-initialised list instead of replacing it.
+        public int MarketSellOrder = 1;
+        public int MarketBuyOrder = 2;
+        public int VillageRoutesOrder = 3;
+        public int PlayerRoutesOrder = 4;
+        public bool CategoryOrderMigrated;
         public bool DisableOnTradeCardExpiry = false;
         public bool TradeCardsWereActive = false;
         public int DisableAfterMinutes = 0;          // 0 = feature off; auto-disable module this many minutes after it was enabled
@@ -572,6 +593,67 @@ namespace Kingdoms.Bot
             newV.InitDefaults();
             VillageMarketSettings.Add(newV);
             return newV;
+        }
+
+        // One-shot upgrade of the old single Priority preset into the four order
+        // fields, reproducing the category order each preset used to run.
+        public void MigrateLegacyPriority()
+        {
+            if (CategoryOrderMigrated) return;
+            switch (Priority)
+            {
+                case TradePriority.MarketBuyFirst:
+                    SetCategoryOrder(2, 1, 3, 4);
+                    break;
+                case TradePriority.VillageRoutes:
+                    SetCategoryOrder(2, 3, 1, 4);
+                    break;
+                case TradePriority.PlayerRoutes:
+                    SetCategoryOrder(3, 4, 2, 1);
+                    break;
+                default:
+                    SetCategoryOrder(1, 2, 3, 4);
+                    break;
+            }
+            CategoryOrderMigrated = true;
+        }
+
+        public void SetCategoryOrder(int marketSell, int marketBuy, int villageRoutes, int playerRoutes)
+        {
+            MarketSellOrder = marketSell;
+            MarketBuyOrder = marketBuy;
+            VillageRoutesOrder = villageRoutes;
+            PlayerRoutesOrder = playerRoutes;
+        }
+
+        public int GetOrderValue(TradeCategoryKind kind)
+        {
+            switch (kind)
+            {
+                case TradeCategoryKind.MarketSell: return MarketSellOrder;
+                case TradeCategoryKind.MarketBuy: return MarketBuyOrder;
+                case TradeCategoryKind.VillageRoutes: return VillageRoutesOrder;
+                default: return PlayerRoutesOrder;
+            }
+        }
+
+        /// <summary>
+        /// The four categories, first to last. Ties (and hand-edited out-of-range
+        /// values) fall back to the enum order, so this is always a permutation.
+        /// </summary>
+        public List<TradeCategoryKind> GetCategoryOrder()
+        {
+            List<TradeCategoryKind> order = new List<TradeCategoryKind>();
+            order.Add(TradeCategoryKind.MarketSell);
+            order.Add(TradeCategoryKind.MarketBuy);
+            order.Add(TradeCategoryKind.VillageRoutes);
+            order.Add(TradeCategoryKind.PlayerRoutes);
+            order.Sort(delegate(TradeCategoryKind a, TradeCategoryKind b)
+            {
+                int c = GetOrderValue(a).CompareTo(GetOrderValue(b));
+                return c != 0 ? c : ((int)a).CompareTo((int)b);
+            });
+            return order;
         }
     }
 
@@ -628,6 +710,9 @@ namespace Kingdoms.Bot
         public bool Buy;
         public int MaxBuyPrice = 150;
         public int BuyLimit;
+        // 1 = traded first. Equal priorities fall back to "furthest from its limit first".
+        public int SellPriority = 1;
+        public int BuyPriority = 1;
 
         public TradeTypeEntry Clone()
         {
@@ -639,6 +724,8 @@ namespace Kingdoms.Bot
             c.Buy = this.Buy;
             c.MaxBuyPrice = this.MaxBuyPrice;
             c.BuyLimit = this.BuyLimit;
+            c.SellPriority = this.SellPriority;
+            c.BuyPriority = this.BuyPriority;
             return c;
         }
     }
@@ -656,12 +743,15 @@ namespace Kingdoms.Bot
         public int SendMaximum = 5000;
         public bool IsDistanceLimited;
         public int DistanceLimit = 100;
+        // 1 = sent first. A sender village drains its priority-1 routes before lower ones.
+        public int Priority = 1;
 
         public TradeRouteSettings Clone()
         {
             TradeRouteSettings r = new TradeRouteSettings();
             r.Name = this.Name + " (Copy)";
             r.Enabled = false;
+            r.Priority = this.Priority;
             r.FromVillages = new List<int>(this.FromVillages);
             r.ToVillages = new List<int>(this.ToVillages);
             r.Resources = new List<int>(this.Resources);
@@ -684,6 +774,8 @@ namespace Kingdoms.Bot
         public List<PlayerTradeResourceEntry> Resources = new List<PlayerTradeResourceEntry>();
         public int KeepMinimum;
         public int MaxMerchantsPerTransaction = 50;
+        // 1 = sent first. A sender village drains its priority-1 routes before lower ones.
+        public int Priority = 1;
 
         public PlayerTradeResourceEntry GetResourceEntry(int resourceId)
         {
@@ -714,6 +806,7 @@ namespace Kingdoms.Bot
             PlayerTradeRouteSettings r = new PlayerTradeRouteSettings();
             r.Name = this.Name + " (Copy)";
             r.Enabled = false;
+            r.Priority = this.Priority;
             r.FromVillages = new List<int>(this.FromVillages);
             r.TargetVillageId = this.TargetVillageId;
             r.KeepMinimum = this.KeepMinimum;
