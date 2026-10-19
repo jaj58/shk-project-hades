@@ -24,7 +24,7 @@ namespace Kingdoms.Bot.UI
         private const int RowHeight = 24;
         private const int HeaderHeight = 22;
         // Wide enough for the 7-digit storage caps the limit fields now accept.
-        internal const int GridWidth = 520;
+        internal const int GridWidth = 560;
 
         public TradeResourceGrid()
         {
@@ -36,8 +36,8 @@ namespace Kingdoms.Bot.UI
             _headerPanel.Size = new Size(GridWidth, HeaderHeight);
             _headerPanel.BackColor = HeaderBg;
 
-            int[] colX = new int[] { 12, 100, 150, 210, 300, 360, 420 };
-            string[] colT = new string[] { "Type", "Sell", "Min", "Sell Limit", "Buy", "Max", "Buy Limit" };
+            int[] colX = new int[] { 12, 100, 128, 174, 232, 322, 350, 396, 454 };
+            string[] colT = new string[] { "Type", "Sell", "Pri", "Min", "Sell Limit", "Buy", "Pri", "Max", "Buy Limit" };
             for (int i = 0; i < colT.Length; i++)
             {
                 Label lbl = new Label();
@@ -108,9 +108,11 @@ namespace Kingdoms.Bot.UI
 
         private byte _resourceId;
         private CheckBox _sellCheck;
+        private NumericUpDown _sellPriority;
         private NumericUpDown _minSellPrice;
         private NumericUpDown _sellLimit;
         private CheckBox _buyCheck;
+        private NumericUpDown _buyPriority;
         private NumericUpDown _maxBuyPrice;
         private NumericUpDown _buyLimit;
 
@@ -132,19 +134,26 @@ namespace Kingdoms.Bot.UI
             _sellCheck = MakeCheck(104, entry != null && entry.Sell);
             this.Controls.Add(_sellCheck);
 
-            _minSellPrice = MakeNumeric(148, 0, 999, entry != null ? entry.MinSellPrice : 0, 54);
+            // 1 = traded first; equal priorities go furthest-from-limit first.
+            _sellPriority = MakeNumeric(126, 1, 99, entry != null ? entry.SellPriority : 1, 40);
+            this.Controls.Add(_sellPriority);
+
+            _minSellPrice = MakeNumeric(172, 0, 999, entry != null ? entry.MinSellPrice : 0, 54);
             this.Controls.Add(_minSellPrice);
 
-            _sellLimit = MakeNumeric(210, 0, maxLimit, entry != null ? entry.SellLimit : 0, 82);
+            _sellLimit = MakeNumeric(232, 0, maxLimit, entry != null ? entry.SellLimit : 0, 82);
             this.Controls.Add(_sellLimit);
 
-            _buyCheck = MakeCheck(304, entry != null && entry.Buy);
+            _buyCheck = MakeCheck(326, entry != null && entry.Buy);
             this.Controls.Add(_buyCheck);
 
-            _maxBuyPrice = MakeNumeric(358, 0, 999, entry != null ? entry.MaxBuyPrice : 150, 54);
+            _buyPriority = MakeNumeric(348, 1, 99, entry != null ? entry.BuyPriority : 1, 40);
+            this.Controls.Add(_buyPriority);
+
+            _maxBuyPrice = MakeNumeric(394, 0, 999, entry != null ? entry.MaxBuyPrice : 150, 54);
             this.Controls.Add(_maxBuyPrice);
 
-            _buyLimit = MakeNumeric(420, 0, maxLimit, entry != null ? entry.BuyLimit : 0, 82);
+            _buyLimit = MakeNumeric(454, 0, maxLimit, entry != null ? entry.BuyLimit : 0, 82);
             this.Controls.Add(_buyLimit);
         }
 
@@ -152,9 +161,11 @@ namespace Kingdoms.Bot.UI
         {
             TradeTypeEntry entry = info.GetTradeType(_resourceId);
             entry.Sell = _sellCheck.Checked;
+            entry.SellPriority = (int)_sellPriority.Value;
             entry.MinSellPrice = (int)_minSellPrice.Value;
             entry.SellLimit = (int)_sellLimit.Value;
             entry.Buy = _buyCheck.Checked;
+            entry.BuyPriority = (int)_buyPriority.Value;
             entry.MaxBuyPrice = (int)_maxBuyPrice.Value;
             entry.BuyLimit = (int)_buyLimit.Value;
         }
@@ -209,6 +220,7 @@ namespace Kingdoms.Bot.UI
         private Label _maxMerchLabel;
         private Label _sendMaxLabel;
         private Label _distLabel;
+        private Label _priorityLabel;
         private bool _selected;
 
         public int RouteIndex { get { return _routeIndex; } }
@@ -265,6 +277,9 @@ namespace Kingdoms.Bot.UI
             string dist = route.IsDistanceLimited ? route.DistanceLimit.ToString() : "Off";
             _distLabel = MakeLabel(dist, 770, 50, FontStyle.Regular);
             this.Controls.Add(_distLabel);
+
+            _priorityLabel = MakeLabel(route.Priority.ToString(), 830, 40, FontStyle.Regular);
+            this.Controls.Add(_priorityLabel);
         }
 
         public void WriteToSettings(TradeSettings settings)
@@ -285,6 +300,7 @@ namespace Kingdoms.Bot.UI
             _maxMerchLabel.Text = route.MaxMerchantsPerTransaction.ToString();
             _sendMaxLabel.Text = route.SendMaximum.ToString();
             _distLabel.Text = route.IsDistanceLimited ? route.DistanceLimit.ToString() : "Off";
+            _priorityLabel.Text = route.Priority.ToString();
         }
 
         private static string BuildResourceSummary(List<int> resources)
@@ -327,6 +343,7 @@ namespace Kingdoms.Bot.UI
 
         private TextBox _nameInput;
         private CheckBox _enabledCheck;
+        private NumericUpDown _priorityInput;
         private ListBox _fromList;
         private ListBox _toList;
         private CheckedListBox _resourceList;
@@ -385,6 +402,12 @@ namespace Kingdoms.Bot.UI
             _enabledCheck.Location = new Point(310, 12);
             _enabledCheck.AutoSize = true;
             this.Controls.Add(_enabledCheck);
+
+            // 1 = sent first; a sender village drains higher-priority routes first.
+            Label priLbl = MakeLabel("Priority:", 410, 14);
+            this.Controls.Add(priLbl);
+            _priorityInput = MakeNumeric(470, 12, 1, 99, 1, 60);
+            this.Controls.Add(_priorityInput);
 
             // From villages
             Label fromLbl = MakeLabel("From Villages:", 14, 44);
@@ -473,6 +496,7 @@ namespace Kingdoms.Bot.UI
         {
             _nameInput.Text = _route.Name;
             _enabledCheck.Checked = _route.Enabled;
+            _priorityInput.Value = Clamp(_priorityInput, _route.Priority);
             _keepMinInput.Value = Clamp(_keepMinInput, _route.KeepMinimum);
             _maxMerchantsInput.Value = Clamp(_maxMerchantsInput, _route.MaxMerchantsPerTransaction);
             _sendMaxInput.Value = Clamp(_sendMaxInput, _route.SendMaximum);
@@ -519,6 +543,7 @@ namespace Kingdoms.Bot.UI
         {
             _route.Name = _nameInput.Text;
             _route.Enabled = _enabledCheck.Checked;
+            _route.Priority = (int)_priorityInput.Value;
             _route.KeepMinimum = (int)_keepMinInput.Value;
             _route.MaxMerchantsPerTransaction = (int)_maxMerchantsInput.Value;
             _route.SendMaximum = (int)_sendMaxInput.Value;
@@ -983,6 +1008,7 @@ namespace Kingdoms.Bot.UI
 
             AddLabel(route.KeepMinimum.ToString(), 660, 60, TextSec);
             AddLabel(route.MaxMerchantsPerTransaction.ToString(), 730, 50, TextSec);
+            AddLabel(route.Priority.ToString(), 800, 40, TextSec);
         }
 
         private Label AddLabel(string text, int x, int width, Color color)
@@ -1029,6 +1055,7 @@ namespace Kingdoms.Bot.UI
         private NumericUpDown _targetIdInput;
         private NumericUpDown _keepMinInput;
         private NumericUpDown _maxMerchantsInput;
+        private NumericUpDown _priorityInput;
         private Panel _resourcePanel;
         private List<PlayerResourceRow> _resourceRows = new List<PlayerResourceRow>();
         private Button _saveBtn;
@@ -1139,6 +1166,21 @@ namespace Kingdoms.Bot.UI
             _maxMerchantsInput.Value = 50;
             this.Controls.Add(_maxMerchantsInput);
 
+            // Priority: 1 = sent first; a sender village drains higher-priority routes first.
+            Label priLbl = MakeLabel("Priority:", 390, y + 50);
+            this.Controls.Add(priLbl);
+            _priorityInput = new NumericUpDown();
+            _priorityInput.BackColor = InputBg;
+            _priorityInput.ForeColor = TextPri;
+            _priorityInput.BorderStyle = BorderStyle.FixedSingle;
+            _priorityInput.Font = new Font("Segoe UI", 9f);
+            _priorityInput.Location = new Point(390, y + 68);
+            _priorityInput.Size = new Size(80, 22);
+            _priorityInput.Maximum = 99;
+            _priorityInput.Minimum = 1;
+            _priorityInput.Value = 1;
+            this.Controls.Add(_priorityInput);
+
             // Resources section
             int resY = 190;
             Label resLbl = MakeLabel("Resources (select amount to send for each � 0 = skip):", 14, resY);
@@ -1196,6 +1238,9 @@ namespace Kingdoms.Bot.UI
             _targetIdInput.Value = Math.Max(0, Math.Min(999999, _route.TargetVillageId));
             _keepMinInput.Value = Math.Max(0, Math.Min(999999, _route.KeepMinimum));
             _maxMerchantsInput.Value = Math.Max(1, Math.Min(500, _route.MaxMerchantsPerTransaction));
+            // Widen rather than clamp so saving never rewrites a larger stored priority.
+            if (_route.Priority > (int)_priorityInput.Maximum) _priorityInput.Maximum = _route.Priority;
+            _priorityInput.Value = Math.Max(1, _route.Priority);
 
             // Populate village list
             if (GameEngine.Instance != null && GameEngine.Instance.World != null)
@@ -1245,6 +1290,7 @@ namespace Kingdoms.Bot.UI
             _route.TargetVillageId = (int)_targetIdInput.Value;
             _route.KeepMinimum = (int)_keepMinInput.Value;
             _route.MaxMerchantsPerTransaction = (int)_maxMerchantsInput.Value;
+            _route.Priority = (int)_priorityInput.Value;
 
             _route.FromVillages.Clear();
             foreach (object sel in _fromList.SelectedItems)

@@ -37,6 +37,8 @@ namespace Kingdoms.Bot
         public MonkSettings Monk = new MonkSettings();
         public AttackerSettings Attacker = new AttackerSettings();
         public TimingToolSettings TimingTool = new TimingToolSettings();
+        public VillageOverviewSettings VillageOverview = new VillageOverviewSettings();
+        public ResearchSettings Research = new ResearchSettings();
 
         // XmlSerializer generates and compiles a dynamic serialization assembly the first time
         // it is constructed for a given type. For a complex type like BotSettings this takes
@@ -123,6 +125,11 @@ namespace Kingdoms.Bot
         {
             if (CastleRepair != null)
                 CastleRepair.MigrateLegacyTriggers();
+            if (Trade != null)
+                Trade.MigrateLegacyPriority();
+            if (Research == null)
+                Research = new ResearchSettings();
+            Research.Normalize();
         }
 
         private void SerializeTo(string path)
@@ -531,12 +538,23 @@ namespace Kingdoms.Bot
         public int Priority = 1;
     }
 
+    // Legacy single-choice category priority. Superseded by the four
+    // TradeSettings.*Order fields; read once by MigrateLegacyPriority().
     public enum TradePriority
     {
         MarketSellFirst = 0,   // Market first: sell before buy
         MarketBuyFirst  = 1,   // Market first: buy before sell
         VillageRoutes   = 2,   // Village routes first
         PlayerRoutes    = 3    // Player routes first
+    }
+
+    // The four trade categories a village works through, in a user-chosen order.
+    public enum TradeCategoryKind
+    {
+        MarketSell    = 0,
+        MarketBuy     = 1,
+        VillageRoutes = 2,
+        PlayerRoutes  = 3
     }
 
     [Serializable]
@@ -551,7 +569,15 @@ namespace Kingdoms.Bot
         public bool AutoHireMerchants = false;
         public int AutoHireMerchantsLimit = 50;
         public bool IgnoreCurrentTransactions = false;
+        // Legacy - kept only so old settings files still deserialize.
         public TradePriority Priority = TradePriority.MarketSellFirst;
+        // Category run order, 1 = first. Plain ints rather than a List because
+        // XmlSerializer appends to a pre-initialised list instead of replacing it.
+        public int MarketSellOrder = 1;
+        public int MarketBuyOrder = 2;
+        public int VillageRoutesOrder = 3;
+        public int PlayerRoutesOrder = 4;
+        public bool CategoryOrderMigrated;
         public bool DisableOnTradeCardExpiry = false;
         public bool TradeCardsWereActive = false;
         public int DisableAfterMinutes = 0;          // 0 = feature off; auto-disable module this many minutes after it was enabled
@@ -572,6 +598,67 @@ namespace Kingdoms.Bot
             newV.InitDefaults();
             VillageMarketSettings.Add(newV);
             return newV;
+        }
+
+        // One-shot upgrade of the old single Priority preset into the four order
+        // fields, reproducing the category order each preset used to run.
+        public void MigrateLegacyPriority()
+        {
+            if (CategoryOrderMigrated) return;
+            switch (Priority)
+            {
+                case TradePriority.MarketBuyFirst:
+                    SetCategoryOrder(2, 1, 3, 4);
+                    break;
+                case TradePriority.VillageRoutes:
+                    SetCategoryOrder(2, 3, 1, 4);
+                    break;
+                case TradePriority.PlayerRoutes:
+                    SetCategoryOrder(3, 4, 2, 1);
+                    break;
+                default:
+                    SetCategoryOrder(1, 2, 3, 4);
+                    break;
+            }
+            CategoryOrderMigrated = true;
+        }
+
+        public void SetCategoryOrder(int marketSell, int marketBuy, int villageRoutes, int playerRoutes)
+        {
+            MarketSellOrder = marketSell;
+            MarketBuyOrder = marketBuy;
+            VillageRoutesOrder = villageRoutes;
+            PlayerRoutesOrder = playerRoutes;
+        }
+
+        public int GetOrderValue(TradeCategoryKind kind)
+        {
+            switch (kind)
+            {
+                case TradeCategoryKind.MarketSell: return MarketSellOrder;
+                case TradeCategoryKind.MarketBuy: return MarketBuyOrder;
+                case TradeCategoryKind.VillageRoutes: return VillageRoutesOrder;
+                default: return PlayerRoutesOrder;
+            }
+        }
+
+        /// <summary>
+        /// The four categories, first to last. Ties (and hand-edited out-of-range
+        /// values) fall back to the enum order, so this is always a permutation.
+        /// </summary>
+        public List<TradeCategoryKind> GetCategoryOrder()
+        {
+            List<TradeCategoryKind> order = new List<TradeCategoryKind>();
+            order.Add(TradeCategoryKind.MarketSell);
+            order.Add(TradeCategoryKind.MarketBuy);
+            order.Add(TradeCategoryKind.VillageRoutes);
+            order.Add(TradeCategoryKind.PlayerRoutes);
+            order.Sort(delegate(TradeCategoryKind a, TradeCategoryKind b)
+            {
+                int c = GetOrderValue(a).CompareTo(GetOrderValue(b));
+                return c != 0 ? c : ((int)a).CompareTo((int)b);
+            });
+            return order;
         }
     }
 
@@ -628,6 +715,9 @@ namespace Kingdoms.Bot
         public bool Buy;
         public int MaxBuyPrice = 150;
         public int BuyLimit;
+        // 1 = traded first. Equal priorities fall back to "furthest from its limit first".
+        public int SellPriority = 1;
+        public int BuyPriority = 1;
 
         public TradeTypeEntry Clone()
         {
@@ -639,6 +729,8 @@ namespace Kingdoms.Bot
             c.Buy = this.Buy;
             c.MaxBuyPrice = this.MaxBuyPrice;
             c.BuyLimit = this.BuyLimit;
+            c.SellPriority = this.SellPriority;
+            c.BuyPriority = this.BuyPriority;
             return c;
         }
     }
@@ -656,12 +748,15 @@ namespace Kingdoms.Bot
         public int SendMaximum = 5000;
         public bool IsDistanceLimited;
         public int DistanceLimit = 100;
+        // 1 = sent first. A sender village drains its priority-1 routes before lower ones.
+        public int Priority = 1;
 
         public TradeRouteSettings Clone()
         {
             TradeRouteSettings r = new TradeRouteSettings();
             r.Name = this.Name + " (Copy)";
             r.Enabled = false;
+            r.Priority = this.Priority;
             r.FromVillages = new List<int>(this.FromVillages);
             r.ToVillages = new List<int>(this.ToVillages);
             r.Resources = new List<int>(this.Resources);
@@ -684,6 +779,8 @@ namespace Kingdoms.Bot
         public List<PlayerTradeResourceEntry> Resources = new List<PlayerTradeResourceEntry>();
         public int KeepMinimum;
         public int MaxMerchantsPerTransaction = 50;
+        // 1 = sent first. A sender village drains its priority-1 routes before lower ones.
+        public int Priority = 1;
 
         public PlayerTradeResourceEntry GetResourceEntry(int resourceId)
         {
@@ -714,6 +811,7 @@ namespace Kingdoms.Bot
             PlayerTradeRouteSettings r = new PlayerTradeRouteSettings();
             r.Name = this.Name + " (Copy)";
             r.Enabled = false;
+            r.Priority = this.Priority;
             r.FromVillages = new List<int>(this.FromVillages);
             r.TargetVillageId = this.TargetVillageId;
             r.KeepMinimum = this.KeepMinimum;
@@ -1132,6 +1230,41 @@ namespace Kingdoms.Bot
     }
 
     // =========================================================================
+    // Village Overview Settings
+    // =========================================================================
+
+    /// <summary>
+    /// The Village Overview window's layout and refresh choices. Saved when the window
+    /// closes, not on the bot window's Save button.
+    /// </summary>
+    [Serializable]
+    public class VillageOverviewSettings
+    {
+        public bool ShowResources = true;
+        public bool ShowMilitary;
+        public bool ShowVillage = true;
+        public bool ShowUnits;
+        public List<string> HiddenColumns = new List<string>();
+        // Set once the columns hidden by default have been added to HiddenColumns, so a
+        // column the user turned back on stays on.
+        public bool DefaultsApplied;
+
+        public string SortKey = "name";
+        public bool SortDescending;
+        public int TypeFilter;           // 0 = villages, 1 = capitals, 2 = all
+        public bool IncomingOnly;
+        public bool DownloadedOnly;
+
+        /// <summary>Minutes before a server snapshot is asked for again; 0 = manual only.</summary>
+        public int AutoRefreshMinutes = 5;
+
+        public int WindowX;
+        public int WindowY;
+        public int WindowWidth;
+        public int WindowHeight;
+    }
+
+    // =========================================================================
     // Timing Tool Settings
     // =========================================================================
 
@@ -1547,6 +1680,71 @@ namespace Kingdoms.Bot
         // before sending. Capped by ordination research level at runtime.
         public int AutoRecruitMonks = 0;
         public List<MonkRouteSettings> Routes = new List<MonkRouteSettings>();
+    }
+
+    // =========================================================================
+    // Research Module Settings
+    // =========================================================================
+
+    public enum ResearchRankUpMode
+    {
+        Off = 0,
+        // Rank up only when the plan is stuck on research points or on rank
+        WhenNeeded = 1,
+        WheneverPossible = 2
+    }
+
+    [Serializable]
+    public class ResearchPlanEntry
+    {
+        public int ResearchType;
+        public int TargetLevel;
+        public bool Enabled = true;
+
+        public ResearchPlanEntry Clone()
+        {
+            return new ResearchPlanEntry { ResearchType = ResearchType, TargetLevel = TargetLevel, Enabled = Enabled };
+        }
+    }
+
+    [Serializable]
+    public class ResearchSettings
+    {
+        public bool Enabled = false;
+        public int CheckIntervalSeconds = 10;
+        // Research slots to keep filled (in progress + queued). Only premium accounts get more than 1.
+        public int MaxQueueSlots = 6;
+        public bool AutoPrerequisites = true;
+        public ResearchRankUpMode RankUpMode = ResearchRankUpMode.Off;
+        public bool BuyPointsWithGold = false;
+        public int MaxGoldPerPoint = 100000;
+        public int MinGoldReserve = 0;
+        // Plan order is priority: index 0 is researched first.
+        public List<ResearchPlanEntry> Plan = new List<ResearchPlanEntry>();
+
+        /// <summary>
+        /// Drops entries for unknown / parish-capital research types and duplicate types (first
+        /// wins), and clamps target levels. Safe to call on hand-edited or imported plans.
+        /// </summary>
+        public void Normalize()
+        {
+            if (Plan == null)
+                Plan = new List<ResearchPlanEntry>();
+            HashSet<int> seen = new HashSet<int>();
+            List<ResearchPlanEntry> clean = new List<ResearchPlanEntry>();
+            foreach (ResearchPlanEntry e in Plan)
+            {
+                if (e == null || !ResearchPlanner.IsKnownPlayerResearch(e.ResearchType) || !seen.Add(e.ResearchType))
+                    continue;
+                e.TargetLevel = Math.Max(1, Math.Min(ResearchPlanner.MaxTargetLevel, e.TargetLevel));
+                clean.Add(e);
+            }
+            Plan = clean;
+            CheckIntervalSeconds = Math.Max(3, Math.Min(3600, CheckIntervalSeconds));
+            MaxQueueSlots = Math.Max(1, Math.Min(ResearchPlanner.PremiumSlotLimit, MaxQueueSlots));
+            MaxGoldPerPoint = Math.Max(0, MaxGoldPerPoint);
+            MinGoldReserve = Math.Max(0, MinGoldReserve);
+        }
     }
 
     [Serializable]

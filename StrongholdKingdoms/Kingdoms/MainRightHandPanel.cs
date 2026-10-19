@@ -84,6 +84,7 @@ namespace Kingdoms
     public const int BOT_TOOLTIP_ABSOLUTION = 11111133;
     public const int BOT_TOOLTIP_VILLAGE_RADAR = 11111134;
     public const int BOT_TOOLTIP_VILLAGE_STATS = 11111135;
+    public const int BOT_TOOLTIP_VILLAGE_OVERVIEW = 11111136;
 
     // The bot's attack button reuses the stock attack icon, which is identical to the real attack
     // button sitting next to it. Rotating the hue turns the blue disc red while leaving the white
@@ -93,6 +94,11 @@ namespace Kingdoms
     // The village radar button reuses the same attack icon again, so it needs its own hue to
     // read as a different button: further round than the bot attack red, landing on orange.
     private const double RADAR_ICON_HUE_DEGREES = 185.0;
+    // The village overview button sits right next to the premium overview's blue "i" and
+    // reuses it, so it is turned green to read as its bot twin.
+    private const double OVERVIEW_ICON_HUE_DEGREES = 265.0;
+    private static Image overviewNorm;
+    private static Image overviewOver;
     private static Image botAttackNorm;
     private static Image botAttackOver;
     private static Image botAttackClick;
@@ -168,6 +174,27 @@ namespace Kingdoms
       button.OverBrighten = true;
       button.MoveOnClick = true;
       MainRightHandPanel.markAsBotButton(button, MainRightHandPanel.BOT_TOOLTIP_VILLAGE_STATS);
+      return button;
+    }
+
+    // Opens the bot's Village Overview window from the top menu bar - the premium overview's
+    // own glyph, recoloured green. Built once per menu bar init; the images are cached.
+    public static CustomSelfDrawPanel.CSDButton getVillageOverviewMenuButton()
+    {
+      CustomSelfDrawPanel.CSDButton button = new CustomSelfDrawPanel.CSDButton();
+      if (MainRightHandPanel.overviewNorm == null)
+      {
+        Image image = MainRightHandPanel.recolourBotIcon((Image) GFXLibrary.premium_menubar_normal, MainRightHandPanel.OVERVIEW_ICON_HUE_DEGREES);
+        // The atlas images load lazily, so don't cache a placeholder - fall back to the stock icon.
+        if (image != null && image.Width > 1)
+        {
+          MainRightHandPanel.overviewNorm = image;
+          MainRightHandPanel.overviewOver = MainRightHandPanel.recolourBotIcon((Image) GFXLibrary.premium_menubar_over, MainRightHandPanel.OVERVIEW_ICON_HUE_DEGREES);
+        }
+      }
+      button.ImageNorm = MainRightHandPanel.overviewNorm ?? (Image) GFXLibrary.premium_menubar_normal;
+      button.ImageOver = MainRightHandPanel.overviewOver ?? (Image) GFXLibrary.premium_menubar_over;
+      MainRightHandPanel.markAsBotButton(button, MainRightHandPanel.BOT_TOOLTIP_VILLAGE_OVERVIEW);
       return button;
     }
 

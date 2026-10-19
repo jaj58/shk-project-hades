@@ -448,12 +448,16 @@ namespace Kingdoms
 
     public void lateStart()
     {
+      // Closed before the engine shuts down so its layout lands in the settings the
+      // shutdown saves.
+      Bot.UI.VillageOverviewForm.CloseInstance();
       if (Bot.BotEngine.Instance != null)
         Bot.BotEngine.Instance.Shutdown();
       bool botFormWasOpen = Bot.UI.BotControlForm.CloseInstance();
       // Every village id on screen is about to become meaningless.
       Bot.UI.VillageRadarForm.CloseInstance();
       Bot.UI.VillageStatsForm.CloseInstance();
+      Bot.VillageOverviewCache.Reset();
       int worldId = this.World.GetGlobalWorldID();
       int userId = RemoteServices.Instance != null ? RemoteServices.Instance.UserID : 0;
       Bot.BotEngine.Instance = new Bot.BotEngine();

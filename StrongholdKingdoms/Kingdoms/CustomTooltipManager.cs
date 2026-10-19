@@ -2593,6 +2593,9 @@ namespace Kingdoms
         case 11111135:
           text = SK.Text("TOOLTIPS_VILLAGE_STATS", "Village Info : resources, troops and stats");
           break;
+        case 11111136:
+          text = SK.Text("TOOLTIPS_VILLAGE_OVERVIEW", "Village Overview : every village's resources, troops and stats");
+          break;
         case 11111140:
           text = SK.Text("TOOLTIPS_CHARTER_VILLAGE_ID", "Click to copy this charter's village ID");
           break;

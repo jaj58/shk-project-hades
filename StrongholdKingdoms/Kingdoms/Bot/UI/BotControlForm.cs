@@ -105,6 +105,8 @@ namespace Kingdoms.Bot.UI
         private bool _rcLoading;
         private bool _crLoading;
         private bool _trLoading;
+        // Re-entrancy guard for the order dropdowns' swap-on-duplicate.
+        private bool _trOrderSyncing;
         private bool _bldLoading;
         private bool _ppLoading;
         private bool _bqLoading;
@@ -269,6 +271,8 @@ namespace Kingdoms.Bot.UI
                 WireUpMonkTab();
                 WireUpTimingTab();
                 WireUpAttackerTab();
+                WireUpResearchTab();
+                WireUpVillageOverviewButton();
 
                 // Let background monk/interdict threads marshal game calls (village loads,
                 // RPCs, people-list reads) onto the UI thread. Runs inline when already on
@@ -309,6 +313,7 @@ namespace Kingdoms.Bot.UI
                 TtLoadFromSettings();
                 BsLoadFromSettings();
                 AtLoadFromSettings();
+                RsLoadFromSettings();
             }
         }
 
@@ -2659,6 +2664,11 @@ namespace Kingdoms.Bot.UI
                 TtWriteToSettings();
                 tabName = "Timing Tool";
             }
+            else if (_tabControl.SelectedTab == _rsPage)
+            {
+                RsWriteToSettings();
+                tabName = "Research";
+            }
 
             BotEngine.Instance.ApplySettings();
             BotEngine.Instance.SaveSettings();
@@ -2775,6 +2785,11 @@ namespace Kingdoms.Bot.UI
                 TtLoadFromSettings();
                 tabName = "Timing Tool";
             }
+            else if (_tabControl.SelectedTab == _rsPage)
+            {
+                RsLoadFromSettings();
+                tabName = "Research";
+            }
 
             RefreshStatus();
             BotLogger.Log("UI", BotLogLevel.Info, tabName + " settings reloaded from disk.");
@@ -2828,7 +2843,11 @@ namespace Kingdoms.Bot.UI
             _trAutoHireCheck.CheckedChanged += delegate { TrWriteToSettings(); };
             _trAutoHireLimitInput.ValueChanged += delegate { TrWriteToSettings(); };
             _trIgnoreTransactionsCheck.CheckedChanged += delegate { TrWriteToSettings(); };
-            _trPriorityCombo.SelectedIndexChanged += delegate { TrWriteToSettings(); };
+            foreach (ComboBox orderCombo in TrOrderCombos())
+            {
+                ComboBox c = orderCombo;
+                c.SelectedIndexChanged += delegate { TrOnOrderComboChanged(c); };
+            }
             _trDisableOnCardExpiryCheck.CheckedChanged += delegate { TrWriteToSettings(); };
             _trDisableAfterInput.ValueChanged += delegate { TrWriteToSettings(); };
             _trDisbandOnDisableCheck.CheckedChanged += delegate { TrWriteToSettings(); };
@@ -2843,6 +2862,38 @@ namespace Kingdoms.Bot.UI
             _trRefreshTimer.Interval = 2000;
             _trRefreshTimer.Tick += delegate { try { TrUpdateStatusDisplay(); } catch { } };
             _trRefreshTimer.Start();
+        }
+
+        // Indexed by TradeCategoryKind.
+        private ComboBox[] TrOrderCombos()
+        {
+            return new ComboBox[] { _trOrderSellCombo, _trOrderBuyCombo, _trOrderRoutesCombo, _trOrderPlayerCombo };
+        }
+
+        // Keeps the four order dropdowns a 1-4 permutation: picking a number another
+        // dropdown already holds hands that dropdown this one's previous number.
+        private void TrOnOrderComboChanged(ComboBox changed)
+        {
+            if (_trOrderSyncing || changed.SelectedIndex < 0) return;
+            int previous = changed.Tag is int ? (int)changed.Tag : -1;
+            if (!_trLoading && previous >= 0)
+            {
+                _trOrderSyncing = true;
+                try
+                {
+                    foreach (ComboBox other in TrOrderCombos())
+                    {
+                        if (other != changed && other.SelectedIndex == changed.SelectedIndex)
+                        {
+                            other.SelectedIndex = previous;
+                            other.Tag = previous;
+                        }
+                    }
+                }
+                finally { _trOrderSyncing = false; }
+            }
+            changed.Tag = changed.SelectedIndex;
+            TrWriteToSettings();
         }
 
         private void TrBuildRoutesTabLayout()
@@ -2899,8 +2950,8 @@ namespace Kingdoms.Bot.UI
             routeColHdr.Dock = DockStyle.Top;
             routeColHdr.Height = 22;
             routeColHdr.BackColor = Color.FromArgb(36, 38, 50);
-            string[] routeCols = new string[] { "", "Name", "From", "To", "Resources", "Keep Min", "Merch", "Send Max", "Dist" };
-            int[] routeColX = new int[] { 6, 28, 164, 254, 344, 510, 600, 680, 770 };
+            string[] routeCols = new string[] { "", "Name", "From", "To", "Resources", "Keep Min", "Merch", "Send Max", "Dist", "Pri" };
+            int[] routeColX = new int[] { 6, 28, 164, 254, 344, 510, 600, 680, 770, 830 };
             for (int i = 0; i < routeCols.Length; i++)
             {
                 Label cl = new Label();
@@ -3113,8 +3164,8 @@ namespace Kingdoms.Bot.UI
             colHdr.Dock = DockStyle.Top;
             colHdr.Height = 22;
             colHdr.BackColor = Color.FromArgb(36, 38, 50);
-            string[] cols = new string[] { "", "Name", "From", "Target ID", "Resources", "Progress", "Keep Min", "Max Merch" };
-            int[] colX = new int[] { 6, 28, 164, 264, 344, 520, 660, 730 };
+            string[] cols = new string[] { "", "Name", "From", "Target ID", "Resources", "Progress", "Keep Min", "Max Merch", "Pri" };
+            int[] colX = new int[] { 6, 28, 164, 264, 344, 520, 660, 730, 800 };
             for (int i = 0; i < cols.Length; i++)
             {
                 Label cl = new Label();
@@ -3489,7 +3540,10 @@ namespace Kingdoms.Bot.UI
             try
             {
             TradeSettings s = BotEngine.Instance.Settings.Trade;
-            _trPriorityCombo.SelectedIndex = (int)s.Priority;
+            List<TradeCategoryKind> order = s.GetCategoryOrder();
+            ComboBox[] orderCombos = TrOrderCombos();
+            for (int i = 0; i < order.Count; i++)
+                orderCombos[(int)order[i]].SelectedIndex = i;
             _trEnabledCheck.Checked = s.Enabled;
             _trIntervalInput.Value = Math.Max(_trIntervalInput.Minimum,
                 Math.Min(_trIntervalInput.Maximum, s.CycleIntervalSeconds));
@@ -3534,8 +3588,11 @@ namespace Kingdoms.Bot.UI
             s.AutoHireMerchants = _trAutoHireCheck.Checked;
             s.AutoHireMerchantsLimit = (int)_trAutoHireLimitInput.Value;
             s.IgnoreCurrentTransactions = _trIgnoreTransactionsCheck.Checked;
-            if (_trPriorityCombo.SelectedIndex >= 0)
-                s.Priority = (TradePriority)_trPriorityCombo.SelectedIndex;
+            ComboBox[] oc = TrOrderCombos();
+            if (oc[0].SelectedIndex >= 0 && oc[1].SelectedIndex >= 0 &&
+                oc[2].SelectedIndex >= 0 && oc[3].SelectedIndex >= 0)
+                s.SetCategoryOrder(oc[0].SelectedIndex + 1, oc[1].SelectedIndex + 1,
+                    oc[2].SelectedIndex + 1, oc[3].SelectedIndex + 1);
             s.DisableOnTradeCardExpiry = _trDisableOnCardExpiryCheck.Checked;
             s.DisableAfterMinutes = (int)_trDisableAfterInput.Value;
             s.DisbandTradersOnDisable = _trDisbandOnDisableCheck.Checked;
@@ -7708,10 +7765,12 @@ namespace Kingdoms.Bot.UI
                 _trExchangeLimitLabel, _trExchangeLimitInput);
             LayoutRow(X, 96, G, _trAutoHireCheck, _trAutoHireLimitLabel, _trAutoHireLimitInput,
                 _trIgnoreTransactionsCheck);
-            LayoutRow(X, 132, G, _trPriorityLabel, _trPriorityCombo,
-                _trDisableOnCardExpiryCheck, _trAutoSaveRouteProgressCheck);
+            LayoutRow(X, 132, G, _trOrderLabel, _trOrderSellLabel, _trOrderSellCombo,
+                _trOrderBuyLabel, _trOrderBuyCombo, _trOrderRoutesLabel, _trOrderRoutesCombo,
+                _trOrderPlayerLabel, _trOrderPlayerCombo);
             LayoutRow(X, 168, G, _trDisableAfterLabel, _trDisableAfterInput,
-                _trDisableAfterMinLabel, _trDisbandOnDisableCheck);
+                _trDisableAfterMinLabel, _trDisbandOnDisableCheck,
+                _trDisableOnCardExpiryCheck, _trAutoSaveRouteProgressCheck);
 
             // Scout
             LayoutRow(X, 24, G, _scEnabledCheck, _scStatusLabel, _scIntervalLabel, _scIntervalInput);

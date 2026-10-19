@@ -7169,6 +7169,13 @@ namespace Kingdoms
       this.m_captialNextDelete = resourceData.nextCapitalDelete;
       if (resourceData.numMadeCaptains >= 0)
         GameEngine.Instance.World.setNumMadeCaptains(resourceData.numMadeCaptains);
+      // Replies for other downloaded villages land here too (Village Sync through
+      // VillageResourceRouter, the overview's per-row refresh, game callbacks). showStats()
+      // writes straight into the on-screen village panel, so only the displayed village may
+      // call it. updateAvailableTroops() reads the displayed village, so it would just redo
+      // the same numbers.
+      if (GameEngine.Instance.Village != this)
+        return;
       this.showStats();
       if (GameEngine.Instance.Castle == null)
         return;
