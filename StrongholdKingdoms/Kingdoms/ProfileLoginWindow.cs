@@ -1,8 +1,8 @@
 ﻿// Decompiled with JetBrains decompiler
 // Type: Kingdoms.ProfileLoginWindow
 // Assembly: StrongholdKingdoms, Version=1.1.0.0, Culture=neutral, PublicKeyToken=null
-// MVID: 0EF8A7E9-A6BF-4D02-8808-AD09084930F3
-// Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.43.10\StrongholdKingdoms.exe
+// MVID: 52D0A2C5-9772-48DD-88EA-43CBC4BFA3BF
+// Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.44.17\StrongholdKingdoms.exe
 
 using CommonTypes;
 using Gecko;
@@ -1737,8 +1737,12 @@ namespace Kingdoms
             case "cru":
               csdImage2.CustomTooltipID = 4054;
               break;
+            case "sp":
             case "sparta":
               csdImage2.CustomTooltipID = 4055;
+              break;
+            case "nn":
+              csdImage2.CustomTooltipID = 4056;
               break;
           }
           csdLabel1.Text = ProfileLoginWindow.getWorldShortDesc(list[index]);
@@ -3163,7 +3167,7 @@ label_57:
       List<WorldInfo> bySupportCulture = new List<WorldInfo>();
       foreach (WorldInfo world in ProfileLoginWindow.WorldList)
       {
-        if (!world.Playing && (world.Supportculture == culture || culture == "" || world.Supportculture == "eu" && culture != "pt" && culture != "wd" || world.Supportculture == "pt" && culture == "es" || world.Supportculture == "wd" || world.Supportculture == "kg" || world.Supportculture == "vk" || world.Supportculture == "gd" || world.Supportculture == "cru" || world.Supportculture == "sp" || world.Supportculture == "ph" || world.Supportculture == "ch" || world.Supportculture == "zh" || world.KingdomsWorldID >= 2500 && world.KingdomsWorldID <= 2599))
+        if (!world.Playing && (world.Supportculture == culture || culture == "" || world.Supportculture == "eu" && culture != "pt" && culture != "wd" || world.Supportculture == "pt" && culture == "es" || world.Supportculture == "wd" || world.Supportculture == "kg" || world.Supportculture == "vk" || world.Supportculture == "gd" || world.Supportculture == "cru" || world.Supportculture == "sp" || world.Supportculture == "nn" || world.Supportculture == "ph" || world.Supportculture == "ch" || world.Supportculture == "zh" || world.KingdomsWorldID >= 2500 && world.KingdomsWorldID <= 2599))
           bySupportCulture.Add(world);
       }
       if (culture != "")
@@ -3197,7 +3201,7 @@ label_57:
           flag3 = true;
         else if (specialMode == 2 && flag2)
           flag3 = true;
-        if (flag3 && (world.Supportculture == culture || world.Playing && includeOwn || culture == "" || world.Supportculture == "eu" && culture != "pt" && culture != "wd" || world.Supportculture == "pt" && culture == "es" || (world.Supportculture == "wd" || world.Supportculture == "kg" || world.Supportculture == "vk" || world.Supportculture == "gd" || world.Supportculture == "cru" || world.Supportculture == "sp") && culture != "eu"))
+        if (flag3 && (world.Supportculture == culture || world.Playing && includeOwn || culture == "" || world.Supportculture == "eu" && culture != "pt" && culture != "wd" || world.Supportculture == "pt" && culture == "es" || (world.Supportculture == "wd" || world.Supportculture == "kg" || world.Supportculture == "vk" || world.Supportculture == "gd" || world.Supportculture == "cru" || world.Supportculture == "sp" || world.Supportculture == "nn") && culture != "eu"))
         {
           bySupportCulture.Add(world);
           if (world.Playing)
@@ -3233,6 +3237,10 @@ label_57:
         if ((a.Supportculture == culture || a.Supportculture == "sp") && b.Supportculture != culture && b.Supportculture != "sp")
           return -1;
         if ((b.Supportculture == culture || b.Supportculture == "sp") && a.Supportculture != culture && a.Supportculture != "sp")
+          return 1;
+        if ((a.Supportculture == culture || a.Supportculture == "nn") && b.Supportculture != culture && b.Supportculture != "nn")
+          return -1;
+        if ((b.Supportculture == culture || b.Supportculture == "nn") && a.Supportculture != culture && a.Supportculture != "nn")
           return 1;
         if (a.Playing != b.Playing)
           return b.Playing.CompareTo(a.Playing);
@@ -3536,7 +3544,7 @@ label_57:
         if (WorldSelectPopupPanel.closedImage != null)
           WorldSelectPopupPanel.closedImage.Dispose();
         // ISSUE: variable of the null type
-       // __Null local1;
+        // __Null local1;
         WorldSelectPopupPanel.closedImage = (Image) (null);
         WorldSelectPopupPanel.playImageOver = (Image) null;
         WorldSelectPopupPanel.playImage = (Image) null;
@@ -3562,7 +3570,7 @@ label_57:
         if (BPPopupPanel.completeImageOver != null)
           BPPopupPanel.completeImageOver.Dispose();
         // ISSUE: variable of the null type
-       // __Null null;
+        // __Null null;
         BPPopupPanel.completeImageOver = (Image) ( null);
         BPPopupPanel.completeImage = (Image) null;
         BPPopupPanel.closeImageOver = (Image) null;
@@ -3584,7 +3592,7 @@ label_57:
         if (CreatePopupPanel.transferImageOver != null)
           CreatePopupPanel.transferImageOver.Dispose();
         // ISSUE: variable of the null type
-       // __Null null;
+         // __Null null;
         CreatePopupPanel.transferImageOver = (Image) ( null);
         CreatePopupPanel.transferImage = (Image) null;
         CreatePopupPanel.closeImageOver = (Image) null;
@@ -3604,7 +3612,7 @@ label_57:
         if (VacationCancelPopupPanel.cancelImage != null)
           VacationCancelPopupPanel.cancelImage.Dispose();
         // ISSUE: variable of the null type
-       // __Null local4;
+         // __Null local4;
         VacationCancelPopupPanel.cancelImageOver = (Image) (null);
         VacationCancelPopupPanel.cancelImage = (Image) null;
         VacationCancelPopupPanel.headerImage = (Image)null;
