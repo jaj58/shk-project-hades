@@ -1,8 +1,8 @@
 ﻿// Decompiled with JetBrains decompiler
 // Type: Kingdoms.WorldListEntry
 // Assembly: StrongholdKingdoms, Version=1.1.0.0, Culture=neutral, PublicKeyToken=null
-// MVID: 0EF8A7E9-A6BF-4D02-8808-AD09084930F3
-// Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.43.10\StrongholdKingdoms.exe
+// MVID: 52D0A2C5-9772-48DD-88EA-43CBC4BFA3BF
+// Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.44.17\StrongholdKingdoms.exe
 
 using CommonTypes;
 using System;
@@ -201,6 +201,8 @@ namespace Kingdoms
           return 4054;
         case "sp":
           return 4055;
+        case "nn":
+          return 4056;
         default:
           return 4042;
       }

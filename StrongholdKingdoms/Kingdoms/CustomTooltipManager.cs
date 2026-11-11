@@ -1,8 +1,8 @@
 ﻿// Decompiled with JetBrains decompiler
 // Type: Kingdoms.CustomTooltipManager
 // Assembly: StrongholdKingdoms, Version=1.1.0.0, Culture=neutral, PublicKeyToken=null
-// MVID: 0EF8A7E9-A6BF-4D02-8808-AD09084930F3
-// Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.43.10\StrongholdKingdoms.exe
+// MVID: 52D0A2C5-9772-48DD-88EA-43CBC4BFA3BF
+// Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.44.17\StrongholdKingdoms.exe
 
 using CommonTypes;
 using System;
@@ -2083,7 +2083,10 @@ namespace Kingdoms
           text = SK.Text("TOOLTIPS_LOGIN_MAP_OF_CRUSADER", "The map of this world is Crusader States");
           break;
         case 4055:
-          text = SK.Text("TOOLTIPS_LOGIN_MAP_OF_SPARTA", "The map of this world is Sparta");
+          text = SK.Text("TOOLTIPS_LOGIN_MAP_OF_SPARTA", "The map of this world is Clash of the Spartans");
+          break;
+        case 4056:
+          text = SK.Text("TOOLTIPS_LOGIN_MAP_OF_NATIVE_NATIONS", "The map of this world is Native Nations");
           break;
         case 4100:
           text = SK.Text("BARRACKS_Troops", "Troops");
@@ -4212,6 +4215,7 @@ namespace Kingdoms
       public const int LOGIN_MAP_OF_TGD = 4053;
       public const int LOGIN_MAP_OF_CRUSADER = 4054;
       public const int LOGIN_MAP_OF_SPARTA = 4055;
+      public const int LOGIN_MAP_OF_NATIVE_NATIONS = 4056;
       public const int VO_TROOPS = 4100;
       public const int VO_SCOUTS = 4101;
       public const int VO_MERCHANTS = 4102;

@@ -1,8 +1,8 @@
 ﻿// Decompiled with JetBrains decompiler
 // Type: Kingdoms.Program
 // Assembly: StrongholdKingdoms, Version=1.1.0.0, Culture=neutral, PublicKeyToken=null
-// MVID: 0EF8A7E9-A6BF-4D02-8808-AD09084930F3
-// Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.43.10\StrongholdKingdoms.exe
+// MVID: 52D0A2C5-9772-48DD-88EA-43CBC4BFA3BF
+// Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.44.17\StrongholdKingdoms.exe
 
 using CommonTypes;
 using DXGraphics;
@@ -110,6 +110,9 @@ namespace Kingdoms
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetProcessDPIAware();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetProcessDPIAwareness(int value);
 
     [DllImport("ArcWrapper.dll", CallingConvention = CallingConvention.Cdecl)]
     public static extern int Arc_Init(IntPtr handle);
@@ -327,8 +330,7 @@ namespace Kingdoms
             OperatingSystem osVersion = Environment.OSVersion;
             if (osVersion.Platform == PlatformID.Win32NT)
             {
-              if (osVersion.Version.Major >= 6)
-                Program.SetProcessDPIAware();
+              int major = osVersion.Version.Major;
             }
           }
           catch (Exception ex)

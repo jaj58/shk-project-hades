@@ -1,8 +1,8 @@
 ﻿// Decompiled with JetBrains decompiler
 // Type: Kingdoms.NewSelectVillageAreaPanel
 // Assembly: StrongholdKingdoms, Version=1.1.0.0, Culture=neutral, PublicKeyToken=null
-// MVID: 0EF8A7E9-A6BF-4D02-8808-AD09084930F3
-// Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.43.10\StrongholdKingdoms.exe
+// MVID: 52D0A2C5-9772-48DD-88EA-43CBC4BFA3BF
+// Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.44.17\StrongholdKingdoms.exe
 
 using CommonTypes;
 using System;
@@ -177,6 +177,14 @@ namespace Kingdoms
           x = 35;
           this.divider = 5.5f;
           break;
+        case 31:
+          this.mapImage.Image = (Image) GFXLibrary.world_select_map_nn;
+          y = 60;
+          x = -21;
+          this.divider = 4.2f;
+          num1 = -52;
+          this.smallButtons = true;
+          break;
         default:
           this.mapImage.Image = (Image) GFXLibrary.world_select_map_en;
           break;
@@ -283,7 +291,7 @@ namespace Kingdoms
       this.highLabel.Color = ARGBColors.Black;
       this.highLabel.DropShadowColor = ARGBColors.LightGray;
       this.backgroundArea.addControl((CustomSelfDrawPanel.CSDControl) this.highLabel);
-      if (GameEngine.Instance.World.WorldMapType == 16 || GameEngine.Instance.World.WorldMapType == 19 || GameEngine.Instance.World.WorldMapType == 23 || GameEngine.Instance.World.WorldMapType == 24 || GameEngine.Instance.World.WorldMapType == 27)
+      if (GameEngine.Instance.World.WorldMapType == 16 || GameEngine.Instance.World.WorldMapType == 19 || GameEngine.Instance.World.WorldMapType == 23 || GameEngine.Instance.World.WorldMapType == 24 || GameEngine.Instance.World.WorldMapType == 27 || GameEngine.Instance.World.WorldMapType == 31)
       {
         int num2 = 0;
         if (GameEngine.Instance.World.WorldMapType == 19)
