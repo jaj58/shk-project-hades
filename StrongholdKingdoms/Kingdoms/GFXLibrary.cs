@@ -1,8 +1,8 @@
 ﻿// Decompiled with JetBrains decompiler
 // Type: Kingdoms.GFXLibrary
 // Assembly: StrongholdKingdoms, Version=1.1.0.0, Culture=neutral, PublicKeyToken=null
-// MVID: 0EF8A7E9-A6BF-4D02-8808-AD09084930F3
-// Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.43.10\StrongholdKingdoms.exe
+// MVID: 52D0A2C5-9772-48DD-88EA-43CBC4BFA3BF
+// Assembly location: C:\ProgramData\Firefly Studios\Stronghold Kingdoms\2.0.44.17\StrongholdKingdoms.exe
 
 using CommonTypes;
 using DXGraphics;
@@ -194,6 +194,7 @@ namespace Kingdoms
     public static BaseImage world_select_map_tgd = new BaseImage(AssetPaths.AssetIconsMisc, "WorldMap_tgd.png");
     public static BaseImage world_select_map_cru = new BaseImage(AssetPaths.AssetIconsMisc, "WorldMap_cru.png");
     public static BaseImage world_select_map_sparta = new BaseImage(AssetPaths.AssetIconsMisc, "WorldMap_sparta.png");
+    public static BaseImage world_select_map_nn = new BaseImage(AssetPaths.AssetIconsMisc, "WorldMap_nn.png");
     public static BaseImage world_list_background = new BaseImage(AssetPaths.AssetIconsMisc, "worldListBackground.png");
     public static BaseImage age_first_age_28x16 = new BaseImage(AssetPaths.AssetIconsMisc, nameof (age_first_age_28x16));
     public static BaseImage age_first_age_x65 = new BaseImage(AssetPaths.AssetIconsMisc, nameof (age_first_age_x65));
@@ -4759,6 +4760,7 @@ namespace Kingdoms
       GFXLibrary.LoginWorldMaps.Add("gd", new BaseImage(AssetPaths.AssetIconsCardPanel, "map_gd"));
       GFXLibrary.LoginWorldMaps.Add("cru", new BaseImage(AssetPaths.AssetIconsCardPanel, "map_cru"));
       GFXLibrary.LoginWorldMaps.Add("sp", new BaseImage(AssetPaths.AssetIconsCardPanel, "map_sparta"));
+      GFXLibrary.LoginWorldMaps.Add("nn", new BaseImage(AssetPaths.AssetIconsCardPanel, "map_nn"));
       GFXLibrary.PremiumTokens = new Dictionary<int, BaseImage[]>();
       GFXLibrary.PremiumTokens.Add(4112, new BaseImage[2]
       {
