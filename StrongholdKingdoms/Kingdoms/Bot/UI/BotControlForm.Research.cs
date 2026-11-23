@@ -498,6 +498,11 @@ namespace Kingdoms.Bot.UI
             ResearchSettings s = RsEditableSettings;
             ResearchPlanEntry e = item.Tag as ResearchPlanEntry;
             if (s == null || e == null || !s.Plan.Contains(e)) return;
+            // WinForms re-raises ItemChecked for every checked item when the list's handle is
+            // first created (tab opened after a restart with a saved plan). Those aren't user
+            // clicks and arrive while later items aren't registered yet (Items[i] == null), so
+            // only react to a real change.
+            if (e.Enabled == item.Checked) return;
             e.Enabled = item.Checked;
             RsRefreshPlan(false, -1);
         }
@@ -879,6 +884,8 @@ namespace Kingdoms.Bot.UI
                 {
                     ResearchPlanEntry e = plan[i];
                     ListViewItem item = _rsPlanList.Items[i];
+                    // Null while the ListView is mid handle-creation (items not re-inserted yet).
+                    if (item == null) { _rsPlanSignature = null; continue; }
                     item.Tag = e;
                     if (item.Checked != e.Enabled) item.Checked = e.Enabled;
 
