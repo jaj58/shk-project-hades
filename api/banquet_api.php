@@ -1,6 +1,7 @@
 <?php
 /**
- * Banquet Good Sender — coordination API.
+ * Goods Sender (formerly Banquet Good Sender) — coordination API. Covers banquet goods,
+ * resources, food and weapons; see BQ_GOODS in banquet_planner.php.
  *
  * POST application/json. Every request carries "key" (the shared group key) and
  * "action". A group is created the first time a key is used by a bot (sync) or
@@ -128,6 +129,7 @@ function bq_load_players(PDO $pdo, int $groupId): array {
             'craftsmanship'  => (int)$r['craftsmanship'],
             'sec_per_tile'   => (float)$r['sec_per_tile'],
             'carry'          => bq_int_array(json_decode($r['carry_json'], true)),
+            'client'         => $r['client_json'] !== null ? json_decode($r['client_json'], true) : null,
             'cards'          => json_decode((string)$r['cards_json'], true),
             'client_version' => $r['client_version'],
         ];
@@ -151,9 +153,12 @@ function bq_load_villages(PDO $pdo, int $groupId): array {
             'levels'           => bq_int_array(json_decode($r['levels_json'], true)),
             'prod'             => bq_float_array(json_decode($r['prod_json'], true)),
             'buildings'        => bq_int_array(json_decode($r['buildings_json'], true)),
+            'caps'             => $r['caps_json'] !== null ? bq_int_array(json_decode($r['caps_json'], true)) : null,
+            'storage'          => $r['storage_json'] !== null ? bq_storage_flags(json_decode($r['storage_json'], true)) : null,
             'levels_at_game'   => (int)$r['levels_at_game'],
             'snapshot_at_game' => (int)$r['snapshot_at_game'],
             'merchants_free'   => (int)$r['merchants_free'],
+            'merchants_home'   => (int)$r['merchants_home'],
             'reported_at'      => (int)$r['reported_at'],
         ];
     }
@@ -257,6 +262,51 @@ function bq_str($v, int $max): string {
     return mb_substr(trim((string)$v), 0, $max);
 }
 
+/** {hall, stockpile, granary, inn, armoury} => bool, from a bot report or the DB. */
+function bq_storage_flags($v): array {
+    $out = [];
+    foreach (BQ_STORAGES as $k) $out[$k] = is_array($v) && !empty($v[$k]);
+    return $out;
+}
+
+/** The bot's per-category settings: {category: {enabled, reserve}}, or null if not sent (older bot). */
+function bq_client_settings($v): ?array {
+    if (!is_array($v)) return null;
+    $out = [];
+    foreach (BQ_CATEGORIES as $c) {
+        $e = isset($v[$c]) && is_array($v[$c]) ? $v[$c] : [];
+        $out[$c] = [
+            'enabled' => !empty($e['enabled']),
+            'reserve' => max(0, min(100000, (int)($e['reserve'] ?? 0))),
+        ];
+    }
+    return $out;
+}
+
+/** The good catalogue for the website. */
+function bq_goods_meta(): array {
+    $out = [];
+    foreach (BQ_GOODS as $g => $def) {
+        $out[] = ['index' => $g, 'name' => $def[0], 'resource_id' => $def[1], 'category' => $def[2], 'storage' => $def[3]];
+    }
+    return $out;
+}
+
+function bq_categories_meta(): array {
+    $out = [];
+    foreach (BQ_CATEGORIES as $c) {
+        $out[] = ['id' => $c, 'name' => BQ_CATEGORY_NAMES[$c], 'goods' => bq_category_goods($c)];
+    }
+    return $out;
+}
+
+/** Each category's mode, for the bot. */
+function bq_modes(array $settings): array {
+    $out = [];
+    foreach (BQ_CATEGORIES as $c) $out[$c] = $settings['categories'][$c]['mode'];
+    return $out;
+}
+
 // ── Bot: sync ───────────────────────────────────────────────────────────────
 
 function bq_handle_sync(PDO $pdo, string $keyHash, array $req, int $now): void {
@@ -278,18 +328,21 @@ function bq_handle_sync(PDO $pdo, string $keyHash, array $req, int $now): void {
     $pdo->prepare('UPDATE bq_groups SET game_offset_sec = ?, updated_at = ? WHERE id = ?')
         ->execute([$offset, $now, $gid]);
 
+    // client_json stays NULL for bots that don't send it (only banquet goods then).
+    $client = bq_client_settings($p['client'] ?? null);
     $pdo->prepare(
         'INSERT INTO bq_players (group_id, user_id, name, world, craftsmanship, sec_per_tile, carry_json,
-            cards_json, client_version, last_seen)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            client_json, cards_json, client_version, last_seen)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE name = VALUES(name), world = VALUES(world), craftsmanship = VALUES(craftsmanship),
-            sec_per_tile = VALUES(sec_per_tile), carry_json = VALUES(carry_json), cards_json = VALUES(cards_json),
-            client_version = VALUES(client_version), last_seen = VALUES(last_seen)')
+            sec_per_tile = VALUES(sec_per_tile), carry_json = VALUES(carry_json), client_json = VALUES(client_json),
+            cards_json = VALUES(cards_json), client_version = VALUES(client_version), last_seen = VALUES(last_seen)')
         ->execute([
             $gid, $userId, bq_str($p['name'] ?? '', 64), bq_str($p['world'] ?? '', 64),
-            max(0, min(BQ_NUM_GOODS, (int)($p['craftsmanship'] ?? 0))),
+            max(0, min(BQ_NUM_BANQUET_GOODS, (int)($p['craftsmanship'] ?? 0))),
             max(0.0, (float)($p['sec_per_tile'] ?? 0)),
             json_encode(bq_int_array($p['carry'] ?? [])),
+            $client !== null ? json_encode($client) : null,
             isset($p['cards']) ? json_encode($p['cards']) : null,
             bq_str($p['client_version'] ?? '', 32),
             $now,
@@ -299,24 +352,31 @@ function bq_handle_sync(PDO $pdo, string $keyHash, array $req, int $now): void {
     $keepIds = [];
     $up = $pdo->prepare(
         'INSERT INTO bq_villages (group_id, village_id, user_id, name, x, y, has_hall, hall_cap, levels_json,
-            prod_json, buildings_json, levels_at_game, snapshot_at_game, merchants_free, reported_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            prod_json, buildings_json, caps_json, storage_json, levels_at_game, snapshot_at_game, merchants_free,
+            merchants_home, reported_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), name = VALUES(name), x = VALUES(x), y = VALUES(y),
             has_hall = VALUES(has_hall), hall_cap = VALUES(hall_cap), levels_json = VALUES(levels_json),
-            prod_json = VALUES(prod_json), buildings_json = VALUES(buildings_json), levels_at_game = VALUES(levels_at_game),
+            prod_json = VALUES(prod_json), buildings_json = VALUES(buildings_json), caps_json = VALUES(caps_json),
+            storage_json = VALUES(storage_json), levels_at_game = VALUES(levels_at_game),
             snapshot_at_game = VALUES(snapshot_at_game), merchants_free = VALUES(merchants_free),
-            reported_at = VALUES(reported_at)');
+            merchants_home = VALUES(merchants_home), reported_at = VALUES(reported_at)');
     foreach ($villagesIn as $v) {
         $vid = (int)($v['village_id'] ?? 0);
         if ($vid <= 0) continue;
         $keepIds[] = $vid;
+        // Bots that cover every good send caps[] and storage{}; older ones only the hall.
+        $caps    = isset($v['caps']) && is_array($v['caps']) ? bq_int_array($v['caps']) : null;
+        $storage = isset($v['storage']) && is_array($v['storage']) ? bq_storage_flags($v['storage']) : null;
         $up->execute([
             $gid, $vid, $userId, bq_str($v['name'] ?? '', 64), (int)($v['x'] ?? 0), (int)($v['y'] ?? 0),
             !empty($v['has_hall']) ? 1 : 0, max(0, (int)($v['hall_cap'] ?? 0)),
             json_encode(bq_int_array($v['levels'] ?? [])), json_encode(bq_float_array($v['prod'] ?? [])),
             json_encode(bq_int_array($v['buildings'] ?? [])),
+            $caps !== null ? json_encode($caps) : null,
+            $storage !== null ? json_encode($storage) : null,
             max(0, (int)($v['levels_at_game'] ?? $gameTime)), max(0, (int)($v['snapshot_at_game'] ?? 0)),
-            max(0, (int)($v['merchants_free'] ?? 0)), $now,
+            max(0, (int)($v['merchants_free'] ?? 0)), max(0, (int)($v['merchants_home'] ?? 0)), $now,
         ]);
     }
     // all_village_ids lists every village the player still owns, including ones the
@@ -367,7 +427,9 @@ function bq_handle_sync(PDO $pdo, string $keyHash, array $req, int $now): void {
     foreach ($players as $pl) if (bq_player_online($pl, $now)) $online++;
 
     bq_ok([
-        'mode'           => $settings['mode'],
+        // Older bots only know banquet goods and read this one mode.
+        'mode'           => $settings['categories']['banquet']['mode'],
+        'modes'          => bq_modes($settings),
         'orders'         => $orders,
         'refresh'        => bq_refresh_requests($shipments, $villages, $settings, $userId, $gameNow),
         'players_online' => $online,
@@ -395,7 +457,8 @@ function bq_handle_get_state(PDO $pdo, string $keyHash, int $now): void {
     $group = bq_lock_group($pdo, $keyHash, false, $now);
     if (!$group) {
         $settings = bq_normalize_settings(null);
-        bq_ok(['exists' => false, 'goods' => BQ_GOOD_NAMES, 'settings' => $settings, 'players' => [],
+        bq_ok(['exists' => false, 'goods' => bq_goods_meta(), 'categories' => bq_categories_meta(),
+            'settings' => $settings, 'players' => [],
             'villages' => [], 'grid' => (object)[], 'active' => [], 'recent' => [],
             'settle_buffer_seconds' => $settings['settle_buffer_seconds']]);
     }
@@ -432,12 +495,21 @@ function bq_handle_get_state(PDO $pdo, string $keyHash, int $now): void {
             'sec_per_tile'   => $pl['sec_per_tile'],
             'cards'          => $pl['cards'],
             'client_version' => $pl['client_version'],
+            'client'         => $pl['client'],
             'villages'       => $villageCounts[$pl['user_id']] ?? 0,
         ];
     }
 
+    $csByCat = [];
+    foreach (BQ_CATEGORIES as $c) $csByCat[$c] = bq_cs($settings, $c);
     $villagesOut = [];
     foreach ($villages as $v) {
+        $caps = [];
+        $effCaps = [];
+        for ($g = 0; $g < BQ_NUM_GOODS; $g++) {
+            $caps[] = bq_village_cap($v, $g);
+            $effCaps[] = bq_effective_cap($csByCat[bq_good_category($g)], $v, $g);
+        }
         $villagesOut[] = [
             'village_id'        => $v['village_id'],
             'user_id'           => $v['user_id'],
@@ -446,7 +518,10 @@ function bq_handle_get_state(PDO $pdo, string $keyHash, int $now): void {
             'y'                 => $v['y'],
             'has_hall'          => $v['has_hall'],
             'hall_cap'          => $v['hall_cap'],
-            'effective_cap'     => bq_effective_cap($settings, $v),
+            'caps'              => $caps,
+            'effective_caps'    => $effCaps,
+            'storage'           => $v['storage'],
+            'merchants_home'    => $v['merchants_home'],
             'prod'              => $v['prod'],
             'buildings'         => $v['buildings'],
             'merchants_free'    => $v['merchants_free'],
@@ -465,6 +540,7 @@ function bq_handle_get_state(PDO $pdo, string $keyHash, int $now): void {
             'to_user_id'      => $s['to_user_id'],
             'to_village_id'   => $s['to_village_id'],
             'good'            => $s['good'],
+            'category'        => bq_good_category((int)$s['good']),
             'amount'          => $s['amount'],
             'merchants'       => $s['merchants'],
             'eta_in_sec'      => $s['eta_game'] !== null ? $s['eta_game'] - $gameNow : null,
@@ -478,7 +554,8 @@ function bq_handle_get_state(PDO $pdo, string $keyHash, int $now): void {
 
     bq_ok([
         'exists'    => true,
-        'goods'     => BQ_GOOD_NAMES,
+        'goods'     => bq_goods_meta(),
+        'categories' => bq_categories_meta(),
         'settings'  => $settings,
         'players'   => $playersOut,
         'villages'  => $villagesOut,
@@ -496,11 +573,21 @@ function bq_handle_set_settings(PDO $pdo, string $keyHash, array $req, int $now)
     $pdo->prepare('UPDATE bq_groups SET settings_json = ?, updated_at = ? WHERE id = ?')
         ->execute([json_encode($settings), $now, (int)$group['id']]);
 
-    // Orders planned under the old settings may no longer be wanted.
-    if (!empty($req['cancel_open_orders']) || $settings['mode'] === 'off') {
+    // Orders planned under the old settings may no longer be wanted; a category switched
+    // off loses its open orders either way.
+    $offGoods = [];
+    foreach (BQ_CATEGORIES as $c) {
+        if ($settings['categories'][$c]['mode'] === 'off') $offGoods = array_merge($offGoods, bq_category_goods($c));
+    }
+    if (!empty($req['cancel_open_orders'])) {
         $pdo->prepare("UPDATE bq_shipments SET status = 'cancelled', error = 'settings changed', lease_until = NULL,
                 updated_at = ? WHERE group_id = ? AND status = 'leased'")
             ->execute([$now, (int)$group['id']]);
+    } elseif ($offGoods) {
+        $in = implode(',', array_fill(0, count($offGoods), '?'));
+        $pdo->prepare("UPDATE bq_shipments SET status = 'cancelled', error = 'settings changed', lease_until = NULL,
+                updated_at = ? WHERE group_id = ? AND status = 'leased' AND good IN ($in)")
+            ->execute(array_merge([$now, (int)$group['id']], $offGoods));
     }
     $pdo->commit();
     bq_ok(['settings' => $settings]);

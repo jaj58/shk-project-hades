@@ -60,13 +60,14 @@ $GAME_NOW = 50000;
 // ── Settings normalisation ──────────────────────────────────────────────────
 $s = bq_normalize_settings(['mode' => 'nonsense', 'min_send' => -5, 'lease_seconds' => 99999,
     'player_caps' => ['7' => 5400, 'x' => 1, '8' => 0], 'goods_enabled' => [true, false]]);
-check($s['mode'] === 'off', 'invalid mode falls back to off');
-check($s['min_send'] === 1, 'min_send clamped up');
+$b = $s["categories"]["banquet"];
+check($b["mode"] === "off", "invalid mode falls back to off");
+check($b['min_send'] === 1, 'min_send clamped up');
 check($s['lease_seconds'] === 900, 'lease clamped down');
-check((array)$s['player_caps'] === ['7' => 5400], 'caps keep only positive numeric entries');
-check($s['goods_enabled'][0] === true && $s['goods_enabled'][1] === false && $s['goods_enabled'][2] === false,
+check((array)$b['player_caps'] === ['7' => 5400], 'caps keep only positive numeric entries');
+check($b['goods_enabled'][0] === true && $b['goods_enabled'][1] === false && $b['goods_enabled'][2] === false,
     'goods_enabled missing entries become false');
-check(json_encode(bq_normalize_settings([])['player_caps']) === '{}', 'empty caps encode as an object');
+check(json_encode(bq_normalize_settings([])['categories']['banquet']['player_caps']) === '{}', 'empty caps encode as an object');
 
 // ── Projection ──────────────────────────────────────────────────────────────
 $v = village(1, 1, ['levels' => [100, 0, 0, 0, 0, 0, 0, 0], 'prod' => [864, 0, 0, 0, 0, 0, 0, 0]]);
@@ -76,9 +77,9 @@ check(bq_projected_level($v, 0, 50000 + 86400) === 2700.0, 'projection stops at 
 
 // ── Effective cap never exceeds the reported cap ────────────────────────────
 $s = settings(['player_caps' => ['1' => 5400], 'village_caps' => ['2' => 1500]]);
-check(bq_effective_cap($s, village(1, 1)) === 2700, 'player override above reported cap is clamped');
-check(bq_effective_cap($s, village(2, 1)) === 1500, 'village override wins over player override');
-check(bq_effective_cap($s, village(1, 1, ['hall_cap' => 5400])) === 5400, 'card-doubled cap honoured');
+check(bq_effective_cap(bq_cs($s, 'banquet'), village(1, 1), 0) === 2700, 'player override above reported cap is clamped');
+check(bq_effective_cap(bq_cs($s, 'banquet'), village(2, 1), 0) === 1500, 'village override wins over player override');
+check(bq_effective_cap(bq_cs($s, 'banquet'), village(1, 1, ['hall_cap' => 5400]), 0) === 5400, 'card-doubled cap honoured');
 
 // ── Autofill: producers feed non-producers, never above cap ─────────────────
 $players = [1 => player(1), 2 => player(2)];
@@ -335,6 +336,7 @@ $pB = [1 => player(1), 2 => player(2), 3 => player(3)];
 $vB = [30 => producer(30, 1, 2000), 31 => producer(31, 2, 500)];
 
 $s = bq_normalize_settings(['balance_goods' => true, 'balance_tolerance_percent' => 99]);
+$s = $s['categories']['banquet'];
 check($s['balance_goods'] === true && $s['balance_tolerance_percent'] === 50, 'balance settings normalised');
 
 $ship = [];
@@ -409,7 +411,7 @@ check($gridB['30'][$VEN]['target'] === 1250 && $gridB['30'][$VEN]['balance'] ===
 check($gridB['31'][$VEN]['shortfall'] === 750, 'grid shows balance shortfall');
 
 // ── Per-player roles and ignored villages ───────────────────────────────────
-$s = bq_normalize_settings(['no_give_players' => ['1', 'x'], 'ignored_villages' => [20, 20]]);
+$s = bq_normalize_settings(['no_give_players' => ['1', 'x'], 'ignored_villages' => [20, 20]])['categories']['banquet'];
 check($s['no_give_players'] === [1] && $s['ignored_villages'] === [20] && $s['no_receive_players'] === [],
     'role and ignore lists normalised');
 
@@ -474,6 +476,146 @@ check($gridI['20'][$salt]['skip'] === 'ignored' && $gridI['21'][$salt]['skip'] =
 // ── Grid ────────────────────────────────────────────────────────────────────
 $grid = bq_grid(settings(), $players, $villages, [], $GAME_NOW);
 check($grid['20'][$salt]['shortfall'] === 1700 && $grid['10'][$salt]['skip'] === 'produces it', 'grid reports shortfall and skip reasons');
+
+// ── Every good: categories ──────────────────────────────────────────────────
+const WOOD = 8, STONE = 9, APPLES = 12, ALE = 18, BOWS = 19;
+
+/** A village reported by a bot that covers every good. */
+function village_all(int $vid, int $uid, array $o = []): array {
+    return array_merge([
+        'village_id' => $vid, 'user_id' => $uid, 'name' => "V$vid", 'x' => $vid, 'y' => 0,
+        'has_hall' => true, 'hall_cap' => 2700,
+        'levels' => array_fill(0, BQ_NUM_GOODS, 0), 'prod' => array_fill(0, BQ_NUM_GOODS, 0.0),
+        'buildings' => array_fill(0, BQ_NUM_GOODS, 0), 'caps' => array_fill(0, BQ_NUM_GOODS, 5000),
+        'storage' => ['hall' => true, 'stockpile' => true, 'granary' => true, 'inn' => true, 'armoury' => true],
+        'levels_at_game' => 50000, 'snapshot_at_game' => 50000, 'merchants_free' => 1000, 'merchants_home' => 1000,
+    ], $o);
+}
+
+function player_all(int $uid, array $o = []): array {
+    $client = [];
+    foreach (BQ_CATEGORIES as $c) $client[$c] = ['enabled' => true, 'reserve' => 0];
+    return player($uid, array_merge(['carry' => array_fill(0, BQ_NUM_GOODS, 10), 'client' => $client], $o));
+}
+
+function with_level(array $v, int $g, int $level, int $buildings = 0): array {
+    $v['levels'][$g] = $level;
+    $v['buildings'][$g] = $buildings;
+    return $v;
+}
+
+function cat_settings(array $cats, array $group = []): array {
+    $in = $group;
+    foreach ($cats as $c => $o) {
+        $in['categories'][$c] = array_merge(['mode' => 'autofill', 'keep_amount' => 0, 'safety_margin' => 0,
+            'min_send' => 10], $o);
+    }
+    return bq_normalize_settings($in);
+}
+
+// Legacy flat settings become the banquet category; new categories start off.
+$s = bq_normalize_settings(['mode' => 'autofill', 'keep_amount' => 300, 'max_orders_per_player' => 7]);
+check($s['categories']['banquet']['mode'] === 'autofill' && $s['categories']['banquet']['keep_amount'] === 300,
+    'legacy settings migrate into banquet');
+check($s['max_orders_per_player'] === 7, 'legacy group-wide keys kept');
+check($s['categories']['resources']['mode'] === 'off' && $s['categories']['food']['mode'] === 'off'
+    && $s['categories']['weapons']['mode'] === 'off', 'new categories default to off');
+check($s['category_order'] === BQ_CATEGORIES, 'default category order');
+check(bq_normalize_settings(['category_order' => ['food', 'nope', 'food']])['category_order'] === ['food', 'banquet', 'resources', 'weapons'],
+    'category order cleaned and completed');
+check(count(bq_category_goods('banquet')) === 8 && count(bq_category_goods('resources')) === 4
+    && count(bq_category_goods('food')) === 7 && count(bq_category_goods('weapons')) === 5, 'catalogue split');
+check(bq_category_goods('banquet') === [0, 1, 2, 3, 4, 5, 6, 7], 'banquet keeps indices 0..7');
+
+$pA = [1 => player_all(1), 2 => player_all(2), 3 => player_all(3)];
+$vA = [
+    10 => with_level(village_all(10, 1), WOOD, 4000, 2),
+    20 => village_all(20, 2),
+    30 => village_all(30, 3),
+];
+
+// Resources in focus on player 3 while banquet runs autofill: independent settings.
+$ship = [];
+$created = bq_plan($ship, cat_settings(['banquet' => [], 'resources' => ['mode' => 'focus', 'focus_players' => [3]]]),
+    $pA, $vA, $API_NOW, $GAME_NOW);
+check(sum_to($created, 30, WOOD) === 4000 && sum_to($created, 20, WOOD) === 0, 'resources focus only fills the focused player');
+$ship = [];
+$created = bq_plan($ship, cat_settings(['resources' => ['player_caps' => ['2' => 1000, '3' => 1000]]]), $pA, $vA, $API_NOW, $GAME_NOW);
+check(sum_to($created, 20, WOOD) > 0 && sum_to($created, 30, WOOD) > 0, 'resources autofill spreads wood');
+check(sum_to($created, 20, WOOD) + sum_to($created, 30, WOOD) <= 4000, 'never more than the donor holds');
+$ship = [];
+check(count(bq_plan($ship, cat_settings(['banquet' => []]), $pA, $vA, $API_NOW, $GAME_NOW)) === 0,
+    'wood is not planned while resources is off');
+
+// Craftsmanship only gates banquet goods.
+$pLow = [1 => player_all(1, ['craftsmanship' => 0]), 2 => player_all(2, ['craftsmanship' => 0]), 3 => player_all(3, ['craftsmanship' => 0])];
+$ship = [];
+check(sum_to(bq_plan($ship, cat_settings(['resources' => []]), $pLow, $vA, $API_NOW, $GAME_NOW), 20, WOOD) > 0,
+    'craftsmanship does not gate wood');
+
+// Storage buildings: no granary -> no apples; ale needs an inn.
+$vF = [
+    10 => with_level(with_level(village_all(10, 1), APPLES, 3000, 1), ALE, 3000, 1),
+    20 => village_all(20, 2, ['storage' => ['hall' => true, 'stockpile' => true, 'granary' => false, 'inn' => true, 'armoury' => true]]),
+    30 => village_all(30, 3, ['storage' => ['hall' => true, 'stockpile' => true, 'granary' => true, 'inn' => false, 'armoury' => true]]),
+];
+$ship = [];
+$created = bq_plan($ship, cat_settings(['food' => []]), $pA, $vF, $API_NOW, $GAME_NOW);
+check(sum_to($created, 20, APPLES) === 0 && sum_to($created, 20, ALE) > 0, 'no granary: ale yes, apples no');
+check(sum_to($created, 30, APPLES) > 0 && sum_to($created, 30, ALE) === 0, 'no inn: apples yes, ale no');
+$gridF = bq_grid(cat_settings(['food' => []]), $pA, $vF, [], $GAME_NOW);
+check($gridF['20'][APPLES]['skip'] === 'no granary' && $gridF['30'][ALE]['skip'] === 'no inn', 'grid names the missing storage');
+check($gridF['20'][APPLES]['cap'] === 5000 && count($gridF['20']) === BQ_NUM_GOODS, 'grid covers every good with its cap');
+
+// A village from an older bot (no caps/storage): banquet still works, other categories are blocked.
+$vOld = [
+    10 => with_level(village_all(10, 1), WOOD, 4000, 2),
+    20 => village(20, 2),
+];
+$ship = [];
+check(count(bq_plan($ship, cat_settings(['resources' => []]), $pA, $vOld, $API_NOW, $GAME_NOW)) === 0,
+    'old-bot village receives no wood');
+$gridO = bq_grid(cat_settings(['resources' => []]), $pA, $vOld, [], $GAME_NOW);
+check($gridO['20'][WOOD]['skip'] === 'bot too old', 'grid says the bot is too old');
+check(bq_village_cap(village(20, 2), 0) === 2700 && bq_village_cap(village(20, 2), WOOD) === 0, 'old caps from hall_cap');
+
+// Category switched off in the receiver's bot.
+$pOff = $pA; $pOff[2]['client']['resources']['enabled'] = false;
+$ship = [];
+$created = bq_plan($ship, cat_settings(['resources' => []]), $pOff, $vA, $API_NOW, $GAME_NOW);
+check(sum_to($created, 20, WOOD) === 0 && sum_to($created, 30, WOOD) > 0, 'category off in bot: not a receiver');
+
+// Merchants are shared between categories in category_order; reserves are per category.
+$vM = [
+    10 => with_level(with_level(village_all(10, 1, ['merchants_home' => 30]), WOOD, 5000, 1), 5, 2700, 1),
+    20 => village_all(20, 2),
+];
+$both = ['banquet' => [], 'resources' => []];
+$ship = [];
+$created = bq_plan($ship, cat_settings($both), $pA, $vM, $API_NOW, $GAME_NOW);
+$m = 0; foreach ($created as $c) $m += $c['merchants'];
+check($m <= 30, 'categories share the village\'s merchants');
+check(sum_to($created, 20, 5) === 300 && sum_to($created, 20, WOOD) === 0, 'banquet (first) takes the merchants');
+$ship = [];
+$created = bq_plan($ship, cat_settings($both, ['category_order' => ['resources', 'banquet']]), $pA, $vM, $API_NOW, $GAME_NOW);
+check(sum_to($created, 20, WOOD) === 300 && sum_to($created, 20, 5) === 0, 'category_order decides who goes first');
+$pRes = $pA; $pRes[1]['client']['banquet']['reserve'] = 25;
+$ship = [];
+$created = bq_plan($ship, cat_settings($both), $pRes, $vM, $API_NOW, $GAME_NOW);
+check(sum_to($created, 20, 5) === 50 && sum_to($created, 20, WOOD) === 250, 'per-category merchant reserve');
+
+// Outbound merchants of any good are adopted.
+$ship = [];
+bq_adopt_outbound($ship, [['trader_id' => 77, 'from_village_id' => 10, 'to_village_id' => 20, 'good' => BOWS,
+    'amount' => 50, 'eta_game' => 50100]], 1, $vA, $API_NOW);
+check(count($ship) === 1 && $ship[0]['good'] === BOWS && $ship[0]['status'] === 'in_flight', 'weapons trader adopted');
+$ship2 = [];
+bq_adopt_outbound($ship2, [['trader_id' => 78, 'from_village_id' => 10, 'to_village_id' => 20, 'good' => BQ_NUM_GOODS,
+    'amount' => 50, 'eta_game' => 50100]], 1, $vA, $API_NOW);
+check(count($ship2) === 0, 'unknown good index ignored');
+
+// Food reported with no production keeps its level (no extrapolation).
+check(bq_projected_level(with_level(village_all(1, 1), APPLES, 800), APPLES, 50000 + 86400) === 800.0, 'no prod, no drift');
 
 echo "$passes passed, $failures failed\n";
 exit($failures > 0 ? 1 : 0);

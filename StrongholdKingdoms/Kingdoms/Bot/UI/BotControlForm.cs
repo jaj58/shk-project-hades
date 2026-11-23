@@ -2657,7 +2657,7 @@ namespace Kingdoms.Bot.UI
             else if (_tabControl.SelectedTab == _bsPage)
             {
                 BsWriteToSettings();
-                tabName = "Banquet Sender";
+                tabName = "Sender";
             }
             else if (_tabControl.SelectedTab == _timingPage)
             {
@@ -2778,7 +2778,7 @@ namespace Kingdoms.Bot.UI
             else if (_tabControl.SelectedTab == _bsPage)
             {
                 BsLoadFromSettings();
-                tabName = "Banquet Sender";
+                tabName = "Sender";
             }
             else if (_tabControl.SelectedTab == _timingPage)
             {

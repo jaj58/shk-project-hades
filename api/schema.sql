@@ -37,7 +37,8 @@ CREATE INDEX idx_log_created   ON license_log(created_at);
 CREATE INDEX idx_key_user      ON license_keys(user_id);
 CREATE INDEX idx_key_active    ON license_keys(is_active);
 
--- ── Banquet Good Sender (see migrations/add_banquet_sender_tables.sql) ──
+-- ── Goods Sender, formerly Banquet Good Sender (see migrations/add_banquet_sender_tables.sql
+--    and migrations/expand_sender_all_goods.sql) ──
 CREATE TABLE IF NOT EXISTS bq_groups (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     key_hash        CHAR(64)     NOT NULL UNIQUE,   -- sha256 of the shared group key
@@ -54,7 +55,8 @@ CREATE TABLE IF NOT EXISTS bq_players (
     world           VARCHAR(64)  NOT NULL DEFAULT '',
     craftsmanship   TINYINT      NOT NULL DEFAULT 0, -- number of banquet goods unlocked (0..8)
     sec_per_tile    DOUBLE       NOT NULL DEFAULT 0, -- merchant travel seconds per map tile (research + cards)
-    carry_json      VARCHAR(128) NOT NULL DEFAULT '[]', -- per-good merchant carry level, 8 entries
+    carry_json      VARCHAR(512) NOT NULL DEFAULT '[]', -- per-good merchant carry level, BQ_GOODS order
+    client_json     VARCHAR(512) NULL,              -- bot-side per category: {enabled, reserve}
     cards_json      TEXT         NULL,              -- cards in play / owned, informational
     client_version  VARCHAR(32)  NOT NULL DEFAULT '',
     last_seen       INT UNSIGNED NOT NULL,
@@ -71,12 +73,15 @@ CREATE TABLE IF NOT EXISTS bq_villages (
     y                  INT          NOT NULL DEFAULT 0,
     has_hall           TINYINT(1)   NOT NULL DEFAULT 0,
     hall_cap           INT          NOT NULL DEFAULT 0, -- real cap incl. research + active card
-    levels_json        VARCHAR(128) NOT NULL DEFAULT '[]', -- 8 goods, client-extrapolated at levels_at_game
-    prod_json          VARCHAR(128) NOT NULL DEFAULT '[]', -- 8 goods, production per day
-    buildings_json     VARCHAR(64)  NOT NULL DEFAULT '[]', -- 8 goods, finished production buildings
+    levels_json        VARCHAR(512) NOT NULL DEFAULT '[]', -- BQ_GOODS order, client-extrapolated at levels_at_game
+    prod_json          VARCHAR(512) NOT NULL DEFAULT '[]', -- BQ_GOODS order, production per day
+    buildings_json     VARCHAR(512) NOT NULL DEFAULT '[]', -- BQ_GOODS order, finished production buildings
+    caps_json          VARCHAR(512) NULL,           -- BQ_GOODS order, storage cap incl. research + cards (NULL = old bot)
+    storage_json       VARCHAR(128) NULL,           -- {hall,stockpile,granary,inn,armoury}: building present (NULL = old bot)
     levels_at_game     INT UNSIGNED NOT NULL DEFAULT 0,
     snapshot_at_game   INT UNSIGNED NOT NULL DEFAULT 0, -- last server download of this village
-    merchants_free     INT          NOT NULL DEFAULT 0, -- at home minus the client's Trade reserve
+    merchants_free     INT          NOT NULL DEFAULT 0, -- at home minus the client's (banquet) reserve
+    merchants_home     INT          NOT NULL DEFAULT 0, -- at home; per-category reserves come from client_json
     reported_at        INT UNSIGNED NOT NULL,
     PRIMARY KEY (group_id, village_id),
     INDEX idx_bq_villages_user (group_id, user_id),
@@ -97,7 +102,7 @@ CREATE TABLE IF NOT EXISTS bq_shipments (
     from_village_id INT          NOT NULL,
     to_user_id      INT          NOT NULL,
     to_village_id   INT          NOT NULL,
-    good            TINYINT      NOT NULL,          -- 0..7, see BQ_GOOD_NAMES
+    good            TINYINT      NOT NULL,          -- index into BQ_GOODS (0..7 banquet)
     amount          INT          NOT NULL,
     merchants       INT          NOT NULL DEFAULT 0,
     trader_id       BIGINT       NULL,

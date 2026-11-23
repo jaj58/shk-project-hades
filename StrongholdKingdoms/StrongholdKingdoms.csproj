@@ -108,6 +108,7 @@
     <Compile Include="Kingdoms\Bot\VillageOverviewCache.cs" />
     <Compile Include="Kingdoms\Bot\VillageOverviewColumns.cs" />
     <Compile Include="Kingdoms\Bot\VillageOverviewRow.cs" />
+    <Compile Include="Kingdoms\Bot\SenderGoods.cs" />
     <Compile Include="Kingdoms\Bot\VillageSendGate.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AttackerModule.cs" />
     <Compile Include="Kingdoms\Bot\Modules\AutoBombModule.cs" />

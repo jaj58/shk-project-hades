@@ -1526,10 +1526,69 @@ namespace Kingdoms.Bot
         // Shared group key — the same for every player in the group and for the website.
         public string GroupKey = "";
         public int SyncIntervalSeconds = 20;
-        // Merchants per village the planner may not use, so the Trade module keeps some.
+        // Merchants per village the planner may not use for banquet goods, so the Trade
+        // module keeps some. (Kept under its old name so saved settings still load.)
         public int MerchantsReserve = 0;
         // Re-download villages the API says have arrived shipments it can't see yet.
         public bool RefreshArrivedVillages = true;
+
+        // Per-category switches and merchant reserves (Sender sub-tabs). Plain fields, not a
+        // list: XmlSerializer appends to a pre-filled list instead of replacing it.
+        // A category switched off here is neither given from nor sent to for this player.
+        public bool BanquetEnabled = true;
+        public bool ResourcesEnabled = false;
+        public int ResourcesReserve = 0;
+        public bool FoodEnabled = false;
+        public int FoodReserve = 0;
+        public bool WeaponsEnabled = false;
+        public int WeaponsReserve = 0;
+
+        public bool IsCategoryEnabled(string category)
+        {
+            switch (category)
+            {
+                case SenderGoods.Banquet: return BanquetEnabled;
+                case SenderGoods.Resources: return ResourcesEnabled;
+                case SenderGoods.Food: return FoodEnabled;
+                case SenderGoods.Weapons: return WeaponsEnabled;
+                default: return false;
+            }
+        }
+
+        public void SetCategoryEnabled(string category, bool enabled)
+        {
+            switch (category)
+            {
+                case SenderGoods.Banquet: BanquetEnabled = enabled; break;
+                case SenderGoods.Resources: ResourcesEnabled = enabled; break;
+                case SenderGoods.Food: FoodEnabled = enabled; break;
+                case SenderGoods.Weapons: WeaponsEnabled = enabled; break;
+            }
+        }
+
+        public int GetCategoryReserve(string category)
+        {
+            switch (category)
+            {
+                case SenderGoods.Banquet: return MerchantsReserve;
+                case SenderGoods.Resources: return ResourcesReserve;
+                case SenderGoods.Food: return FoodReserve;
+                case SenderGoods.Weapons: return WeaponsReserve;
+                default: return 0;
+            }
+        }
+
+        public void SetCategoryReserve(string category, int reserve)
+        {
+            reserve = Math.Max(0, reserve);
+            switch (category)
+            {
+                case SenderGoods.Banquet: MerchantsReserve = reserve; break;
+                case SenderGoods.Resources: ResourcesReserve = reserve; break;
+                case SenderGoods.Food: FoodReserve = reserve; break;
+                case SenderGoods.Weapons: WeaponsReserve = reserve; break;
+            }
+        }
     }
 
     // =========================================================================

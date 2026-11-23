@@ -11,31 +11,31 @@ using CommonTypes;
 namespace Kingdoms.Bot.Modules
 {
     /// <summary>
-    /// Banquet Sender — shares banquet goods between players in a group.
+    /// Sender (formerly Banquet Sender) — shares goods between players in a group:
+    /// banquet goods, resources, food and weapons (see SenderGoods for the catalogue).
     ///
-    /// The API (api/banquet_api.php) does all the planning. This module:
-    ///   1. Reports every non-capital village (hall cap, goods, production, merchants,
-    ///      when it was last downloaded) and every banquet-good merchant on the road.
+    /// The API (api/banquet_api.php) does all the planning, per category. This module:
+    ///   1. Reports every non-capital village (storage buildings and caps, goods, production,
+    ///      merchants, when it was last downloaded) and every catalogue-good merchant on the road.
     ///   2. Executes the send orders leased to this player, one per tick, through
     ///      VillageSendGate so it never collides with the Trade module.
     ///   3. Reports each order's outcome with the real merchant ID and arrival time.
     ///   4. Re-downloads villages the API says have arrived goods it can't see yet.
+    ///
+    /// Each category can be switched off and given its own merchant reserve in the bot; the
+    /// API is told, so it neither sends to nor plans from this player for that category.
     ///
     /// Game objects are only touched on the tick thread. HTTP runs on a short-lived
     /// background thread; its response is picked up on the next tick.
     /// </summary>
     public class BanquetSenderModule : BotModuleBase
     {
-        // Good index (API order, = Banqueting.resourceLevels order) -> game resource ID.
-        internal static readonly int[] GoodResourceIds = { 22, 21, 26, 19, 33, 23, 24, 25 };
-        internal static readonly string[] GoodNames = BanquetModule.GoodNames;
-
         private const string GateOwner = "BanquetSender";
         private const double SendTimeoutSeconds = 60.0;
         private const double LeaseSafetySeconds = 10.0;
         private const double RefreshThrottleSeconds = 120.0;
         private const int MaxBlockedAttempts = 30;
-        private const int MaxActivityLines = 60;
+        private const int MaxActivityLines = 200; // shared by every category's sub-tab
         private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1);
 
         private class Order
@@ -46,6 +46,7 @@ namespace Kingdoms.Bot.Modules
             public string ToVillageName;
             public string ToPlayerName;
             public int Good;
+            public string Category;
             public int Amount;
             public DateTime LeaseExpires;
             public int BlockedAttempts;
@@ -66,19 +67,54 @@ namespace Kingdoms.Bot.Modules
             public int Attempts;
         }
 
+        /// <summary>One category's numbers, for its sub-tab.</summary>
+        public class CategoryStatus
+        {
+            // null until the first sync; "" when the API is too old to know this category.
+            public string Mode;
+            public int OpenOrders;
+            public int SentCount;
+            public long SentAmount;
+
+            public CategoryStatus Copy()
+            {
+                return (CategoryStatus)MemberwiseClone();
+            }
+        }
+
+        public class ActivityLine
+        {
+            public string Category; // "" = not tied to a category
+            public string Text;
+        }
+
         public class Status
         {
             public bool Configured;
             public DateTime LastSyncOk = DateTime.MinValue;
             public string LastError = "";
-            public string Mode = "";
             public int PlayersOnline;
             public int InFlight;
             public int OpenOrders;
             public int SentCount;
             public long SentAmount;
             public string Current = "";
-            public List<string> Activity = new List<string>();
+            public string CurrentCategory = "";
+            public List<ActivityLine> Activity = new List<ActivityLine>();
+            public Dictionary<string, CategoryStatus> Categories = NewCategoryStatuses();
+
+            public CategoryStatus Category(string category)
+            {
+                CategoryStatus c;
+                return Categories.TryGetValue(category, out c) ? c : new CategoryStatus();
+            }
+        }
+
+        private static Dictionary<string, CategoryStatus> NewCategoryStatuses()
+        {
+            Dictionary<string, CategoryStatus> d = new Dictionary<string, CategoryStatus>();
+            foreach (string c in SenderGoods.Categories) d[c] = new CategoryStatus();
+            return d;
         }
 
         // ── Tick-thread state ────────────────────────────────────────────────
@@ -102,7 +138,7 @@ namespace Kingdoms.Bot.Modules
 
         public override string ModuleName
         {
-            get { return "Banquet Sender"; }
+            get { return "Sender"; }
         }
 
         public override TimeSpan Interval
@@ -175,14 +211,22 @@ namespace Kingdoms.Bot.Modules
                 s.Configured = _status.Configured;
                 s.LastSyncOk = _status.LastSyncOk;
                 s.LastError = _status.LastError;
-                s.Mode = _status.Mode;
                 s.PlayersOnline = _status.PlayersOnline;
                 s.InFlight = _status.InFlight;
                 s.OpenOrders = _orders.Count + (_pending != null ? 1 : 0);
                 s.SentCount = _status.SentCount;
                 s.SentAmount = _status.SentAmount;
                 s.Current = _status.Current;
-                s.Activity = new List<string>(_status.Activity);
+                s.CurrentCategory = _status.CurrentCategory;
+                s.Activity = new List<ActivityLine>(_status.Activity);
+                foreach (KeyValuePair<string, CategoryStatus> kv in _status.Categories)
+                {
+                    CategoryStatus c = kv.Value.Copy();
+                    c.OpenOrders = 0;
+                    s.Categories[kv.Key] = c;
+                }
+                foreach (Order o in _orders) s.Category(o.Category).OpenOrders++;
+                if (_pending != null) s.Category(_pending.Order.Category).OpenOrders++;
                 return s;
             }
         }
@@ -305,16 +349,16 @@ namespace Kingdoms.Bot.Modules
             _secPerTile = t1000 / 1000.0;
 
             List<object> carry = new List<object>();
-            for (int g = 0; g < GoodResourceIds.Length; g++)
-                carry.Add(Math.Max(1, worldData.traderCarryingLevels[GoodResourceIds[g]]));
+            for (int g = 0; g < SenderGoods.Count; g++)
+                carry.Add(Math.Max(1, worldData.traderCarryingLevels[SenderGoods.ResourceIds[g]]));
 
-            // Potential production per good across all downloaded villages, with the cards in
-            // play and with none — for the website's totals (what halls make while running).
+            // Potential production per banquet good across all downloaded villages, with the
+            // cards in play and with none — for the website's totals (what halls make while running).
             CardData noCards = new CardData();
             noCards.cards = new int[0];
             noCards.cardsExpiry = new DateTime[0];
-            double[] prodWithCards = new double[GoodResourceIds.Length];
-            double[] prodWithoutCards = new double[GoodResourceIds.Length];
+            double[] prodWithCards = new double[SenderGoods.BanquetCount];
+            double[] prodWithoutCards = new double[SenderGoods.BanquetCount];
 
             List<object> villages = new List<object>();
             List<object> allIds = new List<object>();
@@ -342,13 +386,23 @@ namespace Kingdoms.Bot.Modules
             player["sec_per_tile"] = _secPerTile;
             player["carry"] = carry;
             player["client_version"] = System.Windows.Forms.Application.ProductVersion ?? "";
+            // Which categories this player takes part in, and the merchants each keeps back.
+            Dictionary<string, object> client = new Dictionary<string, object>();
+            foreach (string category in SenderGoods.Categories)
+            {
+                Dictionary<string, object> c = new Dictionary<string, object>();
+                c["enabled"] = settings.IsCategoryEnabled(category);
+                c["reserve"] = Math.Max(0, settings.GetCategoryReserve(category));
+                client[category] = c;
+            }
+            player["client"] = client;
             Dictionary<string, object> cards = new Dictionary<string, object>();
-            cards["hall_multiplier"] = CardTypes.getResourceCapMultiplier(GoodResourceIds[0], cardData);
+            cards["hall_multiplier"] = CardTypes.getResourceCapMultiplier(SenderGoods.ResourceIds[0], cardData);
             double tradeTimeFactor = CardTypes.cards_adjustTradeTimes(cardData);
             cards["merchant_speed"] = tradeTimeFactor > 0 ? Math.Round(1.0 / tradeTimeFactor, 2) : 1.0;
             List<object> withCards = new List<object>();
             List<object> withoutCards = new List<object>();
-            for (int g = 0; g < GoodResourceIds.Length; g++)
+            for (int g = 0; g < SenderGoods.BanquetCount; g++)
             {
                 withCards.Add(Math.Round(prodWithCards[g], 1));
                 withoutCards.Add(Math.Round(prodWithoutCards[g], 1));
@@ -384,8 +438,8 @@ namespace Kingdoms.Bot.Modules
 
                 foreach (VillageMapBuilding b in new List<VillageMapBuilding>(map.Buildings))
                 {
-                    int g = GoodIndex(b.buildingType);
-                    if (g < 0 || !b.complete) continue;
+                    int g = SenderGoods.GoodIndex(b.buildingType);
+                    if (g < 0 || g >= SenderGoods.BanquetCount || !b.complete) continue;
 
                     double travel = VillageBuildingsData.calcTravelTimeTiled(worldData, hall.buildingLocation,
                         b.buildingLocation).TotalSeconds;
@@ -443,11 +497,11 @@ namespace Kingdoms.Bot.Modules
 
         private static string BanquetCardName(int type)
         {
-            // 1284..1307: three tiers per banquet good, in GoodResourceIds order.
+            // 1284..1307: three tiers per banquet good, in SenderGoods (banquet) order.
             if (type >= 1284 && type <= 1307)
             {
                 string[] tiers = { "x3", "x5", "x10" };
-                return GoodNames[(type - 1284) / 3] + " production " + tiers[(type - 1284) % 3];
+                return SenderGoods.Name((type - 1284) / 3) + " production " + tiers[(type - 1284) % 3];
             }
             switch (type)
             {
@@ -467,26 +521,33 @@ namespace Kingdoms.Bot.Modules
         {
             WorldMap world = GameEngine.Instance.World;
 
-            VillageMap.TownHallLevels hall = new VillageMap.TownHallLevels();
-            bool hasHall = map.getTownHallLevels(hall);
-            double[] lv = { hall.venisonLevel, hall.furnitureLevel, hall.metalwareLevel, hall.clothesLevel,
-                            hall.wineLevel, hall.saltLevel, hall.spicesLevel, hall.silkLevel };
+            // Which storage buildings exist: goods sent to a village without one can't be held.
+            Dictionary<string, object> storage = new Dictionary<string, object>();
+            foreach (string s in SenderGoods.Storages) storage[s] = SenderGoods.HasStorage(map, s);
+            bool hasHall = (bool)storage[SenderGoods.Hall];
 
-            int cap = int.MaxValue;
-            double[] prod = new double[GoodResourceIds.Length];
-            int[] buildings = new int[GoodResourceIds.Length];
-            for (int g = 0; g < GoodResourceIds.Length; g++)
-                cap = Math.Min(cap, GetHallCap(GoodResourceIds[g]));
+            int n = SenderGoods.Count;
+            double[] prod = new double[n];
+            int[] buildings = new int[n];
+            int hallCap = int.MaxValue;
+            List<object> caps = new List<object>();
+            for (int g = 0; g < n; g++)
+            {
+                int cap = VillageCaps.GetResourceCap(SenderGoods.ResourceIds[g], false);
+                caps.Add(cap);
+                if (g < SenderGoods.BanquetCount) hallCap = Math.Min(hallCap, cap);
+            }
 
             List<VillageMapBuilding> snapshot;
             try { snapshot = new List<VillageMapBuilding>(map.Buildings); }
             catch { snapshot = new List<VillageMapBuilding>(); }
             foreach (VillageMapBuilding b in snapshot)
             {
-                int g = GoodIndex(b.buildingType);
+                // Production buildings have the type id of the good they make.
+                int g = SenderGoods.GoodIndex(b.buildingType);
                 if (g < 0 || !b.complete) continue;
                 buildings[g]++;
-                if (b.calcRate > 0)
+                if (b.calcRate > 0 && SenderGoods.ReportsProduction(g))
                 {
                     prod[g] += 86400.0 / b.calcRate * CardTypes.adjustPayloadSize(cardData,
                         worldData.getPayloadSize(b.buildingType), b.buildingType);
@@ -496,12 +557,14 @@ namespace Kingdoms.Bot.Modules
             List<object> levels = new List<object>();
             List<object> prodOut = new List<object>();
             List<object> buildingsOut = new List<object>();
-            for (int g = 0; g < GoodResourceIds.Length; g++)
+            for (int g = 0; g < n; g++)
             {
-                levels.Add(hasHall ? (int)Math.Floor(lv[g]) : 0);
+                bool stored = (bool)storage[SenderGoods.Storage(g)];
+                levels.Add(stored ? (int)Math.Floor(LevelOf(map, g)) : 0);
                 prodOut.Add(Math.Round(prod[g], 2));
                 buildingsOut.Add(buildings[g]);
             }
+            int home = Math.Max(0, map.m_numTradersAtHome);
 
             Point loc = world.getVillageLocation(vid);
             Dictionary<string, object> v = new Dictionary<string, object>();
@@ -509,8 +572,11 @@ namespace Kingdoms.Bot.Modules
             v["name"] = world.getVillageName(vid) ?? "";
             v["x"] = loc.X;
             v["y"] = loc.Y;
+            // has_hall / hall_cap are what APIs from before every good was covered read.
             v["has_hall"] = hasHall;
-            v["hall_cap"] = cap == int.MaxValue ? 0 : cap;
+            v["hall_cap"] = hallCap == int.MaxValue ? 0 : hallCap;
+            v["caps"] = caps;
+            v["storage"] = storage;
             v["levels"] = levels;
             v["prod"] = prodOut;
             v["buildings"] = buildingsOut;
@@ -519,11 +585,14 @@ namespace Kingdoms.Bot.Modules
             // let a PC clock ahead of the game server claim a download newer than now (that
             // would settle in-flight shipments before their goods are really visible).
             v["snapshot_at_game"] = Math.Min(ToUnix(map.m_lastServerReply), gameNow);
-            v["merchants_free"] = Math.Max(0, map.m_numTradersAtHome - Math.Max(0, settings.MerchantsReserve));
+            // merchants_free: older APIs (banquet reserve). merchants_home: the API takes off each
+            // category's reserve from the player's client settings.
+            v["merchants_free"] = Math.Max(0, home - Math.Max(0, settings.GetCategoryReserve(SenderGoods.Banquet)));
+            v["merchants_home"] = home;
             return v;
         }
 
-        /// <summary>Every banquet-good merchant of ours still travelling to a non-capital village.</summary>
+        /// <summary>Every merchant of ours carrying a catalogue good to a non-capital village.</summary>
         private static List<object> BuildOutbound(HashSet<int> ownIds, DateTime serverNow)
         {
             List<object> list = new List<object>();
@@ -533,7 +602,7 @@ namespace Kingdoms.Bot.Modules
                 MarketTraderData t = lt.trader;
                 if (t == null || !ownIds.Contains(t.homeVillageID)) continue;
                 if (t.traderState != 1 || t.amount <= 0 || t.endTime <= serverNow) continue;
-                int g = GoodIndex(t.resource);
+                int g = SenderGoods.GoodIndex(t.resource);
                 if (g < 0 || world.isCapital(t.targetVillageID)) continue;
 
                 Dictionary<string, object> o = new Dictionary<string, object>();
@@ -576,22 +645,30 @@ namespace Kingdoms.Bot.Modules
             // The server has applied the outcomes that went out with this sync.
             _outcomes.RemoveRange(0, Math.Min(sentOutcomes, _outcomes.Count));
 
-            string mode = GetStr(resp, "mode", "off");
+            // Each category's mode. An API from before every good was covered only sends
+            // "mode", which is the banquet one.
+            Dictionary<string, object> modes = resp.ContainsKey("modes") ? resp["modes"] as Dictionary<string, object> : null;
             lock (_lock)
             {
                 _status.LastSyncOk = DateTime.Now;
                 _status.LastError = "";
-                _status.Mode = mode;
                 _status.PlayersOnline = GetInt(resp, "players_online");
                 _status.InFlight = GetInt(resp, "in_flight");
+                foreach (string c in SenderGoods.Categories)
+                {
+                    string m = modes != null ? GetStr(modes, c, "off")
+                        : (c == SenderGoods.Banquet ? GetStr(resp, "mode", "off") : "");
+                    _status.Category(c).Mode = m;
+                }
             }
 
             // Replace the order queue with what the server currently leases to us, minus
             // anything already dispatched/skipped (its outcome may still be in transit).
+            // The server only leases orders for categories that are switched on.
             HashSet<long> offered = new HashSet<long>();
             List<Order> fresh = new List<Order>();
             IList orders = resp.ContainsKey("orders") ? resp["orders"] as IList : null;
-            if (orders != null && mode != "off")
+            if (orders != null)
             {
                 foreach (object item in orders)
                 {
@@ -606,7 +683,8 @@ namespace Kingdoms.Bot.Modules
                     order.Good = GetInt(o, "good");
                     order.Amount = GetInt(o, "amount");
                     order.LeaseExpires = DateTime.Now.AddSeconds(GetInt(o, "lease_remaining_sec"));
-                    if (order.OrderId <= 0 || order.Good < 0 || order.Good >= GoodResourceIds.Length) continue;
+                    if (order.OrderId <= 0 || order.Good < 0 || order.Good >= SenderGoods.Count) continue;
+                    order.Category = SenderGoods.Category(order.Good);
                     offered.Add(order.OrderId);
                     if (_handledOrders.ContainsKey(order.OrderId)) continue;
                     if (_pending != null && _pending.Order.OrderId == order.OrderId) continue;
@@ -649,7 +727,7 @@ namespace Kingdoms.Bot.Modules
             }
 
             if (fresh.Count > 0)
-                LogDebug("Sync: " + fresh.Count + " order(s) to send, mode " + mode + ".");
+                LogDebug("Sync: " + fresh.Count + " order(s) to send.");
         }
 
         // =====================================================================
@@ -669,6 +747,13 @@ namespace Kingdoms.Bot.Modules
                     continue;
                 }
 
+                // Switched off here since the last sync: the next sync tells the API.
+                if (!settings.IsCategoryEnabled(order.Category))
+                {
+                    Skip(order, SenderGoods.CategoryName(order.Category) + " is off in the bot");
+                    continue;
+                }
+
                 WorldMap world = GameEngine.Instance.World;
                 VillageMap map = GameEngine.Instance.getVillage(order.FromVillageId);
                 if (map == null || !world.isUserVillage(order.FromVillageId))
@@ -677,16 +762,16 @@ namespace Kingdoms.Bot.Modules
                     continue;
                 }
 
-                int resourceId = GoodResourceIds[order.Good];
+                int resourceId = SenderGoods.ResourceIds[order.Good];
                 int carry = Math.Max(1, GameEngine.Instance.LocalWorldData.traderCarryingLevels[resourceId]);
-                VillageMap.TownHallLevels hall = new VillageMap.TownHallLevels();
-                if (!map.getTownHallLevels(hall))
+                string storage = SenderGoods.Storage(order.Good);
+                if (!SenderGoods.HasStorage(map, storage))
                 {
-                    Skip(order, "sending village has no village hall");
+                    Skip(order, "sending village has no " + storage);
                     continue;
                 }
-                int level = (int)Math.Floor(LevelOf(hall, order.Good));
-                int merchants = map.m_numTradersAtHome - Math.Max(0, settings.MerchantsReserve);
+                int level = (int)Math.Floor(LevelOf(map, order.Good));
+                int merchants = map.m_numTradersAtHome - Math.Max(0, settings.GetCategoryReserve(order.Category));
 
                 // Local data can be fresher than what the planner saw: never send more
                 // than we have, and shrink to whole merchant loads when we have to shrink.
@@ -694,7 +779,7 @@ namespace Kingdoms.Bot.Modules
                 if (amount < order.Amount) amount = amount / carry * carry;
                 if (amount <= 0)
                 {
-                    Skip(order, "not enough " + GoodNames[order.Good] + " or merchants (have " + level +
+                    Skip(order, "not enough " + SenderGoods.Name(order.Good) + " or merchants (have " + level +
                         ", " + Math.Max(0, merchants) + " merchants)");
                     continue;
                 }
@@ -718,7 +803,7 @@ namespace Kingdoms.Bot.Modules
                 _pending.Amount = amount;
                 _pending.DispatchedAt = DateTime.Now;
 
-                SetCurrent(Describe(order, amount) + " — waiting for server");
+                SetCurrent(Describe(order, amount) + " — waiting for server", order.Category);
                 LogInfo(Describe(order, amount) + " dispatched, awaiting confirmation.");
                 return; // one send per tick
             }
@@ -762,7 +847,7 @@ namespace Kingdoms.Bot.Modules
                     catch { error = "error code " + r.m_errorCode; }
                     AddOutcome(p.Order.OrderId, "rejected", null, p.Amount, 0, error);
                     LogError(Describe(p.Order, p.Amount) + " REJECTED by server: " + error);
-                    AddActivity("REJECTED " + Describe(p.Order, p.Amount) + ": " + error);
+                    AddActivity(p.Order.Category, "REJECTED " + Describe(p.Order, p.Amount) + ": " + error);
                     // Our local goods/merchant counts were evidently stale.
                     if (error != null && error.IndexOf("enough", StringComparison.OrdinalIgnoreCase) >= 0)
                         RequestRedownload(p.Order.FromVillageId);
@@ -776,10 +861,13 @@ namespace Kingdoms.Bot.Modules
                 {
                     _status.SentCount++;
                     _status.SentAmount += p.Amount;
+                    CategoryStatus cs = _status.Category(p.Order.Category);
+                    cs.SentCount++;
+                    cs.SentAmount += p.Amount;
                 }
                 string etaText = eta > 0 ? " (arrives in " + FormatDuration(eta - ToUnix(VillageMap.getCurrentServerTime())) + ")" : "";
                 LogInfo(Describe(p.Order, p.Amount) + " confirmed" + etaText + ".");
-                AddActivity("Sent " + Describe(p.Order, p.Amount) + etaText);
+                AddActivity(p.Order.Category, "Sent " + Describe(p.Order, p.Amount) + etaText);
                 _syncSoon = true; // let the planner know quickly
             }
         }
@@ -980,41 +1068,11 @@ namespace Kingdoms.Bot.Modules
         // Helpers
         // =====================================================================
 
-        private static int GetHallCap(int resourceId)
+        /// <summary>A good's level in a village right now (production since the last download included, capped).</summary>
+        private static double LevelOf(VillageMap map, int good)
         {
-            try
-            {
-                double cap = GameEngine.Instance.World.UserResearchData.getResourceCap(
-                        GameEngine.Instance.LocalWorldData, resourceId, false) *
-                    CardTypes.getResourceCapMultiplier(resourceId, GameEngine.Instance.cardsManager.UserCardData);
-                return cap > 0 ? (int)cap : 0;
-            }
-            catch
-            {
-                return 0;
-            }
-        }
-
-        internal static int GoodIndex(int resourceId)
-        {
-            for (int g = 0; g < GoodResourceIds.Length; g++)
-                if (GoodResourceIds[g] == resourceId) return g;
-            return -1;
-        }
-
-        private static double LevelOf(VillageMap.TownHallLevels hall, int good)
-        {
-            switch (good)
-            {
-                case 0: return hall.venisonLevel;
-                case 1: return hall.furnitureLevel;
-                case 2: return hall.metalwareLevel;
-                case 3: return hall.clothesLevel;
-                case 4: return hall.wineLevel;
-                case 5: return hall.saltLevel;
-                case 6: return hall.spicesLevel;
-                default: return hall.silkLevel;
-            }
+            try { return Math.Max(0.0, map.getResourceLevel(SenderGoods.ResourceIds[good])); }
+            catch { return 0.0; }
         }
 
         private static long ToUnix(DateTime gameTime)
@@ -1036,12 +1094,21 @@ namespace Kingdoms.Bot.Modules
             string from = GameEngine.Instance.World.getVillageName(order.FromVillageId);
             string to = !string.IsNullOrEmpty(order.ToVillageName) ? order.ToVillageName : "village " + order.ToVillageId;
             if (!string.IsNullOrEmpty(order.ToPlayerName)) to += " (" + order.ToPlayerName + ")";
-            return amount + " " + GoodNames[order.Good] + " " + from + " -> " + to;
+            return amount + " " + SenderGoods.Name(order.Good) + " " + from + " -> " + to;
         }
 
         private void SetCurrent(string text)
         {
-            lock (_lock) _status.Current = text;
+            SetCurrent(text, "");
+        }
+
+        private void SetCurrent(string text, string category)
+        {
+            lock (_lock)
+            {
+                _status.Current = text;
+                _status.CurrentCategory = category ?? "";
+            }
         }
 
         private void SetError(string error)
@@ -1049,11 +1116,14 @@ namespace Kingdoms.Bot.Modules
             lock (_lock) _status.LastError = error;
         }
 
-        private void AddActivity(string line)
+        private void AddActivity(string category, string line)
         {
+            ActivityLine a = new ActivityLine();
+            a.Category = category ?? "";
+            a.Text = DateTime.Now.ToString("HH:mm:ss") + "  " + line;
             lock (_lock)
             {
-                _status.Activity.Insert(0, DateTime.Now.ToString("HH:mm:ss") + "  " + line);
+                _status.Activity.Insert(0, a);
                 if (_status.Activity.Count > MaxActivityLines)
                     _status.Activity.RemoveRange(MaxActivityLines, _status.Activity.Count - MaxActivityLines);
             }

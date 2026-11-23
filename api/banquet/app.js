@@ -1,4 +1,5 @@
-// Banquet Sender — group website. Talks to ../banquet_api.php with the shared group key.
+// Goods Sender — group website. Talks to ../banquet_api.php with the shared group key.
+// One tab per goods category (banquet, resources, food, weapons); each has its own settings.
 // Every game-supplied string (player / village names, errors) is inserted as text, never HTML.
 (function () {
   'use strict';
@@ -6,10 +7,13 @@
   var API = '../banquet_api.php';
   var REFRESH_MS = 10000;
   var STORAGE_KEY = 'bq_group_key';
+  var CAT_KEY = 'bq_category';
 
   var key = null;
   var state = null;        // last get_state response
-  var form = null;         // working copy of settings (what the page shows)
+  var all = null;          // working copy of the whole settings object
+  var form = null;         // the current category's settings inside `all` (what the tab shows)
+  var cat = 'banquet';     // current category tab
   var dirty = false;
   var fetchedAt = 0;
   var shipTab = 'active';
@@ -29,15 +33,26 @@
     'produces it': 'makes it',
     'not researched': 'not researched',
     'no village hall': 'no hall',
+    'no stockpile': 'no stockpile',
+    'no granary': 'no granary',
+    'no inn': 'no inn',
+    'no armoury': 'no armoury',
     'not focused': '',
     'paused': 'paused',
     'report too old': 'old report',
     'ignored': 'ignored',
     'not receiving': 'not receiving',
     'good disabled': 'off',
+    'off in bot': 'off in bot',
+    'bot too old': 'update bot',
     'no player': '',
     'off': ''
   };
+
+  var STORAGE_LABEL = { hall: 'village hall', stockpile: 'stockpile', granary: 'granary', inn: 'inn', armoury: 'armoury' };
+
+  // Settings shared by every category live at the top of the settings object.
+  var GROUP_KEYS = ['max_orders_per_player', 'settle_buffer_seconds', 'lease_seconds'];
 
   var MAIN_SETTINGS = [
     ['keep_amount', 'Keep amount', 'Givers never go below this many of a good (balancing too)'],
@@ -47,17 +62,17 @@
   ];
   var ADV_SETTINGS = [
     ['max_merchants_per_order', 'Merchants per order', 'Largest single shipment in merchants'],
-    ['max_orders_per_player', 'Open orders per player', 'Queued orders one player works through'],
-    ['settle_buffer_seconds', 'Arrival buffer (s)', 'Keep counting a delivery until the receiver\'s data is this much newer than its arrival'],
-    ['lease_seconds', 'Order lease (s)', 'An unsent order is re-planned after this long'],
     ['producer_min_buildings', 'Producer buildings', 'Auto-fill: buildings needed to count as making a good'],
     ['balance_tolerance_percent', 'Balance tolerance (%)', 'Only rebalance a village more than this % of its cap off the balance level'],
-    ['max_report_age_hours', 'Max report age (h)', 'Skip receivers not seen for this long (0 = never)']
+    ['max_report_age_hours', 'Max report age (h)', 'Skip receivers not seen for this long (0 = never)'],
+    ['max_orders_per_player', 'Open orders per player', 'Queued orders one player works through — every category together'],
+    ['settle_buffer_seconds', 'Arrival buffer (s)', 'Keep counting a delivery until the receiver\'s data is this much newer than its arrival (every category)'],
+    ['lease_seconds', 'Order lease (s)', 'An unsent order is re-planned after this long (every category)']
   ];
   var TOGGLE_SETTINGS = [
     ['balance_goods', 'Balance goods between villages that make them (Auto-fill: same fill % for every producer, after non-producers are served)'],
     ['include_own_villages', 'Send between a player\'s own villages'],
-    ['send_unusable_goods', 'Send goods the receiver can\'t banquet with yet (not researched — still stored)']
+    ['send_unusable_goods', 'Send goods the receiver can\'t banquet with yet (not researched — still stored)', 'banquet']
   ];
 
   // ── DOM helpers ────────────────────────────────────────────────────────────
@@ -122,25 +137,29 @@
     });
   }
 
-  // ── Key handling ───────────────────────────────────────────────────────────
+  // ── Key / tab handling ─────────────────────────────────────────────────────
 
-  function readStoredKey() {
-    try { return localStorage.getItem(STORAGE_KEY); } catch (e) { return null; }
+  function readStored(k) {
+    try { return localStorage.getItem(k); } catch (e) { return null; }
   }
-  function storeKey(k) {
-    try { if (k) localStorage.setItem(STORAGE_KEY, k); else localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  function writeStored(k, v) {
+    try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {}
   }
+  function storeKey(k) { writeStored(STORAGE_KEY, k); }
 
   function start() {
+    var t = /[#&]tab=([a-z]+)/.exec(location.hash);
+    cat = (t && t[1]) || readStored(CAT_KEY) || 'banquet';
     var m = /[#&]key=([^&]+)/.exec(location.hash);
-    if (m) {
-      var k = decodeURIComponent(m[1]);
-      // Drop the key from the address bar and history.
+    if (m || t) {
+      // Drop the key (and tab) from the address bar and history.
       history.replaceState(null, '', location.pathname + location.search);
-      openGroup(k, true);
+    }
+    if (m) {
+      openGroup(decodeURIComponent(m[1]), true);
       return;
     }
-    var stored = readStoredKey();
+    var stored = readStored(STORAGE_KEY);
     if (stored) openGroup(stored, true);
     else showLogin();
   }
@@ -187,7 +206,8 @@
   function applyState(j) {
     state = j;
     fetchedAt = Date.now();
-    if (!dirty) form = formFrom(j.settings);
+    if (!categoryById(cat)) cat = state.categories[0].id;
+    if (!dirty) setAll(formFrom(j.settings));
     render();
   }
 
@@ -199,13 +219,31 @@
    * save stores roles only.
    */
   function formFrom(settings) {
-    var f = clone(settings);
-    ROLE_LISTS.concat(['ignored_villages']).forEach(function (k) { if (!Array.isArray(f[k])) f[k] = []; });
-    (f.paused_players || []).forEach(function (uid) {
-      ROLE_LISTS.forEach(function (k) { if (f[k].indexOf(uid) < 0) f[k].push(uid); });
+    var a = clone(settings);
+    Object.keys(a.categories).forEach(function (c) {
+      var f = a.categories[c];
+      ROLE_LISTS.concat(['ignored_villages', 'focus_players', 'focus_villages']).forEach(function (k) {
+        if (!Array.isArray(f[k])) f[k] = [];
+      });
+      (f.paused_players || []).forEach(function (uid) {
+        ROLE_LISTS.forEach(function (k) { if (f[k].indexOf(uid) < 0) f[k].push(uid); });
+      });
+      f.paused_players = [];
     });
-    f.paused_players = [];
-    return f;
+    return a;
+  }
+
+  function setAll(a) {
+    all = a;
+    form = all.categories[cat];
+  }
+
+  function selectCategory(c) {
+    cat = c;
+    writeStored(CAT_KEY, c);
+    form = all.categories[cat];
+    plannerUid = null;
+    render();
   }
 
   function isIgnored(village) {
@@ -219,9 +257,9 @@
 
   function save() {
     $('save-btn').disabled = true;
-    api('set_settings', { settings: form, cancel_open_orders: true }).then(function (j) {
+    api('set_settings', { settings: all, cancel_open_orders: true }).then(function (j) {
       dirty = false;
-      form = formFrom(j.settings);
+      setAll(formFrom(j.settings));
       $('savebar').classList.add('hidden');
       toast('Settings saved.');
       refresh();
@@ -232,12 +270,43 @@
 
   function discard() {
     dirty = false;
-    form = formFrom(state.settings);
+    setAll(formFrom(state.settings));
     $('savebar').classList.add('hidden');
     render();
   }
 
   // ── Lookups ────────────────────────────────────────────────────────────────
+
+  function categoryById(id) {
+    for (var i = 0; i < state.categories.length; i++) if (state.categories[i].id === id) return state.categories[i];
+    return null;
+  }
+  /** The current tab's good indices. */
+  function goods() { return categoryById(cat).goods; }
+  function isBanquet() { return cat === 'banquet'; }
+  function storageOf(g) { return state.goods[g].storage; }
+  function name(g) { return state.goods[g] ? state.goods[g].name : ('Good ' + g); }
+
+  /** Whether a village can store a good: null when its bot doesn't report that (too old). */
+  function hasStorage(v, g) {
+    var kind = storageOf(g);
+    if (v.storage) return !!v.storage[kind];
+    return kind === 'hall' ? !!v.has_hall : null;
+  }
+  function capOf(v, g) { return v.caps ? (v.caps[g] || 0) : (g < 8 ? v.hall_cap : 0); }
+
+  /** Storage buildings this tab's goods need that a village lacks (or null: bot too old). */
+  function missingStorage(v) {
+    var kinds = [];
+    goods().forEach(function (g) { var k = storageOf(g); if (kinds.indexOf(k) < 0) kinds.push(k); });
+    if (!v.storage && kinds.some(function (k) { return k !== 'hall'; })) return null;
+    return kinds.filter(function (k) { return v.storage ? !v.storage[k] : (k === 'hall' && !v.has_hall); });
+  }
+  function storageWord() {
+    var kinds = [];
+    goods().forEach(function (g) { var k = STORAGE_LABEL[storageOf(g)]; if (kinds.indexOf(k) < 0) kinds.push(k); });
+    return kinds.join(' / ');
+  }
 
   function playerById(id) {
     for (var i = 0; i < state.players.length; i++) if (state.players[i].user_id === id) return state.players[i];
@@ -258,11 +327,14 @@
     if (!c || Array.isArray(c)) { c = {}; form[which] = c; }
     return c;
   }
+  /** What a player's bot says about this category: {enabled, reserve}, or null (older bot). */
+  function clientOf(p) { return p.client && p.client[cat] ? p.client[cat] : null; }
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   function render() {
     if (!state || !form) return;
+    renderCategoryTabs();
     renderHeader();
     $('new-group').classList.toggle('hidden', state.exists && state.players.length > 0);
     renderTotals();
@@ -270,46 +342,64 @@
     renderGoods();
     renderFocus();
     renderSettings();
+    renderOrder();
     renderPlayers();
     renderGrid();
     renderShipments();
   }
 
+  function modeLabel(mode) {
+    return mode === 'autofill' ? 'Auto-fill' : mode === 'focus' ? 'Focus' : 'Off';
+  }
+
+  function renderCategoryTabs() {
+    var box = $('cat-tabs');
+    clear(box);
+    state.categories.forEach(function (c) {
+      var mode = all.categories[c.id].mode;
+      box.appendChild(el('button', {
+        class: 'cat-tab' + (c.id === cat ? ' active' : ''),
+        onclick: function () { if (c.id !== cat) selectCategory(c.id); }
+      }, [c.name, el('span', { class: 'pill ' + (mode === 'off' ? '' : 'gold'), text: modeLabel(mode) })]));
+    });
+  }
+
   function renderHeader() {
     var online = (state.players || []).filter(function (p) { return p.online; }).length;
     var active = state.active || [];
-    var goods = 0, flying = 0;
-    active.forEach(function (s) { if (s.status === 'in_flight') { flying++; goods += s.amount; } });
+    var goodsOnWay = 0, flying = 0;
+    active.forEach(function (s) { if (s.status === 'in_flight') { flying++; goodsOnWay += s.amount; } });
     $('stat-online').textContent = online;
     $('stat-flight').textContent = flying;
-    $('stat-goods').textContent = fmt(goods);
+    $('stat-goods').textContent = fmt(goodsOnWay);
     $('stat-updated').textContent = 'updated ' + new Date(fetchedAt).toLocaleTimeString();
 
-    var mode = state.settings.mode;
+    var mode = state.settings.categories[cat].mode;
     var pill = $('mode-pill');
-    pill.textContent = mode === 'autofill' ? 'Auto-fill' : mode === 'focus' ? 'Focus' : 'Off';
+    pill.textContent = categoryById(cat).name + ': ' + modeLabel(mode);
     pill.className = 'pill ' + (mode === 'off' ? 'red' : 'gold');
   }
 
   /**
-   * Per-good totals for a set of villages, from the same numbers the planner used:
-   * level = in the hall now (report + production since), inbound = on the way,
-   * queued = ordered but still in the giver's hall (so not added to the total).
-   * Villages without a Village Hall can't hold goods and are left out.
+   * Per-good totals (keyed by good index) for a set of villages, from the same numbers the
+   * planner used: level = stored now (report + production since), inbound = on the way,
+   * queued = ordered but still with the giver (so not added to the total).
+   * Villages without the good's storage building can't hold it and are left out.
    */
   function goodTotals(villages) {
-    var out = state.goods.map(function () {
-      return { halls: 0, inbound: 0, queued: 0, cap: 0, prod: 0, producers: 0, villages: 0 };
+    var out = {};
+    goods().forEach(function (g) {
+      out[g] = { stored: 0, inbound: 0, queued: 0, cap: 0, prod: 0, producers: 0, villages: 0 };
     });
     villages.forEach(function (v) {
-      if (!v.has_hall) return;
       var cells = state.grid[String(v.village_id)] || [];
-      out.forEach(function (t, g) {
-        var c = cells[g] || {};
-        t.halls += c.level || 0;
+      goods().forEach(function (g) {
+        if (!hasStorage(v, g)) return;
+        var t = out[g], c = cells[g] || {};
+        t.stored += c.level || 0;
         t.inbound += c.inbound || 0;
         t.queued += c.leased_in || 0;
-        t.cap += v.hall_cap || 0;
+        t.cap += capOf(v, g);
         t.prod += (v.prod && v.prod[g]) || 0;
         if (v.buildings && v.buildings[g] > 0) t.producers++;
         t.villages++;
@@ -319,26 +409,30 @@
   }
 
   /**
-   * Production per day per good for a set of players, as if every building is running:
-   * [{ cards, none, now }] where cards = with the cards in play, none = with no cards,
-   * now = what buildings are actually producing (full halls stop production).
-   * Bots older than this feature don't send the card figures; their actual rate is used
-   * for both so the totals still add up.
+   * Production per day per good for a set of players (keyed by good index):
+   * { cards, none, now } where cards = with the cards in play, none = with no cards,
+   * now = what buildings are actually producing (full storage stops production).
+   * Only banquet goods have card figures; food is eaten and weapons come from a queue,
+   * so bots report no production rate for those.
    */
   function productionTotals(players) {
-    var out = state.goods.map(function () { return { cards: 0, none: 0, now: 0 }; });
+    var out = {};
+    goods().forEach(function (g) { out[g] = { cards: 0, none: 0, now: 0 }; });
     players.forEach(function (p) {
       var c = p.cards || {};
       var hasPotential = Array.isArray(c.prod_with_cards) && Array.isArray(c.prod_without_cards);
-      var now = state.goods.map(function () { return 0; });
+      var now = {};
+      goods().forEach(function (g) { now[g] = 0; });
       state.villages.forEach(function (v) {
         if (v.user_id !== p.user_id || !v.prod || isIgnored(v)) return;
-        v.prod.forEach(function (n, g) { now[g] += n || 0; });
+        goods().forEach(function (g) { now[g] += v.prod[g] || 0; });
       });
-      out.forEach(function (t, g) {
+      goods().forEach(function (g) {
+        var t = out[g];
+        var potential = hasPotential && g < c.prod_with_cards.length;
         t.now += now[g];
-        t.cards += hasPotential ? (c.prod_with_cards[g] || 0) : now[g];
-        t.none += hasPotential ? (c.prod_without_cards[g] || 0) : now[g];
+        t.cards += potential ? (c.prod_with_cards[g] || 0) : now[g];
+        t.none += potential ? (c.prod_without_cards[g] || 0) : now[g];
       });
     });
     return out;
@@ -354,9 +448,9 @@
   }
 
   /**
-   * How long until every hall is full, at the given production per day. Rough by
-   * nature: it assumes production keeps flowing (a full hall actually stops) and that
-   * goods get spread around, and it ignores what banquets consume.
+   * How long until every store is full, at the given production per day. Rough by
+   * nature: it assumes production keeps flowing (a full store actually stops) and that
+   * goods get spread around, and it ignores what is consumed.
    */
   function fillEta(remaining, perDay) {
     if (remaining <= 0) return 'full';
@@ -377,58 +471,69 @@
     // Ignored villages take no part in sharing, so their goods aren't counted either.
     var counted = state.villages.filter(function (v) { return !isIgnored(v); });
     var ignoredCount = state.villages.length - counted.length;
-    var withHall = counted.filter(function (v) { return v.has_hall; });
     card.classList.toggle('hidden', !state.villages.length);
     if (!state.villages.length) return;
 
     var totals = goodTotals(counted);
     var production = productionTotals(state.players);
-    $('summary-note').textContent = withHall.length + ' villages with a hall · ' +
+    var withStore = counted.filter(function (v) {
+      var miss = missingStorage(v);
+      return miss !== null && miss.length === 0;
+    });
+    var word = storageWord();
+    $('summary-note').textContent = withStore.length + ' villages with ' + (/^[aeiou]/.test(word) ? 'an ' : 'a ') + word + ' · ' +
       state.players.length + ' players' + (ignoredCount ? ' · ' + ignoredCount + ' ignored, not counted' : '') +
-      ' · production is per day while buildings run';
+      (isBanquet() || cat === 'resources' ? ' · production is per day while buildings run' : '');
+    var consumed = isBanquet() ? 'banquets consume goods' : cat === 'food' ? 'villagers eat food' :
+      cat === 'weapons' ? 'recruiting uses weapons' : 'building uses resources';
 
     var box = $('totals');
     clear(box);
-    totals.forEach(function (t, g) {
-      var stock = t.halls + t.inbound;
+    goods().forEach(function (g) {
+      var t = totals[g];
+      var stock = t.stored + t.inbound;
       var fillPct = t.cap ? Math.min(100, stock / t.cap * 100) : 0;
-      var hallPct = t.cap ? Math.min(100, t.halls / t.cap * 100) : 0;
+      var storedPct = t.cap ? Math.min(100, t.stored / t.cap * 100) : 0;
       var pr = production[g];
       var cardBoost = Math.round(pr.cards) > Math.round(pr.none);
       var remaining = Math.max(0, t.cap - stock);
       var eta = fillEta(remaining, pr.cards);
       var etaNow = fillEta(remaining, pr.now);
+      var where = STORAGE_LABEL[storageOf(g)];
       box.appendChild(el('div', {
         class: 'total' + (form.goods_enabled[g] ? '' : ' off'),
-        title: name(g) + ': ' + fmt(t.halls) + ' in halls, ' + fmt(t.inbound) + ' on the way, ' + fmt(t.queued) +
-          ' queued (still in the givers\' halls). Capacity ' + fmt(t.cap) + '. ' + t.producers + ' of ' + t.villages +
-          ' villages make it.\nProduction per day while running: ' + fmt(pr.cards) + ' with cards in play, ' +
-          fmt(pr.none) + ' with no cards. Producing right now: ' + fmt(pr.now) + ' (full halls stop production).' +
+        title: name(g) + ': ' + fmt(t.stored) + ' stored, ' + fmt(t.inbound) + ' on the way, ' + fmt(t.queued) +
+          ' queued (still with the givers). Capacity ' + fmt(t.cap) + ' across ' + t.villages + ' ' + where + 's. ' +
+          t.producers + ' of ' + t.villages + ' villages make it.' +
+          (pr.cards ? '\nProduction per day while running: ' + fmt(pr.cards) + ' with cards in play, ' +
+            fmt(pr.none) + ' with no cards. Producing right now: ' + fmt(pr.now) + ' (full storage stops production).' : '') +
           '\n' + fmt(remaining) + ' short of full' +
           (eta && remaining > 0 ? ', ' + eta + ' at ' + fmt(pr.cards) + '/day' +
             (etaNow && Math.round(pr.now) !== Math.round(pr.cards) ? ' (' + etaNow + ' at the rate being produced right now)' : '') : '') +
-          '. Assumes production keeps flowing and goods get spread around; banquets consume goods.' +
+          '. Assumes production keeps flowing and goods get spread around; ' + consumed + '.' +
           (form.goods_enabled[g] ? '' : '\nNot being shared.')
       }, [
         el('div', { class: 'name', text: name(g) }),
         el('div', { class: 'big num', text: fmt(stock) }),
         el('div', { class: 'bar' }, [
-          el('i', { class: 'level', style: 'width:' + hallPct + '%' }),
-          el('i', { class: 'inbound', style: 'left:' + hallPct + '%;width:' + Math.max(0, fillPct - hallPct) + '%' })
+          el('i', { class: 'level', style: 'width:' + storedPct + '%' }),
+          el('i', { class: 'inbound', style: 'left:' + storedPct + '%;width:' + Math.max(0, fillPct - storedPct) + '%' })
         ]),
         el('div', { class: 'line' }, [el('b', { class: 'num', text: Math.round(fillPct) + '%' }), ' of ' + fmt(t.cap)]),
         el('div', { class: 'line num', style: remaining <= 0 ? 'color:var(--green)' : null }, [eta || '—']),
-        el('div', { class: 'line' }, ['avg ', el('b', { class: 'num', text: fmt(stock / t.villages) }), ' per hall']),
+        el('div', { class: 'line' }, ['avg ', el('b', { class: 'num', text: fmt(t.villages ? stock / t.villages : 0) }), ' per ' + where]),
         t.inbound || t.queued
           ? el('div', { class: 'line num', text: (t.inbound ? fmt(t.inbound) + ' on the way' : '') +
               (t.inbound && t.queued ? ' · ' : '') + (t.queued ? fmt(t.queued) + ' queued' : '') })
           : null,
-        el('div', { class: 'line' }, [
-          el('b', { class: 'num', text: fmt(pr.cards) }), '/day · ', t.producers + ' make it'
-        ]),
-        el('div', { class: 'line' }, cardBoost
-          ? [el('b', { class: 'num', text: fmt(pr.none) }), ' without cards']
-          : ['no production cards'])
+        el('div', { class: 'line' }, pr.cards
+          ? [el('b', { class: 'num', text: fmt(pr.cards) }), '/day · ', t.producers + ' make it']
+          : [t.producers + ' make it']),
+        isBanquet()
+          ? el('div', { class: 'line' }, cardBoost
+              ? [el('b', { class: 'num', text: fmt(pr.none) }), ' without cards']
+              : ['no production cards'])
+          : null
       ]));
     });
 
@@ -437,13 +542,13 @@
   }
 
   /**
-   * What a production card would do. Each player reports production with the cards they
-   * have in play and with none, so a card of tier T on one good simply replaces that
-   * player's share with base x T — the rest of the group is unchanged.
+   * What a production card would do (banquet goods only). Each player reports production
+   * with the cards they have in play and with none, so a card of tier T on one good simply
+   * replaces that player's share with base x T — the rest of the group is unchanged.
    */
   function renderCardPlanner(totals, production) {
     var box = $('planner-box');
-    var able = state.players.filter(function (p) {
+    var able = !isBanquet() ? [] : state.players.filter(function (p) {
       return p.cards && Array.isArray(p.cards.prod_without_cards) && Array.isArray(p.cards.prod_with_cards);
     });
     box.classList.toggle('hidden', !able.length);
@@ -474,15 +579,15 @@
     })));
 
     var any = false;
-    state.goods.forEach(function (goodName, g) {
+    goods().forEach(function (g) {
       if (!(base[g] > 0)) return;   // they don't make it
       any = true;
       // What the rest of the group makes, so only this player's share changes.
       var others = Math.max(0, production[g].cards - (current[g] || 0));
-      var remaining = Math.max(0, totals[g].cap - (totals[g].halls + totals[g].inbound));
+      var remaining = Math.max(0, totals[g].cap - (totals[g].stored + totals[g].inbound));
       var activeTier = Math.round((current[g] || 0) / base[g]);
 
-      var row = [el('td', {}, [el('b', { text: goodName })]),
+      var row = [el('td', {}, [el('b', { text: name(g) })]),
         el('td', { class: 'tier' }, [fmt(base[g]) + '/day'])];
       tiers.forEach(function (t) {
         var rate = others + base[g] * t;
@@ -508,7 +613,7 @@
     clear(table);
     table.className = 'by-player';
     var head = [el('th', { text: 'Player' })];
-    state.goods.forEach(function (g) { head.push(el('th', { class: 'good', text: g })); });
+    goods().forEach(function (g) { head.push(el('th', { class: 'good', text: name(g) })); });
     table.appendChild(el('tr', {}, head));
 
     state.players.slice().sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); }).forEach(function (p) {
@@ -518,13 +623,14 @@
       var production = productionTotals([p]);
       var row = [el('td', {}, [el('b', { text: p.name || ('User ' + p.user_id) }),
         el('div', { class: 'faint', style: 'font-size:12px', text: villages.length + ' villages' + (own.length > villages.length ? ' (' + (own.length - villages.length) + ' ignored)' : '') })])];
-      totals.forEach(function (t, g) {
-        var stock = t.halls + t.inbound;
+      goods().forEach(function (g) {
+        var t = totals[g];
+        var stock = t.stored + t.inbound;
         var pr = production[g];
         var boosted = Math.round(pr.cards) > Math.round(pr.none);
         row.push(el('td', {
           class: 'good-total num',
-          title: fmt(t.halls) + ' in halls, ' + fmt(t.inbound) + ' on the way, capacity ' + fmt(t.cap) +
+          title: fmt(t.stored) + ' stored, ' + fmt(t.inbound) + ' on the way, capacity ' + fmt(t.cap) +
             (pr.cards ? '. ' + fmt(pr.cards) + '/day with cards, ' + fmt(pr.none) + '/day without' : '')
         }, [
           fmt(stock),
@@ -541,9 +647,9 @@
     var box = $('modes');
     clear(box);
     [
-      ['off', 'Off', 'Nothing is sent. Players still report.'],
+      ['off', 'Off', 'Nothing in this category is sent. Players still report.'],
       ['autofill', 'Auto-fill every village', 'Each village is topped up with the goods it doesn\'t make, from villages that make them.'],
-      ['focus', 'Focus players / villages', 'Everyone fills the chosen players or villages with every good.']
+      ['focus', 'Focus players / villages', 'Everyone fills the chosen players or villages with every enabled good.']
     ].forEach(function (m) {
       box.appendChild(el('button', {
         class: 'mode' + (form.mode === m[0] ? ' active' : ''),
@@ -555,10 +661,10 @@
   function renderGoods() {
     var box = $('goods');
     clear(box);
-    state.goods.forEach(function (name, g) {
+    goods().forEach(function (g) {
       box.appendChild(el('span', {
         class: 'good-toggle' + (form.goods_enabled[g] ? ' on' : ''),
-        text: name,
+        text: name(g),
         onclick: function () { form.goods_enabled[g] = !form.goods_enabled[g]; markDirty(); render(); }
       }));
     });
@@ -586,11 +692,12 @@
   }
 
   function numberSetting(def) {
+    var target = GROUP_KEYS.indexOf(def[0]) >= 0 ? all : form;
     return el('div', { class: 'setting' }, [
       el('div', {}, [el('span', { class: 'label', text: def[1] }), el('span', { class: 'hint', text: def[2] })]),
       el('input', {
-        type: 'number', min: '0', value: form[def[0]],
-        oninput: function (e) { form[def[0]] = parseInt(e.target.value, 10) || 0; markDirty(); }
+        type: 'number', min: '0', value: target[def[0]],
+        oninput: function (e) { target[def[0]] = parseInt(e.target.value, 10) || 0; markDirty(); }
       })
     ]);
   }
@@ -603,6 +710,7 @@
     clear(adv);
     MAIN_SETTINGS.forEach(function (d) { main.appendChild(numberSetting(d)); });
     TOGGLE_SETTINGS.forEach(function (d) {
+      if (d[2] && d[2] !== cat) return;
       main.appendChild(el('div', { class: 'setting' }, [
         el('label', { class: 'check' }, [
           el('input', { type: 'checkbox', checked: !!form[d[0]], onchange: function (e) { form[d[0]] = e.target.checked; markDirty(); } }),
@@ -613,28 +721,58 @@
     ADV_SETTINGS.forEach(function (d) { adv.appendChild(numberSetting(d)); });
   }
 
+  /** Planning order: earlier categories get the senders' merchants first. */
+  function renderOrder() {
+    var box = $('order-row');
+    clear(box);
+    var order = all.category_order;
+    var i = order.indexOf(cat);
+    box.appendChild(el('span', { text: 'Planning order (earlier gets merchants first): ' }));
+    order.forEach(function (c, n) {
+      if (n) box.appendChild(el('span', { text: '→' }));
+      box.appendChild(el('span', { class: 'pill' + (c === cat ? ' gold' : ''), text: categoryById(c).name }));
+    });
+    var move = function (d) {
+      var j = i + d;
+      if (j < 0 || j >= order.length) return;
+      order.splice(i, 1);
+      order.splice(j, 0, cat);
+      markDirty();
+      render();
+    };
+    box.appendChild(el('button', { class: 'btn small', text: 'Earlier', disabled: i <= 0, onclick: function () { move(-1); } }));
+    box.appendChild(el('button', { class: 'btn small', text: 'Later', disabled: i >= order.length - 1, onclick: function () { move(1); } }));
+  }
+
   function renderPlayers() {
     var table = $('players-table');
+    $('players-note').textContent = 'Max per player caps every village\'s fill target for ' + categoryById(cat).name.toLowerCase() +
+      ' (the ' + storageWord() + ' cap still applies). Leave blank to use the cap.';
     if (table.contains(document.activeElement)) return;
     clear(table);
     if (!state.players.length) {
       table.appendChild(el('tr', {}, [el('td', { class: 'empty', text: 'No players have connected with this key yet.' })]));
       return;
     }
-    table.appendChild(el('tr', {}, ['Player', 'World', 'Villages', 'Goods unlocked', 'Merchant speed', 'Hall card',
-      'Cards in play', 'Max per player', 'Gives', 'Receives', 'Balances', 'Version', ''].map(function (h) {
-        var tips = {
-          Gives: 'Untick: nothing is sent from this player\'s villages',
-          Receives: 'Untick: nothing is sent to this player (filling or balancing)',
-          Balances: 'Untick: this player\'s producers are left out of Balance goods'
-        };
-        return el('th', { text: h, title: tips[h] || null });
-      })));
+    var heads = ['Player', 'World', 'Villages', 'In bot'];
+    if (isBanquet()) heads = heads.concat(['Goods unlocked', 'Merchant speed', 'Hall card', 'Cards in play']);
+    else heads = heads.concat(['Merchant speed']);
+    heads = heads.concat(['Max per player', 'Gives', 'Receives', 'Balances', 'Version', '']);
+    table.appendChild(el('tr', {}, heads.map(function (h) {
+      var tips = {
+        Gives: 'Untick: nothing in this category is sent from this player\'s villages',
+        Receives: 'Untick: nothing in this category is sent to this player (filling or balancing)',
+        Balances: 'Untick: this player\'s producers are left out of Balance goods',
+        'In bot': 'Whether this category is switched on in the player\'s bot, and how many merchants it keeps per village'
+      };
+      return el('th', { text: h, title: tips[h] || null });
+    })));
 
     var caps = capsOf('player_caps');
     state.players.forEach(function (p) {
       var seen = p.online ? 'online' : (p.last_seen_ago == null ? 'offline' : 'seen ' + duration(p.last_seen_ago) + ' ago');
       var cards = p.cards || {};
+      var client = clientOf(p);
       // Checked = allowed; the settings store who is switched OFF.
       var role = function (listKey, title) {
         var off = form[listKey].indexOf(p.user_id) >= 0;
@@ -643,15 +781,22 @@
           onchange: function () { toggleIn(form[listKey], p.user_id); markDirty(); }
         })]);
       };
-      table.appendChild(el('tr', {}, [
+      var inBot = client
+        ? el('span', { class: 'pill ' + (client.enabled ? 'green' : 'red'),
+            text: (client.enabled ? 'on' : 'off') + (client.enabled && client.reserve ? ' · keeps ' + client.reserve : '') })
+        : (isBanquet() ? el('span', { class: 'faint', text: 'on' }) : el('span', { class: 'pill red', text: 'update bot' }));
+      var row = [
         el('td', {}, [el('span', { class: 'dot' + (p.online ? ' on' : '') }), el('b', { text: p.name || ('User ' + p.user_id) }),
           el('div', { class: 'faint', style: 'font-size:12px', text: seen })]),
         el('td', { text: p.world || '—' }),
         el('td', { class: 'num', text: p.villages }),
-        el('td', { class: 'num', text: p.craftsmanship + ' / 8' }),
-        el('td', { class: 'num', text: cards.merchant_speed ? 'x' + cards.merchant_speed : '—' }),
-        el('td', {}, [cards.hall_multiplier > 1 ? el('span', { class: 'pill gold', text: 'x' + cards.hall_multiplier }) : el('span', { class: 'faint', text: 'no' })]),
-        el('td', { style: 'white-space:normal;min-width:220px' }, (function () {
+        el('td', {}, [inBot])
+      ];
+      if (isBanquet()) row.push(el('td', { class: 'num', text: p.craftsmanship + ' / 8' }));
+      row.push(el('td', { class: 'num', text: cards.merchant_speed ? 'x' + cards.merchant_speed : '—' }));
+      if (isBanquet()) {
+        row.push(el('td', {}, [cards.hall_multiplier > 1 ? el('span', { class: 'pill gold', text: 'x' + cards.hall_multiplier }) : el('span', { class: 'faint', text: 'no' })]));
+        row.push(el('td', { style: 'white-space:normal;min-width:220px' }, (function () {
           if (!Array.isArray(cards.in_play)) return [el('span', { class: 'faint', text: 'update bot to see' })];
           var inPlay = cardsInPlay(p);
           if (!inPlay.length) return [el('span', { class: 'faint', text: 'none' })];
@@ -659,28 +804,29 @@
             return el('span', { class: 'pill gold', style: 'margin:1px 4px 1px 0', title: c.name + ' — ' + duration(c.left) + ' left',
               text: c.name + ' · ' + duration(c.left) });
           });
-        })()),
-        el('td', {}, [el('input', {
-          type: 'number', class: 'cap', min: '0', placeholder: 'hall cap', value: caps[p.user_id] || '',
-          oninput: function (e) {
-            var v = parseInt(e.target.value, 10);
-            if (v > 0) caps[p.user_id] = v; else delete caps[p.user_id];
-            markDirty();
-          }
-        })]),
-        role('no_give_players', 'Sends goods to others'),
-        role('no_receive_players', 'Gets goods sent to them'),
-        role('no_balance_players', 'Producers take part in Balance goods'),
-        el('td', { class: 'faint', text: p.client_version || '' }),
-        el('td', {}, [el('button', {
-          class: 'btn small danger', text: 'Remove',
-          onclick: function () {
-            if (!confirm('Remove ' + p.name + ' and their villages from the group? If their bot is still enabled they will rejoin on its next sync.')) return;
-            api('remove_player', { user_id: p.user_id }).then(function () { toast('Player removed.'); refresh(); })
-              .catch(function (e) { toast(e.message, true); });
-          }
-        })])
-      ]));
+        })()));
+      }
+      row.push(el('td', {}, [el('input', {
+        type: 'number', class: 'cap', min: '0', placeholder: 'cap', value: caps[p.user_id] || '',
+        oninput: function (e) {
+          var v = parseInt(e.target.value, 10);
+          if (v > 0) caps[p.user_id] = v; else delete caps[p.user_id];
+          markDirty();
+        }
+      })]));
+      row.push(role('no_give_players', 'Sends goods to others'));
+      row.push(role('no_receive_players', 'Gets goods sent to them'));
+      row.push(role('no_balance_players', 'Producers take part in Balance goods'));
+      row.push(el('td', { class: 'faint', text: p.client_version || '' }));
+      row.push(el('td', {}, [el('button', {
+        class: 'btn small danger', text: 'Remove',
+        onclick: function () {
+          if (!confirm('Remove ' + p.name + ' and their villages from the group? If their bot is still enabled they will rejoin on its next sync.')) return;
+          api('remove_player', { user_id: p.user_id }).then(function () { toast('Player removed.'); refresh(); })
+            .catch(function (e) { toast(e.message, true); });
+        }
+      })]));
+      table.appendChild(el('tr', {}, row));
     });
   }
 
@@ -693,7 +839,7 @@
       return;
     }
     var head = [el('th', { text: 'Village' })];
-    state.goods.forEach(function (g) { head.push(el('th', { class: 'good', text: g })); });
+    goods().forEach(function (g) { head.push(el('th', { class: 'good', text: name(g) })); });
     table.appendChild(el('tr', {}, head));
 
     var vcaps = capsOf('village_caps');
@@ -706,13 +852,18 @@
 
     playerIds.forEach(function (uid) {
       var p = playerById(uid);
-      table.appendChild(el('tr', { class: 'player-row' }, [el('td', { colspan: String(state.goods.length + 1), text: p ? p.name : 'User ' + uid })]));
+      var client = p ? clientOf(p) : null;
+      table.appendChild(el('tr', { class: 'player-row' }, [el('td', { colspan: String(goods().length + 1), text: p ? p.name : 'User ' + uid })]));
       byPlayer[uid].sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (v) {
         var focused = form.focus_villages.indexOf(v.village_id) >= 0;
         var ignored = isIgnored(v);
-        var meta = 'cap ' + fmt(v.effective_cap) + (v.effective_cap !== v.hall_cap ? ' of ' + fmt(v.hall_cap) : '') +
-          ' · ' + v.merchants_free + ' merchants';
+        var g0 = goods()[0];
+        // Caps are per good, but every good of a category shares one storage table.
+        var cap = capOf(v, g0), eff = v.effective_caps ? v.effective_caps[g0] : cap;
+        var merchants = client && v.merchants_home != null ? Math.max(0, v.merchants_home - (client.reserve || 0)) : v.merchants_free;
+        var meta = 'cap ' + fmt(eff) + (eff !== cap ? ' of ' + fmt(cap) : '') + ' · ' + merchants + ' merchants';
         var age = v.snapshot_age_sec == null ? 'never downloaded' : 'data ' + duration(v.snapshot_age_sec) + ' old';
+        var missing = missingStorage(v);
         var row = [el('td', { class: 'vhead' }, [
           el('div', {}, [
             el('button', {
@@ -722,13 +873,15 @@
             }), ' ',
             el('button', {
               class: 'btn small' + (ignored ? ' danger' : ''),
-              title: ignored ? 'Ignored: never gives, receives or balances. Click to include it again.'
-                : 'Ignore this village: it won\'t give, receive or balance',
+              title: ignored ? 'Ignored: never gives, receives or balances these goods. Click to include it again.'
+                : 'Ignore this village for ' + categoryById(cat).name.toLowerCase() + ': it won\'t give, receive or balance',
               text: ignored ? 'Ignored' : 'Ignore',
               onclick: function () { toggleIn(form.ignored_villages, v.village_id); markDirty(); render(); }
             }), ' ',
             el('span', { class: 'vname', text: v.name }),
-            v.has_hall ? null : el('span', { class: 'pill red', style: 'margin-left:6px', text: 'no hall' })
+            missing === null
+              ? el('span', { class: 'pill red', style: 'margin-left:6px', text: 'update bot' })
+              : (missing.length ? el('span', { class: 'pill red', style: 'margin-left:6px', text: 'no ' + missing.map(function (k) { return STORAGE_LABEL[k]; }).join(' / ') }) : null)
           ]),
           el('div', { class: 'vmeta', text: meta }),
           el('div', { class: 'vmeta' }, [age, ' · max ', el('input', {
@@ -742,7 +895,7 @@
         ])];
 
         var cells = (state.grid[String(v.village_id)] || []);
-        state.goods.forEach(function (name, g) { row.push(gridCell(v, g, cells[g])); });
+        goods().forEach(function (g) { row.push(gridCell(v, g, cells[g])); });
         table.appendChild(el('tr', { class: ignored ? 'ignored' : null }, row));
       });
     });
@@ -750,12 +903,12 @@
 
   function gridCell(v, g, c) {
     c = c || { level: 0, inbound: 0, leased_in: 0, target: 0, shortfall: 0, skip: 'off' };
-    var cap = Math.max(v.hall_cap, 1);
+    var cap = Math.max(c.cap != null ? c.cap : capOf(v, g), 1);
     var pct = function (n) { return Math.max(0, Math.min(100, n / cap * 100)); };
     var levelPct = pct(c.level), inboundPct = pct(c.inbound), leasedPct = pct(c.leased_in);
     var produces = v.buildings && v.buildings[g] > 0;
     var skipText = SKIP_TEXT.hasOwnProperty(c.skip) ? SKIP_TEXT[c.skip] : c.skip;
-    var title = name(g) + ': ' + fmt(c.level) + ' in hall';
+    var title = name(g) + ': ' + fmt(c.level) + ' in the ' + STORAGE_LABEL[storageOf(g)];
     if (c.inbound) title += ', ' + fmt(c.inbound) + ' on the way';
     if (c.leased_in) title += ', ' + fmt(c.leased_in) + ' queued';
     if (c.balance) {
@@ -767,7 +920,7 @@
       title += '. Filling to ' + fmt(c.target) + (c.shortfall ? ' (' + fmt(c.shortfall) + ' short)' : '');
     }
     if (c.skip) title += '. Not receiving: ' + c.skip;
-    if (produces) title += '. ' + v.buildings[g] + ' building(s), ' + fmt(v.prod[g]) + '/day';
+    if (produces) title += '. ' + v.buildings[g] + ' building(s)' + (v.prod[g] ? ', ' + fmt(v.prod[g]) + '/day' : '');
 
     var extra = [];
     if (c.inbound) extra.push('+' + fmt(c.inbound));
@@ -788,15 +941,20 @@
     ]);
   }
 
-  function name(g) { return state.goods[g] || ('Good ' + g); }
+  function shipmentsOfTab(list) {
+    return (list || []).filter(function (s) { return (s.category || (state.goods[s.good] || {}).category) === cat; });
+  }
 
   function renderShipments() {
     var table = $('ship-table');
     clear(table);
-    var rows = shipTab === 'active' ? state.active : state.recent;
+    var active = shipmentsOfTab(state.active);
+    var rows = shipTab === 'active' ? active : shipmentsOfTab(state.recent);
     $('clear-all-btn').classList.toggle('hidden', shipTab !== 'active' || !state.active.length);
     if (!rows.length) {
-      table.appendChild(el('tr', {}, [el('td', { class: 'empty', text: shipTab === 'active' ? 'Nothing queued or on the way.' : 'No finished shipments yet.' })]));
+      table.appendChild(el('tr', {}, [el('td', { class: 'empty', text: shipTab === 'active'
+        ? 'No ' + categoryById(cat).name.toLowerCase() + ' queued or on the way.'
+        : 'No finished ' + categoryById(cat).name.toLowerCase() + ' shipments yet.' })]));
       return;
     }
     var elapsed = (Date.now() - fetchedAt) / 1000;
@@ -857,7 +1015,7 @@
   $('save-btn').addEventListener('click', save);
   $('discard-btn').addEventListener('click', discard);
   $('clear-all-btn').addEventListener('click', function () {
-    if (!confirm('Stop counting every queued and on-the-way shipment? Receivers may then be sent more before their data refreshes — only do this if the ledger is wrong.')) return;
+    if (!confirm('Stop counting every queued and on-the-way shipment, in every category? Receivers may then be sent more before their data refreshes — only do this if the ledger is wrong.')) return;
     api('clear_shipments', { all: true }).then(function (j) { toast(j.cleared + ' shipment(s) cleared.'); refresh(); })
       .catch(function (e) { toast(e.message, true); });
   });

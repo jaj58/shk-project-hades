@@ -74,8 +74,9 @@ check($r['players_online'] === 2, 'two players online');
 // ── Website switches to autofill ────────────────────────────────────────────
 $r = call('set_settings', ['settings' => ['mode' => 'autofill', 'keep_amount' => 0, 'safety_margin' => 0,
     'min_send' => 10, 'player_caps' => ['2' => 2000]]]);
-check($r['ok'] === true && $r['settings']['mode'] === 'autofill', 'settings saved');
-check($r['settings']['player_caps'] == ['2' => 2000], 'caps round-trip');
+check($r['ok'] === true && $r['settings']['categories']['banquet']['mode'] === 'autofill', 'legacy flat settings saved as banquet');
+check($r['settings']['categories']['resources']['mode'] === 'off', 'other categories stay off');
+check($r['settings']['categories']['banquet']['player_caps'] == ['2' => 2000], 'caps round-trip');
 
 $r = sync(1, $p1Villages);
 $to = [200 => 0, 201 => 0];
@@ -172,6 +173,78 @@ check(count($state['villages']) === 1 && $state['villages'][0]['village_id'] ===
 $r = call('leave', ['user_id' => 1]);
 $state = call('get_state');
 check($r['ok'] === true && $state['players'][0]['online'] === false, 'leave marks the player offline');
+
+// ── Every good: a bot that reports caps/storage/client ──────────────────────
+$WOOD = 8;
+$ALL = ['hall' => true, 'stockpile' => true, 'granary' => true, 'inn' => true, 'armoury' => true];
+
+function sync_all(int $uid, array $villages, array $client = []): array {
+    global $GAME;
+    $c = [];
+    foreach (['banquet', 'resources', 'food', 'weapons'] as $cat) $c[$cat] = $client[$cat] ?? ['enabled' => true, 'reserve' => 0];
+    return call('sync', [
+        'player' => ['user_id' => $uid, 'name' => "Player$uid", 'world' => 'Test World', 'game_time' => $GAME,
+            'craftsmanship' => 8, 'sec_per_tile' => 12.5, 'carry' => array_fill(0, 24, 10), 'client_version' => 'itest',
+            'client' => $c],
+        'villages' => $villages,
+    ]);
+}
+
+function va(int $vid, array $o = []): array {
+    global $GAME, $ALL;
+    return array_merge(['village_id' => $vid, 'name' => "V$vid", 'x' => $vid, 'y' => 0, 'has_hall' => true,
+        'hall_cap' => 2700, 'levels' => array_fill(0, 24, 0), 'prod' => array_fill(0, 24, 0),
+        'buildings' => array_fill(0, 24, 0), 'caps' => array_fill(0, 24, 3000), 'storage' => $ALL,
+        'levels_at_game' => $GAME, 'snapshot_at_game' => $GAME, 'merchants_free' => 500, 'merchants_home' => 500], $o);
+}
+
+$GAME += 10;
+$lv = array_fill(0, 24, 0); $lv[$WOOD] = 2500;
+$bd = array_fill(0, 24, 0); $bd[$WOOD] = 1;
+$p3 = [va(300, ['levels' => $lv, 'buildings' => $bd])];
+$p4 = [va(400), va(401, ['storage' => array_merge($ALL, ['stockpile' => false])])];
+sync_all(3, $p3);
+sync_all(4, $p4);
+// Player 1 (older bot, village 101) stays in the group.
+
+$r = call('set_settings', ['settings' => ['categories' => [
+    'banquet'   => ['mode' => 'off'],
+    'resources' => ['mode' => 'autofill', 'keep_amount' => 0, 'safety_margin' => 0, 'min_send' => 10],
+]]]);
+check($r['ok'] === true && $r['settings']['categories']['resources']['mode'] === 'autofill', 'category settings saved');
+
+$r = sync_all(3, $p3);
+check($r['mode'] === 'off' && $r['modes']['resources'] === 'autofill', 'sync returns every category mode');
+$woodTo = [];
+foreach ($r['orders'] as $o) {
+    check($o['good'] === $WOOD && $o['from_village_id'] === 300, 'wood order from the producer');
+    $woodTo[$o['to_village_id']] = ($woodTo[$o['to_village_id']] ?? 0) + $o['amount'];
+}
+check(($woodTo[400] ?? 0) === 2500, 'wood goes to the village with a stockpile');
+check(!isset($woodTo[401]) && !isset($woodTo[101]), 'no stockpile / older bot: no wood');
+
+$state = call('get_state');
+check(count($state['goods']) === 24 && $state['goods'][8]['name'] === 'Wood' && $state['goods'][8]['category'] === 'resources',
+    'goods catalogue in state');
+check(count($state['categories']) === 4 && $state['categories'][1]['id'] === 'resources', 'categories in state');
+$vs = [];
+foreach ($state['villages'] as $sv) $vs[$sv['village_id']] = $sv;
+check($vs[400]['caps'][$WOOD] === 3000 && $vs[400]['storage']['stockpile'] === true, 'village caps and storage in state');
+check($vs[101]['storage'] === null && $vs[101]['caps'][0] === 2700, 'older bot: no storage, hall cap as banquet cap');
+check($state['grid']['401'][$WOOD]['skip'] === 'no stockpile', 'grid: no stockpile');
+check($state['grid']['101'][$WOOD]['skip'] === 'bot too old', 'grid: bot too old');
+$cats = array_unique(array_column($state['active'], 'category'));
+check(in_array('resources', $cats, true), 'shipments carry their category');
+$p = [];
+foreach ($state['players'] as $sp) $p[$sp['user_id']] = $sp;
+check($p[3]['client']['resources']['enabled'] === true && $p[1]['client'] === null, 'player client settings in state');
+
+// Switching a category off cancels its open orders without the cancel flag.
+$r = call('set_settings', ['settings' => ['categories' => ['resources' => ['mode' => 'off']]]]);
+$state = call('get_state');
+$leasedWood = 0;
+foreach ($state['active'] as $s) if ($s['status'] === 'leased' && $s['good'] === $WOOD) $leasedWood++;
+check($leasedWood === 0, 'category switched off: its leases cancelled');
 
 echo "$passes passed, $failures failed\n";
 exit($failures > 0 ? 1 : 0);
