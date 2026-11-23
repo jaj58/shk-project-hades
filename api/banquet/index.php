@@ -10,7 +10,7 @@ header('Cache-Control: no-cache');
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>Banquet Sender</title>
+<title>Goods Sender</title>
 <style>
   :root {
     --bg: #0f0f12;
@@ -173,6 +173,16 @@ header('Cache-Control: no-cache');
   table.planner td.tier .eta { display: block; font-size: 11px; color: var(--faint); }
   table.planner td.tier.active .eta { color: var(--gold); opacity: .8; }
 
+  /* Category tabs */
+  .cat-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+  .cat-tab {
+    background: none; border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0;
+    padding: 8px 16px; cursor: pointer; color: var(--muted); margin-bottom: -1px; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .cat-tab:hover { color: var(--text); }
+  .cat-tab.active { background: var(--panel); border-color: var(--line); color: var(--text); font-weight: 600; }
+  .order-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; color: var(--muted); }
+
   .tabs { display: flex; gap: 6px; }
   .tab { background: none; border: 1px solid transparent; border-radius: 6px; padding: 3px 10px; cursor: pointer; color: var(--muted); }
   .tab.active { border-color: var(--line); background: var(--panel-2); color: var(--text); }
@@ -187,6 +197,7 @@ header('Cache-Control: no-cache');
     header.top { padding: 12px 14px; }
     main { padding: 14px 10px 40px; }
     .stats { margin-left: 0; gap: 12px; }
+    .cat-tab { padding: 6px 10px; }
   }
 </style>
 </head>
@@ -194,9 +205,9 @@ header('Cache-Control: no-cache');
 
 <div id="login" class="login hidden">
   <section class="card">
-    <h2>Banquet Sender</h2>
+    <h2>Goods Sender</h2>
     <div class="card-body">
-      <div class="muted">Enter the group key your players use in the bot's Banquet Sender tab.</div>
+      <div class="muted">Enter the group key your players use in the bot's Sender tab.</div>
       <input id="login-key" type="password" placeholder="Group key" autocomplete="off">
       <label class="check"><input id="login-remember" type="checkbox" checked> Remember on this device</label>
       <div id="login-error" class="error hidden"></div>
@@ -207,7 +218,7 @@ header('Cache-Control: no-cache');
 
 <div id="app" class="hidden">
   <header class="top">
-    <div class="brand">⚜ BANQUET SENDER</div>
+    <div class="brand">⚜ GOODS SENDER</div>
     <span id="mode-pill" class="pill"></span>
     <div class="stats">
       <div class="stat"><b id="stat-online" class="num">0</b><span>players online</span></div>
@@ -219,6 +230,8 @@ header('Cache-Control: no-cache');
   </header>
 
   <main>
+    <nav class="cat-tabs" id="cat-tabs" aria-label="Goods categories"></nav>
+
     <div id="savebar" class="savebar hidden">
       <span class="grow">You have unsaved changes. Saving cancels orders that haven't been sent yet so they are re-planned with the new settings.</span>
       <button id="discard-btn" class="btn small">Discard</button>
@@ -227,7 +240,7 @@ header('Cache-Control: no-cache');
 
     <div id="new-group" class="card hidden" style="padding:14px 16px;margin-bottom:18px">
       No bots have connected with this key yet. Give the key to your players: they paste it into the
-      <b>Banquet Sender</b> tab with the API URL and tick <b>Enabled</b>. You can set everything up here first.
+      <b>Sender</b> tab with the API URL and tick <b>Enabled</b>. You can set everything up here first.
     </div>
 
     <section class="card" id="summary-card">
@@ -259,7 +272,7 @@ header('Cache-Control: no-cache');
         <div class="goods" id="goods"></div>
 
         <div id="focus-box" class="focus-box hidden">
-          <div><b>Focus targets</b> <span class="muted">— every enabled good is filled to the hall cap at these players / villages. Everyone else gives what they hold above the keep amount.</span></div>
+          <div><b>Focus targets</b> <span class="muted">— every enabled good is filled to the storage cap at these players / villages. Everyone else gives what they hold above the keep amount.</span></div>
           <div class="focus-players" id="focus-players"></div>
           <div class="muted" style="font-size:12px">Single villages can be focused with the ☆ in the goods table below.</div>
         </div>
@@ -268,19 +281,20 @@ header('Cache-Control: no-cache');
         <details class="adv">
           <summary>Advanced</summary>
           <div class="settings-grid" id="settings-adv"></div>
+          <div class="order-row" id="order-row"></div>
         </details>
       </div>
     </section>
 
     <section class="card">
-      <h2>Players <span class="right muted">Max per player caps every village's fill target (the hall cap still applies). Leave blank to use the hall cap.</span></h2>
+      <h2>Players <span class="right muted" id="players-note"></span></h2>
       <div class="table-wrap"><table id="players-table"></table></div>
     </section>
 
     <section class="card">
       <h2>Goods
         <span class="right legend">
-          <span><i style="background:var(--green)"></i>in hall</span>
+          <span><i style="background:var(--green)"></i>stored</span>
           <span><i style="background:var(--blue)"></i>on the way</span>
           <span><i style="background:var(--amber)"></i>queued</span>
           <span><span class="prod">●</span> produces it</span>
